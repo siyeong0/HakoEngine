@@ -1,0 +1,176 @@
+﻿#pragma once
+#include <d3d12.h>
+#include "Common/Common.h"
+#include "Interface/IRenderer.h"
+#include "Renderer_typedef.h"
+
+#define USE_MULTI_THREAD
+
+class D3D12ResourceManager;
+class DescriptorPool;
+class SimpleConstantBufferPool;
+class SingleDescriptorAllocator;
+class ConstantBufferManager;
+class FontManager;
+class TextureManager;
+class RenderQueue;
+class CommandListPool;
+struct RenderThreadDesc;
+
+class D3D12Renderer : public IRenderer
+{
+public:
+	// Derived from IUnknown
+	STDMETHODIMP			QueryInterface(REFIID, void** ppv) override;
+	STDMETHODIMP_(ULONG)	AddRef() override;
+	STDMETHODIMP_(ULONG)	Release() override;
+
+	// Derived from IRenderer
+	bool ENGINECALL Initialize(HWND hWnd, bool bEnableDebugLayer, bool bEnableGBV, bool bUseGpuUploadHeaps, const WCHAR* wchShaderPath) override;
+	void ENGINECALL BeginRender() override;
+	void APIENTRY EndRender() override;
+	void ENGINECALL Present() override;
+	bool ENGINECALL UpdateWindowSize(uint32_t backBufferWidth, uint32_t backBufferHeight) override;
+
+	IMeshObject* ENGINECALL CreateBasicMeshObject() override;
+	ISprite* ENGINECALL CreateSpriteObject() override;
+	ISprite* ENGINECALL CreateSpriteObject(const WCHAR* wchTexFileName, int PosX, int PosY, int Width, int Height) override;
+
+	void* ENGINECALL CreateTiledTexture(UINT texWidth, UINT texHeight, uint8_t r, uint8_t g, uint8_t b) override;
+	void* ENGINECALL CreateDynamicTexture(UINT texWidth, UINT texHeight) override;
+	void* ENGINECALL CreateTextureFromFile(const WCHAR* wchFileName) override;
+	void ENGINECALL DeleteTexture(void* pTexHandle) override;
+
+	void* ENGINECALL CreateFontObject(const WCHAR* wchFontFamilyName, float fontSize) override;
+	void ENGINECALL DeleteFontObject(void* pFontHandle) override;
+	bool ENGINECALL WriteTextToBitmap(uint8_t* dstImage, UINT dstWidth, UINT dstHeight, UINT dstPitch, int* outWidth, int* outHeight, void* pFontObjHandle, const WCHAR* wchString, UINT len) override;
+
+	void ENGINECALL RenderMeshObject(IMeshObject* pMeshObj, const XMMATRIX* pMatWorld) override;
+	void ENGINECALL RenderSpriteWithTex(void* pSprObjHandle, int iPosX, int iPosY, float fScaleX, float fScaleY, const RECT* pRect, float Z, void* pTexHandle) override;
+	void ENGINECALL RenderSprite(void* pSprObjHandle, int iPosX, int iPosY, float fScaleX, float fScaleY, float Z) override;
+	void ENGINECALL UpdateTextureWithImage(void* pTexHandle, const BYTE* pSrcBits, UINT SrcWidth, UINT SrcHeight) override;
+
+	void ENGINECALL SetCameraPos(float x, float y, float z) override;
+	void ENGINECALL SetCameraRot(float yaw, float pitch, float roll) override;
+	void ENGINECALL MoveCamera(float x, float y, float z) override;
+	void ENGINECALL GetCameraPos(float* outX, float* outY, float* outZ) override;
+
+	int	ENGINECALL GetCommandListCount() override;
+	bool ENGINECALL IsGpuUploadHeapsEnabled() const override;
+
+	// Internal
+	D3D12Renderer();
+	~D3D12Renderer();
+
+	void EnsureCompleted();
+	ID3D12Device5* GetD3DDevice() const { return m_pD3DDevice; }
+	D3D12ResourceManager* GetResourceManager() { return m_pResourceManager; }
+
+	DescriptorPool* GetDescriptorPool(int dwThreadIndex) { return m_ppDescriptorPool[m_CurrContextIndex][dwThreadIndex]; }
+	SimpleConstantBufferPool* GetConstantBufferPool(EConstantBufferType type, int dwThreadIndex);
+
+	inline uint32_t GetSrvDescriptorSize() { return m_srvDescriptorSize; }
+	inline SingleDescriptorAllocator* GetSingleDescriptorAllocator() { return m_pSingleDescriptorAllocator; }
+	inline int GetScreenWidth() const { return m_Width; }
+	inline int GetScreenHeigt() const { return m_Height; }
+	inline float GetDPI() const { return m_DPI; }
+	inline bool IsGpuUploadHeapsEnabledInl() const { return m_bGpuUploadHeapsEnabled; }
+
+	void GetViewProjMatrix(XMMATRIX* outMatView, XMMATRIX* outMatProj);
+
+	void SetCurrentPathForShader();
+	void RestoreCurrentPath();
+
+	// from RenderThread
+	void ProcessByThread(int dwThreadIndex);
+
+private:
+	void initCamera();
+	void updateCamera();
+
+	bool createDepthStencil(int width, int height);
+
+	void createFence();
+	void cleanupFence();
+	uint64_t fence();
+	void waitForFenceValue(uint64_t expectedFenceValue);
+
+	bool createDescriptorHeapForRTV();
+	bool createDescriptorHeapForDSV();
+	void cleanupDescriptorHeapForRTV();
+	void cleanupDescriptorHeapForDSV();
+
+	void cleanup();
+
+	// for multi-threads
+	bool initRenderThreadPool(int dwThreadCount);
+	void cleanupRenderThreadPool();
+
+private:
+	static constexpr UINT MAX_DRAW_COUNT_PER_FRAME = 4096;
+	static constexpr UINT MAX_DESCRIPTOR_COUNT = 4096;
+	static constexpr UINT MAX_RENDER_THREAD_COUNT = 8;
+
+	int	m_RefCount = 1;
+	HWND m_hWnd = nullptr;
+	ID3D12Device5* m_pD3DDevice = nullptr;
+	ID3D12CommandQueue* m_pCommandQueue = nullptr;
+	D3D12ResourceManager* m_pResourceManager = nullptr;
+	FontManager* m_pFontManager = nullptr;
+	SingleDescriptorAllocator* m_pSingleDescriptorAllocator = nullptr;
+
+	CommandListPool* m_ppCommandListPool[MAX_PENDING_FRAME_COUNT][MAX_RENDER_THREAD_COUNT] = {};
+	DescriptorPool* m_ppDescriptorPool[MAX_PENDING_FRAME_COUNT][MAX_RENDER_THREAD_COUNT] = {};
+	ConstantBufferManager* m_ppConstBufferManager[MAX_PENDING_FRAME_COUNT][MAX_RENDER_THREAD_COUNT] = {};
+	RenderQueue* m_ppRenderQueue[MAX_RENDER_THREAD_COUNT] = {};
+	int m_RenderThreadCount = 0;
+	int m_CurrThreadIndex = 0;
+
+	LONG volatile m_lActiveThreadCount = 0;
+	HANDLE m_hCompleteEvent = nullptr;
+	RenderThreadDesc* m_pThreadDescList = nullptr;
+
+	TextureManager* m_pTextureManager = nullptr;
+
+	uint64_t m_pui64LastFenceValue[MAX_PENDING_FRAME_COUNT] = {};
+	uint64_t m_ui64FenceVaule = 0;
+
+	D3D_FEATURE_LEVEL m_FeatureLevel = D3D_FEATURE_LEVEL_11_0;
+	DXGI_ADAPTER_DESC1 m_AdapterDesc = {};
+	bool m_bGpuUploadHeapsEnabled = false;
+	IDXGISwapChain3* m_pSwapChain = nullptr;
+	D3D12_VIEWPORT m_Viewport = {};
+	D3D12_RECT m_ScissorRect = {};
+	int m_Width = -1;
+	int m_Height = -1;
+	float m_DPI = 96.0f;
+	ID3D12Resource* m_pRenderTargets[SWAP_CHAIN_FRAME_COUNT] = {};
+	ID3D12Resource* m_pDepthStencil = nullptr;
+	ID3D12DescriptorHeap* m_pRTVHeap = nullptr;
+	ID3D12DescriptorHeap* m_pDSVHeap = nullptr;
+	ID3D12DescriptorHeap* m_pSRVHeap = nullptr;
+	uint32_t m_rtvDescriptorSize = 0;
+	uint32_t m_srvDescriptorSize = 0;
+	uint32_t m_dsvDescriptorSize = 0;
+	uint32_t m_dwSwapChainFlags = 0;
+	int m_uiRenderTargetIndex = 0;
+	HANDLE	m_hFenceEvent = nullptr;
+	ID3D12Fence* m_pFence = nullptr;
+
+	int	m_CurrContextIndex = 0;
+	XMMATRIX m_ViewMatrix = {};
+	XMMATRIX m_InvViewMatrix = {};
+	XMMATRIX m_ProjMatrix = {};
+
+	XMVECTOR m_CamPos = {};
+	XMVECTOR m_CamDir = {};
+	XMVECTOR m_CamRight = {};
+	XMVECTOR m_CamUp = {};
+	float m_fCamYaw = 0.0f;
+	float m_fCamPitch = 0.0f;
+	float m_fCamRoll = 0.0f;
+
+	WCHAR m_wchCurrentPathBackup[_MAX_PATH] = {};
+	WCHAR m_wchShaderPath[_MAX_PATH] = {};
+};
+

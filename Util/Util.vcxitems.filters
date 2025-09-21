@@ -1,0 +1,63 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="$(MSBuildThisFileDirectory)HashTable.cpp">
+      <Filter>HashTable</Filter>
+    </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)IndexCreator.cpp">
+      <Filter>IndexCreator</Filter>
+    </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)LinkedList.cpp">
+      <Filter>LinkedList</Filter>
+    </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)ProcessorInfo.cpp">
+      <Filter>ProcessorInfo</Filter>
+    </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)QueryPerfCounter .cpp">
+      <Filter>QueryPerfCounter</Filter>
+    </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)VertexUtil.cpp">
+      <Filter>VertexUtil</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="$(MSBuildThisFileDirectory)HashTable.h">
+      <Filter>HashTable</Filter>
+    </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)IndexCreator.h">
+      <Filter>IndexCreator</Filter>
+    </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)LinkedList.h">
+      <Filter>LinkedList</Filter>
+    </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)ProcessorInfo.h">
+      <Filter>ProcessorInfo</Filter>
+    </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)QueryPerfCounter.h">
+      <Filter>QueryPerfCounter</Filter>
+    </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)VertexUtil.h">
+      <Filter>VertexUtil</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="HashTable">
+      <UniqueIdentifier>{0a083497-bf5d-4ce4-8272-bf705acde75e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="IndexCreator">
+      <UniqueIdentifier>{4fb718bb-ad13-4f39-8bf0-b497d4d11914}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="LinkedList">
+      <UniqueIdentifier>{e13eb42f-4842-49f7-abda-4c89dce570e9}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ProcessorInfo">
+      <UniqueIdentifier>{3213d4e8-5d82-4daf-8776-ab8ba99db0d7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="QueryPerfCounter">
+      <UniqueIdentifier>{846e769d-ac9b-480b-a651-af65e3733691}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="VertexUtil">
+      <UniqueIdentifier>{15d49264-b3b4-49cd-ad11-628286a51a51}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>
