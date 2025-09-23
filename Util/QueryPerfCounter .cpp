@@ -7,12 +7,14 @@ void QCInit()
 {
 	QueryPerformanceFrequency(&g_Frequency);
 }
+
 LARGE_INTEGER QCGetCounter()
 {
 	LARGE_INTEGER CurCounter;
 	QueryPerformanceCounter(&CurCounter);
 	return CurCounter;
 }
+
 float QCMeasureElapsedTick(LARGE_INTEGER CurCounter, LARGE_INTEGER PrvCounter)
 {
 #ifdef _DEBUG

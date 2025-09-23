@@ -1,7 +1,5 @@
 ﻿#include "LinkedList.h"
 
-
-
 void LinkToLinkedList(SORT_LINK** ppHead, SORT_LINK** ppTail, SORT_LINK* pNew)
 {
 	if (!*ppHead)
@@ -23,6 +21,7 @@ void LinkToLinkedList(SORT_LINK** ppHead, SORT_LINK** ppTail, SORT_LINK* pNew)
 		pNew->pPrv = nullptr;
 	}
 }
+
 void LinkToLinkedListFIFO(SORT_LINK** ppHead, SORT_LINK** ppTail, SORT_LINK* pNew)
 {
 	if (!*ppHead)

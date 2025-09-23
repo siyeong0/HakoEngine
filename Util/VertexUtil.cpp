@@ -1,6 +1,4 @@
-﻿#include <Windows.h>
-#include "Common/Common.h"
-
+﻿#include "VertexUtil.h"
 
 DWORD AddVertex(BasicVertex* pVertexList, DWORD dwMaxVertexCount, DWORD* pdwInOutVertexCount, const BasicVertex* pVertex);
 

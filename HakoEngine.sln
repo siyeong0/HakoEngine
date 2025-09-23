@@ -35,6 +35,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Shaders", "Shaders", "{3D13
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Graphics", "Graphics", "{F28961A5-971B-471F-891F-048670ADAC37}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "HelloFlecs", "HelloFlecs\HelloFlecs.vcxproj", "{ACEC1E29-AF57-49EC-A284-9E8FF2F6EE90}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -59,6 +61,14 @@ Global
 		{9940C86E-1844-443F-8093-36D1D27079FE}.Release|x64.Build.0 = Release|x64
 		{9940C86E-1844-443F-8093-36D1D27079FE}.Release|x86.ActiveCfg = Release|Win32
 		{9940C86E-1844-443F-8093-36D1D27079FE}.Release|x86.Build.0 = Release|Win32
+		{ACEC1E29-AF57-49EC-A284-9E8FF2F6EE90}.Debug|x64.ActiveCfg = Debug|x64
+		{ACEC1E29-AF57-49EC-A284-9E8FF2F6EE90}.Debug|x64.Build.0 = Debug|x64
+		{ACEC1E29-AF57-49EC-A284-9E8FF2F6EE90}.Debug|x86.ActiveCfg = Debug|Win32
+		{ACEC1E29-AF57-49EC-A284-9E8FF2F6EE90}.Debug|x86.Build.0 = Debug|Win32
+		{ACEC1E29-AF57-49EC-A284-9E8FF2F6EE90}.Release|x64.ActiveCfg = Release|x64
+		{ACEC1E29-AF57-49EC-A284-9E8FF2F6EE90}.Release|x64.Build.0 = Release|x64
+		{ACEC1E29-AF57-49EC-A284-9E8FF2F6EE90}.Release|x86.ActiveCfg = Release|Win32
+		{ACEC1E29-AF57-49EC-A284-9E8FF2F6EE90}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -71,6 +81,7 @@ Global
 		{93C5D564-A9BA-401D-AD7A-8C50767CA72F} = {8EC462FD-D22E-90A8-E5CE-7E832BA40C5D}
 		{3D13AE0B-E4C8-4E30-84DC-10700AA71E78} = {F28961A5-971B-471F-891F-048670ADAC37}
 		{F28961A5-971B-471F-891F-048670ADAC37} = {09C0A873-DEAE-440D-A9DF-2196C23D296E}
+		{ACEC1E29-AF57-49EC-A284-9E8FF2F6EE90} = {02EA681E-C7D8-13C7-8484-4AC65E1B71E8}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {9AF6924D-97FC-40C0-AFB6-2880A2729152}
@@ -82,6 +93,9 @@ Global
 		Common\Common.vcxitems*{9940c86e-1844-443f-8093-36d1d27079fe}*SharedItemsImports = 4
 		Interface\Interface.vcxitems*{9940c86e-1844-443f-8093-36d1d27079fe}*SharedItemsImports = 4
 		Util\Util.vcxitems*{9940c86e-1844-443f-8093-36d1d27079fe}*SharedItemsImports = 4
+		Common\Common.vcxitems*{acec1e29-af57-49ec-a284-9e8ff2f6ee90}*SharedItemsImports = 4
+		Interface\Interface.vcxitems*{acec1e29-af57-49ec-a284-9e8ff2f6ee90}*SharedItemsImports = 4
+		Util\Util.vcxitems*{acec1e29-af57-49ec-a284-9e8ff2f6ee90}*SharedItemsImports = 4
 		Common\Common.vcxitems*{afb06cfd-6b06-4f50-8938-dff66a7c14da}*SharedItemsImports = 4
 		Interface\Interface.vcxitems*{afb06cfd-6b06-4f50-8938-dff66a7c14da}*SharedItemsImports = 4
 		Util\Util.vcxitems*{afb06cfd-6b06-4f50-8938-dff66a7c14da}*SharedItemsImports = 4

@@ -1,6 +1,6 @@
 ﻿#include <Windows.h>
+#include "Common.h"
 #include "ProcessorInfo.h"
-
 
 typedef BOOL(WINAPI *LPFN_GLPI)(PSYSTEM_LOGICAL_PROCESSOR_INFORMATION, PDWORD);
 DWORD CountSetBits(ULONG_PTR bitMask);
@@ -63,11 +63,12 @@ BOOL GetPhysicalCoreCount(DWORD* pdwOutPhysicalCoreCount, DWORD* pdwOutLogicalCo
 				done = TRUE;
 			}
 		}
-
+		
 		ptr = pBuffer;
-
+		
 		while (byteOffset + sizeof(SYSTEM_LOGICAL_PROCESSOR_INFORMATION) <= returnLength)
 		{
+			ASSERT(ptr, "Error: Unable to allocate memory for logical processor information.\n");
 			switch (ptr->Relationship)
 			{
 				case RelationNumaNode:
