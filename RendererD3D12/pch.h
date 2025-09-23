@@ -21,13 +21,18 @@
 #include <initguid.h>
 
 // d3d
+#pragma warning(push)
+#pragma warning(disable : 26827)
 #include <d3d12.h>
+#include <dxgi.h>
 #include <dxgi1_4.h>
+#include <dxgidebug.h>
 #include <d3d11on12.h>
 #include <d2d1_3.h>
 #include <dwrite_3.h>
 #include <directx/d3dx12.h>
 #include <DirectXMath.h>
+#pragma warning(pop)
 
 #include <windows.h>
 

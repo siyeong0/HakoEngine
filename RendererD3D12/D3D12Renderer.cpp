@@ -1,10 +1,4 @@
 ﻿#include "pch.h"
-#include <dxgi.h>
-#include <dxgi1_4.h>
-#include <d3d12.h>
-#include <dxgidebug.h>
-#include <directx/d3dx12.h>
-#include <DirectXMath.h>
 
 #include <process.h>
 #include <cmath>
@@ -493,7 +487,7 @@ ISprite* ENGINECALL D3D12Renderer::CreateSpriteObject(const WCHAR* wchTexFileNam
 {
 	SpriteObject* pSprObj = new SpriteObject;
 
-	RECT rect;
+	RECT rect = {};
 	rect.left = PosX;
 	rect.top = PosY;
 	rect.right = Width;
@@ -573,7 +567,7 @@ bool ENGINECALL D3D12Renderer::WriteTextToBitmap(uint8_t* dstImage, UINT dstWidt
 
 void ENGINECALL D3D12Renderer::RenderMeshObject(IMeshObject* pMeshObj, const XMMATRIX* pMatWorld)
 {
-	RenderItem item;
+	RenderItem item = {};
 	item.Type = RENDER_ITEM_TYPE_MESH_OBJ;
 	item.pObjHandle = pMeshObj;
 	item.MeshObjParam.matWorld = *pMatWorld;
@@ -591,7 +585,7 @@ void ENGINECALL D3D12Renderer::RenderMeshObject(IMeshObject* pMeshObj, const XMM
 
 void ENGINECALL D3D12Renderer::RenderSpriteWithTex(void* pSprObjHandle, int iPosX, int iPosY, float fScaleX, float fScaleY, const RECT* pRect, float Z, void* pTexHandle)
 {
-	RenderItem item;
+	RenderItem item = {};
 	item.Type = RENDER_ITEM_TYPE_SPRITE;
 	item.pObjHandle = pSprObjHandle;
 	item.SpriteParam.iPosX = iPosX;
@@ -642,7 +636,7 @@ void ENGINECALL D3D12Renderer::RenderSpriteWithTex(void* pSprObjHandle, int iPos
 
 void ENGINECALL D3D12Renderer::RenderSprite(void* pSprObjHandle, int iPosX, int iPosY, float fScaleX, float fScaleY, float Z)
 {
-	RenderItem item;
+	RenderItem item = {};
 	item.Type = RENDER_ITEM_TYPE_SPRITE;
 	item.pObjHandle = pSprObjHandle;
 	item.SpriteParam.iPosX = iPosX;
@@ -782,26 +776,26 @@ void D3D12Renderer::EnsureCompleted()
 	}
 }
 
-SimpleConstantBufferPool* D3D12Renderer::GetConstantBufferPool(EConstantBufferType type, int dwThreadIndex)
+SimpleConstantBufferPool* D3D12Renderer::GetConstantBufferPool(EConstantBufferType type, int dwThreadIndex) const
 {
 	ConstantBufferManager* pConstBufferManager = m_ppConstBufferManager[m_CurrContextIndex][dwThreadIndex];
 	SimpleConstantBufferPool* pConstBufferPool = pConstBufferManager->GetConstantBufferPool(type);
 	return pConstBufferPool;
 }
 
-void D3D12Renderer::GetViewProjMatrix(XMMATRIX* outMatView, XMMATRIX* outMatProj)
+void D3D12Renderer::GetViewProjMatrix(XMMATRIX* outMatView, XMMATRIX* outMatProj) const
 {
 	*outMatView = XMMatrixTranspose(m_ViewMatrix);
 	*outMatProj = XMMatrixTranspose(m_ProjMatrix);
 }
 
-void D3D12Renderer::SetCurrentPathForShader()
+void D3D12Renderer::SetCurrentPathForShader() const
 {
-	GetCurrentDirectory(_MAX_PATH, m_wchCurrentPathBackup);
+	GetCurrentDirectory(_MAX_PATH, (LPWSTR)m_wchCurrentPathBackup);
 	SetCurrentDirectory(m_wchShaderPath);
 }
 
-void D3D12Renderer::RestoreCurrentPath()
+void D3D12Renderer::RestoreCurrentPath() const
 {
 	SetCurrentDirectory(m_wchCurrentPathBackup);
 }

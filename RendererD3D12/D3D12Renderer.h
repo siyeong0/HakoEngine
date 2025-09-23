@@ -1,5 +1,4 @@
 ﻿#pragma once
-#include <d3d12.h>
 #include "Common/Common.h"
 #include "Interface/IRenderer.h"
 #include "Renderer_typedef.h"
@@ -66,20 +65,20 @@ public:
 	ID3D12Device5* GetD3DDevice() const { return m_pD3DDevice; }
 	D3D12ResourceManager* GetResourceManager() { return m_pResourceManager; }
 
-	DescriptorPool* GetDescriptorPool(int dwThreadIndex) { return m_ppDescriptorPool[m_CurrContextIndex][dwThreadIndex]; }
-	SimpleConstantBufferPool* GetConstantBufferPool(EConstantBufferType type, int dwThreadIndex);
+	DescriptorPool* GetDescriptorPool(int dwThreadIndex) const { return m_ppDescriptorPool[m_CurrContextIndex][dwThreadIndex]; }
+	SimpleConstantBufferPool* GetConstantBufferPool(EConstantBufferType type, int dwThreadIndex) const;
 
-	inline uint32_t GetSrvDescriptorSize() { return m_srvDescriptorSize; }
-	inline SingleDescriptorAllocator* GetSingleDescriptorAllocator() { return m_pSingleDescriptorAllocator; }
+	inline uint32_t GetSrvDescriptorSize() const { return m_srvDescriptorSize; }
+	inline SingleDescriptorAllocator* GetSingleDescriptorAllocator() const { return m_pSingleDescriptorAllocator; }
 	inline int GetScreenWidth() const { return m_Width; }
 	inline int GetScreenHeigt() const { return m_Height; }
 	inline float GetDPI() const { return m_DPI; }
 	inline bool IsGpuUploadHeapsEnabledInl() const { return m_bGpuUploadHeapsEnabled; }
 
-	void GetViewProjMatrix(XMMATRIX* outMatView, XMMATRIX* outMatProj);
+	void GetViewProjMatrix(XMMATRIX* outMatView, XMMATRIX* outMatProj) const;
 
-	void SetCurrentPathForShader();
-	void RestoreCurrentPath();
+	void SetCurrentPathForShader() const;
+	void RestoreCurrentPath() const;
 
 	// from RenderThread
 	void ProcessByThread(int dwThreadIndex);

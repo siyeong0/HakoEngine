@@ -1,6 +1,4 @@
 ﻿#pragma once
-#include <d3d12.h>
-
 #include "Common/Common.h"
 
 class SimpleConstantBufferPool;
