@@ -96,17 +96,16 @@ bool Game::Initialize(HWND hWnd, bool bEnableDebugLayer, bool bEnableGBV)
 	pCreateFunc(&m_pRenderer);
 
 	// Get App Path and Set Shader Path
-	WCHAR wchShaderPath[_MAX_PATH] = {};
-	WCHAR exePath[_MAX_PATH] = {};
+	//WCHAR exePath[_MAX_PATH] = {};
+	WCHAR wchShaderPath[_MAX_PATH] = L"./Shaders";
+	//if (GetModuleFileNameW(nullptr, exePath, _MAX_PATH))
+	//{
+	//	std::filesystem::path exeDir = std::filesystem::path(exePath).parent_path();         // ...\x64\Debug
+	//	std::filesystem::path shaders = (exeDir / L"./Shaders").lexically_normal();
 
-	if (GetModuleFileNameW(nullptr, exePath, _MAX_PATH))
-	{
-		std::filesystem::path exeDir = std::filesystem::path(exePath).parent_path();         // ...\x64\Debug
-		std::filesystem::path shaders = (exeDir / L"..\\..\\Shaders").lexically_normal();
-
-		wcsncpy_s(wchShaderPath, shaders.c_str(), _TRUNCATE);      // $(SolutionDir)\Shaders
-		// wprintf(L"Shaders = %s\n", wchShaderPath);
-	}
+	//	wcsncpy_s(wchShaderPath, shaders.c_str(), _TRUNCATE);      // $(SolutionDir)\Shaders
+	//	// wprintf(L"Shaders = %s\n", wchShaderPath);
+	//}
 
 	bool bUseGpuUploadHeaps = false;
 #ifdef USE_GPU_UPLOAD_HEAPS
