@@ -33,7 +33,8 @@ public:
 
 	IMeshObject* ENGINECALL CreateBasicMeshObject() override;
 	ISprite* ENGINECALL CreateSpriteObject() override;
-	ISprite* ENGINECALL CreateSpriteObject(const WCHAR* wchTexFileName, int PosX, int PosY, int Width, int Height) override;
+	ISprite* ENGINECALL CreateSpriteObject(const WCHAR* wchTexFileName) override;
+	ISprite* ENGINECALL CreateSpriteObject(const WCHAR* wchTexFileName, int posX, int posY, int width, int height) override;
 
 	void* ENGINECALL CreateTiledTexture(UINT texWidth, UINT texHeight, uint8_t r, uint8_t g, uint8_t b) override;
 	void* ENGINECALL CreateDynamicTexture(UINT texWidth, UINT texHeight) override;

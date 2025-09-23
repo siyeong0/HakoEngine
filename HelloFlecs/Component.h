@@ -42,6 +42,7 @@ struct MeshRenderer
 
 struct SpriteRenderer
 {
+	std::wstring SpriteFileName;
 	ISprite* Sprite;
 };
 

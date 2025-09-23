@@ -19,7 +19,7 @@ public:
 	STDMETHODIMP_(ULONG)	Release();
 
 	bool Initialize(D3D12Renderer* pRenderer);
-	bool Initialize(D3D12Renderer* pRenderer, const WCHAR* wchTexFileName, const RECT* pRect);
+	bool Initialize(D3D12Renderer* pRenderer, const WCHAR* wchTexFileName, const RECT* pRectOrNull);
 	void DrawWithTex(int threadIndex, ID3D12GraphicsCommandList* pCommandList, const XMFLOAT2* pPos, const XMFLOAT2* pScale, const RECT* pRect, float Z, TextureHandle* pTexHandle);
 	void Draw(int threadIndex, ID3D12GraphicsCommandList* pCommandList, const XMFLOAT2* pPos, const XMFLOAT2* pScale, float Z);
 

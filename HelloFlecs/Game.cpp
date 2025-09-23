@@ -169,12 +169,22 @@ bool Game::Initialize(HWND hWnd, bool bEnableDebugLayer, bool bEnableGBV)
 				m.Mesh = createBoxMeshObject(m_pRenderer);
 			});
 
+	m_ECSWorld.observer<SpriteRenderer>("Init SpriteRenderer")
+		.event(flecs::OnSet)
+		.each([this](SpriteRenderer& s)
+			{
+				if (!s.SpriteFileName.empty())
+				{
+					s.Sprite = m_pRenderer->CreateSpriteObject(s.SpriteFileName.c_str());
+				}
+			});
+
 
 	m_ECSWorld.system<>()
 		.kind(phaseBeginRender)
-		.each([this]() 
-			{ 
-				m_pRenderer->BeginRender(); 
+		.each([this]()
+			{
+				m_pRenderer->BeginRender();
 			});
 
 	m_ECSWorld.system<const Position, const Rotation, const Scale, const MeshRenderer>("Render Mesh")
@@ -192,17 +202,32 @@ bool Game::Initialize(HWND hWnd, bool bEnableDebugLayer, bool bEnableGBV)
 				}
 			});
 
+	m_ECSWorld.system<const Position, const Rotation, const Scale, const SpriteRenderer>("Render Sprite")
+		.kind(phaseRender)
+		.multi_threaded(false)	// TODO: test multi threading
+		.each([this](const Position& p, const Rotation& r, const Scale& s, const SpriteRenderer& sprite)
+			{
+				DirectX::XMMATRIX matScale = DirectX::XMMatrixScaling(s.x, s.y, s.z);
+				DirectX::XMMATRIX matRot = DirectX::XMMatrixRotationRollPitchYaw(r.Pitch, r.Yaw, r.Roll);
+				DirectX::XMMATRIX matTrans = DirectX::XMMatrixTranslation(p.x, p.y, p.z);
+				DirectX::XMMATRIX worldMat = matScale * matRot * matTrans;
+				if (sprite.Sprite)
+				{
+					m_pRenderer->RenderSprite(sprite.Sprite, (int)p.x, (int)p.y, s.x, s.y, p.z);
+				}
+			});
+
 	m_ECSWorld.system<>()
 		.kind(phaseEndRender)
-		.each([this]() 
+		.each([this]()
 			{
 				m_pRenderer->EndRender();
 				m_pRenderer->Present();
 			});
 
 	// Create Game Objects
-	const UINT GAME_OBJ_COUNT = 200;
-	for (UINT i = 0; i < GAME_OBJ_COUNT; i++)
+	const UINT BOX_OBJECT_COUNT = 200;
+	for (UINT i = 0; i < BOX_OBJECT_COUNT; i++)
 	{
 		float x = (float)((rand() % 51) - 25);	// -10m - 10m 
 		float y = (float)((rand() % 3) - 1);	// -1m - 1m
@@ -219,6 +244,16 @@ bool Game::Initialize(HWND hWnd, bool bEnableDebugLayer, bool bEnableGBV)
 			.set<Rotation>({ 0.0f, r, 0.0f })
 			.set<Scale>({ s, s, s })
 			.set<MeshRenderer>({ nullptr });
+
+		m_Entities.emplace_back(e.id());
+	}
+	
+	{
+		flecs::entity e = m_ECSWorld.entity()
+			.set<Position>({ 100.0f, 100.0f, 0.0f })
+			.set<Rotation>({ 0.0f, 0.0f, 0.0f })
+			.set<Scale>({ 0.1f, 0.1f, 0.1f })
+			.set<SpriteRenderer>({L"./Resources/kanna.dds"});
 
 		m_Entities.emplace_back(e.id());
 	}

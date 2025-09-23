@@ -55,7 +55,7 @@ bool SpriteObject::Initialize(D3D12Renderer* pRenderer)
 	return initCommonResources();
 }
 
-bool SpriteObject::Initialize(D3D12Renderer* pRenderer, const WCHAR* wchTexFileName, const RECT* pRect)
+bool SpriteObject::Initialize(D3D12Renderer* pRenderer, const WCHAR* wchTexFileName, const RECT* pRectOrNull)
 {
 	m_pRenderer = pRenderer;
 
@@ -71,9 +71,9 @@ bool SpriteObject::Initialize(D3D12Renderer* pRenderer, const WCHAR* wchTexFileN
 			texWidth = (UINT)desc.Width;
 			texHeight = (UINT)desc.Height;
 		}
-		if (pRect)
+		if (pRectOrNull)
 		{
-			m_Rect = *pRect;
+			m_Rect = *pRectOrNull;
 			m_Scale.x = (float)(m_Rect.right - m_Rect.left) / (float)texWidth;
 			m_Scale.y = (float)(m_Rect.bottom - m_Rect.top) / (float)texHeight;
 		}

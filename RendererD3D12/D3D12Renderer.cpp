@@ -483,15 +483,24 @@ ISprite* ENGINECALL D3D12Renderer::CreateSpriteObject()
 	return pSprObj;
 }
 
-ISprite* ENGINECALL D3D12Renderer::CreateSpriteObject(const WCHAR* wchTexFileName, int PosX, int PosY, int Width, int Height)
+ISprite* ENGINECALL D3D12Renderer::CreateSpriteObject(const WCHAR* wchTexFileName)
+{
+	SpriteObject* pSprObj = new SpriteObject;
+
+	pSprObj->Initialize(this, wchTexFileName, nullptr);
+
+	return pSprObj;
+}
+
+ISprite* ENGINECALL D3D12Renderer::CreateSpriteObject(const WCHAR* wchTexFileName, int posX, int posY, int width, int height)
 {
 	SpriteObject* pSprObj = new SpriteObject;
 
 	RECT rect = {};
-	rect.left = PosX;
-	rect.top = PosY;
-	rect.right = Width;
-	rect.bottom = Height;
+	rect.left = posX;
+	rect.top = posY;
+	rect.right = width;
+	rect.bottom = height;
 	pSprObj->Initialize(this, wchTexFileName, &rect);
 
 	return pSprObj;
@@ -634,6 +643,7 @@ void ENGINECALL D3D12Renderer::RenderSpriteWithTex(void* pSprObjHandle, int iPos
 	//pSpriteObj->DrawWithTex(pCommandList, &Pos, &Scale, pRect, Z, pTexureHandle);
 }
 
+// TODO: Support rotation. Get Transform info.
 void ENGINECALL D3D12Renderer::RenderSprite(void* pSprObjHandle, int iPosX, int iPosY, float fScaleX, float fScaleY, float Z)
 {
 	RenderItem item = {};
@@ -649,7 +659,7 @@ void ENGINECALL D3D12Renderer::RenderSprite(void* pSprObjHandle, int iPosX, int 
 	item.SpriteParam.Z = Z;
 
 	bool bAdded = m_ppRenderQueue[m_CurrThreadIndex]->Add(&item);
-	ASSERT(false, "Render Queue is full.");
+	ASSERT(bAdded, "Render Queue is full.");
 
 	m_CurrThreadIndex++;
 	m_CurrThreadIndex = m_CurrThreadIndex % m_RenderThreadCount;

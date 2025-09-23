@@ -28,7 +28,8 @@ interface IRenderer : public IUnknown
 	virtual IMeshObject* ENGINECALL CreateBasicMeshObject() = 0;
 
 	virtual ISprite* ENGINECALL CreateSpriteObject() = 0;
-	virtual ISprite* ENGINECALL CreateSpriteObject(const WCHAR* wchTexFileName, int PosX, int PosY, int Width, int Height) = 0;
+	virtual ISprite* ENGINECALL CreateSpriteObject(const WCHAR* wchTexFileName) = 0;
+	virtual ISprite* ENGINECALL CreateSpriteObject(const WCHAR* wchTexFileName, int posX, int posY, int width, int height) = 0;
 
 	virtual void* ENGINECALL CreateTiledTexture(UINT texWidth, UINT texHeight, uint8_t r, uint8_t g, uint8_t b) = 0;
 	virtual void* ENGINECALL CreateDynamicTexture(UINT texWidth, UINT texHeight) = 0;
