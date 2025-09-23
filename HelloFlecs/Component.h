@@ -48,8 +48,13 @@ struct SpriteRenderer
 
 struct TextRenderer
 {
-	ISprite* Sprite;
 	std::wstring Text;
+	ISprite* Sprite;
+	int Width, Height;
+	uint8_t* pImageData;
 	void* pFontObject;
 	void* pTextTexHandle;
+
+	TextRenderer() : Text(L""), Sprite(nullptr), Width(0), Height(0), pImageData(nullptr), pFontObject(nullptr), pTextTexHandle(nullptr) {}
+	TextRenderer(const std::wstring& text) : Text(text), Sprite(nullptr), Width(0), Height(0), pImageData(nullptr), pFontObject(nullptr), pTextTexHandle(nullptr) {}
 };

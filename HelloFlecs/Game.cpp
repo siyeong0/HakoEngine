@@ -127,6 +127,7 @@ bool Game::Initialize(HWND hWnd, bool bEnableDebugLayer, bool bEnableGBV)
 	m_ECSWorld.component<Scale>();
 	m_ECSWorld.component<MeshRenderer>();
 	m_ECSWorld.component<SpriteRenderer>();
+	m_ECSWorld.component<TextRenderer>();
 
 	// Create phases
 	static flecs::entity phaseUpdate;
@@ -148,114 +149,208 @@ bool Game::Initialize(HWND hWnd, bool bEnableDebugLayer, bool bEnableGBV)
 	phaseRender.add(flecs::DependsOn, phaseBeginRender);
 	phaseEndRender.add(flecs::DependsOn, phaseRender);
 
+	// Initialize components when they are added
+	{
+		m_ECSWorld.observer<MeshRenderer>("Init MeshRenderer")
+			.event(flecs::OnSet)
+			.each([this](MeshRenderer& m)
+				{
+					m.Mesh = createBoxMeshObject(m_pRenderer);
+				});
+
+		m_ECSWorld.observer<SpriteRenderer>("Init SpriteRenderer")
+			.event(flecs::OnSet)
+			.each([this](SpriteRenderer& s)
+				{
+					if (!s.SpriteFileName.empty())
+					{
+						s.Sprite = m_pRenderer->CreateSpriteObject(s.SpriteFileName.c_str());
+					}
+				});
+
+		m_ECSWorld.observer<TextRenderer>("Init TextRenderer")
+			.event(flecs::OnSet)
+			.each([this](TextRenderer& t)
+				{
+					t.Width = 512;
+					t.Height = 64;
+					t.pImageData = (uint8_t*)malloc(t.Width * t.Height * 4);
+					ASSERT(t.pImageData, "Fail to allocate memory for text image");
+					memset(t.pImageData, 0, t.Width * t.Height * 4);
+					t.pTextTexHandle = m_pRenderer->CreateDynamicTexture(t.Width, t.Height);
+					t.Sprite = m_pRenderer->CreateSpriteObject();
+					t.pFontObject = m_pRenderer->CreateFontObject(L"Tahoma", 18.0f);
+				});
+	}
 	// Register systems
-	m_ECSWorld.system<Position, Velocity, const Force>("Physics")
-		.kind(phasePhysics)
-		.each([](Position& p, Velocity& v, const Force& f)
-			{
-				const float dt = 1.0f / 60.0f;
-				v.x += f.x * dt;
-				v.y += f.y * dt;
-				v.z += f.z * dt;
-				p.x += v.x * dt;
-				p.y += v.y * dt;
-				p.z += v.z * dt;
-			});
-
-	m_ECSWorld.observer<MeshRenderer>("Init MeshRenderer")
-		.event(flecs::OnSet)
-		.each([this](MeshRenderer& m)
-			{
-				m.Mesh = createBoxMeshObject(m_pRenderer);
-			});
-
-	m_ECSWorld.observer<SpriteRenderer>("Init SpriteRenderer")
-		.event(flecs::OnSet)
-		.each([this](SpriteRenderer& s)
-			{
-				if (!s.SpriteFileName.empty())
+	{
+		m_ECSWorld.system<Position, Velocity, const Force>("Physics")
+			.kind(phasePhysics)
+			.each([](Position& p, Velocity& v, const Force& f)
 				{
-					s.Sprite = m_pRenderer->CreateSpriteObject(s.SpriteFileName.c_str());
-				}
-			});
+					const float dt = 1.0f / 60.0f;
+					v.x += f.x * dt;
+					v.y += f.y * dt;
+					v.z += f.z * dt;
+					p.x += v.x * dt;
+					p.y += v.y * dt;
+					p.z += v.z * dt;
+				});
 
-
-	m_ECSWorld.system<>()
-		.kind(phaseBeginRender)
-		.each([this]()
-			{
-				m_pRenderer->BeginRender();
-			});
-
-	m_ECSWorld.system<const Position, const Rotation, const Scale, const MeshRenderer>("Render Mesh")
-		.kind(phaseRender)
-		.multi_threaded(false)	// TODO: test multi threading
-		.each([this](const Position& p, const Rotation& r, const Scale& s, const MeshRenderer& mesh)
-			{
-				DirectX::XMMATRIX matScale = DirectX::XMMatrixScaling(s.x, s.y, s.z);
-				DirectX::XMMATRIX matRot = DirectX::XMMatrixRotationRollPitchYaw(r.Pitch, r.Yaw, r.Roll);
-				DirectX::XMMATRIX matTrans = DirectX::XMMatrixTranslation(p.x, p.y, p.z);
-				DirectX::XMMATRIX worldMat = matScale * matRot * matTrans;
-				if (mesh.Mesh)
+		m_ECSWorld.system<>()
+			.kind(phaseBeginRender)
+			.each([this]()
 				{
-					m_pRenderer->RenderMeshObject(mesh.Mesh, &worldMat);
-				}
-			});
+					m_pRenderer->BeginRender();
+				});
 
-	m_ECSWorld.system<const Position, const Rotation, const Scale, const SpriteRenderer>("Render Sprite")
-		.kind(phaseRender)
-		.multi_threaded(false)	// TODO: test multi threading
-		.each([this](const Position& p, const Rotation& r, const Scale& s, const SpriteRenderer& sprite)
-			{
-				DirectX::XMMATRIX matScale = DirectX::XMMatrixScaling(s.x, s.y, s.z);
-				DirectX::XMMATRIX matRot = DirectX::XMMatrixRotationRollPitchYaw(r.Pitch, r.Yaw, r.Roll);
-				DirectX::XMMATRIX matTrans = DirectX::XMMatrixTranslation(p.x, p.y, p.z);
-				DirectX::XMMATRIX worldMat = matScale * matRot * matTrans;
-				if (sprite.Sprite)
+		m_ECSWorld.system<const Position, const Rotation, const Scale, const MeshRenderer>("Render Mesh")
+			.kind(phaseRender)
+			.multi_threaded(false)	// TODO: test multi threading
+			.each([this](const Position& p, const Rotation& r, const Scale& s, const MeshRenderer& mesh)
 				{
-					m_pRenderer->RenderSprite(sprite.Sprite, (int)p.x, (int)p.y, s.x, s.y, p.z);
-				}
-			});
+					DirectX::XMMATRIX matScale = DirectX::XMMatrixScaling(s.x, s.y, s.z);
+					DirectX::XMMATRIX matRot = DirectX::XMMatrixRotationRollPitchYaw(r.Pitch, r.Yaw, r.Roll);
+					DirectX::XMMATRIX matTrans = DirectX::XMMatrixTranslation(p.x, p.y, p.z);
+					DirectX::XMMATRIX worldMat = matScale * matRot * matTrans;
+					if (mesh.Mesh)
+					{
+						m_pRenderer->RenderMeshObject(mesh.Mesh, &worldMat);
+					}
+				});
 
-	m_ECSWorld.system<>()
-		.kind(phaseEndRender)
-		.each([this]()
-			{
-				m_pRenderer->EndRender();
-				m_pRenderer->Present();
-			});
+		m_ECSWorld.system<const Position, const Rotation, const Scale, const SpriteRenderer>("Render Sprite")
+			.kind(phaseRender)
+			.multi_threaded(false)	// TODO: test multi threading
+			.each([this](const Position& p, const Rotation& r, const Scale& s, const SpriteRenderer& sprite)
+				{
+					ASSERT(sprite.Sprite, "SpriteRenderer. Sprite is null");
+					if (sprite.Sprite)
+					{
+						m_pRenderer->RenderSprite(sprite.Sprite, (int)p.x, (int)p.y, s.x, s.y, 0.0f);
+					}
+				});
+
+		m_ECSWorld.system<const Position, const Rotation, const Scale, TextRenderer>("Render Text")
+			.kind(phaseRender)
+			.multi_threaded(false)	// TODO: test multi threading
+			.each([this](const Position& p, const Rotation& r, const Scale& s, TextRenderer& text)
+				{
+					ASSERT(text.Sprite, "TextRenderer. Sprite is null");
+					if (!text.Text.empty())
+					{
+						memset(text.pImageData, 0, text.Width * text.Height * 4);
+						int outTextWidth = 0, outTexHeight = 0;
+						m_pRenderer->WriteTextToBitmap(text.pImageData, text.Width, text.Height, text.Width * 4, &outTextWidth, &outTexHeight, text.pFontObject, text.Text.c_str(), (UINT)text.Text.length());
+						text.Width = outTextWidth;
+						text.Height = outTexHeight;
+						m_pRenderer->UpdateTextureWithImage(text.pTextTexHandle, text.pImageData, text.Width, text.Height);
+					}
+
+					if (text.Sprite)
+					{
+						m_pRenderer->RenderSpriteWithTex(text.Sprite, (int)p.x, (int)p.y, s.x, s.y, nullptr, 0.0f, text.pTextTexHandle);
+					}
+				});
+
+		m_ECSWorld.system<>()
+			.kind(phaseEndRender)
+			.each([this]()
+				{
+					m_pRenderer->EndRender();
+					m_pRenderer->Present();
+				});
+	}
+	// Cleanup when components are removed
+	{
+		m_ECSWorld.observer<MeshRenderer>()
+			.event(flecs::OnRemove)
+			.each([this](MeshRenderer& m)
+				{
+					if (m.Mesh)
+					{
+						m.Mesh->Release();
+					}
+				});
+
+		m_ECSWorld.observer<SpriteRenderer>()
+			.event(flecs::OnRemove)
+			.each([this](SpriteRenderer& s)
+				{
+					if (s.Sprite)
+					{
+						s.Sprite->Release();
+					}
+				});
+
+		m_ECSWorld.observer<TextRenderer>()
+			.event(flecs::OnRemove)
+			.each([this](TextRenderer& t)
+				{
+					if (t.pFontObject)
+					{
+						m_pRenderer->DeleteFontObject(t.pFontObject);
+					}
+					if (t.pTextTexHandle)
+					{
+						m_pRenderer->DeleteTexture(t.pTextTexHandle);
+					}
+					if (t.pImageData)
+					{
+						free(t.pImageData);
+						t.pImageData = nullptr;
+					}
+					if (t.Sprite)
+					{
+						t.Sprite->Release();
+					}
+				});
+	}
 
 	// Create Game Objects
-	const UINT BOX_OBJECT_COUNT = 200;
-	for (UINT i = 0; i < BOX_OBJECT_COUNT; i++)
 	{
-		float x = (float)((rand() % 51) - 25);	// -10m - 10m 
-		float y = (float)((rand() % 3) - 1);	// -1m - 1m
-		float z = (float)((rand() % 51) - 25);	// -10m - 10m 
-		float r = (rand() % 181) * (3.1415f / 180.0f);
-		float s = 0.5f * (float)((rand() % 10) + 1);	// 1 - 3
-		float vx = (float)((rand() % 3) - 1);
-		float vz = (float)((rand() % 3) - 1);
+		// Create box entities
+		const UINT BOX_OBJECT_COUNT = 200;
+		for (UINT i = 0; i < BOX_OBJECT_COUNT; i++)
+		{
+			float x = (float)((rand() % 51) - 25);	// -10m - 10m 
+			float y = (float)((rand() % 3) - 1);	// -1m - 1m
+			float z = (float)((rand() % 51) - 25);	// -10m - 10m 
+			float r = (rand() % 181) * (3.1415f / 180.0f);
+			float s = 0.5f * (float)((rand() % 10) + 1);	// 1 - 3
+			float vx = (float)((rand() % 3) - 1);
+			float vz = (float)((rand() % 3) - 1);
 
-		flecs::entity e = m_ECSWorld.entity()
-			.set<Position>({ x, y, z })
-			.set<Velocity>({ vx, 0.0f, vz })
-			.set<Force>({ 0.0f, 0.0f, 0.0f })
-			.set<Rotation>({ 0.0f, r, 0.0f })
-			.set<Scale>({ s, s, s })
-			.set<MeshRenderer>({ nullptr });
+			flecs::entity e = m_ECSWorld.entity()
+				.set<Position>({ x, y, z })
+				.set<Velocity>({ vx, 0.0f, vz })
+				.set<Force>({ 0.0f, 0.0f, 0.0f })
+				.set<Rotation>({ 0.0f, r, 0.0f })
+				.set<Scale>({ s, s, s })
+				.set<MeshRenderer>({ nullptr });
 
-		m_Entities.emplace_back(e.id());
-	}
-	
-	{
-		flecs::entity e = m_ECSWorld.entity()
-			.set<Position>({ 100.0f, 100.0f, 0.0f })
-			.set<Rotation>({ 0.0f, 0.0f, 0.0f })
-			.set<Scale>({ 0.1f, 0.1f, 0.1f })
-			.set<SpriteRenderer>({L"./Resources/kanna.dds"});
+			m_Entities.emplace_back(e.id());
+		}
+		// Create sprite entity
+		{
+			flecs::entity e = m_ECSWorld.entity()
+				.set<Position>({ 100.0f, 100.0f, 0.0f })
+				.set<Rotation>({ 0.0f, 0.0f, 0.0f })
+				.set<Scale>({ 0.1f, 0.1f, 0.1f })
+				.set<SpriteRenderer>({ L"./Resources/kanna.dds" });
 
-		m_Entities.emplace_back(e.id());
+			m_Entities.emplace_back(e.id());
+		}
+		// Create text entity
+		{
+			flecs::entity e = m_ECSWorld.entity()
+				.set<Position>({ 500.0f, 100.0f, 0.0f })
+				.set<Rotation>({ 0.0f, 0.0f, 0.0f })
+				.set<Scale>({ 1.0f, 1.0f, 1.0f })
+				.set<TextRenderer>(TextRenderer(L"Hello"));
+
+			m_Entities.emplace_back(e.id());
+		}
 	}
 
 	// begin perf check
