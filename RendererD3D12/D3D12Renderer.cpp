@@ -193,7 +193,7 @@ lb_exit:
 		swapChainDesc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
 		swapChainDesc.AlphaMode = DXGI_ALPHA_MODE_IGNORE;
 		swapChainDesc.Flags |= DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING;
-		m_dwSwapChainFlags = swapChainDesc.Flags;
+		m_SwapChainFlags = swapChainDesc.Flags;
 
 		DXGI_SWAP_CHAIN_FULLSCREEN_DESC fsSwapChainDesc = {};
 		fsSwapChainDesc.Windowed = TRUE;
@@ -263,17 +263,17 @@ lb_exit:
 	bInited = m_pShaderManager->Initialize(this, wchShaderPath, bEnableDebugLayer); // TODO: Use "bDebugShader" parameter.
 	ASSERT(bInited, "ShaderManager initialization failed.");
 
-	DWORD dwPhysicalCoreCount = 0;
-	DWORD dwLogicalCoreCount = 0;
-	GetPhysicalCoreCount(&dwPhysicalCoreCount, &dwLogicalCoreCount);
-	m_RenderThreadCount = std::min<int>(static_cast<int>(dwPhysicalCoreCount), MAX_RENDER_THREAD_COUNT);
+	DWORD numPhysicalCores = 0;
+	DWORD numLogicalCores = 0;
+	GetPhysicalCoreCount(&numPhysicalCores, &numLogicalCores);
+	m_NumRenderThreads = std::min<int>(static_cast<int>(numPhysicalCores), MAX_RENDER_THREAD_COUNT);
 
 #ifdef USE_MULTI_THREAD
-	initRenderThreadPool(m_RenderThreadCount);
+	initRenderThreadPool(m_NumRenderThreads);
 #endif
 	for (int i = 0; i < MAX_PENDING_FRAME_COUNT; i++)
 	{
-		for (int j = 0; j < m_RenderThreadCount; j++)
+		for (int j = 0; j < m_NumRenderThreads; j++)
 		{
 			m_ppCommandListPool[i][j] = new CommandListPool;
 			m_ppCommandListPool[i][j]->Initialize(m_pD3DDevice, D3D12_COMMAND_LIST_TYPE_DIRECT, 256);
@@ -288,7 +288,7 @@ lb_exit:
 	m_pSingleDescriptorAllocator = new SingleDescriptorAllocator;
 	m_pSingleDescriptorAllocator->Initialize(m_pD3DDevice, MAX_DESCRIPTOR_COUNT, D3D12_DESCRIPTOR_HEAP_FLAG_NONE);
 
-	for (int i = 0; i < m_RenderThreadCount; i++)
+	for (int i = 0; i < m_NumRenderThreads; i++)
 	{
 		m_ppRenderQueue[i] = new RenderQueue;
 		m_ppRenderQueue[i]->Initialize(this, 8192);
@@ -342,15 +342,15 @@ void ENGINECALL D3D12Renderer::EndRender()
 	CD3DX12_CPU_DESCRIPTOR_HANDLE dsvHandle(m_pDSVHeap->GetCPUDescriptorHandleForHeapStart());
 
 #ifdef USE_MULTI_THREAD
-	m_lActiveThreadCount = m_RenderThreadCount;
-	for (int i = 0; i < m_RenderThreadCount; i++)
+	m_lActiveThreadCount = m_NumRenderThreads;
+	for (int i = 0; i < m_NumRenderThreads; i++)
 	{
 		SetEvent(m_pThreadDescList[i].hEventList[RENDER_THREAD_EVENT_TYPE_PROCESS]);
 	}
 	WaitForSingleObject(m_hCompleteEvent, INFINITE);
 #else
 	// Each CommandList processes 400 items.
-	for (int i = 0; i < m_dwRenderThreadCount; i++)
+	for (int i = 0; i < m_NumRenderThreads; i++)
 	{
 		m_ppRenderQueue[i]->Process(i, pCommandListPool, m_pCommandQueue, 400, rtvHandle, dsvHandle, &m_Viewport, &m_ScissorRect);
 	}
@@ -364,7 +364,7 @@ void ENGINECALL D3D12Renderer::EndRender()
 	pCommandListPool->CloseAndExecute(m_pCommandQueue);
 
 	// Reset all render queues
-	for (int i = 0; i < m_RenderThreadCount; i++)
+	for (int i = 0; i < m_NumRenderThreads; i++)
 	{
 		m_ppRenderQueue[i]->Reset();
 	}
@@ -392,17 +392,17 @@ void ENGINECALL D3D12Renderer::Present()
 	m_uiRenderTargetIndex = m_pSwapChain->GetCurrentBackBufferIndex();
 
 	// Prepare next frame.
-	int dwNextContextIndex = (m_CurrContextIndex + 1) % MAX_PENDING_FRAME_COUNT;
-	waitForFenceValue(m_pui64LastFenceValue[dwNextContextIndex]);
+	int nextContextIndex = (m_CurrContextIndex + 1) % MAX_PENDING_FRAME_COUNT;
+	waitForFenceValue(m_pui64LastFenceValue[nextContextIndex]);
 
 	// Reset resources per frame.
-	for (int i = 0; i < m_RenderThreadCount; i++)
+	for (int i = 0; i < m_NumRenderThreads; i++)
 	{
-		m_ppConstBufferManager[dwNextContextIndex][i]->Reset();
-		m_ppDescriptorPool[dwNextContextIndex][i]->Reset();
-		m_ppCommandListPool[dwNextContextIndex][i]->Reset();
+		m_ppConstBufferManager[nextContextIndex][i]->Reset();
+		m_ppDescriptorPool[nextContextIndex][i]->Reset();
+		m_ppCommandListPool[nextContextIndex][i]->Reset();
 	}
-	m_CurrContextIndex = dwNextContextIndex;
+	m_CurrContextIndex = nextContextIndex;
 }
 
 bool ENGINECALL D3D12Renderer::UpdateWindowSize(uint32_t backBufferWidth, uint32_t backBufferHeight)
@@ -443,7 +443,7 @@ bool ENGINECALL D3D12Renderer::UpdateWindowSize(uint32_t backBufferWidth, uint32
 		m_pDepthStencil = nullptr;
 	}
 
-	if (FAILED(m_pSwapChain->ResizeBuffers(SWAP_CHAIN_FRAME_COUNT, backBufferWidth, backBufferHeight, DXGI_FORMAT_R8G8B8A8_UNORM, m_dwSwapChainFlags)))
+	if (FAILED(m_pSwapChain->ResizeBuffers(SWAP_CHAIN_FRAME_COUNT, backBufferWidth, backBufferHeight, DXGI_FORMAT_R8G8B8A8_UNORM, m_SwapChainFlags)))
 	{
 		ASSERT(false, "Failed to resize Swap Chain buffers.");
 		return false;
@@ -524,7 +524,7 @@ void* ENGINECALL D3D12Renderer::CreateTiledTexture(UINT texWidth, UINT texHeight
 	DXGI_FORMAT texFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
 
 	uint8_t* image = (uint8_t*)malloc(texWidth * texHeight * 4);
-	memset(image, 0, texWidth * texHeight * 4);
+	memset(image, 0, (size_t)texWidth * texHeight * 4);
 
 	const RGBA WHITE = { 255, 255, 255, 255 };
 	const RGBA BLACK = { 0, 0, 0, 255 };
@@ -560,7 +560,7 @@ void* ENGINECALL D3D12Renderer::CreateTextureFromFile(const WCHAR* wchFileName)
 void ENGINECALL D3D12Renderer::DeleteTexture(void* pTexHandle)
 {
 	// wait for all commands
-	for (DWORD i = 0; i < MAX_PENDING_FRAME_COUNT; i++)
+	for (UINT i = 0; i < MAX_PENDING_FRAME_COUNT; i++)
 	{
 		waitForFenceValue(m_pui64LastFenceValue[i]);
 	}
@@ -595,22 +595,22 @@ void ENGINECALL D3D12Renderer::RenderMeshObject(IMeshObject* pMeshObj, const XMM
 	ASSERT(bAdded, "Render Queue is full.");
 
 	m_CurrThreadIndex++;
-	m_CurrThreadIndex = m_CurrThreadIndex % m_RenderThreadCount;
+	m_CurrThreadIndex = m_CurrThreadIndex % m_NumRenderThreads;
 
 	//D3D12_CPU_DESCRIPTOR_HANDLE srv = {};
 	//CBasicMeshObject* pMeshObj = (CBasicMeshObject*)pMeshObjHandle;
 	//pMeshObj->Draw(pCommandList, pMatWorld);
 }
 
-void ENGINECALL D3D12Renderer::RenderSpriteWithTex(void* pSprObjHandle, int iPosX, int iPosY, float fScaleX, float fScaleY, const RECT* pRect, float Z, void* pTexHandle)
+void ENGINECALL D3D12Renderer::RenderSpriteWithTex(void* pSprObjHandle, int posX, int posY, float scaleX, float scaleY, const RECT* pRect, float z, void* pTexHandle)
 {
 	RenderItem item = {};
 	item.Type = RENDER_ITEM_TYPE_SPRITE;
 	item.pObjHandle = pSprObjHandle;
-	item.SpriteParam.iPosX = iPosX;
-	item.SpriteParam.iPosY = iPosY;
-	item.SpriteParam.fScaleX = fScaleX;
-	item.SpriteParam.fScaleY = fScaleY;
+	item.SpriteParam.iPosX = posX;
+	item.SpriteParam.iPosY = posY;
+	item.SpriteParam.fScaleX = scaleX;
+	item.SpriteParam.fScaleY = scaleY;
 
 	if (pRect)
 	{
@@ -623,74 +623,46 @@ void ENGINECALL D3D12Renderer::RenderSpriteWithTex(void* pSprObjHandle, int iPos
 		item.SpriteParam.Rect = {};
 	}
 	item.SpriteParam.pTexHandle = pTexHandle;
-	item.SpriteParam.Z = Z;
+	item.SpriteParam.Z = z;
 
 	bool bAdded = m_ppRenderQueue[m_CurrThreadIndex]->Add(&item);
 	ASSERT(bAdded, "Render Queue is full.");
 
 	m_CurrThreadIndex++;
-	m_CurrThreadIndex = m_CurrThreadIndex % m_RenderThreadCount;
-
-	//TEXTURE_HANDLE* pTexureHandle = (TEXTURE_HANDLE*)pTexHandle;
-
-	//CSpriteObject* pSpriteObj = (CSpriteObject*)pSprObjHandle;
-
-	//XMFLOAT2 Pos = { (float)iPosX, (float)iPosY };
-	//XMFLOAT2 Scale = { fScaleX, fScaleY };
-
-	//if (pTexureHandle->pUploadBuffer)
-	//{
-	//	if (pTexureHandle->bUpdated)
-	//	{
-	//		UpdateTexture(m_pD3DDevice, pCommandList, pTexureHandle->pTexResource, pTexureHandle->pUploadBuffer);
-	//	}
-	//	else
-	//	{
-	//		int a = 0;
-	//	}
-	//	pTexureHandle->bUpdated = FALSE;
-	//}
-	//pSpriteObj->DrawWithTex(pCommandList, &Pos, &Scale, pRect, Z, pTexureHandle);
+	m_CurrThreadIndex = m_CurrThreadIndex % m_NumRenderThreads;
 }
 
 // TODO: Support rotation. Get Transform info.
-void ENGINECALL D3D12Renderer::RenderSprite(void* pSprObjHandle, int iPosX, int iPosY, float fScaleX, float fScaleY, float Z)
+void ENGINECALL D3D12Renderer::RenderSprite(void* pSprObjHandle, int posX, int posY, float scaleX, float scaleY, float z)
 {
 	RenderItem item = {};
 	item.Type = RENDER_ITEM_TYPE_SPRITE;
 	item.pObjHandle = pSprObjHandle;
-	item.SpriteParam.iPosX = iPosX;
-	item.SpriteParam.iPosY = iPosY;
-	item.SpriteParam.fScaleX = fScaleX;
-	item.SpriteParam.fScaleY = fScaleY;
+	item.SpriteParam.iPosX = posX;
+	item.SpriteParam.iPosY = posY;
+	item.SpriteParam.fScaleX = scaleX;
+	item.SpriteParam.fScaleY = scaleY;
 	item.SpriteParam.bUseRect = FALSE;
 	item.SpriteParam.Rect = {};
 	item.SpriteParam.pTexHandle = nullptr;
-	item.SpriteParam.Z = Z;
+	item.SpriteParam.Z = z;
 
 	bool bAdded = m_ppRenderQueue[m_CurrThreadIndex]->Add(&item);
 	ASSERT(bAdded, "Render Queue is full.");
 
 	m_CurrThreadIndex++;
-	m_CurrThreadIndex = m_CurrThreadIndex % m_RenderThreadCount;
-
-	//CSpriteObject* pSpriteObj = (CSpriteObject*)pSprObjHandle;
-
-	//XMFLOAT2 Pos = { (float)iPosX, (float)iPosY };
-	//XMFLOAT2 Scale = { fScaleX, fScaleY };
-	//pSpriteObj->Draw(pCommandList, &Pos, &Scale, Z);
-
+	m_CurrThreadIndex = m_CurrThreadIndex % m_NumRenderThreads;
 }
 
-void ENGINECALL D3D12Renderer::UpdateTextureWithImage(void* pTexHandle, const BYTE* pSrcBits, UINT SrcWidth, UINT SrcHeight)
+void ENGINECALL D3D12Renderer::UpdateTextureWithImage(void* pTexHandle, const BYTE* pSrcBits, UINT srcWidth, UINT srcHeight)
 {
 	TextureHandle* pTextureHandle = (TextureHandle*)pTexHandle;
 	ID3D12Resource* pDestTexResource = pTextureHandle->pTexResource;
 	ID3D12Resource* pUploadBuffer = pTextureHandle->pUploadBuffer;
 
 	D3D12_RESOURCE_DESC Desc = pDestTexResource->GetDesc();
-	ASSERT(SrcWidth <= Desc.Width, "Source width is too large for the destination texture.");
-	ASSERT(SrcHeight <= Desc.Height, "Source width is too large for the destination texture.");
+	ASSERT(srcWidth <= Desc.Width, "Source width is too large for the destination texture.");
+	ASSERT(srcHeight <= Desc.Height, "Source width is too large for the destination texture.");
 
 	D3D12_PLACED_SUBRESOURCE_FOOTPRINT Footprint;
 	UINT	Rows = 0;
@@ -707,10 +679,10 @@ void ENGINECALL D3D12Renderer::UpdateTextureWithImage(void* pTexHandle, const BY
 
 	const BYTE* pSrc = pSrcBits;
 	BYTE* pDest = pMappedPtr;
-	for (UINT y = 0; y < SrcHeight; y++)
+	for (UINT y = 0; y < srcHeight; y++)
 	{
-		memcpy(pDest, pSrc, SrcWidth * 4);
-		pSrc += (SrcWidth * 4);
+		memcpy(pDest, pSrc, (size_t)srcWidth * 4);
+		pSrc += (srcWidth * 4);
 		pDest += Footprint.Footprint.RowPitch;
 	}
 	// Unmap
@@ -757,15 +729,15 @@ void ENGINECALL D3D12Renderer::GetCameraPos(float* outX, float* outY, float* out
 
 int ENGINECALL D3D12Renderer::GetCommandListCount()
 {
-	uint32_t dwCommandListCount = 0;
+	uint32_t numCmdLists = 0;
 	for (int i = 0; i < MAX_PENDING_FRAME_COUNT; i++)
 	{
-		for (int j = 0; j < m_RenderThreadCount; j++)
+		for (int j = 0; j < m_NumRenderThreads; j++)
 		{
-			dwCommandListCount += m_ppCommandListPool[i][j]->GetTotalNumCmdList();
+			numCmdLists += m_ppCommandListPool[i][j]->GetTotalNumCmdList();
 		}
 	}
-	return dwCommandListCount;
+	return numCmdLists;
 }
 
 bool ENGINECALL D3D12Renderer::IsGpuUploadHeapsEnabled() const
@@ -796,9 +768,9 @@ void D3D12Renderer::EnsureCompleted()
 	}
 }
 
-SimpleConstantBufferPool* D3D12Renderer::GetConstantBufferPool(EConstantBufferType type, int dwThreadIndex) const
+SimpleConstantBufferPool* D3D12Renderer::GetConstantBufferPool(EConstantBufferType type, int threadIndex) const
 {
-	ConstantBufferManager* pConstBufferManager = m_ppConstBufferManager[m_CurrContextIndex][dwThreadIndex];
+	ConstantBufferManager* pConstBufferManager = m_ppConstBufferManager[m_CurrContextIndex][threadIndex];
 	SimpleConstantBufferPool* pConstBufferPool = pConstBufferManager->GetConstantBufferPool(type);
 	return pConstBufferPool;
 }
@@ -820,16 +792,16 @@ void D3D12Renderer::RestoreCurrentPath() const
 	SetCurrentDirectory(m_wchCurrentPathBackup);
 }
 
-void D3D12Renderer::ProcessByThread(int dwThreadIndex)
+void D3D12Renderer::ProcessByThread(int threadIndex)
 {
-	CommandListPool* pCommandListPool = m_ppCommandListPool[m_CurrContextIndex][dwThreadIndex];	// 현재 사용중인 command list pool
+	CommandListPool* pCommandListPool = m_ppCommandListPool[m_CurrContextIndex][threadIndex];	// 현재 사용중인 command list pool
 
 	// Set RenderTarget to process the rendering queue.
 	CD3DX12_CPU_DESCRIPTOR_HANDLE rtvHandle(m_pRTVHeap->GetCPUDescriptorHandleForHeapStart(), m_uiRenderTargetIndex, m_rtvDescriptorSize);
 	CD3DX12_CPU_DESCRIPTOR_HANDLE dsvHandle(m_pDSVHeap->GetCPUDescriptorHandleForHeapStart());
 
 	// Each CommandList processes 400 items.
-	m_ppRenderQueue[dwThreadIndex]->Process(dwThreadIndex, pCommandListPool, m_pCommandQueue, 400, rtvHandle, dsvHandle, &m_Viewport, &m_ScissorRect);
+	m_ppRenderQueue[threadIndex]->Process(threadIndex, pCommandListPool, m_pCommandQueue, 400, rtvHandle, dsvHandle, &m_Viewport, &m_ScissorRect);
 
 	LONG currCount = _InterlockedDecrement(&m_lActiveThreadCount);
 	if (0 == currCount)
@@ -1036,7 +1008,7 @@ void D3D12Renderer::cleanup()
 	{
 		waitForFenceValue(m_pui64LastFenceValue[i]);
 	}
-	for (int i = 0; i < m_RenderThreadCount; i++)
+	for (int i = 0; i < m_NumRenderThreads; i++)
 	{
 		if (m_ppRenderQueue[i])
 		{
@@ -1046,7 +1018,7 @@ void D3D12Renderer::cleanup()
 	}
 	for (int i = 0; i < MAX_PENDING_FRAME_COUNT; i++)
 	{
-		for (int j = 0; j < m_RenderThreadCount; j++)
+		for (int j = 0; j < m_NumRenderThreads; j++)
 		{
 			if (m_ppCommandListPool[i][j])
 			{
@@ -1143,13 +1115,13 @@ void D3D12Renderer::cleanup()
 	}
 }
 
-bool D3D12Renderer::initRenderThreadPool(int dwThreadCount)
+bool D3D12Renderer::initRenderThreadPool(int numThreads)
 {
-	m_pThreadDescList = new RenderThreadDesc[dwThreadCount];
-	memset(m_pThreadDescList, 0, sizeof(RenderThreadDesc) * dwThreadCount);
+	m_pThreadDescList = new RenderThreadDesc[numThreads];
+	memset(m_pThreadDescList, 0, sizeof(RenderThreadDesc) * numThreads);
 
 	m_hCompleteEvent = CreateEvent(nullptr, FALSE, FALSE, nullptr);
-	for (int i = 0; i < dwThreadCount; i++)
+	for (int i = 0; i < numThreads; i++)
 	{
 		for (int j = 0; j < RENDER_THREAD_EVENT_TYPE_COUNT; j++)
 		{
@@ -1168,7 +1140,7 @@ void D3D12Renderer::cleanupRenderThreadPool()
 {
 	if (m_pThreadDescList)
 	{
-		for (int i = 0; i < m_RenderThreadCount; i++)
+		for (int i = 0; i < m_NumRenderThreads; i++)
 		{
 			SetEvent(m_pThreadDescList[i].hEventList[RENDER_THREAD_EVENT_TYPE_DESTROY]);
 

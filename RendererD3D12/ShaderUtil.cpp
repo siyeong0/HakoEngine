@@ -3,7 +3,7 @@
 #include "Util/WriteDebugString.h"
 #include "ShaderUtil.h"
 
-bool CreateShaderCodeFromFile(uint8_t** ppOutCodeBuffer, UINT* pdwOutCodeSize, SYSTEMTIME* pOutLastWriteTime, const WCHAR* wchFileName)
+bool CreateShaderCodeFromFile(uint8_t** ppOutCodeBuffer, UINT* outCodeSize, SYSTEMTIME* pOutLastWriteTime, const WCHAR* wchFileName)
 {
 	bool bResult = false;
 
@@ -41,8 +41,8 @@ bool CreateShaderCodeFromFile(uint8_t** ppOutCodeBuffer, UINT* pdwOutCodeSize, S
 	uint8_t* pCodeBuffer = new uint8_t[codeSize];
 	memset(pCodeBuffer, 0, codeSize);
 
-	DWORD dwReadBytes = 0;
-	if (!ReadFile(hFile, pCodeBuffer, fileSize, &dwReadBytes, nullptr))
+	DWORD readBytes = 0;
+	if (!ReadFile(hFile, pCodeBuffer, fileSize, &readBytes, nullptr))
 	{
 		swprintf_s(wchTxt, L"Failed to Read File : %s\n", wchFileName);
 		OutputDebugStringW(wchTxt);
@@ -56,7 +56,7 @@ bool CreateShaderCodeFromFile(uint8_t** ppOutCodeBuffer, UINT* pdwOutCodeSize, S
 	FileTimeToSystemTime(&lastWriteTime, &sysLastWriteTime);
 
 	*ppOutCodeBuffer = pCodeBuffer;
-	*pdwOutCodeSize = codeSize;
+	*outCodeSize = codeSize;
 	*pOutLastWriteTime = sysLastWriteTime;
 	bResult = TRUE;
 

@@ -23,7 +23,7 @@ interface IRenderer : public IUnknown
 	virtual void ENGINECALL BeginRender() = 0;
 	virtual void ENGINECALL EndRender() = 0;
 	virtual void ENGINECALL Present() = 0;
-	virtual bool ENGINECALL UpdateWindowSize(uint32_t dwBackBufferWidth, uint32_t dwBackBufferHeight) = 0;
+	virtual bool ENGINECALL UpdateWindowSize(uint32_t backBufferWidth, uint32_t backBufferHeight) = 0;
 
 	virtual IMeshObject* ENGINECALL CreateBasicMeshObject() = 0;
 
@@ -41,14 +41,14 @@ interface IRenderer : public IUnknown
 	virtual bool ENGINECALL WriteTextToBitmap(uint8_t* dstImage, UINT dstWidth, UINT dstHeight, UINT dstPitch, int* outWidth, int* outHeight, void* pFontObjHandle, const WCHAR* wchString, UINT len) = 0;
 
 	virtual void ENGINECALL RenderMeshObject(IMeshObject* pMeshObj, const XMMATRIX* pMatWorld) = 0;
-	virtual void ENGINECALL RenderSpriteWithTex(void* pSprObjHandle, int iPosX, int iPosY, float fScaleX, float fScaleY, const RECT* pRect, float Z, void* pTexHandle) = 0;
-	virtual void ENGINECALL RenderSprite(void* pSprObjHandle, int iPosX, int iPosY, float fScaleX, float fScaleY, float Z) = 0;
-	virtual void ENGINECALL UpdateTextureWithImage(void* pTexHandle, const BYTE* pSrcBits, UINT SrcWidth, UINT SrcHeight) = 0;
+	virtual void ENGINECALL RenderSpriteWithTex(void* pSprObjHandle, int posX, int posY, float scaleX, float scaleY, const RECT* pRect, float z, void* pTexHandle) = 0;
+	virtual void ENGINECALL RenderSprite(void* pSprObjHandle, int posX, int posY, float scaleX, float scaleY, float z) = 0;
+	virtual void ENGINECALL UpdateTextureWithImage(void* pTexHandle, const BYTE* pSrcBits, UINT srcWidth, UINT srcHeight) = 0;
 
 	virtual void ENGINECALL SetCameraPos(float x, float y, float z) = 0;
 	virtual void ENGINECALL SetCameraRot(float yaw, float pitch, float roll) = 0;
 	virtual void ENGINECALL MoveCamera(float x, float y, float z) = 0;
-	virtual void ENGINECALL GetCameraPos(float* pfOutX, float* pfOutY, float* pfOutZ) = 0;
+	virtual void ENGINECALL GetCameraPos(float* outX, float* outY, float* outZ) = 0;
 	virtual int ENGINECALL GetCommandListCount() = 0;
 	virtual bool ENGINECALL IsGpuUploadHeapsEnabled() const = 0;
 };

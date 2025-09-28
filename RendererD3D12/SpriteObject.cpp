@@ -18,7 +18,7 @@ D3D12_VERTEX_BUFFER_VIEW SpriteObject::m_VertexBufferView = {};
 ID3D12Resource* SpriteObject::m_pIndexBuffer = nullptr;
 D3D12_INDEX_BUFFER_VIEW SpriteObject::m_IndexBufferView = {};
 
-DWORD SpriteObject::m_InitRefCount = 0;
+int SpriteObject::m_InitRefCount = 0;
 
 STDMETHODIMP SpriteObject::QueryInterface(REFIID refiid, void** ppv)
 {
@@ -115,7 +115,7 @@ void SpriteObject::DrawWithTex(int threadIndex, ID3D12GraphicsCommandList6* pCom
 		srv = pTexHandle->SRV;
 	}
 
-	RECT rect;
+	RECT rect = {};
 	if (!pRect)
 	{
 		rect.left = 0;
@@ -269,7 +269,7 @@ bool SpriteObject::initRootSinagture()
 		D3D12_ROOT_SIGNATURE_FLAG_DENY_PIXEL_SHADER_ROOT_ACCESS;
 
 	// Create an empty root signature.
-	CD3DX12_ROOT_SIGNATURE_DESC rootSignatureDesc;
+	CD3DX12_ROOT_SIGNATURE_DESC rootSignatureDesc = {};
 	//rootSignatureDesc.Init(0, nullptr, 0, nullptr, D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
 	rootSignatureDesc.Init(_countof(rootParameters), rootParameters, 1, &sampler, D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
 

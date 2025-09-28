@@ -33,7 +33,7 @@ private:
 
 	IDWriteFactory5* m_pDWFactory = nullptr;
 	DWRITE_LINE_METRICS* m_pLineMetrics = nullptr;
-	UINT m_dwMaxLineMetricsNum = 0;
+	UINT m_MaxNumLineMetrics = 0;
 	UINT m_D2DBitmapWidth = 0;
 	UINT m_D2DBitmapHeight = 0;
 };

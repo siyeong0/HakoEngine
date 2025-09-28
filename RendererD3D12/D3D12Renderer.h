@@ -47,9 +47,9 @@ public:
 	bool ENGINECALL WriteTextToBitmap(uint8_t* dstImage, UINT dstWidth, UINT dstHeight, UINT dstPitch, int* outWidth, int* outHeight, void* pFontObjHandle, const WCHAR* wchString, UINT len) override;
 
 	void ENGINECALL RenderMeshObject(IMeshObject* pMeshObj, const XMMATRIX* pMatWorld) override;
-	void ENGINECALL RenderSpriteWithTex(void* pSprObjHandle, int iPosX, int iPosY, float fScaleX, float fScaleY, const RECT* pRect, float Z, void* pTexHandle) override;
-	void ENGINECALL RenderSprite(void* pSprObjHandle, int iPosX, int iPosY, float fScaleX, float fScaleY, float Z) override;
-	void ENGINECALL UpdateTextureWithImage(void* pTexHandle, const BYTE* pSrcBits, UINT SrcWidth, UINT SrcHeight) override;
+	void ENGINECALL RenderSpriteWithTex(void* pSprObjHandle, int posX, int posY, float scaleX, float scaleY, const RECT* pRect, float z, void* pTexHandle) override;
+	void ENGINECALL RenderSprite(void* pSprObjHandle, int posX, int posY, float scaleX, float scaleY, float z) override;
+	void ENGINECALL UpdateTextureWithImage(void* pTexHandle, const BYTE* pSrcBits, UINT srcWidth, UINT srcHeight) override;
 
 	void ENGINECALL SetCameraPos(float x, float y, float z) override;
 	void ENGINECALL SetCameraRot(float yaw, float pitch, float roll) override;
@@ -68,8 +68,8 @@ public:
 	D3D12ResourceManager* GetResourceManager() { return m_pResourceManager; }
 	ShaderManager* GetShaderManager() { return m_pShaderManager; }
 
-	DescriptorPool* GetDescriptorPool(int dwThreadIndex) const { return m_ppDescriptorPool[m_CurrContextIndex][dwThreadIndex]; }
-	SimpleConstantBufferPool* GetConstantBufferPool(EConstantBufferType type, int dwThreadIndex) const;
+	DescriptorPool* GetDescriptorPool(int threadIndex) const { return m_ppDescriptorPool[m_CurrContextIndex][threadIndex]; }
+	SimpleConstantBufferPool* GetConstantBufferPool(EConstantBufferType type, int threadIndex) const;
 
 	inline uint32_t GetSrvDescriptorSize() const { return m_srvDescriptorSize; }
 	inline SingleDescriptorAllocator* GetSingleDescriptorAllocator() const { return m_pSingleDescriptorAllocator; }
@@ -84,7 +84,7 @@ public:
 	void RestoreCurrentPath() const;
 
 	// from RenderThread
-	void ProcessByThread(int dwThreadIndex);
+	void ProcessByThread(int threadIndex);
 
 private:
 	void initCamera();
@@ -105,7 +105,7 @@ private:
 	void cleanup();
 
 	// for multi-threads
-	bool initRenderThreadPool(int dwThreadCount);
+	bool initRenderThreadPool(int numThreads);
 	void cleanupRenderThreadPool();
 
 private:
@@ -124,7 +124,7 @@ private:
 	DescriptorPool* m_ppDescriptorPool[MAX_PENDING_FRAME_COUNT][MAX_RENDER_THREAD_COUNT] = {};
 	ConstantBufferManager* m_ppConstBufferManager[MAX_PENDING_FRAME_COUNT][MAX_RENDER_THREAD_COUNT] = {};
 	RenderQueue* m_ppRenderQueue[MAX_RENDER_THREAD_COUNT] = {};
-	int m_RenderThreadCount = 0;
+	int m_NumRenderThreads = 0;
 	int m_CurrThreadIndex = 0;
 
 	LONG volatile m_lActiveThreadCount = 0;
@@ -156,7 +156,7 @@ private:
 	uint32_t m_rtvDescriptorSize = 0;
 	uint32_t m_srvDescriptorSize = 0;
 	uint32_t m_dsvDescriptorSize = 0;
-	uint32_t m_dwSwapChainFlags = 0;
+	uint32_t m_SwapChainFlags = 0;
 	int m_uiRenderTargetIndex = 0;
 	HANDLE	m_hFenceEvent = nullptr;
 	ID3D12Fence* m_pFence = nullptr;

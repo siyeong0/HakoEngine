@@ -1,14 +1,13 @@
 ﻿#include "VertexUtil.h"
 
-DWORD AddVertex(BasicVertex* pVertexList, DWORD dwMaxVertexCount, DWORD* pdwInOutVertexCount, const BasicVertex* pVertex);
+uint32_t AddVertex(BasicVertex* pVertexList, uint32_t maxNumVertices, uint32_t* pInOutVertexCount, const BasicVertex* pVertex);
 
-DWORD CreateBoxMesh(BasicVertex** ppOutVertexList, WORD* pOutIndexList, DWORD dwMaxBufferCount, float fHalfBoxLen)
+uint32_t CreateBoxMesh(BasicVertex** ppOutVertexList, uint16_t* pOutIndexList, uint32_t maxNumBuffers, float extent)
 {
-	const DWORD INDEX_COUNT = 36;
-	if (dwMaxBufferCount < INDEX_COUNT)
-		__debugbreak();
+	const uint32_t NUM_BOX_INDICES = 36;
+	ASSERT(maxNumBuffers >= NUM_BOX_INDICES, "Too many indices.");
 
-	const WORD pIndexList[INDEX_COUNT] =
+	const uint16_t pIndexList[NUM_BOX_INDICES] =
 	{
 		// +z
 		3, 0, 1,
@@ -35,7 +34,7 @@ DWORD CreateBoxMesh(BasicVertex** ppOutVertexList, WORD* pOutIndexList, DWORD dw
 		2, 5, 6
 	};
 	
-	TVERTEX pTexCoordList[INDEX_COUNT] =
+	TVERTEX pTexCoordList[NUM_BOX_INDICES] =
 	{
 		// +z
 		{0.0f, 0.0f}, {1.0f, 0.0f}, {1.0f, 1.0f},
@@ -62,67 +61,69 @@ DWORD CreateBoxMesh(BasicVertex** ppOutVertexList, WORD* pOutIndexList, DWORD dw
 		{0.0f, 0.0f}, {1.0f, 1.0f}, {0.0f, 1.0f}
 	};
 	
-	FLOAT3 pWorldPosList[8];
-	pWorldPosList[0] = { -fHalfBoxLen, fHalfBoxLen, fHalfBoxLen };
-	pWorldPosList[1] = { -fHalfBoxLen, -fHalfBoxLen, fHalfBoxLen };
-	pWorldPosList[2] = { fHalfBoxLen, -fHalfBoxLen, fHalfBoxLen };
-	pWorldPosList[3] = { fHalfBoxLen, fHalfBoxLen, fHalfBoxLen };
-	pWorldPosList[4] = { -fHalfBoxLen, fHalfBoxLen, -fHalfBoxLen };
-	pWorldPosList[5] = { -fHalfBoxLen, -fHalfBoxLen, -fHalfBoxLen };
-	pWorldPosList[6] = { fHalfBoxLen, -fHalfBoxLen, -fHalfBoxLen };
-	pWorldPosList[7] = { fHalfBoxLen, fHalfBoxLen, -fHalfBoxLen };
+	FLOAT3 pWorldPosList[8] = {};
+	pWorldPosList[0] = { -extent, extent, extent };
+	pWorldPosList[1] = { -extent, -extent, extent };
+	pWorldPosList[2] = { extent, -extent, extent };
+	pWorldPosList[3] = { extent, extent, extent };
+	pWorldPosList[4] = { -extent, extent, -extent };
+	pWorldPosList[5] = { -extent, -extent, -extent };
+	pWorldPosList[6] = { extent, -extent, -extent };
+	pWorldPosList[7] = { extent, extent, -extent };
 
-	const DWORD MAX_WORKING_VERTEX_COUNT = 65536;
+	const uint32_t MAX_WORKING_VERTEX_COUNT = 65536;
 	BasicVertex* pWorkingVertexList = new BasicVertex[MAX_WORKING_VERTEX_COUNT];
 	memset(pWorkingVertexList, 0, sizeof(BasicVertex)*MAX_WORKING_VERTEX_COUNT);
-	DWORD dwBasicVertexCount = 0;
+	uint32_t numBasicVertices = 0;
 
-	for (DWORD i = 0; i < INDEX_COUNT; i++)
+	for (uint32_t i = 0; i < NUM_BOX_INDICES; i++)
 	{
-		BasicVertex v;
+		BasicVertex v = {};
 		v.color = { 1.0f, 1.0f, 1.0f, 1.0f };
 		v.position = { pWorldPosList[pIndexList[i]].x, pWorldPosList[pIndexList[i]].y, pWorldPosList[pIndexList[i]].z };
 		v.texCoord = { pTexCoordList[i].u, pTexCoordList[i].v };
 
-		pOutIndexList[i] = (WORD)AddVertex(pWorkingVertexList, MAX_WORKING_VERTEX_COUNT, &dwBasicVertexCount, &v);
+		pOutIndexList[i] = (uint16_t)AddVertex(pWorkingVertexList, MAX_WORKING_VERTEX_COUNT, &numBasicVertices, &v);
 	}
-	BasicVertex* pNewVertexList = new BasicVertex[dwBasicVertexCount];
-	memcpy(pNewVertexList, pWorkingVertexList, sizeof(BasicVertex) * dwBasicVertexCount);
+	BasicVertex* pNewVertexList = new BasicVertex[numBasicVertices];
+	memcpy(pNewVertexList, pWorkingVertexList, sizeof(BasicVertex) * numBasicVertices);
 
 	*ppOutVertexList = pNewVertexList;
 
 	delete[] pWorkingVertexList;
 	pWorkingVertexList = nullptr;
 
-	return dwBasicVertexCount;
+	return numBasicVertices;
 }
 
 void DeleteBoxMesh(BasicVertex* pVertexList)
 {
 	delete[] pVertexList;
 }
-DWORD AddVertex(BasicVertex* pVertexList, DWORD dwMaxVertexCount, DWORD* pdwInOutVertexCount, const BasicVertex* pVertex)
+
+uint32_t AddVertex(BasicVertex* pVertexList, uint32_t maxNumVertices, uint32_t* pInOutVertexCount, const BasicVertex* pVertex)
 {
-	DWORD dwFoundIndex = -1;
-	DWORD dwExistVertexCount = *pdwInOutVertexCount;
-	for (DWORD i = 0; i < dwExistVertexCount; i++)
+	uint32_t foundIndex = -1;
+	uint32_t numExistVertices = *pInOutVertexCount;
+	for (uint32_t i = 0; i < numExistVertices; i++)
 	{
 		const BasicVertex* pExistVertex = pVertexList + i;
 		if (!memcmp(pExistVertex, pVertex, sizeof(BasicVertex)))
 		{
-			dwFoundIndex = i;
+			foundIndex = i;
 			goto lb_return;
 		}
 	}
-	if (dwExistVertexCount + 1 > dwMaxVertexCount)
+	if (numExistVertices + 1 > maxNumVertices)
 	{
-		__debugbreak();
+		ASSERT(false, "Too many vertices.");
 		goto lb_return;
 	}
-	// 새로운 vertex추가
-	dwFoundIndex = dwExistVertexCount;
-	pVertexList[dwFoundIndex] = *pVertex;
-	*pdwInOutVertexCount = dwExistVertexCount + 1;
+
+	foundIndex = numExistVertices;
+	pVertexList[foundIndex] = *pVertex;
+	*pInOutVertexCount = numExistVertices + 1;
+
 lb_return:
-	return dwFoundIndex;
+	return foundIndex;
 }

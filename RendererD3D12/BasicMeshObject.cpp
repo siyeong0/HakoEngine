@@ -41,7 +41,7 @@ bool ENGINECALL BasicMeshObject::BeginCreateMesh(const BasicVertex* vertices, ui
 	D3D12ResourceManager* pResourceManager = m_pRenderer->GetResourceManager();
 	BOOL bUseGpuUploadHepas = m_pRenderer->IsGpuUploadHeapsEnabledInl();
 
-	ASSERT(numTriGroups <= MAX_TRI_GROUP_COUNT_PER_OBJ);
+	ASSERT(numTriGroups <= MAX_TRI_GROUP_COUNT_PER_OBJ, "Too many tri-groups.");
 
 	if (FAILED(pResourceManager->CreateVertexBuffer(sizeof(BasicVertex), numVertices, &m_VertexBufferView, &m_pVertexBuffer, (void*)vertices, bUseGpuUploadHepas)))
 	{

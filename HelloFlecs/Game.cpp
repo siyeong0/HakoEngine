@@ -173,9 +173,9 @@ bool Game::Initialize(HWND hWnd, bool bEnableDebugLayer, bool bEnableGBV)
 				{
 					t.Width = 512;
 					t.Height = 64;
-					t.pImageData = (uint8_t*)malloc(t.Width * t.Height * 4);
+					t.pImageData = (uint8_t*)malloc((size_t)t.Width * t.Height * 4);
 					ASSERT(t.pImageData, "Fail to allocate memory for text image");
-					memset(t.pImageData, 0, t.Width * t.Height * 4);
+					memset(t.pImageData, 0, (size_t)t.Width * t.Height * 4);
 					t.pTextTexHandle = m_pRenderer->CreateDynamicTexture(t.Width, t.Height);
 					t.Sprite = m_pRenderer->CreateSpriteObject();
 					t.pFontObject = m_pRenderer->CreateFontObject(L"Tahoma", 18.0f);
@@ -238,7 +238,7 @@ bool Game::Initialize(HWND hWnd, bool bEnableDebugLayer, bool bEnableGBV)
 					ASSERT(text.Sprite, "TextRenderer. Sprite is null");
 					if (!text.Text.empty())
 					{
-						memset(text.pImageData, 0, text.Width * text.Height * 4);
+						memset(text.pImageData, 0, (size_t)text.Width * text.Height * 4);
 						int outTextWidth = 0, outTexHeight = 0;
 						m_pRenderer->WriteTextToBitmap(text.pImageData, text.Width, text.Height, text.Width * 4, &outTextWidth, &outTexHeight, text.pFontObject, text.Text.c_str(), (UINT)text.Text.length());
 						text.Width = outTextWidth;

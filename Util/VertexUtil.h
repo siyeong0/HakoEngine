@@ -1,5 +1,5 @@
 ﻿#pragma once
 #include "Common/Common.h"
 
-DWORD CreateBoxMesh(BasicVertex** ppOutVertexList, WORD* pOutIndexList, DWORD dwMaxBufferCount, float fHalfBoxLen);
+uint32_t CreateBoxMesh(BasicVertex** ppOutVertexList, uint16_t* pOutIndexList, uint32_t maxNumBuffers, float extent);
 void DeleteBoxMesh(BasicVertex* pVertexList);

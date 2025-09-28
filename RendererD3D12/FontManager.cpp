@@ -92,7 +92,7 @@ bool FontManager::WriteTextToBitmap(uint8_t* dstImage, int dstWidth, int dstHeig
 
 		for (int y = 0; y < textHeight; y++)
 		{
-			memcpy(dst, src, textWidth * 4);
+			memcpy(dst, src, (size_t)textWidth * 4);
 			dst += dstPitch;
 			src += mappedRect.pitch;
 		}
@@ -201,9 +201,7 @@ bool FontManager::createDWrite(ID3D12Device* pD3DDevice, UINT texWidth, UINT tex
 	m_D2DBitmapWidth = texWidth;
 	m_D2DBitmapHeight = texHeight;
 
-	//InitCustomFont(pCustomFontList, dwCustomFontNum);
-
-	D2D1_SIZE_U	size;
+	D2D1_SIZE_U	size = {};
 	size.width = texWidth;
 	size.height = texHeight;
 

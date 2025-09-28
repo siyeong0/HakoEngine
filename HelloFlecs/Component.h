@@ -37,13 +37,13 @@ struct Scale
 
 struct MeshRenderer
 {
-	IMeshObject* Mesh;
+	IMeshObject* Mesh = nullptr;
 };
 
 struct SpriteRenderer
 {
 	std::wstring SpriteFileName;
-	ISprite* Sprite;
+	ISprite* Sprite = nullptr;
 };
 
 struct TextRenderer

@@ -13,7 +13,7 @@ struct IndexedTriGroup
 {
 	ID3D12Resource* IndexBuffer = nullptr;
 	D3D12_INDEX_BUFFER_VIEW IndexBufferView = {};
-	DWORD NumTriangles = 0;
+	UINT NumTriangles = 0;
 	TextureHandle* pTexHandle = nullptr;
 };
 

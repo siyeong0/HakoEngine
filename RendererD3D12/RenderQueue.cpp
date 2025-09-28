@@ -7,10 +7,10 @@
 
 #include "RenderQueue.h"
 
-bool RenderQueue::Initialize(D3D12Renderer* pRenderer, int dwMaxItemNum)
+bool RenderQueue::Initialize(D3D12Renderer* pRenderer, int MaxNumItems)
 {
 	m_pRenderer = pRenderer;
-	m_MaxBufferSize = sizeof(RenderItem) * dwMaxItemNum;
+	m_MaxBufferSize = sizeof(RenderItem) * MaxNumItems;
 	m_pBuffer = (char*)malloc(m_MaxBufferSize);
 	memset(m_pBuffer, 0, m_MaxBufferSize);
 
