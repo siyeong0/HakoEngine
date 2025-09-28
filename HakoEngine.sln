@@ -5,11 +5,6 @@ VisualStudioVersion = 17.14.36414.22
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Common", "Common", "{8EC462FD-D22E-90A8-E5CE-7E832BA40C5D}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "App", "App\App.vcxproj", "{AFB06CFD-6B06-4F50-8938-DFF66A7C14DA}"
-	ProjectSection(ProjectDependencies) = postProject
-		{9940C86E-1844-443F-8093-36D1D27079FE} = {9940C86E-1844-443F-8093-36D1D27079FE}
-	EndProjectSection
-EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "RendererD3D12", "RendererD3D12\RendererD3D12.vcxproj", "{9940C86E-1844-443F-8093-36D1D27079FE}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Common", "Common\Common.vcxitems", "{0E9E6483-1F78-4ECB-97E5-8190D43664EE}"
@@ -45,14 +40,6 @@ Global
 		Release|x86 = Release|x86
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{AFB06CFD-6B06-4F50-8938-DFF66A7C14DA}.Debug|x64.ActiveCfg = Debug|x64
-		{AFB06CFD-6B06-4F50-8938-DFF66A7C14DA}.Debug|x64.Build.0 = Debug|x64
-		{AFB06CFD-6B06-4F50-8938-DFF66A7C14DA}.Debug|x86.ActiveCfg = Debug|Win32
-		{AFB06CFD-6B06-4F50-8938-DFF66A7C14DA}.Debug|x86.Build.0 = Debug|Win32
-		{AFB06CFD-6B06-4F50-8938-DFF66A7C14DA}.Release|x64.ActiveCfg = Release|x64
-		{AFB06CFD-6B06-4F50-8938-DFF66A7C14DA}.Release|x64.Build.0 = Release|x64
-		{AFB06CFD-6B06-4F50-8938-DFF66A7C14DA}.Release|x86.ActiveCfg = Release|Win32
-		{AFB06CFD-6B06-4F50-8938-DFF66A7C14DA}.Release|x86.Build.0 = Release|Win32
 		{9940C86E-1844-443F-8093-36D1D27079FE}.Debug|x64.ActiveCfg = Debug|x64
 		{9940C86E-1844-443F-8093-36D1D27079FE}.Debug|x64.Build.0 = Debug|x64
 		{9940C86E-1844-443F-8093-36D1D27079FE}.Debug|x86.ActiveCfg = Debug|Win32
@@ -74,7 +61,6 @@ Global
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
-		{AFB06CFD-6B06-4F50-8938-DFF66A7C14DA} = {02EA681E-C7D8-13C7-8484-4AC65E1B71E8}
 		{9940C86E-1844-443F-8093-36D1D27079FE} = {F28961A5-971B-471F-891F-048670ADAC37}
 		{0E9E6483-1F78-4ECB-97E5-8190D43664EE} = {8EC462FD-D22E-90A8-E5CE-7E832BA40C5D}
 		{2BBE3EB4-ADC2-4536-98D0-B608C078A2DE} = {8EC462FD-D22E-90A8-E5CE-7E832BA40C5D}
@@ -96,8 +82,5 @@ Global
 		Common\Common.vcxitems*{acec1e29-af57-49ec-a284-9e8ff2f6ee90}*SharedItemsImports = 4
 		Interface\Interface.vcxitems*{acec1e29-af57-49ec-a284-9e8ff2f6ee90}*SharedItemsImports = 4
 		Util\Util.vcxitems*{acec1e29-af57-49ec-a284-9e8ff2f6ee90}*SharedItemsImports = 4
-		Common\Common.vcxitems*{afb06cfd-6b06-4f50-8938-dff66a7c14da}*SharedItemsImports = 4
-		Interface\Interface.vcxitems*{afb06cfd-6b06-4f50-8938-dff66a7c14da}*SharedItemsImports = 4
-		Util\Util.vcxitems*{afb06cfd-6b06-4f50-8938-dff66a7c14da}*SharedItemsImports = 4
 	EndGlobalSection
 EndGlobal
