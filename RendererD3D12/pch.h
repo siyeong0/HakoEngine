@@ -50,7 +50,7 @@
 #include "Renderer_typedef.h"
 #include "Interface/IRenderer.h"
 #include "Common/Common.h"
-#include "Util/IndexCreator.h"
+#include "Common/IndexCreator.h"
 
 #include "D3DUtil.h"
 

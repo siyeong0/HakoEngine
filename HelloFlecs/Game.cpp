@@ -6,9 +6,9 @@
 #include <shlwapi.h>
 
 #include "Common/Common.h"
+#include "Common/VertexUtil.h"
+#include "Common/QueryPerfCounter.h"
 #include "Interface/IRenderer.h"
-#include "Util/QueryPerfCounter.h"
-#include "Util/VertexUtil.h"
 #include "Game.h"
 #include "Component.h"
 

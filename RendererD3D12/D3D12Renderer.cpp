@@ -3,8 +3,7 @@
 #include <process.h>
 #include <cmath>
 
-#include "Util/ProcessorInfo.h"
-
+#include "Common/ProcessorInfo.h"
 #include "BasicMeshObject.h"
 #include "SpriteObject.h"
 #include "D3D12ResourceManager.h"
@@ -729,7 +728,7 @@ void ENGINECALL D3D12Renderer::GetCameraPos(float* outX, float* outY, float* out
 
 int ENGINECALL D3D12Renderer::GetCommandListCount()
 {
-	uint32_t numCmdLists = 0;
+	size_t numCmdLists = 0;
 	for (int i = 0; i < MAX_PENDING_FRAME_COUNT; i++)
 	{
 		for (int j = 0; j < m_NumRenderThreads; j++)
@@ -737,7 +736,7 @@ int ENGINECALL D3D12Renderer::GetCommandListCount()
 			numCmdLists += m_ppCommandListPool[i][j]->GetTotalNumCmdList();
 		}
 	}
-	return numCmdLists;
+	return static_cast<int>(numCmdLists);
 }
 
 bool ENGINECALL D3D12Renderer::IsGpuUploadHeapsEnabled() const

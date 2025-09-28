@@ -1,6 +1,6 @@
 ﻿#include "pch.h"
 #include <D3DCompiler.h>
-#include "Util/WriteDebugString.h"
+#include "Common/WriteDebugString.h"
 #include "ShaderUtil.h"
 
 bool CreateShaderCodeFromFile(uint8_t** ppOutCodeBuffer, UINT* outCodeSize, SYSTEMTIME* pOutLastWriteTime, const WCHAR* wchFileName)

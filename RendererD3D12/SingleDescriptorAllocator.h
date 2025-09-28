@@ -1,6 +1,6 @@
 ﻿#pragma once
 
-#include "Util/IndexCreator.h"
+#include "Common/IndexCreator.h"
 
 class SingleDescriptorAllocator
 {

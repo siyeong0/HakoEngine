@@ -1,8 +1,65 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <ClInclude Include="$(MSBuildThisFileDirectory)Vertex.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)Common.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)Color.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)Vertex.h">
+      <Filter>Geometry</Filter>
+    </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)IndexCreator.h">
+      <Filter>Util\IndexCreator</Filter>
+    </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)ProcessorInfo.h">
+      <Filter>Util\ProcessorInfo</Filter>
+    </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)QueryPerfCounter.h">
+      <Filter>Util\QueryPerfCounter</Filter>
+    </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)WriteDebugString.h">
+      <Filter>Util\WriteDebugString</Filter>
+    </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)VertexUtil.h">
+      <Filter>Geometry\VertexUtil</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="Util">
+      <UniqueIdentifier>{4f1c05fe-4580-40f8-a014-a7f064a3d1a0}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Util\IndexCreator">
+      <UniqueIdentifier>{5a914103-ed1b-4643-926c-69abec747da8}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Util\ProcessorInfo">
+      <UniqueIdentifier>{acc07366-e81d-4ac5-84d8-7266cb3a320c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Util\QueryPerfCounter">
+      <UniqueIdentifier>{9714915b-fc9e-4818-8d4c-e978c755010d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Util\WriteDebugString">
+      <UniqueIdentifier>{4bac4bf1-eb7f-4266-8290-9ce722f9e408}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Geometry">
+      <UniqueIdentifier>{bde5fc60-9bd4-4ee1-9414-a87687c290a0}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Geometry\VertexUtil">
+      <UniqueIdentifier>{d5c66a3c-c3f8-4564-9431-fee1e5a2a127}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="$(MSBuildThisFileDirectory)IndexCreator.cpp">
+      <Filter>Util\IndexCreator</Filter>
+    </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)ProcessorInfo.cpp">
+      <Filter>Util\ProcessorInfo</Filter>
+    </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)QueryPerfCounter.cpp">
+      <Filter>Util\QueryPerfCounter</Filter>
+    </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)WriteDebugString.cpp">
+      <Filter>Util\WriteDebugString</Filter>
+    </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)VertexUtil.cpp">
+      <Filter>Geometry\VertexUtil</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>

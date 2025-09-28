@@ -8,7 +8,7 @@
 
 #include "Common/Common.h"
 #include "Interface/IRenderer.h"
-#include "Util/QueryPerfCounter.h"
+#include "Common/QueryPerfCounter.h"
 
 class GameObject;
 class Game
