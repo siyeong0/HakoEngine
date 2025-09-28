@@ -312,6 +312,7 @@ bool SpriteObject::initPipelineState()
 		{ "COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 12, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
 		{ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT,	0, 28,	D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
 	};
+	static_assert(sizeof(SpriteVertex) == 36, "SpriteVertex was changed. Please update the input layout.");
 
 	// Describe and create the graphics pipeline state object (PSO).
 	D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc = {};
@@ -359,7 +360,7 @@ bool SpriteObject::initMesh()
 
 	// Create the vertex buffer.
 	// Define the geometry for a triangle.
-	BasicVertex vertices[] =
+	SpriteVertex vertices[] =
 	{
 		{ { 0.0f, 1.0f, 0.0f }, { 1.0f, 1.0f, 1.0f, 1.0f }, { 0.0f, 1.0f } },
 		{ { 0.0f, 0.0f, 0.0f }, { 1.0f, 1.0f, 1.0f, 1.0f }, { 0.0f, 0.0f } },
@@ -376,7 +377,7 @@ bool SpriteObject::initMesh()
 
 	const UINT vertexBufferSize = sizeof(vertices);
 	bool bUseGpuUploadHepas = m_pRenderer->IsGpuUploadHeapsEnabledInl();
-	if (FAILED(pResourceManager->CreateVertexBuffer(sizeof(BasicVertex), (DWORD)_countof(vertices), &m_VertexBufferView, &m_pVertexBuffer, vertices, bUseGpuUploadHepas)))
+	if (FAILED(pResourceManager->CreateVertexBuffer(sizeof(SpriteVertex), (DWORD)_countof(vertices), &m_VertexBufferView, &m_pVertexBuffer, vertices, bUseGpuUploadHepas)))
 	{
 		ASSERT(false, "Failed to create vertex buffer");
 		return false;

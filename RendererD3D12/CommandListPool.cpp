@@ -1,7 +1,7 @@
 ﻿#include "pch.h"
 #include "CommandListPool.h"
 
-bool CommandListPool::Initialize(ID3D12Device* pDevice, D3D12_COMMAND_LIST_TYPE type, int maxNumCmdLists)
+bool CommandListPool::Initialize(ID3D12Device* pDevice, D3D12_COMMAND_LIST_TYPE type, size_t maxNumCmdLists)
 {
 	ASSERT(maxNumCmdLists > 1, "At least two command lists must exist.");
 

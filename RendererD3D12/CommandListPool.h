@@ -13,16 +13,16 @@ public:
 	CommandListPool() = default;
 	~CommandListPool() { Cleanup(); };
 
-	bool Initialize(ID3D12Device* pDevice, D3D12_COMMAND_LIST_TYPE type, int maxNumCmdLists);
+	bool Initialize(ID3D12Device* pDevice, D3D12_COMMAND_LIST_TYPE type, size_t maxNumCmdLists);
 	ID3D12GraphicsCommandList6* GetCurrentCommandList();
 	void Close();
 	void CloseAndExecute(ID3D12CommandQueue* pCommandQueue);
 	void Reset();
 	void Cleanup();
 
-	uint32_t GetTotalNumCmdList() const { return m_NumTotalCmdLists; }
-	uint32_t GetNumAllocatedCmdList() const { return m_AllocatedCmdListArray.size(); }
-	uint32_t GetAvailableNumCmdList() const { return m_AvailableCmdListArray.size(); }
+	size_t GetTotalNumCmdList() const { return m_NumTotalCmdLists; }
+	size_t GetNumAllocatedCmdList() const { return m_AllocatedCmdListArray.size(); }
+	size_t GetAvailableNumCmdList() const { return m_AvailableCmdListArray.size(); }
 	ID3D12Device* GetD3DDevice() { return m_pD3DDevice; }
 
 private:
@@ -33,8 +33,8 @@ private:
 	ID3D12Device* m_pD3DDevice = nullptr;
 	D3D12_COMMAND_LIST_TYPE	m_CommnadListType = D3D12_COMMAND_LIST_TYPE_DIRECT;
 
-	uint32_t m_NumTotalCmdLists = 0;
-	uint32_t m_MaxNumCmdList = 0;
+	size_t m_NumTotalCmdLists = 0;
+	size_t m_MaxNumCmdList = 0;
 
 	CommandList* m_pCurrCmdList = nullptr;
 	

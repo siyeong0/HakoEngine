@@ -34,7 +34,7 @@ uint32_t CreateBoxMesh(BasicVertex** ppOutVertexList, uint16_t* pOutIndexList, u
 		2, 5, 6
 	};
 	
-	TVERTEX pTexCoordList[NUM_BOX_INDICES] =
+	FLOAT2 pTexCoordList[NUM_BOX_INDICES] =
 	{
 		// +z
 		{0.0f, 0.0f}, {1.0f, 0.0f}, {1.0f, 1.0f},
@@ -79,9 +79,9 @@ uint32_t CreateBoxMesh(BasicVertex** ppOutVertexList, uint16_t* pOutIndexList, u
 	for (uint32_t i = 0; i < NUM_BOX_INDICES; i++)
 	{
 		BasicVertex v = {};
-		v.color = { 1.0f, 1.0f, 1.0f, 1.0f };
-		v.position = { pWorldPosList[pIndexList[i]].x, pWorldPosList[pIndexList[i]].y, pWorldPosList[pIndexList[i]].z };
-		v.texCoord = { pTexCoordList[i].u, pTexCoordList[i].v };
+		v.Color = { 1.0f, 1.0f, 1.0f, 1.0f };
+		v.Position = { pWorldPosList[pIndexList[i]].x, pWorldPosList[pIndexList[i]].y, pWorldPosList[pIndexList[i]].z };
+		v.TexCoord = { pTexCoordList[i].u, pTexCoordList[i].v };
 
 		pOutIndexList[i] = (uint16_t)AddVertex(pWorkingVertexList, MAX_WORKING_VERTEX_COUNT, &numBasicVertices, &v);
 	}
