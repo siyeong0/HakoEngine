@@ -33,8 +33,9 @@ bool DescriptorPool::AllocDescriptorTable(D3D12_CPU_DESCRIPTOR_HANDLE* pOutCPUDe
 	*pOutGPUDescriptor = CD3DX12_GPU_DESCRIPTOR_HANDLE(m_gpuDescriptorHandle, m_AllocatedDescriptorCount, m_srvDescriptorSize);
 	m_AllocatedDescriptorCount += descriptorCount;
 
-	return TRUE;
+	return true;
 }
+
 void DescriptorPool::Reset()
 {
 	m_AllocatedDescriptorCount = 0;
