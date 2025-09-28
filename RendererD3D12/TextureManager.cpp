@@ -16,6 +16,7 @@ bool TextureManager::Initialize(D3D12Renderer* pRenderer, UINT maxNumBuckets, UI
 
 	return true;
 }
+
 TextureHandle* TextureManager::CreateTextureFromFile(const WCHAR* wchFileName)
 {
 	ID3D12Device* pD3DDevice = m_pRenderer->GetD3DDevice();
@@ -27,8 +28,8 @@ TextureHandle* TextureManager::CreateTextureFromFile(const WCHAR* wchFileName)
 	D3D12_RESOURCE_DESC	desc = {};
 	TextureHandle* pTexHandle = nullptr;
 
-	int fileNameLen = (DWORD)wcslen(wchFileName);
-	int keySize = fileNameLen * sizeof(WCHAR);
+	size_t fileNameLen = wcslen(wchFileName);
+	size_t keySize = fileNameLen * sizeof(WCHAR);
 	if (m_pHashTable->Select((void**)&pTexHandle, 1, wchFileName, keySize))
 	{
 		pTexHandle->RefCount++;
@@ -74,7 +75,6 @@ TextureHandle* TextureManager::CreateDynamicTexture(UINT texWidth, UINT texHeigh
 	ID3D12Resource* pTexResource = nullptr;
 	ID3D12Resource* pUploadBuffer = nullptr;
 	D3D12_CPU_DESCRIPTOR_HANDLE srv = {};
-
 
 	DXGI_FORMAT texFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
 
