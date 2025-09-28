@@ -16,8 +16,6 @@
 #define new new(_NORMAL_BLOCK, __FILE__, __LINE__)
 #endif
 
-#define WIN32_LEAN_AND_MEAN             // Exclude rarely-used stuff from Windows headers
-
 #include <initguid.h>
 
 // d3d
@@ -49,9 +47,10 @@
 
 #include "Renderer_typedef.h"
 #include "Interface/IRenderer.h"
+#include "Interface/IMeshObject.h"
+#include "Interface/ISpriteObject.h"
 #include "Common/Common.h"
 #include "Common/IndexCreator.h"
-
 #include "D3DUtil.h"
 
 #endif //PCH_H

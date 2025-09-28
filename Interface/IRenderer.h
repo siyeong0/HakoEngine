@@ -1,21 +1,10 @@
 ﻿#pragma once
-
 #include <Windows.h>
-#include "Common/Common.h"
 #include <combaseapi.h>
+#include "Common/Common.h"
 
-
-interface IMeshObject : public IUnknown
-{
-	virtual bool ENGINECALL BeginCreateMesh(const BasicVertex* vertices, uint32_t numVertices, uint32_t numTriGroups) = 0;
-	virtual bool ENGINECALL InsertTriGroup(const uint16_t* indices, uint32_t numTriangles, const WCHAR* wchTexFileName) = 0;
-	virtual void ENGINECALL EndCreateMesh() = 0;
-};
-
-interface ISprite : public IUnknown
-{
-
-};
+#include "IMeshObject.h"
+#include "ISpriteObject.h"
 
 interface IRenderer : public IUnknown
 {
@@ -23,10 +12,11 @@ interface IRenderer : public IUnknown
 	virtual void ENGINECALL BeginRender() = 0;
 	virtual void ENGINECALL EndRender() = 0;
 	virtual void ENGINECALL Present() = 0;
+	virtual void ENGINECALL Cleanup() = 0;
+
 	virtual bool ENGINECALL UpdateWindowSize(uint32_t backBufferWidth, uint32_t backBufferHeight) = 0;
 
 	virtual IMeshObject* ENGINECALL CreateBasicMeshObject() = 0;
-
 	virtual ISprite* ENGINECALL CreateSpriteObject() = 0;
 	virtual ISprite* ENGINECALL CreateSpriteObject(const WCHAR* wchTexFileName) = 0;
 	virtual ISprite* ENGINECALL CreateSpriteObject(const WCHAR* wchTexFileName, int posX, int posY, int width, int height) = 0;

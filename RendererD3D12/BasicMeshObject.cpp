@@ -35,7 +35,7 @@ STDMETHODIMP_(ULONG) BasicMeshObject::Release()
 	return refCount;
 }
 
-bool ENGINECALL BasicMeshObject::BeginCreateMesh(const BasicVertex* vertices, uint32_t numVertices, uint32_t numTriGroups)
+bool ENGINECALL BasicMeshObject::BeginCreateMesh(const Vertex* vertices, size_t numVertices, size_t numTriGroups)
 {
 	ID3D12Device5* pD3DDeivce = m_pRenderer->GetD3DDevice();
 	D3D12ResourceManager* pResourceManager = m_pRenderer->GetResourceManager();
@@ -43,7 +43,7 @@ bool ENGINECALL BasicMeshObject::BeginCreateMesh(const BasicVertex* vertices, ui
 
 	ASSERT(numTriGroups <= MAX_TRI_GROUP_COUNT_PER_OBJ, "Too many tri-groups.");
 
-	if (FAILED(pResourceManager->CreateVertexBuffer(sizeof(BasicVertex), numVertices, &m_VertexBufferView, &m_pVertexBuffer, (void*)vertices, bUseGpuUploadHepas)))
+	if (FAILED(pResourceManager->CreateVertexBuffer(sizeof(Vertex), numVertices, &m_VertexBufferView, &m_pVertexBuffer, (void*)vertices, bUseGpuUploadHepas)))
 	{
 		ASSERT(false, "Failed to create vertex buffer.");
 		return false;
@@ -56,7 +56,7 @@ bool ENGINECALL BasicMeshObject::BeginCreateMesh(const BasicVertex* vertices, ui
 	return true;
 }
 
-bool ENGINECALL BasicMeshObject::InsertTriGroup(const uint16_t* indices, uint32_t numTriangles, const WCHAR* wchTexFileName)
+bool ENGINECALL BasicMeshObject::InsertTriGroup(const uint16_t* indices, size_t numTriangles, const WCHAR* wchTexFileName)
 {
 	ID3D12Device5* pD3DDeivce = m_pRenderer->GetD3DDevice();
 	size_t srvDescriptorSize = m_pRenderer->GetSrvDescriptorSize();
@@ -77,7 +77,7 @@ bool ENGINECALL BasicMeshObject::InsertTriGroup(const uint16_t* indices, uint32_
 	IndexedTriGroup*	pTriGroup = m_pTriGroupList + m_NumTriGroups;
 	pTriGroup->IndexBuffer = pIndexBuffer;
 	pTriGroup->IndexBufferView = indexBufferView;
-	pTriGroup->NumTriangles = numTriangles;
+	pTriGroup->NumTriangles = static_cast<UINT>(numTriangles);
 	pTriGroup->pTexHandle = (TextureHandle*)m_pRenderer->CreateTextureFromFile(wchTexFileName);
 	m_NumTriGroups++;
 	return true;
@@ -108,7 +108,7 @@ void BasicMeshObject::Draw(int threadIndex, ID3D12GraphicsCommandList6* pCommand
 
 	CD3DX12_GPU_DESCRIPTOR_HANDLE gpuDescriptorTable = {};
 	CD3DX12_CPU_DESCRIPTOR_HANDLE cpuDescriptorTable = {};
-	UINT requiredDescriptorCount = DESCRIPTOR_COUNT_PER_OBJ + (m_NumTriGroups * DESCRIPTOR_COUNT_PER_TRI_GROUP);
+	UINT requiredDescriptorCount = static_cast<UINT>(DESCRIPTOR_COUNT_PER_OBJ + (m_NumTriGroups * DESCRIPTOR_COUNT_PER_TRI_GROUP));
 
 	if (!pDescriptorPool->AllocDescriptorTable(&cpuDescriptorTable, &gpuDescriptorTable, requiredDescriptorCount))
 	{
@@ -289,20 +289,20 @@ bool BasicMeshObject::initPipelineState()
 	ID3D12Device5* pD3DDeivce = m_pRenderer->GetD3DDevice();
 	ShaderManager* pShaderManager = m_pRenderer->GetShaderManager();
 
-	ShaderHandle* pVertexShader = pShaderManager->CreateShaderDXC(L"shBasicMesh.hlsl", L"VSMain", L"vs_6_0", 0);
+	ShaderHandle* pVertexShader = pShaderManager->CreateShaderDXC(L"Standard.hlsl", L"VSMain", L"vs_6_0", 0);
 	ASSERT(pVertexShader, "Shader compilation failed.");
 
-	ShaderHandle* pPixelShader = pShaderManager->CreateShaderDXC(L"shBasicMesh.hlsl", L"PSMain", L"ps_6_0", 0);
+	ShaderHandle* pPixelShader = pShaderManager->CreateShaderDXC(L"Standard.hlsl", L"PSMain", L"ps_6_0", 0);
 	ASSERT(pPixelShader, "Shader compilation failed.");
 
 	// Define the vertex input layout.
 	D3D12_INPUT_ELEMENT_DESC inputElementDescs[] =
 	{
-		{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-		{ "COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 12, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-		{ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT,	0, 28,	D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
+		{ "POSITION",	0, DXGI_FORMAT_R32G32B32_FLOAT,	0, 0,	D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+		{ "TEXCOORD",	0, DXGI_FORMAT_R32G32_FLOAT,	0, 12,	D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+		{ "TANGENT",	0, DXGI_FORMAT_R32G32B32_FLOAT,	0, 20,	D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
 	};
-	static_assert(sizeof(BasicVertex) == 36, "BasicVertex was changed. Please update the input layout.");
+	static_assert(sizeof(Vertex) == 32, "BasicVertex was changed. Please update the input layout.");
 
 	// Describe and create the graphics pipeline state object (PSO).
 	D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc = {};

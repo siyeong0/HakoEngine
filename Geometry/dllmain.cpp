@@ -1,5 +1,6 @@
-// dllmain.cpp : Defines the entry point for the DLL application.
+﻿// dllmain.cpp : Defines the entry point for the DLL application.
 #include "pch.h"
+#include "Geometry.h"
 
 BOOL APIENTRY DllMain( HMODULE hModule,
                        DWORD  ul_reason_for_call,
@@ -17,3 +18,20 @@ BOOL APIENTRY DllMain( HMODULE hModule,
     return TRUE;
 }
 
+extern "C" __declspec(dllexport)
+HRESULT WINAPI DllCreateInstance(void** ppv)
+{
+    HRESULT hr;
+    IGeometry* pGeometry = new Geometry;
+
+    if (!pGeometry)
+    {
+        hr = E_OUTOFMEMORY;
+        goto lb_return;
+    }
+    hr = S_OK;
+    *ppv = pGeometry;
+
+lb_return:
+    return hr;
+}

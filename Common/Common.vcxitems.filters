@@ -18,8 +18,8 @@
     <ClInclude Include="$(MSBuildThisFileDirectory)WriteDebugString.h">
       <Filter>Util\WriteDebugString</Filter>
     </ClInclude>
-    <ClInclude Include="$(MSBuildThisFileDirectory)VertexUtil.h">
-      <Filter>Geometry\VertexUtil</Filter>
+    <ClInclude Include="$(MSBuildThisFileDirectory)MeshData.h">
+      <Filter>Geometry</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -41,9 +41,6 @@
     <Filter Include="Geometry">
       <UniqueIdentifier>{bde5fc60-9bd4-4ee1-9414-a87687c290a0}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Geometry\VertexUtil">
-      <UniqueIdentifier>{d5c66a3c-c3f8-4564-9431-fee1e5a2a127}</UniqueIdentifier>
-    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="$(MSBuildThisFileDirectory)IndexCreator.cpp">
@@ -57,9 +54,6 @@
     </ClCompile>
     <ClCompile Include="$(MSBuildThisFileDirectory)WriteDebugString.cpp">
       <Filter>Util\WriteDebugString</Filter>
-    </ClCompile>
-    <ClCompile Include="$(MSBuildThisFileDirectory)VertexUtil.cpp">
-      <Filter>Geometry\VertexUtil</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

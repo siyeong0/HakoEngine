@@ -299,10 +299,10 @@ bool SpriteObject::initPipelineState()
 	ID3D12Device5* pD3DDeivce = m_pRenderer->GetD3DDevice();
 	ShaderManager* pShaderManager = m_pRenderer->GetShaderManager();
 
-	ShaderHandle* pVertexShader = pShaderManager->CreateShaderDXC(L"shSprite.hlsl", L"VSMain", L"vs_6_0", 0);
+	ShaderHandle* pVertexShader = pShaderManager->CreateShaderDXC(L"Sprite.hlsl", L"VSMain", L"vs_6_0", 0);
 	ASSERT(pVertexShader, "Shader compilation failed.");
 
-	ShaderHandle* pPixelShader = pShaderManager->CreateShaderDXC(L"shSprite.hlsl", L"PSMain", L"ps_6_0", 0);
+	ShaderHandle* pPixelShader = pShaderManager->CreateShaderDXC(L"Sprite.hlsl", L"PSMain", L"ps_6_0", 0);
 	ASSERT(pPixelShader, "Shader compilation failed.");
 
 	// Define the vertex input layout.

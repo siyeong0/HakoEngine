@@ -10,6 +10,14 @@ struct FLOAT3
 	float z;
 };
 
+struct FLOAT4
+{
+	float x;
+	float y;
+	float z;
+	float w;
+};
+
 struct FLOAT2
 {
 	union
@@ -27,6 +35,15 @@ struct FLOAT2
 	};
 };
 
+struct Vertex
+{
+	FLOAT3 Position;
+	FLOAT2 TexCoord;
+	FLOAT3 Tangent;
+};
+static_assert(sizeof(Vertex) == 32, "Vertex size mismatch");
+
+
 struct SpriteVertex
 {
 	XMFLOAT3 Position;
@@ -34,11 +51,3 @@ struct SpriteVertex
 	XMFLOAT2 TexCoord;
 };
 static_assert(sizeof(SpriteVertex) == 36, "SpriteVertex size mismatch");
-
-struct BasicVertex
-{
-	XMFLOAT3 Position;
-	XMFLOAT4 Color;
-	XMFLOAT2 TexCoord;
-};
-static_assert(sizeof(BasicVertex) == 36, "BasicVertex size mismatch");

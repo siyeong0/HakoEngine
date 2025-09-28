@@ -74,6 +74,7 @@ HRESULT WINAPI DllCreateInstance(void** ppv)
 	}
 	hr = S_OK;
 	*ppv = pRenderer;
+
 lb_return:
 	return hr;
 }

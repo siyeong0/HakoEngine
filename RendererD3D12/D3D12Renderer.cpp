@@ -404,12 +404,129 @@ void ENGINECALL D3D12Renderer::Present()
 	m_CurrContextIndex = nextContextIndex;
 }
 
+void ENGINECALL D3D12Renderer::Cleanup()
+{
+#ifdef USE_MULTI_THREAD
+	cleanupRenderThreadPool();
+#endif
+
+	fence();
+
+	for (int i = 0; i < MAX_PENDING_FRAME_COUNT; i++)
+	{
+		waitForFenceValue(m_pui64LastFenceValue[i]);
+	}
+	for (int i = 0; i < m_NumRenderThreads; i++)
+	{
+		if (m_ppRenderQueue[i])
+		{
+			delete m_ppRenderQueue[i];
+			m_ppRenderQueue[i] = nullptr;
+		}
+	}
+	for (int i = 0; i < MAX_PENDING_FRAME_COUNT; i++)
+	{
+		for (int j = 0; j < m_NumRenderThreads; j++)
+		{
+			if (m_ppCommandListPool[i][j])
+			{
+				delete m_ppCommandListPool[i][j];
+				m_ppCommandListPool[i][j] = nullptr;
+			}
+			if (m_ppConstBufferManager[i][j])
+			{
+				delete m_ppConstBufferManager[i][j];
+				m_ppConstBufferManager[i][j] = nullptr;
+			}
+			if (m_ppDescriptorPool[i][j])
+			{
+				delete m_ppDescriptorPool[i][j];
+				m_ppDescriptorPool[i][j] = nullptr;
+			}
+		}
+	}
+	if (m_pTextureManager)
+	{
+		delete m_pTextureManager;
+		m_pTextureManager = nullptr;
+	}
+	if (m_pResourceManager)
+	{
+		delete m_pResourceManager;
+		m_pResourceManager = nullptr;
+	}
+	if (m_pFontManager)
+	{
+		delete m_pFontManager;
+		m_pFontManager = nullptr;
+	}
+	if (m_pShaderManager)
+	{
+		delete m_pShaderManager;
+		m_pShaderManager = nullptr;
+	}
+
+	if (m_pSingleDescriptorAllocator)
+	{
+		delete m_pSingleDescriptorAllocator;
+		m_pSingleDescriptorAllocator = nullptr;
+	}
+
+	cleanupDescriptorHeapForRTV();
+	cleanupDescriptorHeapForDSV();
+
+	for (int i = 0; i < SWAP_CHAIN_FRAME_COUNT; i++)
+	{
+		if (m_pRenderTargets[i])
+		{
+			m_pRenderTargets[i]->Release();
+			m_pRenderTargets[i] = nullptr;
+		}
+	}
+	if (m_pDepthStencil)
+	{
+		m_pDepthStencil->Release();
+		m_pDepthStencil = nullptr;
+	}
+	if (m_pSwapChain)
+	{
+		m_pSwapChain->Release();
+		m_pSwapChain = nullptr;
+	}
+
+	if (m_pCommandQueue)
+	{
+		m_pCommandQueue->Release();
+		m_pCommandQueue = nullptr;
+	}
+
+	cleanupFence();
+
+	if (m_pD3DDevice)
+	{
+		// Release the device
+		const ULONG remainingRefCount = m_pD3DDevice->Release();
+
+		if (remainingRefCount > 0)
+		{
+			// Potential resource leak: device still has references!
+#if defined(_DEBUG)
+			Microsoft::WRL::ComPtr<IDXGIDebug1> dxgiDebug;
+			if (SUCCEEDED(DXGIGetDebugInterface1(0, IID_PPV_ARGS(&dxgiDebug))))
+			{
+				dxgiDebug->ReportLiveObjects(DXGI_DEBUG_ALL, DXGI_DEBUG_RLO_SUMMARY);
+			}
+#endif
+			ASSERT(false, "D3D12 Device reference count is not zero (resource leak).");
+		}
+		m_pD3DDevice = nullptr;
+	}
+}
+
 bool ENGINECALL D3D12Renderer::UpdateWindowSize(uint32_t backBufferWidth, uint32_t backBufferHeight)
 {
-	ASSERT(backBufferWidth != 0 && backBufferHeight != 0, "Invalid window size.");
-
-	// If the size is not changed, do nothing.
-	if (m_Width == backBufferWidth && m_Height == backBufferHeight)
+	if ((backBufferWidth == 0 || backBufferHeight == 0 ) ||				// Zero size can be given when the window is minimized.
+		(m_Width == backBufferWidth && m_Height == backBufferHeight))	// Size is not changed.
 	{
 		return true;
 	}
@@ -595,10 +712,6 @@ void ENGINECALL D3D12Renderer::RenderMeshObject(IMeshObject* pMeshObj, const XMM
 
 	m_CurrThreadIndex++;
 	m_CurrThreadIndex = m_CurrThreadIndex % m_NumRenderThreads;
-
-	//D3D12_CPU_DESCRIPTOR_HANDLE srv = {};
-	//CBasicMeshObject* pMeshObj = (CBasicMeshObject*)pMeshObjHandle;
-	//pMeshObj->Draw(pCommandList, pMatWorld);
 }
 
 void ENGINECALL D3D12Renderer::RenderSpriteWithTex(void* pSprObjHandle, int posX, int posY, float scaleX, float scaleY, const RECT* pRect, float z, void* pTexHandle)
@@ -747,16 +860,6 @@ bool ENGINECALL D3D12Renderer::IsGpuUploadHeapsEnabled() const
 // --------------------------------------------------
 // Internal methods
 // --------------------------------------------------
-
-D3D12Renderer::D3D12Renderer()
-{
-
-}
-
-D3D12Renderer::~D3D12Renderer()
-{
-	cleanup();
-}
 
 void D3D12Renderer::EnsureCompleted()
 {
@@ -992,125 +1095,6 @@ void D3D12Renderer::cleanupDescriptorHeapForDSV()
 	{
 		m_pDSVHeap->Release();
 		m_pDSVHeap = nullptr;
-	}
-}
-
-void D3D12Renderer::cleanup()
-{
-#ifdef USE_MULTI_THREAD
-	cleanupRenderThreadPool();
-#endif
-
-	fence();
-
-	for (int i = 0; i < MAX_PENDING_FRAME_COUNT; i++)
-	{
-		waitForFenceValue(m_pui64LastFenceValue[i]);
-	}
-	for (int i = 0; i < m_NumRenderThreads; i++)
-	{
-		if (m_ppRenderQueue[i])
-		{
-			delete m_ppRenderQueue[i];
-			m_ppRenderQueue[i] = nullptr;
-		}
-	}
-	for (int i = 0; i < MAX_PENDING_FRAME_COUNT; i++)
-	{
-		for (int j = 0; j < m_NumRenderThreads; j++)
-		{
-			if (m_ppCommandListPool[i][j])
-			{
-				delete m_ppCommandListPool[i][j];
-				m_ppCommandListPool[i][j] = nullptr;
-			}
-			if (m_ppConstBufferManager[i][j])
-			{
-				delete m_ppConstBufferManager[i][j];
-				m_ppConstBufferManager[i][j] = nullptr;
-			}
-			if (m_ppDescriptorPool[i][j])
-			{
-				delete m_ppDescriptorPool[i][j];
-				m_ppDescriptorPool[i][j] = nullptr;
-			}
-		}
-	}
-	if (m_pTextureManager)
-	{
-		delete m_pTextureManager;
-		m_pTextureManager = nullptr;
-	}
-	if (m_pResourceManager)
-	{
-		delete m_pResourceManager;
-		m_pResourceManager = nullptr;
-	}
-	if (m_pFontManager)
-	{
-		delete m_pFontManager;
-		m_pFontManager = nullptr;
-	}
-	if (m_pShaderManager)
-	{
-		delete m_pShaderManager;
-		m_pShaderManager = nullptr;
-	}
-
-	if (m_pSingleDescriptorAllocator)
-	{
-		delete m_pSingleDescriptorAllocator;
-		m_pSingleDescriptorAllocator = nullptr;
-	}
-
-	cleanupDescriptorHeapForRTV();
-	cleanupDescriptorHeapForDSV();
-
-	for (int i = 0; i < SWAP_CHAIN_FRAME_COUNT; i++)
-	{
-		if (m_pRenderTargets[i])
-		{
-			m_pRenderTargets[i]->Release();
-			m_pRenderTargets[i] = nullptr;
-		}
-	}
-	if (m_pDepthStencil)
-	{
-		m_pDepthStencil->Release();
-		m_pDepthStencil = nullptr;
-	}
-	if (m_pSwapChain)
-	{
-		m_pSwapChain->Release();
-		m_pSwapChain = nullptr;
-	}
-
-	if (m_pCommandQueue)
-	{
-		m_pCommandQueue->Release();
-		m_pCommandQueue = nullptr;
-	}
-
-	cleanupFence();
-
-	if (m_pD3DDevice)
-	{
-		// Release the device
-		const ULONG remainingRefCount = m_pD3DDevice->Release();
-
-		if (remainingRefCount > 0)
-		{
-			// Potential resource leak: device still has references!
-#if defined(_DEBUG)
-			Microsoft::WRL::ComPtr<IDXGIDebug1> dxgiDebug;
-			if (SUCCEEDED(DXGIGetDebugInterface1(0, IID_PPV_ARGS(&dxgiDebug))))
-			{
-				dxgiDebug->ReportLiveObjects(DXGI_DEBUG_ALL, DXGI_DEBUG_RLO_SUMMARY);
-			}
-#endif
-			ASSERT(false, "D3D12 Device reference count is not zero (resource leak).");
-		}
-		m_pD3DDevice = nullptr;
 	}
 }
 

@@ -147,6 +147,9 @@
     <Image Include="small.ico" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\Geometry\Geometry.vcxproj">
+      <Project>{98a0940b-1a79-4001-9c8d-79f0c68e8cea}</Project>
+    </ProjectReference>
     <ProjectReference Include="..\RendererD3D12\RendererD3D12.vcxproj">
       <Project>{9940c86e-1844-443f-8093-36d1d27079fe}</Project>
     </ProjectReference>

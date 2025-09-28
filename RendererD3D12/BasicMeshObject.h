@@ -34,8 +34,8 @@ public:
 	STDMETHODIMP_(ULONG)	Release();
 
 	// Derived from IMeshObject
-	bool ENGINECALL BeginCreateMesh(const BasicVertex* vertices, uint32_t numVertices, uint32_t numTriGroups);
-	bool ENGINECALL InsertTriGroup(const uint16_t* indices, uint32_t numTriangles, const WCHAR* wchTexFileName);
+	bool ENGINECALL BeginCreateMesh(const Vertex* vertices, size_t numVertices, size_t numTriGroups);
+	bool ENGINECALL InsertTriGroup(const uint16_t* indices, size_t numTriangles, const WCHAR* wchTexFileName);
 	void ENGINECALL EndCreateMesh();
 
 	// Internal
@@ -68,8 +68,8 @@ private:
 	D3D12_VERTEX_BUFFER_VIEW m_VertexBufferView = {};
 
 	IndexedTriGroup* m_pTriGroupList = nullptr;
-	UINT m_NumTriGroups = 0;
-	UINT m_MaxNumTriGroups = 0;
+	size_t m_NumTriGroups = 0;
+	size_t m_MaxNumTriGroups = 0;
 };
 
 

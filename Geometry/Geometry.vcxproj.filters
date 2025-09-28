@@ -9,10 +9,16 @@
       <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
       <Extensions>cpp;c;cc;cxx;c++;cppm;ixx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
     </Filter>
+    <Filter Include="GeometryBody">
+      <UniqueIdentifier>{b84569e0-3c4f-4ba4-8b40-84859dec1557}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h">
       <Filter>pch</Filter>
+    </ClInclude>
+    <ClInclude Include="Geometry.h">
+      <Filter>GeometryBody</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -21,6 +27,9 @@
     </ClCompile>
     <ClCompile Include="pch.cpp">
       <Filter>pch</Filter>
+    </ClCompile>
+    <ClCompile Include="Geometry.cpp">
+      <Filter>GeometryBody</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

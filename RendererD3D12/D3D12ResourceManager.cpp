@@ -33,25 +33,25 @@ bool D3D12ResourceManager::Initialize(ID3D12Device5* pD3DDevice)
 	return true;
 }
 
-HRESULT D3D12ResourceManager::CreateVertexBuffer(UINT sizePerVertex, UINT numVertices, D3D12_VERTEX_BUFFER_VIEW* pOutVertexBufferView, ID3D12Resource** ppOutBuffer, void* pInitData, bool bUseGpuUploadHeaps)
+HRESULT D3D12ResourceManager::CreateVertexBuffer(size_t sizePerVertex, size_t numVertices, D3D12_VERTEX_BUFFER_VIEW* pOutVertexBufferView, ID3D12Resource** ppOutBuffer, void* pInitData, bool bUseGpuUploadHeaps)
 {
 	HRESULT hr = S_OK;
 
-	D3D12_VERTEX_BUFFER_VIEW	VertexBufferView = {};
+	D3D12_VERTEX_BUFFER_VIEW vertexBufferView = {};
 	ID3D12Resource*	pVertexBuffer = nullptr;
 	ID3D12Resource*	pUploadBuffer = nullptr;
-	UINT		VertexBufferSize = sizePerVertex * numVertices;
+	size_t vertexBufferSize = sizePerVertex * numVertices;
 
-	D3D12_HEAP_PROPERTIES HeapProp = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT);
+	D3D12_HEAP_PROPERTIES heapProp = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT);
 	if (bUseGpuUploadHeaps)
 	{
-		HeapProp = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_GPU_UPLOAD);
+		heapProp = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_GPU_UPLOAD);
 	}
 	// create vertexbuffer for rendering
 	hr = m_pD3DDevice->CreateCommittedResource(
-		&HeapProp,
+		&heapProp,
 		D3D12_HEAP_FLAG_NONE,
-		&CD3DX12_RESOURCE_DESC::Buffer(VertexBufferSize),
+		&CD3DX12_RESOURCE_DESC::Buffer(vertexBufferSize),
 		D3D12_RESOURCE_STATE_COMMON,
 		nullptr,
 		IID_PPV_ARGS(&pVertexBuffer));
@@ -70,7 +70,7 @@ HRESULT D3D12ResourceManager::CreateVertexBuffer(UINT sizePerVertex, UINT numVer
 			CD3DX12_RANGE readRange(0, 0);        // We do not intend to read from this resource on the CPU.
 
 			hr = pVertexBuffer->Map(0, &readRange, reinterpret_cast<void**>(&pVertexDataBegin));
-			memcpy(pVertexDataBegin, pInitData, VertexBufferSize);
+			memcpy(pVertexDataBegin, pInitData, vertexBufferSize);
 			pVertexBuffer->Unmap(0, nullptr);
 		}
 		else
@@ -84,7 +84,7 @@ HRESULT D3D12ResourceManager::CreateVertexBuffer(UINT sizePerVertex, UINT numVer
 			hr = m_pD3DDevice->CreateCommittedResource(
 				&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD),
 				D3D12_HEAP_FLAG_NONE,
-				&CD3DX12_RESOURCE_DESC::Buffer(VertexBufferSize),
+				&CD3DX12_RESOURCE_DESC::Buffer(vertexBufferSize),
 				D3D12_RESOURCE_STATE_COMMON,
 				nullptr,
 				IID_PPV_ARGS(&pUploadBuffer));
@@ -105,11 +105,11 @@ HRESULT D3D12ResourceManager::CreateVertexBuffer(UINT sizePerVertex, UINT numVer
 				ASSERT(false, "Failed to Map.");
 				goto lb_return;
 			}
-			memcpy(pVertexDataBegin, pInitData, VertexBufferSize);
+			memcpy(pVertexDataBegin, pInitData, vertexBufferSize);
 			pUploadBuffer->Unmap(0, nullptr);
 
 			m_pCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(pVertexBuffer, D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST));
-			m_pCommandList->CopyBufferRegion(pVertexBuffer, 0, pUploadBuffer, 0, VertexBufferSize);
+			m_pCommandList->CopyBufferRegion(pVertexBuffer, 0, pUploadBuffer, 0, vertexBufferSize);
 			m_pCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(pVertexBuffer, D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER));
 
 			m_pCommandList->Close();
@@ -124,11 +124,11 @@ HRESULT D3D12ResourceManager::CreateVertexBuffer(UINT sizePerVertex, UINT numVer
 	
 
 	// Initialize the vertex buffer view.
-	VertexBufferView.BufferLocation = pVertexBuffer->GetGPUVirtualAddress();
-	VertexBufferView.StrideInBytes = sizePerVertex;
-	VertexBufferView.SizeInBytes = VertexBufferSize;
+	vertexBufferView.BufferLocation = pVertexBuffer->GetGPUVirtualAddress();
+	vertexBufferView.StrideInBytes = static_cast<UINT>(sizePerVertex);
+	vertexBufferView.SizeInBytes = static_cast<UINT>(vertexBufferSize);
 
-	*pOutVertexBufferView = VertexBufferView;
+	*pOutVertexBufferView = vertexBufferView;
 	*ppOutBuffer = pVertexBuffer;
 
 lb_return:
@@ -140,14 +140,14 @@ lb_return:
 	return hr;
 }
 
-HRESULT D3D12ResourceManager::CreateIndexBuffer(UINT numIndices, D3D12_INDEX_BUFFER_VIEW* pOutIndexBufferView, ID3D12Resource **ppOutBuffer, void* pInitData, bool bUseGpuUploadHeaps)
+HRESULT D3D12ResourceManager::CreateIndexBuffer(size_t numIndices, D3D12_INDEX_BUFFER_VIEW* pOutIndexBufferView, ID3D12Resource **ppOutBuffer, void* pInitData, bool bUseGpuUploadHeaps)
 {
 	HRESULT hr = S_OK;
 
 	D3D12_INDEX_BUFFER_VIEW	indexBufferView = {};
 	ID3D12Resource*	pIndexBuffer = nullptr;
 	ID3D12Resource*	pUploadBuffer = nullptr;
-	UINT indexBufferSize = sizeof(WORD) * numIndices;
+	size_t indexBufferSize = sizeof(WORD) * numIndices;
 	
 	D3D12_HEAP_PROPERTIES heapProp = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT);
 	if (bUseGpuUploadHeaps)
@@ -238,7 +238,7 @@ HRESULT D3D12ResourceManager::CreateIndexBuffer(UINT numIndices, D3D12_INDEX_BUF
 	// Initialize the vertex buffer view.
 	indexBufferView.BufferLocation = pIndexBuffer->GetGPUVirtualAddress();
 	indexBufferView.Format = DXGI_FORMAT_R16_UINT;
-	indexBufferView.SizeInBytes = indexBufferSize;
+	indexBufferView.SizeInBytes = static_cast<UINT>(indexBufferSize);
 
 	*pOutIndexBufferView = indexBufferView;
 	*ppOutBuffer = pIndexBuffer;

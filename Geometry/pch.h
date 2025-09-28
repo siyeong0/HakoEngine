@@ -7,10 +7,22 @@
 #ifndef PCH_H
 #define PCH_H
 
+// add headers that you want to pre-compile here
 #define WIN32_LEAN_AND_MEAN             // Exclude rarely-used stuff from Windows headers
-// Windows Header Files
+
+#ifdef _DEBUG
+#define _CRTDBG_MAP_ALLOC
+#include <crtdbg.h>
+#define new new(_NORMAL_BLOCK, __FILE__, __LINE__)
+#endif
+
 #include <windows.h>
 
-// add headers that you want to pre-compile here
+// C RunTime Header Files
+#include <cmath>
+#include <cstdint>
+
+#include "Interface/IGeometry.h"
+#include "Common/Common.h"
 
 #endif //PCH_H

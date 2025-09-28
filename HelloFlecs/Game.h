@@ -8,6 +8,7 @@
 
 #include "Common/Common.h"
 #include "Interface/IRenderer.h"
+#include "Interface/IGeometry.h"
 #include "Common/QueryPerfCounter.h"
 
 class GameObject;
@@ -36,11 +37,15 @@ public:
 	bool UpdateWindowSize(uint32_t backBufferWidth, uint32_t backBufferHeight);
 
 	IRenderer* GetRenderer() const { return m_pRenderer; }
+	IGeometry* GetGeometry() const { return m_pGeometry; }
 
 private:
 	HMODULE m_hRendererDLL = nullptr;
 	IRenderer* m_pRenderer = nullptr;
 	HWND m_hWnd = nullptr;
+
+	HMODULE m_hGeometryDLL = nullptr;
+	IGeometry* m_pGeometry = nullptr;
 
 	bool m_bShiftKeyDown = false;
 

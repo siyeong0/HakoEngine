@@ -28,8 +28,10 @@ public:
 	// Derived from IRenderer
 	bool ENGINECALL Initialize(HWND hWnd, bool bEnableDebugLayer, bool bEnableGBV, bool bUseGpuUploadHeaps, const WCHAR* wchShaderPath) override;
 	void ENGINECALL BeginRender() override;
-	void APIENTRY EndRender() override;
+	void ENGINECALL EndRender() override;
 	void ENGINECALL Present() override;
+	void ENGINECALL Cleanup() override;
+
 	bool ENGINECALL UpdateWindowSize(uint32_t backBufferWidth, uint32_t backBufferHeight) override;
 
 	IMeshObject* ENGINECALL CreateBasicMeshObject() override;
@@ -60,8 +62,8 @@ public:
 	bool ENGINECALL IsGpuUploadHeapsEnabled() const override;
 
 	// Internal
-	D3D12Renderer();
-	~D3D12Renderer();
+	D3D12Renderer() = default;
+	~D3D12Renderer() { Cleanup(); };
 
 	void EnsureCompleted();
 	ID3D12Device5* GetD3DDevice() const { return m_pD3DDevice; }
@@ -101,8 +103,6 @@ private:
 	bool createDescriptorHeapForDSV();
 	void cleanupDescriptorHeapForRTV();
 	void cleanupDescriptorHeapForDSV();
-
-	void cleanup();
 
 	// for multi-threads
 	bool initRenderThreadPool(int numThreads);
