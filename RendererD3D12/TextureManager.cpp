@@ -1,18 +1,15 @@
 ﻿#include "pch.h"
-
 #include "SingleDescriptorAllocator.h"
 #include "D3D12Renderer.h"
 #include "D3D12ResourceManager.h"
-
 #include "TextureManager.h"
 
-bool TextureManager::Initialize(D3D12Renderer* pRenderer, UINT maxNumBuckets, UINT maxNumFiles)
+bool TextureManager::Initialize(D3D12Renderer* pRenderer, int numExpectedItems)
 {
 	m_pRenderer = pRenderer;
 	m_pResourceManager = pRenderer->GetResourceManager();
 
-	m_pHashTable = new CHashTable;
-	m_pHashTable->Initialize(maxNumBuckets, _MAX_PATH, maxNumFiles);
+	m_HashTable.reserve(numExpectedItems);
 
 	return true;
 }
@@ -26,13 +23,12 @@ TextureHandle* TextureManager::CreateTextureFromFile(const WCHAR* wchFileName)
 	ID3D12Resource* pTexResource = nullptr;
 	D3D12_CPU_DESCRIPTOR_HANDLE srv = {};
 	D3D12_RESOURCE_DESC	desc = {};
-	TextureHandle* pTexHandle = nullptr;
+	TextureHandle* pOutTexHandle = nullptr;
 
-	size_t fileNameLen = wcslen(wchFileName);
-	size_t keySize = fileNameLen * sizeof(WCHAR);
-	if (m_pHashTable->Select((void**)&pTexHandle, 1, wchFileName, keySize))
+	if (auto it = m_HashTable.find(wchFileName); it != m_HashTable.end())
 	{
-		pTexHandle->RefCount++;
+		pOutTexHandle = it->second;
+		++it->second->RefCount;
 	}
 	else
 	{
@@ -48,13 +44,13 @@ TextureHandle* TextureManager::CreateTextureFromFile(const WCHAR* wchFileName)
 			{
 				pD3DDevice->CreateShaderResourceView(pTexResource, &SRVDesc, srv);
 
-				pTexHandle = allocTextureHandle();
-				pTexHandle->pTexResource = pTexResource;
-				pTexHandle->bFromFile = TRUE;
-				pTexHandle->SRV = srv;
+				pOutTexHandle = allocTextureHandle();
+				pOutTexHandle->pTexResource = pTexResource;
+				pOutTexHandle->bFromFile = TRUE;
+				pOutTexHandle->SRV = srv;
 
-				pTexHandle->pSearchHandle = m_pHashTable->Insert((void*)pTexHandle, wchFileName, keySize);
-				ASSERT(pTexHandle->pSearchHandle, "HashTable insertion failed.\n");
+				auto bResult = m_HashTable.insert({ wchFileName,  pOutTexHandle }).second;
+				ASSERT(bResult, "HashTable insertion failed.\n");
 			}
 			else
 			{
@@ -63,7 +59,8 @@ TextureHandle* TextureManager::CreateTextureFromFile(const WCHAR* wchFileName)
 			}
 		}
 	}
-	return pTexHandle;
+
+	return pOutTexHandle;
 }
 
 TextureHandle* TextureManager::CreateDynamicTexture(UINT texWidth, UINT texHeight)
@@ -150,20 +147,14 @@ void TextureManager::DeleteTexture(TextureHandle* pTexHandle)
 
 void TextureManager::Cleanup()
 {
-	ASSERT(!m_pTexLinkHead, "Texture resource leak detected.\n");
-	if (m_pHashTable)
-	{
-		delete m_pHashTable;
-		m_pHashTable = nullptr;
-	}
+	ASSERT(m_HashTable.size() > 0, "Texture resource leak detected.\n");
+	m_HashTable.clear();
 }
 
 TextureHandle* TextureManager::allocTextureHandle()
 {
 	TextureHandle* pTexHandle = new TextureHandle;
 	memset(pTexHandle, 0, sizeof(TextureHandle));
-	pTexHandle->Link.pItem = pTexHandle;
-	LinkToLinkedListFIFO(&m_pTexLinkHead, &m_pTexLinkTail, &pTexHandle->Link);
 	pTexHandle->RefCount = 1;
 	return pTexHandle;
 }
@@ -193,13 +184,6 @@ UINT TextureManager::freeTextureHandle(TextureHandle* pTexHandle)
 			pSingleDescriptorAllocator->FreeDescriptorHandle(pTexHandle->SRV);
 			pTexHandle->SRV = {};
 		}
-
-		if (pTexHandle->pSearchHandle)
-		{
-			m_pHashTable->Delete(pTexHandle->pSearchHandle);
-			pTexHandle->pSearchHandle = nullptr;
-		}
-		UnLinkFromLinkedList(&m_pTexLinkHead, &m_pTexLinkTail, &pTexHandle->Link);
 
 		delete pTexHandle;
 	}

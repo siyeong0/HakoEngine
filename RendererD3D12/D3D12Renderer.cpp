@@ -256,7 +256,7 @@ lb_exit:
 	ASSERT(bInited, "D3D12ResourceManager initialization failed.");
 
 	m_pTextureManager = new TextureManager;
-	bInited = m_pTextureManager->Initialize(this, 1024 / 16, 1024);
+	bInited = m_pTextureManager->Initialize(this, 1024); // TODO: Use "numExpectedItems" parameter.
 	ASSERT(bInited, "TextureManager initialization failed.");
 
 	m_pShaderManager = new ShaderManager;

@@ -1,6 +1,5 @@
 ﻿#pragma once
 
-class CHashTable;
 class D3D12Renderer;
 class D3D12ResourceManager;
 
@@ -10,7 +9,7 @@ public:
 	TextureManager() = default;
 	~TextureManager() { Cleanup(); }
 
-	bool Initialize(D3D12Renderer* pRenderer, UINT maxNumBuckets, UINT maxNumFiles);
+	bool Initialize(D3D12Renderer* pRenderer, int numExpectedItems);
 	TextureHandle* CreateTextureFromFile(const WCHAR* wchFileName);
 	TextureHandle* CreateDynamicTexture(UINT texWidth, UINT texHeight);
 	TextureHandle* CreateImmutableTexture(UINT texWidth, UINT texHeight, DXGI_FORMAT format, const uint8_t* pInitImage);
@@ -24,8 +23,5 @@ private:
 private:
 	D3D12Renderer* m_pRenderer = nullptr;
 	D3D12ResourceManager* m_pResourceManager = nullptr;
-	CHashTable* m_pHashTable = nullptr;
-
-	SORT_LINK* m_pTexLinkHead = nullptr;
-	SORT_LINK* m_pTexLinkTail = nullptr;
+	std::unordered_map<std::wstring, TextureHandle*> m_HashTable;
 };

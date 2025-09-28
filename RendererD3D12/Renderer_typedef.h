@@ -51,8 +51,6 @@ struct TextureHandle
 	bool bUpdated;
 	bool bFromFile;
 	int RefCount;
-	void* pSearchHandle;
-	SORT_LINK Link;
 };
 
 struct FontHandle

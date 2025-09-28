@@ -42,12 +42,14 @@
 #include <malloc.h>
 #include <memory.h>
 #include <tchar.h>
+#include <string>
+#include <vector>
+#include <unordered_map>
 
 #include "Renderer_typedef.h"
 #include "Interface/IRenderer.h"
 #include "Common/Common.h"
 #include "Util/LinkedList.h"
-#include "Util/HashTable.h"
 #include "Util/IndexCreator.h"
 
 #include "D3DUtil.h"
