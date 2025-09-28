@@ -22,12 +22,6 @@ bool SingleDescriptorAllocator::Initialize(ID3D12Device* pDevice, UINT maxCount,
 	m_IndexCreator.Initialize(maxCount);
 
 	m_DescriptorSize = m_pD3DDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
-	//CD3DX12_CPU_DESCRIPTOR_HANDLE commonHeapHandle(m_pHeap->GetCPUDescriptorHandleForHeapStart());
-
-	//for (DWORD i=0; i<maxCount; i++)
-	//{
-	//	commonHeapHandle.Offset(1, m_DescriptorSize);	
-	//}
 
 	return true;
 }
@@ -72,7 +66,6 @@ void SingleDescriptorAllocator::Cleanup()
 		m_pD3DDevice = nullptr;
 	}
 }
-
 
 void SingleDescriptorAllocator::FreeDescriptorHandle(D3D12_CPU_DESCRIPTOR_HANDLE descriptorHandle)
 {
