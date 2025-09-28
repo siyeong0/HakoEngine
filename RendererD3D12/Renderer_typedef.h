@@ -1,7 +1,6 @@
 ﻿#pragma once
 
 #include <DirectXMath.h>
-#include "Util/LinkedList.h"
 
 using namespace DirectX;
 

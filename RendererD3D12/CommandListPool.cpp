@@ -5,15 +5,16 @@ bool CommandListPool::Initialize(ID3D12Device* pDevice, D3D12_COMMAND_LIST_TYPE 
 {
 	ASSERT(maxNumCmdLists > 1, "At least two command lists must exist.");
 
-	m_MaxNumCmdList = maxNumCmdLists;
 	m_pD3DDevice = pDevice;
+	m_MaxNumCmdList = maxNumCmdLists;
+	m_CommnadListType = type;
+	m_NumTotalCmdLists = 0;
 
 	return true;
 }
 
 ID3D12GraphicsCommandList6* CommandListPool::GetCurrentCommandList()
 {
-	ID3D12GraphicsCommandList6* pCommandList = nullptr;
 	if (!m_pCurrCmdList)
 	{
 		m_pCurrCmdList = allocCmdList();
@@ -33,6 +34,7 @@ void CommandListPool::Close()
 	m_pCurrCmdList->bClosed = true;
 	m_pCurrCmdList = nullptr;
 }
+
 void CommandListPool::CloseAndExecute(ID3D12CommandQueue* pCommandQueue)
 {
 	ASSERT(m_pCurrCmdList, "No current command list.");
@@ -42,28 +44,29 @@ void CommandListPool::CloseAndExecute(ID3D12CommandQueue* pCommandQueue)
 	ASSERT(SUCCEEDED(hr), "Failed to close the current command list.");
 
 	m_pCurrCmdList->bClosed = true;
-	pCommandQueue->ExecuteCommandLists(1, (ID3D12CommandList**)&m_pCurrCmdList->pDirectCommandList);
+
+	ID3D12CommandList* ppCmdListArray[] = { m_pCurrCmdList->pDirectCommandList };
+	pCommandQueue->ExecuteCommandLists(1, ppCmdListArray);
+
 	m_pCurrCmdList = nullptr;
 }
 
 void CommandListPool::Reset()
 {
 	HRESULT hr = S_OK;
-	while (m_pAlloatedCmdLinkHead)
+	while (!m_AllocatedCmdListArray.empty())
 	{
-		CommandList* pCmdList = (CommandList*)m_pAlloatedCmdLinkHead->pItem;
+		CommandList* pCmdList = m_AllocatedCmdListArray.front();
+		m_AllocatedCmdListArray.pop_front();
 
 		hr = pCmdList->pDirectCommandAllocator->Reset();
 		ASSERT(SUCCEEDED(hr), "Failed to reset Command Allocator.");
 		hr = pCmdList->pDirectCommandList->Reset(pCmdList->pDirectCommandAllocator, nullptr);
-		ASSERT(SUCCEEDED(hr), "Failed to reset Command Allocator.");
+		ASSERT(SUCCEEDED(hr), "Failed to reset Command List.");
+
 		pCmdList->bClosed = false;
 
-		UnLinkFromLinkedList(&m_pAlloatedCmdLinkHead, &m_pAlloatedCmdLinkTail, &pCmdList->Link);
-		m_NumAllocatedCmdList--;
-
-		LinkToLinkedListFIFO(&m_pAvailableCmdLinkHead, &m_pAvailableCmdLinkTail, &pCmdList->Link);
-		m_NumAvailableCmdList++;
+		m_AvailableCmdListArray.emplace_back(pCmdList);
 	}
 }
 
@@ -71,76 +74,75 @@ void CommandListPool::Cleanup()
 {
 	Reset();
 
-	while (m_pAvailableCmdLinkHead)
+	while (!m_AvailableCmdListArray.empty())
 	{
-		CommandList* pCmdList = (CommandList*)m_pAvailableCmdLinkHead->pItem;
+		CommandList* pCmdList = m_AvailableCmdListArray.front();
+		m_AvailableCmdListArray.pop_front();
+
+		ASSERT(pCmdList, "Available command list is null.");
+
+		ASSERT(pCmdList->pDirectCommandList, "Available direct command list is null.");
 		pCmdList->pDirectCommandList->Release();
 		pCmdList->pDirectCommandList = nullptr;
 
+		ASSERT(pCmdList->pDirectCommandAllocator, "Available command allocator is null.");
 		pCmdList->pDirectCommandAllocator->Release();
 		pCmdList->pDirectCommandAllocator = nullptr;
-		m_NumTotalCmdList--;
 
-		UnLinkFromLinkedList(&m_pAvailableCmdLinkHead, &m_pAvailableCmdLinkTail, &pCmdList->Link);
-		m_NumAvailableCmdList--;
-
+		--m_NumTotalCmdLists;
 		delete pCmdList;
 	}
 }
 
 bool CommandListPool::addCmdList()
 {
-	CommandList* pCmdList = nullptr;
+	HRESULT hr = S_OK;
+
 	ID3D12CommandAllocator* pDirectCommandAllocator = nullptr;
 	ID3D12GraphicsCommandList6* pDirectCommandList = nullptr;
 
-	if (m_NumTotalCmdList >= m_MaxNumCmdList)
+	if (m_NumTotalCmdLists >= m_MaxNumCmdList)
 	{
 		ASSERT(false, "The maximum number of command lists has been reached.");
 		return false;
 	}
 
-	if (FAILED(m_pD3DDevice->CreateCommandAllocator(m_CommnadListType, IID_PPV_ARGS(&pDirectCommandAllocator))))
+	hr = m_pD3DDevice->CreateCommandAllocator(m_CommnadListType, IID_PPV_ARGS(&pDirectCommandAllocator));
+	if (FAILED(hr))
 	{
 		ASSERT(false, "Failed to create Command Allocator.");
 		return false;
 	}
 
-	if (FAILED(m_pD3DDevice->CreateCommandList(0, m_CommnadListType, pDirectCommandAllocator, nullptr, IID_PPV_ARGS(&pDirectCommandList))))
+	hr = m_pD3DDevice->CreateCommandList(0, m_CommnadListType, pDirectCommandAllocator, nullptr, IID_PPV_ARGS(&pDirectCommandList));
+	if (FAILED(hr))
 	{
 		ASSERT(false, "Failed to create Command List.");
 		pDirectCommandAllocator->Release();
 		pDirectCommandAllocator = nullptr;
 		return false;
-
 	}
-	pCmdList = new CommandList;
-	memset(pCmdList, 0, sizeof(CommandList));
-	pCmdList->Link.pItem = pCmdList;
-	pCmdList->pDirectCommandList = pDirectCommandList;
-	pCmdList->pDirectCommandAllocator = pDirectCommandAllocator;
-	m_NumTotalCmdList++;
 
-	LinkToLinkedListFIFO(&m_pAvailableCmdLinkHead, &m_pAvailableCmdLinkTail, &pCmdList->Link);
-	m_NumAvailableCmdList++;
-	return true;
+	CommandList* pCmdList = new CommandList{};
+	pCmdList->pDirectCommandAllocator = pDirectCommandAllocator;
+	pCmdList->pDirectCommandList = pDirectCommandList;
+	pCmdList->bClosed = false;
+
+    m_AvailableCmdListArray.emplace_back(pCmdList);
+    ++m_NumTotalCmdLists;
+    return true;
 }
 
 CommandList* CommandListPool::allocCmdList()
 {
-	if (!m_pAvailableCmdLinkHead && !addCmdList())
+	if (m_AvailableCmdListArray.empty() && !addCmdList())
 	{
 		return nullptr;
-		// ASSERT(m_pAvailableCmdLinkHead != nullptr, "No available command list.");
 	}
 
-	CommandList* pCmdList = (CommandList*)m_pAvailableCmdLinkHead->pItem;
+	CommandList* pCmdList = m_AvailableCmdListArray.front();
+	m_AvailableCmdListArray.pop_front();
 
-	UnLinkFromLinkedList(&m_pAvailableCmdLinkHead, &m_pAvailableCmdLinkTail, &pCmdList->Link);
-	m_NumAvailableCmdList--;
-
-	LinkToLinkedListFIFO(&m_pAlloatedCmdLinkHead, &m_pAlloatedCmdLinkTail, &pCmdList->Link);
-	m_NumAllocatedCmdList++;
-
+	m_AllocatedCmdListArray.push_back(pCmdList);
 	return pCmdList;
 }

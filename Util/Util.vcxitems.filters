@@ -4,9 +4,6 @@
     <ClCompile Include="$(MSBuildThisFileDirectory)IndexCreator.cpp">
       <Filter>IndexCreator</Filter>
     </ClCompile>
-    <ClCompile Include="$(MSBuildThisFileDirectory)LinkedList.cpp">
-      <Filter>LinkedList</Filter>
-    </ClCompile>
     <ClCompile Include="$(MSBuildThisFileDirectory)ProcessorInfo.cpp">
       <Filter>ProcessorInfo</Filter>
     </ClCompile>
@@ -24,9 +21,6 @@
     <ClInclude Include="$(MSBuildThisFileDirectory)IndexCreator.h">
       <Filter>IndexCreator</Filter>
     </ClInclude>
-    <ClInclude Include="$(MSBuildThisFileDirectory)LinkedList.h">
-      <Filter>LinkedList</Filter>
-    </ClInclude>
     <ClInclude Include="$(MSBuildThisFileDirectory)ProcessorInfo.h">
       <Filter>ProcessorInfo</Filter>
     </ClInclude>
@@ -43,9 +37,6 @@
   <ItemGroup>
     <Filter Include="IndexCreator">
       <UniqueIdentifier>{4fb718bb-ad13-4f39-8bf0-b497d4d11914}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="LinkedList">
-      <UniqueIdentifier>{e13eb42f-4842-49f7-abda-4c89dce570e9}</UniqueIdentifier>
     </Filter>
     <Filter Include="ProcessorInfo">
       <UniqueIdentifier>{3213d4e8-5d82-4daf-8776-ab8ba99db0d7}</UniqueIdentifier>

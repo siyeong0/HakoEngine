@@ -7,7 +7,6 @@
 
 #include "Common/Common.h"
 #include "Interface/IRenderer.h"
-#include "Util/LinkedList.h"
 #include "Util/QueryPerfCounter.h"
 #include "Util/VertexUtil.h"
 #include "Game.h"
