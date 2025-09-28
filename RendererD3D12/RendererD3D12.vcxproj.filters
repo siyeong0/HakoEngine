@@ -66,6 +66,12 @@
     <Filter Include="Util\D3DUtil">
       <UniqueIdentifier>{9049459b-95df-4055-b972-07e2a166034c}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Util\ShaderUtil">
+      <UniqueIdentifier>{181abfd9-fcda-44be-9f8f-17ea3ccc1f16}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Manager\ShaderManager">
+      <UniqueIdentifier>{dd50c0bc-cc2d-4132-b090-8518f766e816}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h">
@@ -119,6 +125,15 @@
     <ClInclude Include="D3DUtil.h">
       <Filter>Util\D3DUtil</Filter>
     </ClInclude>
+    <ClInclude Include="ShaderUtil.h">
+      <Filter>Util\ShaderUtil</Filter>
+    </ClInclude>
+    <ClInclude Include="ShaderManager.h">
+      <Filter>Manager\ShaderManager</Filter>
+    </ClInclude>
+    <ClInclude Include="ShaderHandle.h">
+      <Filter>Manager\ShaderManager</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="dllmain.cpp">
@@ -171,6 +186,12 @@
     </ClCompile>
     <ClCompile Include="D3DUtil.cpp">
       <Filter>Util\D3DUtil</Filter>
+    </ClCompile>
+    <ClCompile Include="ShaderUtil.cpp">
+      <Filter>Util\ShaderUtil</Filter>
+    </ClCompile>
+    <ClCompile Include="ShaderManager.cpp">
+      <Filter>Manager\ShaderManager</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

@@ -12,6 +12,7 @@ class SingleDescriptorAllocator;
 class ConstantBufferManager;
 class FontManager;
 class TextureManager;
+class ShaderManager;
 class RenderQueue;
 class CommandListPool;
 struct RenderThreadDesc;
@@ -65,6 +66,7 @@ public:
 	void EnsureCompleted();
 	ID3D12Device5* GetD3DDevice() const { return m_pD3DDevice; }
 	D3D12ResourceManager* GetResourceManager() { return m_pResourceManager; }
+	ShaderManager* GetShaderManager() { return m_pShaderManager; }
 
 	DescriptorPool* GetDescriptorPool(int dwThreadIndex) const { return m_ppDescriptorPool[m_CurrContextIndex][dwThreadIndex]; }
 	SimpleConstantBufferPool* GetConstantBufferPool(EConstantBufferType type, int dwThreadIndex) const;
@@ -115,8 +117,7 @@ private:
 	HWND m_hWnd = nullptr;
 	ID3D12Device5* m_pD3DDevice = nullptr;
 	ID3D12CommandQueue* m_pCommandQueue = nullptr;
-	D3D12ResourceManager* m_pResourceManager = nullptr;
-	FontManager* m_pFontManager = nullptr;
+	
 	SingleDescriptorAllocator* m_pSingleDescriptorAllocator = nullptr;
 
 	CommandListPool* m_ppCommandListPool[MAX_PENDING_FRAME_COUNT][MAX_RENDER_THREAD_COUNT] = {};
@@ -131,6 +132,9 @@ private:
 	RenderThreadDesc* m_pThreadDescList = nullptr;
 
 	TextureManager* m_pTextureManager = nullptr;
+	D3D12ResourceManager* m_pResourceManager = nullptr;
+	FontManager* m_pFontManager = nullptr;
+	ShaderManager* m_pShaderManager = nullptr;
 
 	uint64_t m_pui64LastFenceValue[MAX_PENDING_FRAME_COUNT] = {};
 	uint64_t m_ui64FenceVaule = 0;

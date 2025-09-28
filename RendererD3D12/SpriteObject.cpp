@@ -1,14 +1,8 @@
 ﻿#include "pch.h"
-#include <d3dcompiler.h>
-#include <directx/d3dx12.h>
-#include <DirectXMath.h>
-#include "Common/Common.h"
-#include "Interface/IRenderer.h"
-#include "Renderer_typedef.h"
-#include "D3DUtil.h"
 #include "D3D12ResourceManager.h"
 #include "SimpleConstantBufferPool.h"
 #include "SingleDescriptorAllocator.h"
+#include "ShaderManager.h"
 #include "DescriptorPool.h"
 #include "D3D12Renderer.h"
 #include "SpriteObject.h"
@@ -303,39 +297,13 @@ bool SpriteObject::initPipelineState()
 	HRESULT hr = S_OK;
 
 	ID3D12Device5* pD3DDeivce = m_pRenderer->GetD3DDevice();
-	ID3DBlob* pVertexShader = nullptr;
-	ID3DBlob* pPixelShader = nullptr;
+	ShaderManager* pShaderManager = m_pRenderer->GetShaderManager();
 
+	ShaderHandle* pVertexShader = pShaderManager->CreateShaderDXC(L"shSprite.hlsl", L"VSMain", L"vs_6_0", 0);
+	ASSERT(pVertexShader, "Shader compilation failed.");
 
-#if defined(_DEBUG)
-	// Enable better shader debugging with the graphics debugging tools.
-	UINT compileFlags = D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION;
-#else
-	UINT compileFlags = 0;
-#endif
-	m_pRenderer->SetCurrentPathForShader();
-
-	ID3DBlob* pErrorBlob = nullptr;
-	if (FAILED(D3DCompileFromFile(L"shSprite.hlsl", nullptr, nullptr, "VSMain", "vs_5_0", compileFlags, 0, &pVertexShader, &pErrorBlob)))
-	{
-		if (pErrorBlob != nullptr)
-		{
-			OutputDebugStringA((char*)pErrorBlob->GetBufferPointer());
-			pErrorBlob->Release();
-		}
-		ASSERT(false, "Failed to compile shader");
-	}
-	if (FAILED(D3DCompileFromFile(L"shSprite.hlsl", nullptr, nullptr, "PSMain", "ps_5_0", compileFlags, 0, &pPixelShader, &pErrorBlob)))
-	{
-		if (pErrorBlob != nullptr)
-		{
-			OutputDebugStringA((char*)pErrorBlob->GetBufferPointer());
-			pErrorBlob->Release();
-		}
-		ASSERT(false, "Failed to compile shader");
-	}
-	m_pRenderer->RestoreCurrentPath();
-
+	ShaderHandle* pPixelShader = pShaderManager->CreateShaderDXC(L"shSprite.hlsl", L"PSMain", L"ps_6_0", 0);
+	ASSERT(pPixelShader, "Shader compilation failed.");
 
 	// Define the vertex input layout.
 	D3D12_INPUT_ELEMENT_DESC inputElementDescs[] =
@@ -345,13 +313,12 @@ bool SpriteObject::initPipelineState()
 		{ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT,	0, 28,	D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
 	};
 
-
 	// Describe and create the graphics pipeline state object (PSO).
 	D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc = {};
 	psoDesc.InputLayout = { inputElementDescs, _countof(inputElementDescs) };
 	psoDesc.pRootSignature = m_pRootSignature;
-	psoDesc.VS = CD3DX12_SHADER_BYTECODE(pVertexShader->GetBufferPointer(), pVertexShader->GetBufferSize());
-	psoDesc.PS = CD3DX12_SHADER_BYTECODE(pPixelShader->GetBufferPointer(), pPixelShader->GetBufferSize());
+	psoDesc.VS = CD3DX12_SHADER_BYTECODE(pVertexShader->CodeBuffer, pVertexShader->CodeSize);
+	psoDesc.PS = CD3DX12_SHADER_BYTECODE(pPixelShader->CodeBuffer, pPixelShader->CodeSize);
 	psoDesc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
 	psoDesc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
 	psoDesc.DepthStencilState = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
@@ -370,12 +337,12 @@ bool SpriteObject::initPipelineState()
 
 	if (pVertexShader)
 	{
-		pVertexShader->Release();
+		pShaderManager->ReleaseShader(pVertexShader);
 		pVertexShader = nullptr;
 	}
 	if (pPixelShader)
 	{
-		pPixelShader->Release();
+		pShaderManager->ReleaseShader(pPixelShader);
 		pPixelShader = nullptr;
 	}
 	return true;

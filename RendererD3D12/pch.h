@@ -30,6 +30,7 @@
 #include <d3d11on12.h>
 #include <d2d1_3.h>
 #include <dwrite_3.h>
+#include <dxcapi.h>
 #include <directx/d3dx12.h>
 #include <DirectXMath.h>
 #pragma warning(pop)

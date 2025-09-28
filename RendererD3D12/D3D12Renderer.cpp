@@ -12,6 +12,7 @@
 #include "DescriptorPool.h"
 #include "SimpleConstantBufferPool.h"
 #include "SingleDescriptorAllocator.h"
+#include "ShaderManager.h"
 #include "ConstantBufferManager.h"
 #include "TextureManager.h"
 #include "RenderQueue.h"
@@ -244,14 +245,23 @@ lb_exit:
 	createFence();
 
 	// Create other managers.
+	bool bInited = false;
+
 	m_pFontManager = new FontManager;
-	m_pFontManager->Initialize(this, m_pCommandQueue, 1024, 256, bEnableDebugLayer);
+	bInited = m_pFontManager->Initialize(this, m_pCommandQueue, 1024, 256, bEnableDebugLayer);
+	ASSERT(bInited, "FontManager initialization failed.");
 
 	m_pResourceManager = new D3D12ResourceManager;
-	m_pResourceManager->Initialize(m_pD3DDevice);
+	bInited = m_pResourceManager->Initialize(m_pD3DDevice);
+	ASSERT(bInited, "D3D12ResourceManager initialization failed.");
 
 	m_pTextureManager = new TextureManager;
-	m_pTextureManager->Initialize(this, 1024 / 16, 1024);
+	bInited = m_pTextureManager->Initialize(this, 1024 / 16, 1024);
+	ASSERT(bInited, "TextureManager initialization failed.");
+
+	m_pShaderManager = new ShaderManager;
+	bInited = m_pShaderManager->Initialize(this, wchShaderPath, bEnableDebugLayer); // TODO: Use "bDebugShader" parameter.
+	ASSERT(bInited, "ShaderManager initialization failed.");
 
 	DWORD dwPhysicalCoreCount = 0;
 	DWORD dwLogicalCoreCount = 0;
@@ -1070,6 +1080,12 @@ void D3D12Renderer::cleanup()
 		delete m_pFontManager;
 		m_pFontManager = nullptr;
 	}
+	if (m_pShaderManager)
+	{
+		delete m_pShaderManager;
+		m_pShaderManager = nullptr;
+	}
+
 	if (m_pSingleDescriptorAllocator)
 	{
 		delete m_pSingleDescriptorAllocator;
