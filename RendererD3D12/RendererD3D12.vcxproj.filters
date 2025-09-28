@@ -63,6 +63,9 @@
     <Filter Include="Common">
       <UniqueIdentifier>{390b3d6a-84a9-4123-a3cd-261feb64887e}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Util\D3DUtil">
+      <UniqueIdentifier>{9049459b-95df-4055-b972-07e2a166034c}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h">
@@ -79,9 +82,6 @@
     </ClInclude>
     <ClInclude Include="SpriteObject.h">
       <Filter>RenderObject\SpriteObject</Filter>
-    </ClInclude>
-    <ClInclude Include="D3DUtil.h">
-      <Filter>Util</Filter>
     </ClInclude>
     <ClInclude Include="CommandListPool.h">
       <Filter>Manager\CommandListPool</Filter>
@@ -116,6 +116,9 @@
     <ClInclude Include="Renderer_typedef.h">
       <Filter>Common</Filter>
     </ClInclude>
+    <ClInclude Include="D3DUtil.h">
+      <Filter>Util\D3DUtil</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="dllmain.cpp">
@@ -135,9 +138,6 @@
     </ClCompile>
     <ClCompile Include="SpriteObject.cpp">
       <Filter>RenderObject\SpriteObject</Filter>
-    </ClCompile>
-    <ClCompile Include="D3DUtil.cpp">
-      <Filter>Util</Filter>
     </ClCompile>
     <ClCompile Include="CommandListPool.cpp">
       <Filter>Manager\CommandListPool</Filter>
@@ -168,6 +168,9 @@
     </ClCompile>
     <ClCompile Include="TextureManager.cpp">
       <Filter>Manager\TextureManager</Filter>
+    </ClCompile>
+    <ClCompile Include="D3DUtil.cpp">
+      <Filter>Util\D3DUtil</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

@@ -19,6 +19,9 @@
     <ClCompile Include="$(MSBuildThisFileDirectory)VertexUtil.cpp">
       <Filter>VertexUtil</Filter>
     </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)WriteDebugString.cpp">
+      <Filter>WriteDebugString</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="$(MSBuildThisFileDirectory)HashTable.h">
@@ -39,6 +42,9 @@
     <ClInclude Include="$(MSBuildThisFileDirectory)VertexUtil.h">
       <Filter>VertexUtil</Filter>
     </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)WriteDebugString.h">
+      <Filter>WriteDebugString</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="HashTable">
@@ -58,6 +64,9 @@
     </Filter>
     <Filter Include="VertexUtil">
       <UniqueIdentifier>{15d49264-b3b4-49cd-ad11-628286a51a51}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="WriteDebugString">
+      <UniqueIdentifier>{df576679-94f7-48e9-8220-e8f52eb3ec0d}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
 </Project>

@@ -35,10 +35,10 @@ int RenderQueue::Process(
 {
 	ID3D12Device5* pD3DDevice = m_pRenderer->GetD3DDevice();
 	
-	ID3D12GraphicsCommandList* ppCommandList[64] = {};
+	ID3D12GraphicsCommandList6* ppCommandList[64] = {};
 	UINT numCmdLists = 0;
 
-	ID3D12GraphicsCommandList* pCommandList = nullptr;
+	ID3D12GraphicsCommandList6* pCommandList = nullptr;
 	int processCount = 0;
 	int processCountPerCmdList = 0;
 	const RenderItem* pItem = nullptr;

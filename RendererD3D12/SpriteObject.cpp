@@ -92,13 +92,13 @@ bool SpriteObject::Initialize(D3D12Renderer* pRenderer, const WCHAR* wchTexFileN
 	return bResult;
 }
 
-void SpriteObject::Draw(int threadIndex, ID3D12GraphicsCommandList* pCommandList, const XMFLOAT2* pPos, const XMFLOAT2* pScale, float Z)
+void SpriteObject::Draw(int threadIndex, ID3D12GraphicsCommandList6* pCommandList, const XMFLOAT2* pPos, const XMFLOAT2* pScale, float Z)
 {
 	XMFLOAT2 Scale = { m_Scale.x * pScale->x, m_Scale.y * pScale->y };
 	DrawWithTex(threadIndex, pCommandList, pPos, &Scale, &m_Rect, Z, m_pTexHandle);
 }
 
-void SpriteObject::DrawWithTex(int threadIndex, ID3D12GraphicsCommandList* pCommandList, const XMFLOAT2* pPos, const XMFLOAT2* pScale, const RECT* pRect, float Z, TextureHandle* pTexHandle)
+void SpriteObject::DrawWithTex(int threadIndex, ID3D12GraphicsCommandList6* pCommandList, const XMFLOAT2* pPos, const XMFLOAT2* pScale, const RECT* pRect, float Z, TextureHandle* pTexHandle)
 {
 	// 각각의 draw()작업의 무결성을 보장하려면 draw() 작업마다 다른 영역의 descriptor table(shader visible)과 다른 영역의 CBV를 사용해야 한다.
 	// 따라서 draw()할 때마다 CBV는 ConstantBuffer Pool로부터 할당받고, 렌더리용 descriptor table(shader visible)은 descriptor pool로부터 할당 받는다.

@@ -11,9 +11,9 @@ bool CommandListPool::Initialize(ID3D12Device* pDevice, D3D12_COMMAND_LIST_TYPE 
 	return true;
 }
 
-ID3D12GraphicsCommandList* CommandListPool::GetCurrentCommandList()
+ID3D12GraphicsCommandList6* CommandListPool::GetCurrentCommandList()
 {
-	ID3D12GraphicsCommandList* pCommandList = nullptr;
+	ID3D12GraphicsCommandList6* pCommandList = nullptr;
 	if (!m_pCurrCmdList)
 	{
 		m_pCurrCmdList = allocCmdList();
@@ -92,7 +92,7 @@ bool CommandListPool::addCmdList()
 {
 	CommandList* pCmdList = nullptr;
 	ID3D12CommandAllocator* pDirectCommandAllocator = nullptr;
-	ID3D12GraphicsCommandList* pDirectCommandList = nullptr;
+	ID3D12GraphicsCommandList6* pDirectCommandList = nullptr;
 
 	if (m_NumTotalCmdList >= m_MaxNumCmdList)
 	{

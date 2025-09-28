@@ -50,6 +50,12 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)WriteDebugString.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="$(MSBuildThisFileDirectory)HashTable.h" />
@@ -58,5 +64,6 @@
     <ClInclude Include="$(MSBuildThisFileDirectory)ProcessorInfo.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)QueryPerfCounter.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)VertexUtil.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)WriteDebugString.h" />
   </ItemGroup>
 </Project>

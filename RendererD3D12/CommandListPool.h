@@ -3,7 +3,7 @@
 struct CommandList
 {
 	ID3D12CommandAllocator* pDirectCommandAllocator;
-	ID3D12GraphicsCommandList* pDirectCommandList;
+	ID3D12GraphicsCommandList6* pDirectCommandList;
 	SORT_LINK Link;
 	bool bClosed;
 };
@@ -15,7 +15,7 @@ public:
 	~CommandListPool() { Cleanup(); };
 
 	bool Initialize(ID3D12Device* pDevice, D3D12_COMMAND_LIST_TYPE type, int maxNumCmdLists);
-	ID3D12GraphicsCommandList* GetCurrentCommandList();
+	ID3D12GraphicsCommandList6* GetCurrentCommandList();
 	void Close();
 	void CloseAndExecute(ID3D12CommandQueue* pCommandQueue);
 	void Reset();

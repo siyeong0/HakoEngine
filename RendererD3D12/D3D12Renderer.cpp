@@ -300,7 +300,7 @@ void ENGINECALL D3D12Renderer::BeginRender()
 
 	// Select and allocate command list
 	CommandListPool* pCommandListPool = m_ppCommandListPool[m_CurrContextIndex][0];
-	ID3D12GraphicsCommandList* pCommandList = pCommandListPool->GetCurrentCommandList();
+	ID3D12GraphicsCommandList6* pCommandList = pCommandListPool->GetCurrentCommandList();
 
 	// Change ResourceState Present to RenderTarget
 	pCommandList->ResourceBarrier(1,
@@ -347,7 +347,7 @@ void ENGINECALL D3D12Renderer::EndRender()
 #endif	
 
 	// Present
-	ID3D12GraphicsCommandList* pCommandList = pCommandListPool->GetCurrentCommandList();
+	ID3D12GraphicsCommandList6* pCommandList = pCommandListPool->GetCurrentCommandList();
 	pCommandList = pCommandListPool->GetCurrentCommandList();
 	pCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_pRenderTargets[m_uiRenderTargetIndex], D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT));
 

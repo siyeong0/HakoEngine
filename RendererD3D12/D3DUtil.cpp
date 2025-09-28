@@ -1,5 +1,5 @@
 ﻿#include "pch.h"
-
+#include "WriteDebugString.h"
 #include "D3DUtil.h" 
 
 void GetHardwareAdapter(IDXGIFactory2* pFactory, IDXGIAdapter1** ppAdapter)
@@ -111,12 +111,77 @@ void SetDefaultSamplerDesc(D3D12_STATIC_SAMPLER_DESC* pOutSamperDesc, UINT regis
 	pOutSamperDesc->ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
 }
 
-HRESULT CreateVertexBuffer(ID3D12Device* pDevice, UINT sizePerVertex, UINT numVertices, D3D12_VERTEX_BUFFER_VIEW* pOutVertexBufferView, ID3D12Resource **ppOutBuffer)
+void SetSamplerDesc_Wrap(D3D12_STATIC_SAMPLER_DESC* pOutSamperDesc, UINT RegisterIndex)
+{
+	SetDefaultSamplerDesc(pOutSamperDesc, RegisterIndex);
+}
+
+void SetSamplerDesc_Clamp(D3D12_STATIC_SAMPLER_DESC* pOutSamperDesc, UINT RegisterIndex)
+{
+	SetDefaultSamplerDesc(pOutSamperDesc, RegisterIndex);
+
+	pOutSamperDesc->AddressU = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+	pOutSamperDesc->AddressV = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+	pOutSamperDesc->AddressW = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+}
+
+void SetSamplerDesc_Border(D3D12_STATIC_SAMPLER_DESC* pOutSamperDesc, UINT RegisterIndex)
+{
+	SetDefaultSamplerDesc(pOutSamperDesc, RegisterIndex);
+
+	pOutSamperDesc->AddressU = D3D12_TEXTURE_ADDRESS_MODE_BORDER;
+	pOutSamperDesc->AddressV = D3D12_TEXTURE_ADDRESS_MODE_BORDER;
+	pOutSamperDesc->AddressW = D3D12_TEXTURE_ADDRESS_MODE_BORDER;
+}
+
+void SetSamplerDesc_Mirror(D3D12_STATIC_SAMPLER_DESC* pOutSamperDesc, UINT RegisterIndex)
+{
+	SetDefaultSamplerDesc(pOutSamperDesc, RegisterIndex);
+
+	pOutSamperDesc->AddressU = D3D12_TEXTURE_ADDRESS_MODE_MIRROR;
+	pOutSamperDesc->AddressV = D3D12_TEXTURE_ADDRESS_MODE_MIRROR;
+	pOutSamperDesc->AddressW = D3D12_TEXTURE_ADDRESS_MODE_MIRROR;
+}
+
+void SerializeAndCreateRaytracingRootSignature(ID3D12Device* pDevice, D3D12_ROOT_SIGNATURE_DESC* pDesc, ID3D12RootSignature** ppOutRootSig)
+{
+	ID3DBlob* pBlob = nullptr;
+	ID3DBlob* pError = nullptr;
+
+	HRESULT hr = D3D12SerializeRootSignature(pDesc, D3D_ROOT_SIGNATURE_VERSION_1, &pBlob, &pError);
+	if (FAILED(hr))
+	{
+		if (pError)
+		{
+			const char* szMsg = (const char*)pError->GetBufferPointer();
+			WriteDebugStringA(DEBUG_OUTPUT_TYPE_DEBUG_CONSOLE, "%s\n", szMsg);
+		}
+		__debugbreak();
+	}
+
+	//, error ? static_cast<wchar_t*>(error->GetBufferPointer()) : nullptr);
+	hr = pDevice->CreateRootSignature(1, pBlob->GetBufferPointer(), pBlob->GetBufferSize(), IID_PPV_ARGS(ppOutRootSig));
+	if (FAILED(hr))
+		__debugbreak();
+
+	if (pBlob)
+	{
+		pBlob->Release();
+		pBlob = nullptr;
+	}
+	if (pError)
+	{
+		pError->Release();
+		pError = nullptr;
+	}
+}
+
+HRESULT CreateVertexBuffer(ID3D12Device* pDevice, UINT sizePerVertex, UINT numVertices, D3D12_VERTEX_BUFFER_VIEW* pOutVertexBufferView, ID3D12Resource** ppOutBuffer)
 {
 	HRESULT hr = S_OK;
 
 	D3D12_VERTEX_BUFFER_VIEW	VertexBufferView = {};
-	ID3D12Resource*	pVertexBuffer = nullptr;
+	ID3D12Resource* pVertexBuffer = nullptr;
 	UINT vertexBufferSize = sizePerVertex * numVertices;
 
 	// create vertexbuffer for rendering
@@ -145,7 +210,63 @@ lb_return:
 	return hr;
 }
 
-void UpdateTexture(ID3D12Device* pD3DDevice, ID3D12GraphicsCommandList* pCommandList, ID3D12Resource* pDestTexResource, ID3D12Resource* pSrcTexResource)
+HRESULT CreateUAVBuffer(ID3D12Device* pDevice, UINT64 bufferSize, ID3D12Resource** ppResource, D3D12_RESOURCE_STATES initialResourceState, const WCHAR* wchResourceName)
+{
+	auto uploadHeapProperties = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT);
+	auto bufferDesc = CD3DX12_RESOURCE_DESC::Buffer(bufferSize, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS);
+	HRESULT hr = pDevice->CreateCommittedResource(
+		&uploadHeapProperties,
+		D3D12_HEAP_FLAG_NONE,
+		&bufferDesc,
+		initialResourceState,
+		nullptr,
+		IID_PPV_ARGS(ppResource));
+
+	if (FAILED(hr))
+	{
+		goto lb_return;
+	}
+	if (wchResourceName)
+	{
+		(*ppResource)->SetName(wchResourceName);
+	}
+lb_return:
+	return hr;
+}
+
+HRESULT CreateUploadBuffer(ID3D12Device* pDevice, void* pData, UINT64 DataSize, ID3D12Resource** ppResource, const WCHAR* wchResourceName)
+{
+	auto uploadHeapProperties = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD);
+	auto bufferDesc = CD3DX12_RESOURCE_DESC::Buffer(DataSize);
+	HRESULT hr = pDevice->CreateCommittedResource(
+		&uploadHeapProperties,
+		D3D12_HEAP_FLAG_NONE,
+		&bufferDesc,
+		D3D12_RESOURCE_STATE_GENERIC_READ,
+		nullptr,
+		IID_PPV_ARGS(ppResource));
+
+	if (FAILED(hr))
+	{
+		goto lb_return;
+	}
+	if (wchResourceName)
+	{
+		(*ppResource)->SetName(wchResourceName);
+	}
+	if (pData)
+	{
+		void* pMappedData;
+		CD3DX12_RANGE readRange(0, 0);
+		(*ppResource)->Map(0, &readRange, &pMappedData);
+		memcpy(pMappedData, pData, DataSize);
+		(*ppResource)->Unmap(0, nullptr);
+	}
+lb_return:
+	return hr;
+}
+
+void UpdateTexture(ID3D12Device* pD3DDevice, ID3D12GraphicsCommandList6* pCommandList, ID3D12Resource* pDestTexResource, ID3D12Resource* pSrcTexResource)
 {
 	constexpr UINT MAX_SUB_RESOURCE_NUM = 32;
 	D3D12_PLACED_SUBRESOURCE_FOOTPRINT footprint[MAX_SUB_RESOURCE_NUM] = {};

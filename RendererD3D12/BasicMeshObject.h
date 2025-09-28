@@ -43,7 +43,7 @@ public:
 	~BasicMeshObject() { cleanup(); }
 
 	bool Initialize(D3D12Renderer* pRenderer);
-	void Draw(int threadIndex, ID3D12GraphicsCommandList* pCommandList, const XMMATRIX* worlMatrix);
+	void Draw(int threadIndex, ID3D12GraphicsCommandList6* pCommandList, const XMMATRIX* worlMatrix);
 
 private:
 	bool initCommonResources();
