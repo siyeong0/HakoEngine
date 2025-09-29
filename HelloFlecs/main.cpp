@@ -10,7 +10,6 @@
 #include <crtdbg.h>
 #endif
 
-
 extern "C" { __declspec(dllexport) DWORD NvOptimusEnablement = 0x00000001; }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -33,6 +32,7 @@ extern "C" { __declspec(dllexport) extern const char* D3D12SDKPath = ".\\D3D12\\
 
 
 static constexpr UINT MAX_LOADSTRING = 100;
+void openConsoleWindow();
 
 // Global Variables:
 Game* g_pGame = nullptr;
@@ -58,14 +58,9 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance,
 #ifdef _DEBUG
 	_CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
 	// Open console window
-	{
-		AllocConsole();
-		FILE* fp;
-		freopen_s(&fp, "CONOUT$", "w", stdout);
-		freopen_s(&fp, "CONOUT$", "w", stderr);
-		freopen_s(&fp, "CONIN$", "r", stdin);
-		std::cout << "HelloFlecs Console" << std::endl;
-	}
+	openConsoleWindow();
+#else
+	openConsoleWindow();
 #endif
 	// Initialize global strings
 	LoadStringW(hInstance, IDS_APP_TITLE, szTitle, MAX_LOADSTRING);
@@ -340,4 +335,14 @@ INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 		break;
 	}
 	return (INT_PTR)FALSE;
+}
+
+void openConsoleWindow()
+{
+	AllocConsole();
+	FILE* fp;
+	freopen_s(&fp, "CONOUT$", "w", stdout);
+	freopen_s(&fp, "CONOUT$", "w", stderr);
+	freopen_s(&fp, "CONIN$", "r", stdin);
+	std::cout << "HelloFlecs Console" << std::endl;
 }
