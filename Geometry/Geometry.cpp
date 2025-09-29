@@ -269,7 +269,58 @@ MeshData ENGINECALL Geometry::CreateCylinderMesh(float radius, float height, int
 	}
 
 	// Top and bottom caps (similar to cone version, skipped here for brevity)
-	// ...
+	uint16_t topCenterIndex = (uint16_t)outVertices.size();
+	outVertices.emplace_back(Vertex{ FLOAT3{0, +halfH, 0}, FLOAT2{0.5f, 0.0f}, FLOAT3{1,0,0} });
+
+	uint16_t bottomCenterIndex = (uint16_t)outVertices.size();
+	outVertices.emplace_back(Vertex{ FLOAT3{0, -halfH, 0}, FLOAT2{0.5f, 1.0f}, FLOAT3{1,0,0} });
+
+	// Top ring
+	for (int s = 0; s <= segments; ++s)
+	{
+		float u = (float)s / (float)segments;
+		float phi = u * DirectX::XM_2PI;
+		float cp = std::cos(phi);
+		float sp = std::sin(phi);
+
+		FLOAT3 pos = { radius * cp, +halfH, radius * sp };
+		FLOAT2 uv = { 0.5f + 0.5f * cp, 0.5f - 0.5f * sp };
+		outVertices.emplace_back(Vertex{ pos, uv, FLOAT3{1,0,0} });
+
+		uint16_t curr = (uint16_t)(outVertices.size() - 1);
+		uint16_t next = (uint16_t)(topCenterIndex + 2 + ((s + 1) % (segments + 1)));
+
+		if (s < segments)
+		{
+			outIndices.emplace_back(topCenterIndex);
+			outIndices.emplace_back(next);
+			outIndices.emplace_back(curr);
+		}
+	}
+
+	// Bottom ring
+	uint16_t bottomStart = (uint16_t)(topCenterIndex + 2 + (segments + 1));
+	for (int s = 0; s <= segments; ++s)
+	{
+		float u = (float)s / (float)segments;
+		float phi = u * DirectX::XM_2PI;
+		float cp = std::cos(phi);
+		float sp = std::sin(phi);
+
+		FLOAT3 pos = { radius * cp, -halfH, radius * sp };
+		FLOAT2 uv = { 0.5f + 0.5f * cp, 0.5f + 0.5f * sp };
+		outVertices.emplace_back(Vertex{ pos, uv, FLOAT3{1,0,0} });
+
+		uint16_t curr = (uint16_t)(outVertices.size() - 1);
+		uint16_t next = (uint16_t)(bottomStart + ((s + 1) % (segments + 1)));
+
+		if (s < segments)
+		{
+			outIndices.emplace_back(bottomCenterIndex);
+			outIndices.emplace_back(curr);
+			outIndices.emplace_back(next);
+		}
+	}
 
 	return out;
 }
@@ -324,7 +375,20 @@ MeshData ENGINECALL Geometry::CreateConeMesh(float radius, float height, int seg
 	}
 
 	// Bottom cap similar to cylinder
-	// ...
+	uint16_t bottomCenterIndex = (uint16_t)outVertices.size();
+	outVertices.emplace_back(Vertex{ FLOAT3{0, -halfH, 0}, FLOAT2{0.5f, 0.5f}, FLOAT3{1,0,0} });
+
+	uint16_t baseStart = 0;
+	for (int s = 0; s < segments; ++s)
+	{
+		uint16_t i0 = bottomCenterIndex;
+		uint16_t i1 = (uint16_t)(baseStart + s);
+		uint16_t i2 = (uint16_t)(baseStart + (s + 1));
+
+		outIndices.emplace_back(i0);
+		outIndices.emplace_back(i1);
+		outIndices.emplace_back(i2);
+	}
 
 	return out;
 }

@@ -314,6 +314,24 @@ bool SpriteObject::initPipelineState()
 	};
 	static_assert(sizeof(SpriteVertex) == 36, "SpriteVertex was changed. Please update the input layout.");
 
+	// TODO: sroting
+	// Describe and create the blend state.
+	D3D12_BLEND_DESC blendDesc = {};
+	blendDesc.AlphaToCoverageEnable = FALSE;
+	blendDesc.IndependentBlendEnable = FALSE;
+
+	D3D12_RENDER_TARGET_BLEND_DESC rtBlendDesc = {};
+	rtBlendDesc.BlendEnable = TRUE;                        // 블렌딩 켬
+	rtBlendDesc.LogicOpEnable = FALSE;
+	rtBlendDesc.SrcBlend = D3D12_BLEND_SRC_ALPHA;          // 소스 알파
+	rtBlendDesc.DestBlend = D3D12_BLEND_INV_SRC_ALPHA;     // (1 - 알파)
+	rtBlendDesc.BlendOp = D3D12_BLEND_OP_ADD;              // 합산
+	rtBlendDesc.SrcBlendAlpha = D3D12_BLEND_ONE;           // 알파값은 그대로 유지
+	rtBlendDesc.DestBlendAlpha = D3D12_BLEND_ZERO;
+	rtBlendDesc.BlendOpAlpha = D3D12_BLEND_OP_ADD;
+	rtBlendDesc.RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
+	blendDesc.RenderTarget[0] = rtBlendDesc;
+
 	// Describe and create the graphics pipeline state object (PSO).
 	D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc = {};
 	psoDesc.InputLayout = { inputElementDescs, _countof(inputElementDescs) };
@@ -321,7 +339,8 @@ bool SpriteObject::initPipelineState()
 	psoDesc.VS = CD3DX12_SHADER_BYTECODE(pVertexShader->CodeBuffer, pVertexShader->CodeSize);
 	psoDesc.PS = CD3DX12_SHADER_BYTECODE(pPixelShader->CodeBuffer, pPixelShader->CodeSize);
 	psoDesc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
-	psoDesc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
+	// psoDesc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
+	psoDesc.BlendState = blendDesc;
 	psoDesc.DepthStencilState = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
 	psoDesc.DepthStencilState.DepthFunc = D3D12_COMPARISON_FUNC_LESS_EQUAL;
 	psoDesc.DepthStencilState.StencilEnable = FALSE;

@@ -696,7 +696,7 @@ void ENGINECALL D3D12Renderer::DeleteFontObject(void* pFontHandle)
 
 bool ENGINECALL D3D12Renderer::WriteTextToBitmap(uint8_t* dstImage, UINT dstWidth, UINT dstHeight, UINT dstPitch, int* outWidth, int* outHeight, void* pFontObjHandle, const WCHAR* wchString, UINT len)
 {
-	BOOL	bResult = m_pFontManager->WriteTextToBitmap(dstImage, dstWidth, dstHeight, dstPitch, outWidth, outHeight, (FontHandle*)pFontObjHandle, wchString, len);
+	bool bResult = m_pFontManager->WriteTextToBitmap(dstImage, dstWidth, dstHeight, dstPitch, outWidth, outHeight, (FontHandle*)pFontObjHandle, wchString, len);
 	return bResult;
 }
 
