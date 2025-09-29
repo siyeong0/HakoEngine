@@ -342,7 +342,13 @@ bool Game::Initialize(HWND hWnd, bool bEnableDebugLayer, bool bEnableGBV)
 
 					if (text.Sprite)
 					{
-						m_pRenderer->RenderSpriteWithTex(text.Sprite, (int)p.x, (int)p.y, s.x, s.y, nullptr, 0.0f, text.pTextTexHandle);
+						m_pRenderer->RenderSpriteWithTex(
+							text.Sprite, 
+							(int)p.x, (int)p.y,
+							s.x, s.y, 
+							nullptr, 0.0f, 
+							text.pTextTexHandle,
+							ERenderPassType::Transparent); // Default sprite shader is using alpha blending. TODO: separate opaque and transparent sprite shaders
 					}
 				});
 

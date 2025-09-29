@@ -3,6 +3,7 @@
 #include <combaseapi.h>
 #include "Common/Common.h"
 
+#include "ERenderPassType.h"
 #include "IMeshObject.h"
 #include "ISpriteObject.h"
 
@@ -24,16 +25,16 @@ interface IRenderer : public IUnknown
 	virtual void* ENGINECALL CreateTiledTexture(UINT texWidth, UINT texHeight, uint8_t r, uint8_t g, uint8_t b) = 0;
 	virtual void* ENGINECALL CreateDynamicTexture(UINT texWidth, UINT texHeight) = 0;
 	virtual void* ENGINECALL CreateTextureFromFile(const WCHAR* wchFileName) = 0;
+	virtual void ENGINECALL UpdateTextureWithImage(void* pTexHandle, const BYTE* pSrcBits, UINT srcWidth, UINT srcHeight) = 0;
 	virtual void ENGINECALL DeleteTexture(void* pTexHandle) = 0;
 
 	virtual void* ENGINECALL CreateFontObject(const WCHAR* wchFontFamilyName, float fontSize) = 0;
 	virtual void ENGINECALL DeleteFontObject(void* pFontHandle) = 0;
 	virtual bool ENGINECALL WriteTextToBitmap(uint8_t* dstImage, UINT dstWidth, UINT dstHeight, UINT dstPitch, int* outWidth, int* outHeight, void* pFontObjHandle, const WCHAR* wchString, UINT len) = 0;
 
-	virtual void ENGINECALL RenderMeshObject(IMeshObject* pMeshObj, const XMMATRIX* pMatWorld) = 0;
-	virtual void ENGINECALL RenderSpriteWithTex(void* pSprObjHandle, int posX, int posY, float scaleX, float scaleY, const RECT* pRect, float z, void* pTexHandle) = 0;
-	virtual void ENGINECALL RenderSprite(void* pSprObjHandle, int posX, int posY, float scaleX, float scaleY, float z) = 0;
-	virtual void ENGINECALL UpdateTextureWithImage(void* pTexHandle, const BYTE* pSrcBits, UINT srcWidth, UINT srcHeight) = 0;
+	virtual void ENGINECALL RenderMeshObject(IMeshObject* pMeshObj, const XMMATRIX* pMatWorld, ERenderPassType renderPass = ERenderPassType::Opaque) = 0;
+	virtual void ENGINECALL RenderSpriteWithTex(void* pSprObjHandle, int posX, int posY, float scaleX, float scaleY, const RECT* pRect, float z, void* pTexHandle, ERenderPassType renderPass = ERenderPassType::Opaque) = 0;
+	virtual void ENGINECALL RenderSprite(void* pSprObjHandle, int posX, int posY, float scaleX, float scaleY, float z, ERenderPassType renderPass = ERenderPassType::Opaque) = 0;
 
 	virtual void ENGINECALL SetCameraPos(float x, float y, float z) = 0;
 	virtual void ENGINECALL SetCameraRot(float yaw, float pitch, float roll) = 0;

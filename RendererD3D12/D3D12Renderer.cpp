@@ -287,8 +287,11 @@ lb_exit:
 
 	for (int i = 0; i < m_NumRenderThreads; i++)
 	{
-		m_ppRenderQueue[i] = new RenderQueue;
-		m_ppRenderQueue[i]->Initialize(this, 8192);
+		m_ppRenderQueueOpaque[i] = new RenderQueue;
+		m_ppRenderQueueOpaque[i]->Initialize(this, NUM_RENDER_QUEUE_ITEMS_OPAQUE);
+
+		m_ppRenderQueueTrasnparent[i] = new RenderQueue;
+		m_ppRenderQueueTrasnparent[i]->Initialize(this, NUM_RENDER_QUEUE_ITEMS_TRANSPARENT);
 	}
 
 	m_pSkyObject = new SkyObject;
@@ -348,6 +351,16 @@ void ENGINECALL D3D12Renderer::EndRender()
 	CD3DX12_CPU_DESCRIPTOR_HANDLE dsvHandle(m_pDSVHeap->GetCPUDescriptorHandleForHeapStart());
 
 #ifdef USE_MULTI_THREAD
+	// ---- Phase 1: Opaque ----
+	m_RenderPhase.store(ERenderPassType::Opaque, std::memory_order_relaxed);
+	m_lActiveThreadCount = m_NumRenderThreads;
+	for (int i = 0; i < m_NumRenderThreads; i++)
+	{
+		SetEvent(m_pThreadDescList[i].hEventList[RENDER_THREAD_EVENT_TYPE_PROCESS]);
+	}
+	WaitForSingleObject(m_hCompleteEvent, INFINITE);
+	// ---- Phase 2: Transparent ----
+	m_RenderPhase.store(ERenderPassType::Transparent, std::memory_order_relaxed);
 	m_lActiveThreadCount = m_NumRenderThreads;
 	for (int i = 0; i < m_NumRenderThreads; i++)
 	{
@@ -371,7 +384,8 @@ void ENGINECALL D3D12Renderer::EndRender()
 	// Reset all render queues
 	for (int i = 0; i < m_NumRenderThreads; i++)
 	{
-		m_ppRenderQueue[i]->Reset();
+		m_ppRenderQueueOpaque[i]->Reset();
+		m_ppRenderQueueTrasnparent[i]->Reset();
 	}
 }
 
@@ -424,10 +438,15 @@ void ENGINECALL D3D12Renderer::Cleanup()
 	}
 	for (int i = 0; i < m_NumRenderThreads; i++)
 	{
-		if (m_ppRenderQueue[i])
+		if (m_ppRenderQueueOpaque[i])
 		{
-			delete m_ppRenderQueue[i];
-			m_ppRenderQueue[i] = nullptr;
+			delete m_ppRenderQueueOpaque[i];
+			m_ppRenderQueueOpaque[i] = nullptr;
+		}
+		if (m_ppRenderQueueTrasnparent[i])
+		{
+			delete m_ppRenderQueueTrasnparent[i];
+			m_ppRenderQueueTrasnparent[i] = nullptr;
 		}
 	}
 	for (int i = 0; i < MAX_PENDING_FRAME_COUNT; i++)
@@ -531,7 +550,7 @@ void ENGINECALL D3D12Renderer::Cleanup()
 
 bool ENGINECALL D3D12Renderer::UpdateWindowSize(uint32_t backBufferWidth, uint32_t backBufferHeight)
 {
-	if ((backBufferWidth == 0 || backBufferHeight == 0 ) ||				// Zero size can be given when the window is minimized.
+	if ((backBufferWidth == 0 || backBufferHeight == 0) ||				// Zero size can be given when the window is minimized.
 		(m_Width == backBufferWidth && m_Height == backBufferHeight))	// Size is not changed.
 	{
 		return true;
@@ -679,99 +698,6 @@ void* ENGINECALL D3D12Renderer::CreateTextureFromFile(const WCHAR* wchFileName)
 	return pTexHandle;
 }
 
-void ENGINECALL D3D12Renderer::DeleteTexture(void* pTexHandle)
-{
-	// wait for all commands
-	for (UINT i = 0; i < MAX_PENDING_FRAME_COUNT; i++)
-	{
-		waitForFenceValue(m_pui64LastFenceValue[i]);
-	}
-	m_pTextureManager->DeleteTexture((TextureHandle*)pTexHandle);
-}
-
-void* ENGINECALL D3D12Renderer::CreateFontObject(const WCHAR* wchFontFamilyName, float fontSize)
-{
-	FontHandle* pFontHandle = m_pFontManager->CreateFontObject(wchFontFamilyName, fontSize);
-	return pFontHandle;
-}
-
-void ENGINECALL D3D12Renderer::DeleteFontObject(void* pFontHandle)
-{
-	m_pFontManager->DeleteFontObject((FontHandle*)pFontHandle);
-}
-
-bool ENGINECALL D3D12Renderer::WriteTextToBitmap(uint8_t* dstImage, UINT dstWidth, UINT dstHeight, UINT dstPitch, int* outWidth, int* outHeight, void* pFontObjHandle, const WCHAR* wchString, UINT len)
-{
-	bool bResult = m_pFontManager->WriteTextToBitmap(dstImage, dstWidth, dstHeight, dstPitch, outWidth, outHeight, (FontHandle*)pFontObjHandle, wchString, len);
-	return bResult;
-}
-
-void ENGINECALL D3D12Renderer::RenderMeshObject(IMeshObject* pMeshObj, const XMMATRIX* pMatWorld)
-{
-	RenderItem item = {};
-	item.Type = RENDER_ITEM_TYPE_MESH_OBJ;
-	item.pObjHandle = pMeshObj;
-	item.MeshObjParam.matWorld = *pMatWorld;
-
-	bool bAdded = m_ppRenderQueue[m_CurrThreadIndex]->Add(&item);
-	ASSERT(bAdded, "Render Queue is full.");
-
-	m_CurrThreadIndex++;
-	m_CurrThreadIndex = m_CurrThreadIndex % m_NumRenderThreads;
-}
-
-void ENGINECALL D3D12Renderer::RenderSpriteWithTex(void* pSprObjHandle, int posX, int posY, float scaleX, float scaleY, const RECT* pRect, float z, void* pTexHandle)
-{
-	RenderItem item = {};
-	item.Type = RENDER_ITEM_TYPE_SPRITE;
-	item.pObjHandle = pSprObjHandle;
-	item.SpriteParam.PosX = posX;
-	item.SpriteParam.PosY = posY;
-	item.SpriteParam.ScaleX = scaleX;
-	item.SpriteParam.ScaleY = scaleY;
-
-	if (pRect)
-	{
-		item.SpriteParam.bUseRect = true;
-		item.SpriteParam.Rect = *pRect;
-	}
-	else
-	{
-		item.SpriteParam.bUseRect = false;
-		item.SpriteParam.Rect = {};
-	}
-	item.SpriteParam.pTexHandle = pTexHandle;
-	item.SpriteParam.Z = z;
-
-	bool bAdded = m_ppRenderQueue[m_CurrThreadIndex]->Add(&item);
-	ASSERT(bAdded, "Render Queue is full.");
-
-	m_CurrThreadIndex++;
-	m_CurrThreadIndex = m_CurrThreadIndex % m_NumRenderThreads;
-}
-
-// TODO: Support rotation. Get Transform info.
-void ENGINECALL D3D12Renderer::RenderSprite(void* pSprObjHandle, int posX, int posY, float scaleX, float scaleY, float z)
-{
-	RenderItem item = {};
-	item.Type = RENDER_ITEM_TYPE_SPRITE;
-	item.pObjHandle = pSprObjHandle;
-	item.SpriteParam.PosX = posX;
-	item.SpriteParam.PosY = posY;
-	item.SpriteParam.ScaleX = scaleX;
-	item.SpriteParam.ScaleY = scaleY;
-	item.SpriteParam.bUseRect = FALSE;
-	item.SpriteParam.Rect = {};
-	item.SpriteParam.pTexHandle = nullptr;
-	item.SpriteParam.Z = z;
-
-	bool bAdded = m_ppRenderQueue[m_CurrThreadIndex]->Add(&item);
-	ASSERT(bAdded, "Render Queue is full.");
-
-	m_CurrThreadIndex++;
-	m_CurrThreadIndex = m_CurrThreadIndex % m_NumRenderThreads;
-}
-
 void ENGINECALL D3D12Renderer::UpdateTextureWithImage(void* pTexHandle, const BYTE* pSrcBits, UINT srcWidth, UINT srcHeight)
 {
 	TextureHandle* pTextureHandle = (TextureHandle*)pTexHandle;
@@ -807,6 +733,156 @@ void ENGINECALL D3D12Renderer::UpdateTextureWithImage(void* pTexHandle, const BY
 	pUploadBuffer->Unmap(0, nullptr);
 
 	pTextureHandle->bUpdated = true;
+}
+
+void ENGINECALL D3D12Renderer::DeleteTexture(void* pTexHandle)
+{
+	// wait for all commands
+	for (UINT i = 0; i < MAX_PENDING_FRAME_COUNT; i++)
+	{
+		waitForFenceValue(m_pui64LastFenceValue[i]);
+	}
+	m_pTextureManager->DeleteTexture((TextureHandle*)pTexHandle);
+}
+
+void* ENGINECALL D3D12Renderer::CreateFontObject(const WCHAR* wchFontFamilyName, float fontSize)
+{
+	FontHandle* pFontHandle = m_pFontManager->CreateFontObject(wchFontFamilyName, fontSize);
+	return pFontHandle;
+}
+
+void ENGINECALL D3D12Renderer::DeleteFontObject(void* pFontHandle)
+{
+	m_pFontManager->DeleteFontObject((FontHandle*)pFontHandle);
+}
+
+bool ENGINECALL D3D12Renderer::WriteTextToBitmap(uint8_t* dstImage, UINT dstWidth, UINT dstHeight, UINT dstPitch, int* outWidth, int* outHeight, void* pFontObjHandle, const WCHAR* wchString, UINT len)
+{
+	bool bResult = m_pFontManager->WriteTextToBitmap(dstImage, dstWidth, dstHeight, dstPitch, outWidth, outHeight, (FontHandle*)pFontObjHandle, wchString, len);
+	return bResult;
+}
+
+void ENGINECALL D3D12Renderer::RenderMeshObject(
+	IMeshObject* pMeshObj,
+	const XMMATRIX* pMatWorld,
+	ERenderPassType renderPass)
+{
+	RenderItem item = {};
+	item.Type = RENDER_ITEM_TYPE_MESH_OBJ;
+	item.pObjHandle = pMeshObj;
+	item.MeshObjParam.matWorld = *pMatWorld;
+
+	bool bAdded = false;
+	switch (renderPass)
+	{
+	case ERenderPassType::Opaque:
+		bAdded = m_ppRenderQueueOpaque[m_CurrThreadIndex]->Add(&item);
+		ASSERT(bAdded, "Render Queue is full.");
+		break;
+	case ERenderPassType::Transparent:
+		bAdded = m_ppRenderQueueTrasnparent[m_CurrThreadIndex]->Add(&item);
+		ASSERT(bAdded, "Render Queue Transparent is full.");
+		break;
+	default:
+		ASSERT(false, "Invalid render pass.");
+		break;
+	}
+	ASSERT(bAdded, "Render Queue is full. or Invalid render pass.");
+
+	m_CurrThreadIndex++;
+	m_CurrThreadIndex = m_CurrThreadIndex % m_NumRenderThreads;
+}
+
+void ENGINECALL D3D12Renderer::RenderSpriteWithTex(
+	void* pSprObjHandle,
+	int posX, int posY,
+	float scaleX, float scaleY,
+	const RECT* pRect,
+	float z,
+	void* pTexHandle,
+	ERenderPassType renderPass)
+{
+	RenderItem item = {};
+	item.Type = RENDER_ITEM_TYPE_SPRITE;
+	item.pObjHandle = pSprObjHandle;
+	item.SpriteParam.PosX = posX;
+	item.SpriteParam.PosY = posY;
+	item.SpriteParam.ScaleX = scaleX;
+	item.SpriteParam.ScaleY = scaleY;
+
+	if (pRect)
+	{
+		item.SpriteParam.bUseRect = true;
+		item.SpriteParam.Rect = *pRect;
+	}
+	else
+	{
+		item.SpriteParam.bUseRect = false;
+		item.SpriteParam.Rect = {};
+	}
+	item.SpriteParam.pTexHandle = pTexHandle;
+	item.SpriteParam.Z = z;
+
+	bool bAdded = false;
+	switch (renderPass)
+	{
+	case ERenderPassType::Opaque:
+		bAdded = m_ppRenderQueueOpaque[m_CurrThreadIndex]->Add(&item);
+		ASSERT(bAdded, "Render Queue is full.");
+		break;
+	case ERenderPassType::Transparent:
+		bAdded = m_ppRenderQueueTrasnparent[m_CurrThreadIndex]->Add(&item);
+		ASSERT(bAdded, "Render Queue Transparent is full.");
+		break;
+	default:
+		ASSERT(false, "Invalid render pass.");
+		break;
+	}
+	ASSERT(bAdded, "Render Queue is full. or Invalid render pass.");
+
+	m_CurrThreadIndex++;
+	m_CurrThreadIndex = m_CurrThreadIndex % m_NumRenderThreads;
+}
+
+// TODO: Support rotation. Get Transform info.
+void ENGINECALL D3D12Renderer::RenderSprite(
+	void* pSprObjHandle,
+	int posX, int posY,
+	float scaleX, float scaleY,
+	float z,
+	ERenderPassType renderPass)
+{
+	RenderItem item = {};
+	item.Type = RENDER_ITEM_TYPE_SPRITE;
+	item.pObjHandle = pSprObjHandle;
+	item.SpriteParam.PosX = posX;
+	item.SpriteParam.PosY = posY;
+	item.SpriteParam.ScaleX = scaleX;
+	item.SpriteParam.ScaleY = scaleY;
+	item.SpriteParam.bUseRect = FALSE;
+	item.SpriteParam.Rect = {};
+	item.SpriteParam.pTexHandle = nullptr;
+	item.SpriteParam.Z = z;
+
+	bool bAdded = false;
+	switch (renderPass)
+	{
+	case ERenderPassType::Opaque:
+		bAdded = m_ppRenderQueueOpaque[m_CurrThreadIndex]->Add(&item);
+		ASSERT(bAdded, "Render Queue is full.");
+		break;
+	case ERenderPassType::Transparent:
+		bAdded = m_ppRenderQueueTrasnparent[m_CurrThreadIndex]->Add(&item);
+		ASSERT(bAdded, "Render Queue Transparent is full.");
+		break;
+	default:
+		ASSERT(false, "Invalid render pass.");
+		break;
+	}
+	ASSERT(bAdded, "Render Queue is full. or Invalid render pass.");
+
+	m_CurrThreadIndex++;
+	m_CurrThreadIndex = m_CurrThreadIndex % m_NumRenderThreads;
 }
 
 void ENGINECALL D3D12Renderer::SetCameraPos(float x, float y, float z)
@@ -908,8 +984,21 @@ void D3D12Renderer::ProcessByThread(int threadIndex)
 	CD3DX12_CPU_DESCRIPTOR_HANDLE rtvHandle(m_pRTVHeap->GetCPUDescriptorHandleForHeapStart(), m_uiRenderTargetIndex, m_rtvDescriptorSize);
 	CD3DX12_CPU_DESCRIPTOR_HANDLE dsvHandle(m_pDSVHeap->GetCPUDescriptorHandleForHeapStart());
 
-	// Each CommandList processes 400 items.
-	m_ppRenderQueue[threadIndex]->Process(threadIndex, pCommandListPool, m_pCommandQueue, 400, rtvHandle, dsvHandle, &m_Viewport, &m_ScissorRect);
+	constexpr int NUM_ITEMS_PER_PROCESS = 400;
+	switch (m_RenderPhase.load(std::memory_order_relaxed))
+	{
+	case ERenderPassType::Opaque:
+		m_ppRenderQueueOpaque[threadIndex]->Process(
+			threadIndex, pCommandListPool, m_pCommandQueue, NUM_ITEMS_PER_PROCESS, rtvHandle, dsvHandle, &m_Viewport, &m_ScissorRect);
+		break;
+	case ERenderPassType::Transparent:
+		m_ppRenderQueueTrasnparent[threadIndex]->Process(
+			threadIndex, pCommandListPool, m_pCommandQueue, NUM_ITEMS_PER_PROCESS, rtvHandle, dsvHandle, &m_Viewport, &m_ScissorRect);
+		break;
+	default:
+		ASSERT(false, "Invalid render pass.");
+		break;
+	}
 
 	LONG currCount = _InterlockedDecrement(&m_lActiveThreadCount);
 	if (0 == currCount)

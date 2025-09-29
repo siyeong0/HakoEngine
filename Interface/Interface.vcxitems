@@ -14,6 +14,7 @@
     <ProjectCapability Include="SourceItemsFromImports" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="$(MSBuildThisFileDirectory)ERenderPassType.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)IGeometry.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)IMeshObject.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)IRenderer.h" />

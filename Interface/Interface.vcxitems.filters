@@ -21,5 +21,8 @@
     <ClInclude Include="$(MSBuildThisFileDirectory)IGeometry.h">
       <Filter>Geometry</Filter>
     </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)ERenderPassType.h">
+      <Filter>Graphics</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

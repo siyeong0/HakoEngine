@@ -43,16 +43,16 @@ public:
 	void* ENGINECALL CreateTiledTexture(UINT texWidth, UINT texHeight, uint8_t r, uint8_t g, uint8_t b) override;
 	void* ENGINECALL CreateDynamicTexture(UINT texWidth, UINT texHeight) override;
 	void* ENGINECALL CreateTextureFromFile(const WCHAR* wchFileName) override;
+	void ENGINECALL UpdateTextureWithImage(void* pTexHandle, const BYTE* pSrcBits, UINT srcWidth, UINT srcHeight) override;
 	void ENGINECALL DeleteTexture(void* pTexHandle) override;
 
 	void* ENGINECALL CreateFontObject(const WCHAR* wchFontFamilyName, float fontSize) override;
 	void ENGINECALL DeleteFontObject(void* pFontHandle) override;
 	bool ENGINECALL WriteTextToBitmap(uint8_t* dstImage, UINT dstWidth, UINT dstHeight, UINT dstPitch, int* outWidth, int* outHeight, void* pFontObjHandle, const WCHAR* wchString, UINT len) override;
 
-	void ENGINECALL RenderMeshObject(IMeshObject* pMeshObj, const XMMATRIX* pMatWorld) override;
-	void ENGINECALL RenderSpriteWithTex(void* pSprObjHandle, int posX, int posY, float scaleX, float scaleY, const RECT* pRect, float z, void* pTexHandle) override;
-	void ENGINECALL RenderSprite(void* pSprObjHandle, int posX, int posY, float scaleX, float scaleY, float z) override;
-	void ENGINECALL UpdateTextureWithImage(void* pTexHandle, const BYTE* pSrcBits, UINT srcWidth, UINT srcHeight) override;
+	void ENGINECALL RenderMeshObject(IMeshObject* pMeshObj, const XMMATRIX* pMatWorld, ERenderPassType renderPass) override;
+	void ENGINECALL RenderSpriteWithTex(void* pSprObjHandle, int posX, int posY, float scaleX, float scaleY, const RECT* pRect, float z, void* pTexHandle, ERenderPassType renderPass) override;
+	void ENGINECALL RenderSprite(void* pSprObjHandle, int posX, int posY, float scaleX, float scaleY, float z, ERenderPassType renderPass) override;
 
 	void ENGINECALL SetCameraPos(float x, float y, float z) override;
 	void ENGINECALL SetCameraRot(float yaw, float pitch, float roll) override;
@@ -124,7 +124,14 @@ private:
 	CommandListPool* m_ppCommandListPool[MAX_PENDING_FRAME_COUNT][MAX_RENDER_THREAD_COUNT] = {};
 	DescriptorPool* m_ppDescriptorPool[MAX_PENDING_FRAME_COUNT][MAX_RENDER_THREAD_COUNT] = {};
 	ConstantBufferManager* m_ppConstBufferManager[MAX_PENDING_FRAME_COUNT][MAX_RENDER_THREAD_COUNT] = {};
-	RenderQueue* m_ppRenderQueue[MAX_RENDER_THREAD_COUNT] = {};
+
+	static constexpr size_t NUM_RENDER_QUEUE_ITEMS_OPAQUE = 8192;
+	static constexpr size_t NUM_RENDER_QUEUE_ITEMS_TRANSPARENT = 2048;
+
+	std::atomic<ERenderPassType> m_RenderPhase = {};
+	RenderQueue* m_ppRenderQueueOpaque[MAX_RENDER_THREAD_COUNT] = {};
+	RenderQueue* m_ppRenderQueueTrasnparent[MAX_RENDER_THREAD_COUNT] = {};
+
 	int m_NumRenderThreads = 0;
 	int m_CurrThreadIndex = 0;
 
