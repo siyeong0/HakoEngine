@@ -30,8 +30,14 @@ bool RenderQueue::Add(const RenderItem* pItem)
 }
 
 int RenderQueue::Process(
-	int threadIndex, CommandListPool* pCommandListPool, ID3D12CommandQueue* pCommandQueue, int numProcessPerCmdList,
-	D3D12_CPU_DESCRIPTOR_HANDLE rtv, D3D12_CPU_DESCRIPTOR_HANDLE dsv, const D3D12_VIEWPORT* pViewport, const D3D12_RECT* pScissorRect)
+	int threadIndex, 
+	CommandListPool* pCommandListPool, 
+	ID3D12CommandQueue* pCommandQueue, 
+	int numProcessPerCmdList,
+	D3D12_CPU_DESCRIPTOR_HANDLE rtv, 
+	D3D12_CPU_DESCRIPTOR_HANDLE dsv, 
+	const D3D12_VIEWPORT* pViewport, 
+	const D3D12_RECT* pScissorRect)
 {
 	ID3D12Device5* pD3DDevice = m_pRenderer->GetD3DDevice();
 	
@@ -61,7 +67,7 @@ int RenderQueue::Process(
 				{
 					SpriteObject* spriteObj = reinterpret_cast<SpriteObject*>(pItem->pObjHandle);
 					TextureHandle* texureHandle = reinterpret_cast<TextureHandle*>(pItem->SpriteParam.pTexHandle);
-					float Z = pItem->SpriteParam.Z;
+					float z = pItem->SpriteParam.Z;
 
 					if (texureHandle)
 					{
@@ -82,7 +88,7 @@ int RenderQueue::Process(
 							}
 							texureHandle->bUpdated = false;
 						}
-						spriteObj->DrawWithTex(threadIndex, pCommandList, &position, &scale, pRect, Z, texureHandle);
+						spriteObj->DrawWithTex(threadIndex, pCommandList, &position, &scale, pRect, z, texureHandle);
 					}
 					else
 					{
@@ -90,7 +96,7 @@ int RenderQueue::Process(
 						XMFLOAT2 position = { (float)pItem->SpriteParam.iPosX, (float)pItem->SpriteParam.iPosY };
 						XMFLOAT2 scale = { pItem->SpriteParam.fScaleX, pItem->SpriteParam.fScaleY };
 
-						spriteObj->Draw(threadIndex, pCommandList, &position, &scale, Z);
+						spriteObj->Draw(threadIndex, pCommandList, &position, &scale, z);
 					}
 				}
 				break;
@@ -158,5 +164,4 @@ const RenderItem* RenderQueue::dispatch()
 	m_ReadBufferPos += sizeof(RenderItem);
 
 	return pItem;
-
 }

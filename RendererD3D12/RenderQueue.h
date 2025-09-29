@@ -45,8 +45,14 @@ public:
 
 	bool Initialize(D3D12Renderer* pRenderer, int maxNumItems);
 	bool Add(const RenderItem* pItem);
-	int Process(int threadIndex, CommandListPool* pCommandListPool, ID3D12CommandQueue* pCommandQueue, int numProcessPerCmdList, 
-		D3D12_CPU_DESCRIPTOR_HANDLE rtv, D3D12_CPU_DESCRIPTOR_HANDLE dsv, const D3D12_VIEWPORT* pViewport, const D3D12_RECT* pScissorRect);
+	int Process(int threadIndex, 
+		CommandListPool* pCommandListPool,
+		ID3D12CommandQueue* pCommandQueue, 
+		int numProcessPerCmdList, 
+		D3D12_CPU_DESCRIPTOR_HANDLE rtv,
+		D3D12_CPU_DESCRIPTOR_HANDLE dsv, 
+		const D3D12_VIEWPORT* pViewport, 
+		const D3D12_RECT* pScissorRect);
 	void Reset();
 	void Cleanup();
 

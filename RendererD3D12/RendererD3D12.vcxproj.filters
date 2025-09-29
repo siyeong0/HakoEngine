@@ -33,47 +33,47 @@
     <Filter Include="RenderObject\SpriteObject">
       <UniqueIdentifier>{2e99fa84-fd70-4677-a2ce-dac092ca3031}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Rendering">
-      <UniqueIdentifier>{29f24a36-763c-40a0-a5a8-4f9fb903916d}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Rendering\CommandListPool">
-      <UniqueIdentifier>{d8c45c20-4954-4b0e-adb4-18053fb67636}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Rendering\ConstantBufferManager">
-      <UniqueIdentifier>{f161d914-7be8-49de-a1d3-5ed9b506a5d1}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Rendering\ConstantBufferPool">
-      <UniqueIdentifier>{39a82c13-1f81-4a8c-b211-24b745b348cf}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Rendering\DescriptorPool">
-      <UniqueIdentifier>{1ce7939e-c873-4135-b5c8-057fc12f025d}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Rendering\RenderQueue">
-      <UniqueIdentifier>{e1f3a12a-bb25-4257-aea7-3f3113c2d984}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Rendering\RenderThread">
-      <UniqueIdentifier>{744e6f71-a51d-41b5-90a1-0fbc43644b0e}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Rendering\SingleDescriptorAllocator">
-      <UniqueIdentifier>{2236ad53-e530-4c2d-b146-77cd7e2bd974}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Rendering\TextureManager">
-      <UniqueIdentifier>{fdc25b76-8794-4341-94de-0cb85528e1d3}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Rendering\FontManager">
-      <UniqueIdentifier>{23d1ed8d-7142-41b6-9220-46f4879c6ae3}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Rendering\ResourceManager">
-      <UniqueIdentifier>{edfa2869-a3eb-44ed-aa5a-42c50c1b5130}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Rendering\ShaderManager">
-      <UniqueIdentifier>{dd50c0bc-cc2d-4132-b090-8518f766e816}</UniqueIdentifier>
-    </Filter>
     <Filter Include="RendererBody">
       <UniqueIdentifier>{36e3c172-a89b-400a-b1c4-f05059d523d8}</UniqueIdentifier>
     </Filter>
     <Filter Include="RenderObject\SkyObject">
       <UniqueIdentifier>{64f5cab6-6996-4702-9daf-94cf03f6f567}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="RenderManager">
+      <UniqueIdentifier>{29f24a36-763c-40a0-a5a8-4f9fb903916d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="RenderManager\CommandListPool">
+      <UniqueIdentifier>{d8c45c20-4954-4b0e-adb4-18053fb67636}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="RenderManager\ConstantBufferManager">
+      <UniqueIdentifier>{f161d914-7be8-49de-a1d3-5ed9b506a5d1}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="RenderManager\ConstantBufferPool">
+      <UniqueIdentifier>{39a82c13-1f81-4a8c-b211-24b745b348cf}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="RenderManager\DescriptorPool">
+      <UniqueIdentifier>{1ce7939e-c873-4135-b5c8-057fc12f025d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="RenderManager\RenderQueue">
+      <UniqueIdentifier>{e1f3a12a-bb25-4257-aea7-3f3113c2d984}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="RenderManager\RenderThread">
+      <UniqueIdentifier>{744e6f71-a51d-41b5-90a1-0fbc43644b0e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="RenderManager\SingleDescriptorAllocator">
+      <UniqueIdentifier>{2236ad53-e530-4c2d-b146-77cd7e2bd974}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="RenderManager\TextureManager">
+      <UniqueIdentifier>{fdc25b76-8794-4341-94de-0cb85528e1d3}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="RenderManager\FontManager">
+      <UniqueIdentifier>{23d1ed8d-7142-41b6-9220-46f4879c6ae3}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="RenderManager\ResourceManager">
+      <UniqueIdentifier>{edfa2869-a3eb-44ed-aa5a-42c50c1b5130}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="RenderManager\ShaderManager">
+      <UniqueIdentifier>{dd50c0bc-cc2d-4132-b090-8518f766e816}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -90,34 +90,34 @@
       <Filter>RenderObject\SpriteObject</Filter>
     </ClInclude>
     <ClInclude Include="CommandListPool.h">
-      <Filter>Rendering\CommandListPool</Filter>
+      <Filter>RenderManager\CommandListPool</Filter>
     </ClInclude>
     <ClInclude Include="ConstantBufferManager.h">
-      <Filter>Rendering\ConstantBufferManager</Filter>
+      <Filter>RenderManager\ConstantBufferManager</Filter>
     </ClInclude>
     <ClInclude Include="D3D12ResourceManager.h">
-      <Filter>Rendering\ResourceManager</Filter>
+      <Filter>RenderManager\ResourceManager</Filter>
     </ClInclude>
     <ClInclude Include="DescriptorPool.h">
-      <Filter>Rendering\DescriptorPool</Filter>
+      <Filter>RenderManager\DescriptorPool</Filter>
     </ClInclude>
     <ClInclude Include="FontManager.h">
-      <Filter>Rendering\FontManager</Filter>
+      <Filter>RenderManager\FontManager</Filter>
     </ClInclude>
     <ClInclude Include="RenderQueue.h">
-      <Filter>Rendering\RenderQueue</Filter>
+      <Filter>RenderManager\RenderQueue</Filter>
     </ClInclude>
     <ClInclude Include="RenderThread.h">
-      <Filter>Rendering\RenderThread</Filter>
+      <Filter>RenderManager\RenderThread</Filter>
     </ClInclude>
     <ClInclude Include="SimpleConstantBufferPool.h">
-      <Filter>Rendering\ConstantBufferPool</Filter>
+      <Filter>RenderManager\ConstantBufferPool</Filter>
     </ClInclude>
     <ClInclude Include="SingleDescriptorAllocator.h">
-      <Filter>Rendering\SingleDescriptorAllocator</Filter>
+      <Filter>RenderManager\SingleDescriptorAllocator</Filter>
     </ClInclude>
     <ClInclude Include="TextureManager.h">
-      <Filter>Rendering\TextureManager</Filter>
+      <Filter>RenderManager\TextureManager</Filter>
     </ClInclude>
     <ClInclude Include="Renderer_typedef.h">
       <Filter>Common</Filter>
@@ -129,10 +129,10 @@
       <Filter>Util\ShaderUtil</Filter>
     </ClInclude>
     <ClInclude Include="ShaderManager.h">
-      <Filter>Rendering\ShaderManager</Filter>
+      <Filter>RenderManager\ShaderManager</Filter>
     </ClInclude>
     <ClInclude Include="ShaderHandle.h">
-      <Filter>Rendering\ShaderManager</Filter>
+      <Filter>RenderManager\ShaderManager</Filter>
     </ClInclude>
     <ClInclude Include="D3D12Renderer.h">
       <Filter>RendererBody</Filter>
@@ -161,34 +161,34 @@
       <Filter>RenderObject\SpriteObject</Filter>
     </ClCompile>
     <ClCompile Include="CommandListPool.cpp">
-      <Filter>Rendering\CommandListPool</Filter>
+      <Filter>RenderManager\CommandListPool</Filter>
     </ClCompile>
     <ClCompile Include="ConstantBufferManager.cpp">
-      <Filter>Rendering\ConstantBufferManager</Filter>
+      <Filter>RenderManager\ConstantBufferManager</Filter>
     </ClCompile>
     <ClCompile Include="D3D12ResourceManager.cpp">
-      <Filter>Rendering\ResourceManager</Filter>
+      <Filter>RenderManager\ResourceManager</Filter>
     </ClCompile>
     <ClCompile Include="DescriptorPool.cpp">
-      <Filter>Rendering\DescriptorPool</Filter>
+      <Filter>RenderManager\DescriptorPool</Filter>
     </ClCompile>
     <ClCompile Include="FontManager.cpp">
-      <Filter>Rendering\FontManager</Filter>
+      <Filter>RenderManager\FontManager</Filter>
     </ClCompile>
     <ClCompile Include="RenderQueue.cpp">
-      <Filter>Rendering\RenderQueue</Filter>
+      <Filter>RenderManager\RenderQueue</Filter>
     </ClCompile>
     <ClCompile Include="RenderThread.cpp">
-      <Filter>Rendering\RenderThread</Filter>
+      <Filter>RenderManager\RenderThread</Filter>
     </ClCompile>
     <ClCompile Include="SimpleConstantBufferPool.cpp">
-      <Filter>Rendering\ConstantBufferPool</Filter>
+      <Filter>RenderManager\ConstantBufferPool</Filter>
     </ClCompile>
     <ClCompile Include="SingleDescriptorAllocator.cpp">
-      <Filter>Rendering\SingleDescriptorAllocator</Filter>
+      <Filter>RenderManager\SingleDescriptorAllocator</Filter>
     </ClCompile>
     <ClCompile Include="TextureManager.cpp">
-      <Filter>Rendering\TextureManager</Filter>
+      <Filter>RenderManager\TextureManager</Filter>
     </ClCompile>
     <ClCompile Include="D3DUtil.cpp">
       <Filter>Util\D3DUtil</Filter>
@@ -197,7 +197,7 @@
       <Filter>Util\ShaderUtil</Filter>
     </ClCompile>
     <ClCompile Include="ShaderManager.cpp">
-      <Filter>Rendering\ShaderManager</Filter>
+      <Filter>RenderManager\ShaderManager</Filter>
     </ClCompile>
     <ClCompile Include="D3D12Renderer.cpp">
       <Filter>RendererBody</Filter>
