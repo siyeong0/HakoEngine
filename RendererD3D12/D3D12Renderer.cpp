@@ -725,10 +725,10 @@ void ENGINECALL D3D12Renderer::RenderSpriteWithTex(void* pSprObjHandle, int posX
 	RenderItem item = {};
 	item.Type = RENDER_ITEM_TYPE_SPRITE;
 	item.pObjHandle = pSprObjHandle;
-	item.SpriteParam.iPosX = posX;
-	item.SpriteParam.iPosY = posY;
-	item.SpriteParam.fScaleX = scaleX;
-	item.SpriteParam.fScaleY = scaleY;
+	item.SpriteParam.PosX = posX;
+	item.SpriteParam.PosY = posY;
+	item.SpriteParam.ScaleX = scaleX;
+	item.SpriteParam.ScaleY = scaleY;
 
 	if (pRect)
 	{
@@ -756,10 +756,10 @@ void ENGINECALL D3D12Renderer::RenderSprite(void* pSprObjHandle, int posX, int p
 	RenderItem item = {};
 	item.Type = RENDER_ITEM_TYPE_SPRITE;
 	item.pObjHandle = pSprObjHandle;
-	item.SpriteParam.iPosX = posX;
-	item.SpriteParam.iPosY = posY;
-	item.SpriteParam.fScaleX = scaleX;
-	item.SpriteParam.fScaleY = scaleY;
+	item.SpriteParam.PosX = posX;
+	item.SpriteParam.PosY = posY;
+	item.SpriteParam.ScaleX = scaleX;
+	item.SpriteParam.ScaleY = scaleY;
 	item.SpriteParam.bUseRect = FALSE;
 	item.SpriteParam.Rect = {};
 	item.SpriteParam.pTexHandle = nullptr;

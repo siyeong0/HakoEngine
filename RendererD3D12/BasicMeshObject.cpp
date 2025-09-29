@@ -94,11 +94,8 @@ bool BasicMeshObject::Initialize(D3D12Renderer* pRenderer)
 	m_pRenderer = pRenderer;
 
 	bResult = initCommonResources();
-	if (!bResult)
-	{
-		ASSERT(false, "BasicMesh: init common resources failed");
-	}
-	lb_return:
+	ASSERT(bResult, "BasicMesh: init common resources failed");
+
 	return bResult;
 }
 

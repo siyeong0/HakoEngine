@@ -1,38 +1,5 @@
 ﻿#pragma once
-
-enum RenderItemType
-{
-	RENDER_ITEM_TYPE_MESH_OBJ,
-	RENDER_ITEM_TYPE_SPRITE
-};
-
-struct RenderObjectParam
-{
-	XMMATRIX matWorld;
-};
-
-struct RenderSpriteParam
-{
-	int iPosX;
-	int iPosY;
-	float fScaleX;
-	float fScaleY;
-	RECT Rect;
-	BOOL bUseRect;
-	float Z;
-	void* pTexHandle;
-};
-
-struct RenderItem
-{
-	RenderItemType Type;
-	void* pObjHandle;
-	union
-	{
-		RenderObjectParam	MeshObjParam;
-		RenderSpriteParam	SpriteParam;
-	};
-};
+#include "RenderItem.h"
 
 class CommandListPool;
 class D3D12Renderer;

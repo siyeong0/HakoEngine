@@ -143,6 +143,9 @@
     <ClInclude Include="SkyObject.h">
       <Filter>RenderObject\SkyObject</Filter>
     </ClInclude>
+    <ClInclude Include="RenderItem.h">
+      <Filter>RenderManager\RenderQueue</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="dllmain.cpp">

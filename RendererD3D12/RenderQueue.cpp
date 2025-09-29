@@ -1,10 +1,8 @@
 ﻿#include "pch.h"
-
 #include "D3D12Renderer.h"
 #include "CommandListPool.h"
 #include "BasicMeshObject.h"
 #include "SpriteObject.h"
-
 #include "RenderQueue.h"
 
 bool RenderQueue::Initialize(D3D12Renderer* pRenderer, int MaxNumItems)
@@ -71,8 +69,8 @@ int RenderQueue::Process(
 
 					if (texureHandle)
 					{
-						XMFLOAT2 position = { (float)pItem->SpriteParam.iPosX, (float)pItem->SpriteParam.iPosY };
-						XMFLOAT2 scale = { pItem->SpriteParam.fScaleX, pItem->SpriteParam.fScaleY };
+						XMFLOAT2 position = { (float)pItem->SpriteParam.PosX, (float)pItem->SpriteParam.PosY };
+						XMFLOAT2 scale = { pItem->SpriteParam.ScaleX, pItem->SpriteParam.ScaleY };
 						
 						const RECT* pRect = nullptr;
 						if (pItem->SpriteParam.bUseRect)
@@ -93,8 +91,8 @@ int RenderQueue::Process(
 					else
 					{
 						SpriteObject* spriteObj = reinterpret_cast<SpriteObject*>(pItem->pObjHandle);
-						XMFLOAT2 position = { (float)pItem->SpriteParam.iPosX, (float)pItem->SpriteParam.iPosY };
-						XMFLOAT2 scale = { pItem->SpriteParam.fScaleX, pItem->SpriteParam.fScaleY };
+						XMFLOAT2 position = { (float)pItem->SpriteParam.PosX, (float)pItem->SpriteParam.PosY };
+						XMFLOAT2 scale = { pItem->SpriteParam.ScaleX, pItem->SpriteParam.ScaleY };
 
 						spriteObj->Draw(threadIndex, pCommandList, &position, &scale, z);
 					}
