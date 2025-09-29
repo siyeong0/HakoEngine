@@ -22,8 +22,9 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "VSProperty", "VSProperty", 
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Shaders", "Shaders", "{3D13AE0B-E4C8-4E30-84DC-10700AA71E78}"
 	ProjectSection(SolutionItems) = preProject
-		Shaders\Standard.hlsl = Shaders\Standard.hlsl
+		Shaders\ProceduralSky.hlsl = Shaders\ProceduralSky.hlsl
 		Shaders\Sprite.hlsl = Shaders\Sprite.hlsl
+		Shaders\Standard.hlsl = Shaders\Standard.hlsl
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Graphics", "Graphics", "{F28961A5-971B-471F-891F-048670ADAC37}"

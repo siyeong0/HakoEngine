@@ -429,15 +429,6 @@ bool Game::Initialize(HWND hWnd, bool bEnableDebugLayer, bool bEnableGBV)
 				.set<MeshRenderer>({ createConeMeshObject(m_pRenderer, m_pGeometry) });
 			m_Entities.emplace_back(e.id());
 		}
-		// Create grid
-		{
-			flecs::entity e = m_ECSWorld.entity()
-				.set<Position>({ 0.0f, 0.0f, -10.0f })
-				.set<Rotation>({ 3.14f * 0.25f, 0.0f, 0.0f })
-				.set<Scale>({ 1.0f, 1.0f, 1.0f })
-				.set<MeshRenderer>({ createGridMeshObject(m_pRenderer, m_pGeometry) });
-			m_Entities.emplace_back(e.id());
-		}
 		// Create box entities
 		const UINT BOX_OBJECT_COUNT = 50;
 		for (UINT i = 0; i < BOX_OBJECT_COUNT; i++)

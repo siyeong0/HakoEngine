@@ -1,8 +1,6 @@
 ﻿#include "pch.h"
-
 #include <process.h>
 #include <cmath>
-
 #include "Common/ProcessorInfo.h"
 #include "BasicMeshObject.h"
 #include "SpriteObject.h"
@@ -12,12 +10,12 @@
 #include "SimpleConstantBufferPool.h"
 #include "SingleDescriptorAllocator.h"
 #include "ShaderManager.h"
+#include "SkyObject.h"
 #include "ConstantBufferManager.h"
 #include "TextureManager.h"
 #include "RenderQueue.h"
 #include "CommandListPool.h"
 #include "RenderThread.h"
-
 #include "D3D12Renderer.h"
 
 using namespace DirectX;
@@ -293,6 +291,9 @@ lb_exit:
 		m_ppRenderQueue[i]->Initialize(this, 8192);
 	}
 
+	m_pSkyObject = new SkyObject;
+	m_pSkyObject->Initialize(this);
+
 	initCamera();
 
 	wcscpy_s(m_wchShaderPath, wchShaderPath);
@@ -326,6 +327,12 @@ void ENGINECALL D3D12Renderer::BeginRender()
 	pCommandList->ClearRenderTargetView(rtvHandle, BackColor, 0, nullptr);
 	pCommandList->ClearDepthStencilView(dsvHandle, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
 
+	pCommandList = pCommandListPool->GetCurrentCommandList();
+	pCommandList->RSSetViewports(1, &m_Viewport);
+	pCommandList->RSSetScissorRects(1, &m_ScissorRect);
+	pCommandList->OMSetRenderTargets(1, &rtvHandle, FALSE, &dsvHandle);
+	m_pSkyObject->Draw(0, pCommandList);
+
 	// Execute immediatey
 	pCommandListPool->CloseAndExecute(m_pCommandQueue);
 
@@ -357,7 +364,6 @@ void ENGINECALL D3D12Renderer::EndRender()
 
 	// Present
 	ID3D12GraphicsCommandList6* pCommandList = pCommandListPool->GetCurrentCommandList();
-	pCommandList = pCommandListPool->GetCurrentCommandList();
 	pCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_pRenderTargets[m_uiRenderTargetIndex], D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT));
 
 	pCommandListPool->CloseAndExecute(m_pCommandQueue);

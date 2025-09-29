@@ -9,6 +9,7 @@ class D3D12ResourceManager;
 class DescriptorPool;
 class SimpleConstantBufferPool;
 class SingleDescriptorAllocator;
+class SkyObject;
 class ConstantBufferManager;
 class FontManager;
 class TextureManager;
@@ -173,6 +174,8 @@ private:
 	float m_fCamYaw = 0.0f;
 	float m_fCamPitch = 0.0f;
 	float m_fCamRoll = 0.0f;
+
+	SkyObject* m_pSkyObject = {};
 
 	WCHAR m_wchCurrentPathBackup[_MAX_PATH] = {};
 	WCHAR m_wchShaderPath[_MAX_PATH] = {};
