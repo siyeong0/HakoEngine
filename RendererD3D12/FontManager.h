@@ -29,7 +29,7 @@ private:
 	ID2D1Bitmap1* m_pD2DTargetBitmap = nullptr;
 	ID2D1Bitmap1* m_pD2DTargetBitmapRead = nullptr;
 	IDWriteFontCollection1* m_pFontCollection = nullptr;
-	ID2D1SolidColorBrush* m_pWhiteBrush = nullptr;
+	ID2D1SolidColorBrush* m_pBrush = nullptr;
 
 	IDWriteFactory5* m_pDWFactory = nullptr;
 	DWRITE_LINE_METRICS* m_pLineMetrics = nullptr;

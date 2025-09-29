@@ -218,7 +218,7 @@ bool FontManager::createDWrite(ID3D12Device* pD3DDevice, UINT texWidth, UINT tex
 	hr = m_pD2DDeviceContext->CreateBitmap(size, nullptr, 0, &bitmapProperties, &m_pD2DTargetBitmapRead);
 	ASSERT(SUCCEEDED(hr), "Failed to create ID2D1Bitmap1 from ID2D1DeviceContext2");
 
-	hr = m_pD2DDeviceContext->CreateSolidColorBrush(ColorF(ColorF::White), &m_pWhiteBrush);
+	hr = m_pD2DDeviceContext->CreateSolidColorBrush(ColorF(ColorF::White), &m_pBrush);
 	ASSERT(SUCCEEDED(hr), "Failed to create ID2D1SolidColorBrush from ID2D1DeviceContext2");
 
 	hr = DWriteCreateFactory(DWRITE_FACTORY_TYPE_SHARED, __uuidof(IDWriteFactory5), (IUnknown**)&m_pDWFactory);
@@ -233,29 +233,32 @@ bool FontManager::createBitmapFromText(int* outWidth, int* outHeight, IDWriteTex
 
 	ID2D1DeviceContext* pD2DDeviceContext = m_pD2DDeviceContext;
 	IDWriteFactory5* pDWFactory = m_pDWFactory;
-	D2D1_SIZE_F max_size = pD2DDeviceContext->GetSize();
-	max_size.width = (float)m_D2DBitmapWidth;
-	max_size.height = (float)m_D2DBitmapHeight;
+
+	D2D1_SIZE_F maxSize = pD2DDeviceContext->GetSize();
+	maxSize.width = (float)m_D2DBitmapWidth;
+	maxSize.height = (float)m_D2DBitmapHeight;
 
 	IDWriteTextLayout* textLayout = nullptr;
 	if (pDWFactory && pTextFormat)
 	{
-		hr = pDWFactory->CreateTextLayout(wchString, len, pTextFormat, max_size.width, max_size.height, &textLayout);
+		hr = pDWFactory->CreateTextLayout(wchString, len, pTextFormat, maxSize.width, maxSize.height, &textLayout);
 		ASSERT(SUCCEEDED(hr), "Failed to create IDWriteTextLayout");
 	}
 
 	DWRITE_TEXT_METRICS metrics = {};
 	if (textLayout)
 	{
+		m_pBrush->SetColor(D2D1::ColorF(D2D1::ColorF::White)); // TODO: Set color
+
 		textLayout->GetMetrics(&metrics);
 		pD2DDeviceContext->SetTarget(m_pD2DTargetBitmap);
 		pD2DDeviceContext->SetTextAntialiasMode(D2D1_TEXT_ANTIALIAS_MODE_GRAYSCALE);
 
 		// Draw the text layout to the D2D surface.
 		pD2DDeviceContext->BeginDraw();
-		pD2DDeviceContext->Clear(D2D1::ColorF(D2D1::ColorF::Black));
+		pD2DDeviceContext->Clear(D2D1::ColorF{ 0.0f, 0.0f, 0.0f, 0.0f }); // TODO: Set background color
 		pD2DDeviceContext->SetTransform(D2D1::Matrix3x2F::Identity());
-		pD2DDeviceContext->DrawTextLayout(D2D1::Point2F(0.0f, 0.0f), textLayout, m_pWhiteBrush);
+		pD2DDeviceContext->DrawTextLayout(D2D1::Point2F(0.0f, 0.0f), textLayout, m_pBrush);
 
 		// We ignore D2DERR_RECREATE_TARGET here. This error indicates that the device
 		// is lost. It will be handled during the next call to Present.
@@ -295,10 +298,10 @@ void FontManager::cleanupDWrite()
 		m_pD2DTargetBitmapRead->Release();
 		m_pD2DTargetBitmapRead = nullptr;
 	}
-	if (m_pWhiteBrush)
+	if (m_pBrush)
 	{
-		m_pWhiteBrush->Release();
-		m_pWhiteBrush = nullptr;
+		m_pBrush->Release();
+		m_pBrush = nullptr;
 	}
 	if (m_pDWFactory)
 	{
