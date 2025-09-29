@@ -305,125 +305,6 @@ lb_exit:
 	return true;
 }
 
-void ENGINECALL D3D12Renderer::BeginRender()
-{
-	//
-	// Clear render target and initialize render data.
-	//
-
-	// Select and allocate command list
-	CommandListPool* pCommandListPool = m_ppCommandListPool[m_CurrContextIndex][0];
-	ID3D12GraphicsCommandList6* pCommandList = pCommandListPool->GetCurrentCommandList();
-
-	// Change ResourceState Present to RenderTarget
-	pCommandList->ResourceBarrier(1,
-		&CD3DX12_RESOURCE_BARRIER::Transition(
-			m_pRenderTargets[m_uiRenderTargetIndex],
-			D3D12_RESOURCE_STATE_PRESENT,
-			D3D12_RESOURCE_STATE_RENDER_TARGET));
-
-	// Clear render taget
-	CD3DX12_CPU_DESCRIPTOR_HANDLE rtvHandle(m_pRTVHeap->GetCPUDescriptorHandleForHeapStart(), m_uiRenderTargetIndex, m_rtvDescriptorSize);
-	CD3DX12_CPU_DESCRIPTOR_HANDLE dsvHandle(m_pDSVHeap->GetCPUDescriptorHandleForHeapStart());
-
-	const float BackColor[] = { 0.0f, 0.0f, 1.0f, 1.0f };
-	pCommandList->ClearRenderTargetView(rtvHandle, BackColor, 0, nullptr);
-	pCommandList->ClearDepthStencilView(dsvHandle, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
-
-	pCommandList = pCommandListPool->GetCurrentCommandList();
-	pCommandList->RSSetViewports(1, &m_Viewport);
-	pCommandList->RSSetScissorRects(1, &m_ScissorRect);
-	pCommandList->OMSetRenderTargets(1, &rtvHandle, FALSE, &dsvHandle);
-	m_pSkyObject->Draw(0, pCommandList);
-
-	// Execute immediatey
-	pCommandListPool->CloseAndExecute(m_pCommandQueue);
-
-	fence();
-}
-
-void ENGINECALL D3D12Renderer::EndRender()
-{
-	CommandListPool* pCommandListPool = m_ppCommandListPool[m_CurrContextIndex][0]; // the command list pool currently in use.
-
-	// Set RenderTarget to process the rendering queue.
-	CD3DX12_CPU_DESCRIPTOR_HANDLE rtvHandle(m_pRTVHeap->GetCPUDescriptorHandleForHeapStart(), m_uiRenderTargetIndex, m_rtvDescriptorSize);
-	CD3DX12_CPU_DESCRIPTOR_HANDLE dsvHandle(m_pDSVHeap->GetCPUDescriptorHandleForHeapStart());
-
-#ifdef USE_MULTI_THREAD
-	// ---- Phase 1: Opaque ----
-	m_RenderPhase.store(ERenderPassType::Opaque, std::memory_order_relaxed);
-	m_lActiveThreadCount = m_NumRenderThreads;
-	for (int i = 0; i < m_NumRenderThreads; i++)
-	{
-		SetEvent(m_pThreadDescList[i].hEventList[RENDER_THREAD_EVENT_TYPE_PROCESS]);
-	}
-	WaitForSingleObject(m_hCompleteEvent, INFINITE);
-	// ---- Phase 2: Transparent ----
-	m_RenderPhase.store(ERenderPassType::Transparent, std::memory_order_relaxed);
-	m_lActiveThreadCount = m_NumRenderThreads;
-	for (int i = 0; i < m_NumRenderThreads; i++)
-	{
-		SetEvent(m_pThreadDescList[i].hEventList[RENDER_THREAD_EVENT_TYPE_PROCESS]);
-	}
-	WaitForSingleObject(m_hCompleteEvent, INFINITE);
-#else
-	// Each CommandList processes 400 items.
-	for (int i = 0; i < m_NumRenderThreads; i++)
-	{
-		m_ppRenderQueue[i]->Process(i, pCommandListPool, m_pCommandQueue, 400, rtvHandle, dsvHandle, &m_Viewport, &m_ScissorRect);
-	}
-#endif	
-
-	// Present
-	ID3D12GraphicsCommandList6* pCommandList = pCommandListPool->GetCurrentCommandList();
-	pCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_pRenderTargets[m_uiRenderTargetIndex], D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT));
-
-	pCommandListPool->CloseAndExecute(m_pCommandQueue);
-
-	// Reset all render queues
-	for (int i = 0; i < m_NumRenderThreads; i++)
-	{
-		m_ppRenderQueueOpaque[i]->Reset();
-		m_ppRenderQueueTrasnparent[i]->Reset();
-	}
-}
-
-void ENGINECALL D3D12Renderer::Present()
-{
-	fence();
-	// Transfer the Back Buffer to the Primary Buffer.
-
-	UINT m_SyncInterval = 1;	// VSync On
-	//UINT m_SyncInterval = 0;	// VSync Off
-
-	UINT uiSyncInterval = m_SyncInterval;
-	UINT uiPresentFlags = 0;
-
-	if (!uiSyncInterval)
-	{
-		uiPresentFlags = DXGI_PRESENT_ALLOW_TEARING;
-	}
-
-	HRESULT hr = m_pSwapChain->Present(uiSyncInterval, uiPresentFlags);
-	ASSERT(hr != DXGI_ERROR_DEVICE_REMOVED, "The GPU device instance has been suspended. Use GetDeviceRemovedReason to determine the appropriate action.");
-
-	m_uiRenderTargetIndex = m_pSwapChain->GetCurrentBackBufferIndex();
-
-	// Prepare next frame.
-	int nextContextIndex = (m_CurrContextIndex + 1) % MAX_PENDING_FRAME_COUNT;
-	waitForFenceValue(m_pui64LastFenceValue[nextContextIndex]);
-
-	// Reset resources per frame.
-	for (int i = 0; i < m_NumRenderThreads; i++)
-	{
-		m_ppConstBufferManager[nextContextIndex][i]->Reset();
-		m_ppDescriptorPool[nextContextIndex][i]->Reset();
-		m_ppCommandListPool[nextContextIndex][i]->Reset();
-	}
-	m_CurrContextIndex = nextContextIndex;
-}
-
 void ENGINECALL D3D12Renderer::Cleanup()
 {
 #ifdef USE_MULTI_THREAD
@@ -548,75 +429,251 @@ void ENGINECALL D3D12Renderer::Cleanup()
 	}
 }
 
-bool ENGINECALL D3D12Renderer::UpdateWindowSize(uint32_t backBufferWidth, uint32_t backBufferHeight)
+void ENGINECALL D3D12Renderer::BeginRender()
 {
-	if ((backBufferWidth == 0 || backBufferHeight == 0) ||				// Zero size can be given when the window is minimized.
-		(m_Width == backBufferWidth && m_Height == backBufferHeight))	// Size is not changed.
-	{
-		return true;
-	}
+	//
+	// Clear render target and initialize render data.
+	//
 
-	// wait for all commands
+	// Select and allocate command list
+	CommandListPool* pCommandListPool = m_ppCommandListPool[m_CurrContextIndex][0];
+	ID3D12GraphicsCommandList6* pCommandList = pCommandListPool->GetCurrentCommandList();
+
+	// Change ResourceState Present to RenderTarget
+	pCommandList->ResourceBarrier(1,
+		&CD3DX12_RESOURCE_BARRIER::Transition(
+			m_pRenderTargets[m_uiRenderTargetIndex],
+			D3D12_RESOURCE_STATE_PRESENT,
+			D3D12_RESOURCE_STATE_RENDER_TARGET));
+
+	// Clear render taget
+	CD3DX12_CPU_DESCRIPTOR_HANDLE rtvHandle(m_pRTVHeap->GetCPUDescriptorHandleForHeapStart(), m_uiRenderTargetIndex, m_rtvDescriptorSize);
+	CD3DX12_CPU_DESCRIPTOR_HANDLE dsvHandle(m_pDSVHeap->GetCPUDescriptorHandleForHeapStart());
+
+	const float BackColor[] = { 0.0f, 0.0f, 1.0f, 1.0f };
+	pCommandList->ClearRenderTargetView(rtvHandle, BackColor, 0, nullptr);
+	pCommandList->ClearDepthStencilView(dsvHandle, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
+
+	pCommandList = pCommandListPool->GetCurrentCommandList();
+	pCommandList->RSSetViewports(1, &m_Viewport);
+	pCommandList->RSSetScissorRects(1, &m_ScissorRect);
+	pCommandList->OMSetRenderTargets(1, &rtvHandle, FALSE, &dsvHandle);
+	m_pSkyObject->Draw(0, pCommandList);
+
+	// Execute immediatey
+	pCommandListPool->CloseAndExecute(m_pCommandQueue);
+
 	fence();
+}
 
-	for (int i = 0; i < MAX_PENDING_FRAME_COUNT; i++)
+void ENGINECALL D3D12Renderer::EndRender()
+{
+	CommandListPool* pCommandListPool = m_ppCommandListPool[m_CurrContextIndex][0]; // the command list pool currently in use.
+
+	// Set RenderTarget to process the rendering queue.
+	CD3DX12_CPU_DESCRIPTOR_HANDLE rtvHandle(m_pRTVHeap->GetCPUDescriptorHandleForHeapStart(), m_uiRenderTargetIndex, m_rtvDescriptorSize);
+	CD3DX12_CPU_DESCRIPTOR_HANDLE dsvHandle(m_pDSVHeap->GetCPUDescriptorHandleForHeapStart());
+
+#ifdef USE_MULTI_THREAD
+	// ---- Phase 1: Opaque ----
+	m_RenderPhase.store(ERenderPassType::Opaque, std::memory_order_relaxed);
+	m_lActiveThreadCount = m_NumRenderThreads;
+	for (int i = 0; i < m_NumRenderThreads; i++)
 	{
-		waitForFenceValue(m_pui64LastFenceValue[i]);
+		SetEvent(m_pThreadDescList[i].hEventList[RENDER_THREAD_EVENT_TYPE_PROCESS]);
+	}
+	WaitForSingleObject(m_hCompleteEvent, INFINITE);
+	// ---- Phase 2: Transparent ----
+	m_RenderPhase.store(ERenderPassType::Transparent, std::memory_order_relaxed);
+	m_lActiveThreadCount = m_NumRenderThreads;
+	for (int i = 0; i < m_NumRenderThreads; i++)
+	{
+		SetEvent(m_pThreadDescList[i].hEventList[RENDER_THREAD_EVENT_TYPE_PROCESS]);
+	}
+	WaitForSingleObject(m_hCompleteEvent, INFINITE);
+	// TODO: OIT support.
+#else
+	// Each CommandList processes 400 items.
+	for (int i = 0; i < m_NumRenderThreads; i++)
+	{
+		m_ppRenderQueueOpaque[i]->Process(i, pCommandListPool, m_pCommandQueue, 400, rtvHandle, dsvHandle, &m_Viewport, &m_ScissorRect);
+	}
+	for (int i = 0; i < m_NumRenderThreads; i++)
+	{
+		m_ppRenderQueueTrasnparent[i]->Process(i, pCommandListPool, m_pCommandQueue, 400, rtvHandle, dsvHandle, &m_Viewport, &m_ScissorRect);
+	}
+#endif	
+
+	// Present
+	ID3D12GraphicsCommandList6* pCommandList = pCommandListPool->GetCurrentCommandList();
+	pCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_pRenderTargets[m_uiRenderTargetIndex], D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT));
+
+	pCommandListPool->CloseAndExecute(m_pCommandQueue);
+
+	// Reset all render queues
+	for (int i = 0; i < m_NumRenderThreads; i++)
+	{
+		m_ppRenderQueueOpaque[i]->Reset();
+		m_ppRenderQueueTrasnparent[i]->Reset();
+	}
+}
+
+void ENGINECALL D3D12Renderer::Present()
+{
+	fence();
+	// Transfer the Back Buffer to the Primary Buffer.
+
+	UINT m_SyncInterval = 1;	// VSync On
+	//UINT m_SyncInterval = 0;	// VSync Off
+
+	UINT uiSyncInterval = m_SyncInterval;
+	UINT uiPresentFlags = 0;
+
+	if (!uiSyncInterval)
+	{
+		uiPresentFlags = DXGI_PRESENT_ALLOW_TEARING;
 	}
 
-	DXGI_SWAP_CHAIN_DESC1	desc;
-	HRESULT	hr = m_pSwapChain->GetDesc1(&desc);
-	if (FAILED(hr))
-	{
-		ASSERT(false, "Failed to get Swap Chain Desc.");
-		return false;
-	}
-
-	for (int n = 0; n < SWAP_CHAIN_FRAME_COUNT; n++)
-	{
-		m_pRenderTargets[n]->Release();
-		m_pRenderTargets[n] = nullptr;
-	}
-
-	if (m_pDepthStencil)
-	{
-		m_pDepthStencil->Release();
-		m_pDepthStencil = nullptr;
-	}
-
-	if (FAILED(m_pSwapChain->ResizeBuffers(SWAP_CHAIN_FRAME_COUNT, backBufferWidth, backBufferHeight, DXGI_FORMAT_R8G8B8A8_UNORM, m_SwapChainFlags)))
-	{
-		ASSERT(false, "Failed to resize Swap Chain buffers.");
-		return false;
-	}
+	HRESULT hr = m_pSwapChain->Present(uiSyncInterval, uiPresentFlags);
+	ASSERT(hr != DXGI_ERROR_DEVICE_REMOVED, "The GPU device instance has been suspended. Use GetDeviceRemovedReason to determine the appropriate action.");
 
 	m_uiRenderTargetIndex = m_pSwapChain->GetCurrentBackBufferIndex();
 
-	// Create frame resources.
-	CD3DX12_CPU_DESCRIPTOR_HANDLE rtvHandle(m_pRTVHeap->GetCPUDescriptorHandleForHeapStart());
+	// Prepare next frame.
+	int nextContextIndex = (m_CurrContextIndex + 1) % MAX_PENDING_FRAME_COUNT;
+	waitForFenceValue(m_pui64LastFenceValue[nextContextIndex]);
 
-	// Create a RTV for each frame.
-	for (int n = 0; n < SWAP_CHAIN_FRAME_COUNT; n++)
+	// Reset resources per frame.
+	for (int i = 0; i < m_NumRenderThreads; i++)
 	{
-		m_pSwapChain->GetBuffer(n, IID_PPV_ARGS(&m_pRenderTargets[n]));
-		m_pD3DDevice->CreateRenderTargetView(m_pRenderTargets[n], nullptr, rtvHandle);
-		rtvHandle.Offset(1, m_rtvDescriptorSize);
+		m_ppConstBufferManager[nextContextIndex][i]->Reset();
+		m_ppDescriptorPool[nextContextIndex][i]->Reset();
+		m_ppCommandListPool[nextContextIndex][i]->Reset();
 	}
+	m_CurrContextIndex = nextContextIndex;
+}
 
-	createDepthStencil(backBufferWidth, backBufferHeight);
+void ENGINECALL D3D12Renderer::RenderMeshObject(
+	IMeshObject* pMeshObj,
+	const XMMATRIX* pMatWorld,
+	ERenderPassType renderPass)
+{
+	RenderItem item = {};
+	item.Type = RENDER_ITEM_TYPE_MESH_OBJ;
+	item.pObjHandle = pMeshObj;
+	item.MeshObjParam.matWorld = *pMatWorld;
 
-	m_Width = backBufferWidth;
-	m_Height = backBufferHeight;
-	m_Viewport.Width = (float)m_Width;
-	m_Viewport.Height = (float)m_Height;
-	m_ScissorRect.left = 0;
-	m_ScissorRect.top = 0;
-	m_ScissorRect.right = m_Width;
-	m_ScissorRect.bottom = m_Height;
+	bool bAdded = false;
+	switch (renderPass)
+	{
+	case ERenderPassType::Opaque:
+		bAdded = m_ppRenderQueueOpaque[m_CurrThreadIndex]->Add(&item);
+		ASSERT(bAdded, "Render Queue is full.");
+		break;
+	case ERenderPassType::Transparent:
+		bAdded = m_ppRenderQueueTrasnparent[m_CurrThreadIndex]->Add(&item);
+		ASSERT(bAdded, "Render Queue Transparent is full.");
+		break;
+	default:
+		ASSERT(false, "Invalid render pass.");
+		break;
+	}
+	ASSERT(bAdded, "Render Queue is full. or Invalid render pass.");
 
-	initCamera();
+	m_CurrThreadIndex++;
+	m_CurrThreadIndex = m_CurrThreadIndex % m_NumRenderThreads;
+}
 
-	return true;
+void ENGINECALL D3D12Renderer::RenderSpriteWithTex(
+	void* pSprObjHandle,
+	int posX, int posY,
+	float scaleX, float scaleY,
+	const RECT* pRect,
+	float z,
+	void* pTexHandle,
+	ERenderPassType renderPass)
+{
+	RenderItem item = {};
+	item.Type = RENDER_ITEM_TYPE_SPRITE;
+	item.pObjHandle = pSprObjHandle;
+	item.SpriteParam.PosX = posX;
+	item.SpriteParam.PosY = posY;
+	item.SpriteParam.ScaleX = scaleX;
+	item.SpriteParam.ScaleY = scaleY;
+
+	if (pRect)
+	{
+		item.SpriteParam.bUseRect = true;
+		item.SpriteParam.Rect = *pRect;
+	}
+	else
+	{
+		item.SpriteParam.bUseRect = false;
+		item.SpriteParam.Rect = {};
+	}
+	item.SpriteParam.pTexHandle = pTexHandle;
+	item.SpriteParam.Z = z;
+
+	bool bAdded = false;
+	switch (renderPass)
+	{
+	case ERenderPassType::Opaque:
+		bAdded = m_ppRenderQueueOpaque[m_CurrThreadIndex]->Add(&item);
+		ASSERT(bAdded, "Render Queue is full.");
+		break;
+	case ERenderPassType::Transparent:
+		bAdded = m_ppRenderQueueTrasnparent[m_CurrThreadIndex]->Add(&item);
+		ASSERT(bAdded, "Render Queue Transparent is full.");
+		break;
+	default:
+		ASSERT(false, "Invalid render pass.");
+		break;
+	}
+	ASSERT(bAdded, "Render Queue is full. or Invalid render pass.");
+
+	m_CurrThreadIndex++;
+	m_CurrThreadIndex = m_CurrThreadIndex % m_NumRenderThreads;
+}
+
+// TODO: Support rotation. Get Transform info.
+void ENGINECALL D3D12Renderer::RenderSprite(
+	void* pSprObjHandle,
+	int posX, int posY,
+	float scaleX, float scaleY,
+	float z,
+	ERenderPassType renderPass)
+{
+	RenderItem item = {};
+	item.Type = RENDER_ITEM_TYPE_SPRITE;
+	item.pObjHandle = pSprObjHandle;
+	item.SpriteParam.PosX = posX;
+	item.SpriteParam.PosY = posY;
+	item.SpriteParam.ScaleX = scaleX;
+	item.SpriteParam.ScaleY = scaleY;
+	item.SpriteParam.bUseRect = FALSE;
+	item.SpriteParam.Rect = {};
+	item.SpriteParam.pTexHandle = nullptr;
+	item.SpriteParam.Z = z;
+
+	bool bAdded = false;
+	switch (renderPass)
+	{
+	case ERenderPassType::Opaque:
+		bAdded = m_ppRenderQueueOpaque[m_CurrThreadIndex]->Add(&item);
+		ASSERT(bAdded, "Render Queue is full.");
+		break;
+	case ERenderPassType::Transparent:
+		bAdded = m_ppRenderQueueTrasnparent[m_CurrThreadIndex]->Add(&item);
+		ASSERT(bAdded, "Render Queue Transparent is full.");
+		break;
+	default:
+		ASSERT(false, "Invalid render pass.");
+		break;
+	}
+	ASSERT(bAdded, "Render Queue is full. or Invalid render pass.");
+
+	m_CurrThreadIndex++;
+	m_CurrThreadIndex = m_CurrThreadIndex % m_NumRenderThreads;
 }
 
 IMeshObject* ENGINECALL D3D12Renderer::CreateBasicMeshObject()
@@ -762,127 +819,75 @@ bool ENGINECALL D3D12Renderer::WriteTextToBitmap(uint8_t* dstImage, UINT dstWidt
 	return bResult;
 }
 
-void ENGINECALL D3D12Renderer::RenderMeshObject(
-	IMeshObject* pMeshObj,
-	const XMMATRIX* pMatWorld,
-	ERenderPassType renderPass)
+bool ENGINECALL D3D12Renderer::UpdateWindowSize(uint32_t backBufferWidth, uint32_t backBufferHeight)
 {
-	RenderItem item = {};
-	item.Type = RENDER_ITEM_TYPE_MESH_OBJ;
-	item.pObjHandle = pMeshObj;
-	item.MeshObjParam.matWorld = *pMatWorld;
-
-	bool bAdded = false;
-	switch (renderPass)
+	if ((backBufferWidth == 0 || backBufferHeight == 0) ||				// Zero size can be given when the window is minimized.
+		(m_Width == backBufferWidth && m_Height == backBufferHeight))	// Size is not changed.
 	{
-	case ERenderPassType::Opaque:
-		bAdded = m_ppRenderQueueOpaque[m_CurrThreadIndex]->Add(&item);
-		ASSERT(bAdded, "Render Queue is full.");
-		break;
-	case ERenderPassType::Transparent:
-		bAdded = m_ppRenderQueueTrasnparent[m_CurrThreadIndex]->Add(&item);
-		ASSERT(bAdded, "Render Queue Transparent is full.");
-		break;
-	default:
-		ASSERT(false, "Invalid render pass.");
-		break;
+		return true;
 	}
-	ASSERT(bAdded, "Render Queue is full. or Invalid render pass.");
 
-	m_CurrThreadIndex++;
-	m_CurrThreadIndex = m_CurrThreadIndex % m_NumRenderThreads;
-}
+	// wait for all commands
+	fence();
 
-void ENGINECALL D3D12Renderer::RenderSpriteWithTex(
-	void* pSprObjHandle,
-	int posX, int posY,
-	float scaleX, float scaleY,
-	const RECT* pRect,
-	float z,
-	void* pTexHandle,
-	ERenderPassType renderPass)
-{
-	RenderItem item = {};
-	item.Type = RENDER_ITEM_TYPE_SPRITE;
-	item.pObjHandle = pSprObjHandle;
-	item.SpriteParam.PosX = posX;
-	item.SpriteParam.PosY = posY;
-	item.SpriteParam.ScaleX = scaleX;
-	item.SpriteParam.ScaleY = scaleY;
-
-	if (pRect)
+	for (int i = 0; i < MAX_PENDING_FRAME_COUNT; i++)
 	{
-		item.SpriteParam.bUseRect = true;
-		item.SpriteParam.Rect = *pRect;
+		waitForFenceValue(m_pui64LastFenceValue[i]);
 	}
-	else
+
+	DXGI_SWAP_CHAIN_DESC1	desc;
+	HRESULT	hr = m_pSwapChain->GetDesc1(&desc);
+	if (FAILED(hr))
 	{
-		item.SpriteParam.bUseRect = false;
-		item.SpriteParam.Rect = {};
+		ASSERT(false, "Failed to get Swap Chain Desc.");
+		return false;
 	}
-	item.SpriteParam.pTexHandle = pTexHandle;
-	item.SpriteParam.Z = z;
 
-	bool bAdded = false;
-	switch (renderPass)
+	for (int n = 0; n < SWAP_CHAIN_FRAME_COUNT; n++)
 	{
-	case ERenderPassType::Opaque:
-		bAdded = m_ppRenderQueueOpaque[m_CurrThreadIndex]->Add(&item);
-		ASSERT(bAdded, "Render Queue is full.");
-		break;
-	case ERenderPassType::Transparent:
-		bAdded = m_ppRenderQueueTrasnparent[m_CurrThreadIndex]->Add(&item);
-		ASSERT(bAdded, "Render Queue Transparent is full.");
-		break;
-	default:
-		ASSERT(false, "Invalid render pass.");
-		break;
+		m_pRenderTargets[n]->Release();
+		m_pRenderTargets[n] = nullptr;
 	}
-	ASSERT(bAdded, "Render Queue is full. or Invalid render pass.");
 
-	m_CurrThreadIndex++;
-	m_CurrThreadIndex = m_CurrThreadIndex % m_NumRenderThreads;
-}
-
-// TODO: Support rotation. Get Transform info.
-void ENGINECALL D3D12Renderer::RenderSprite(
-	void* pSprObjHandle,
-	int posX, int posY,
-	float scaleX, float scaleY,
-	float z,
-	ERenderPassType renderPass)
-{
-	RenderItem item = {};
-	item.Type = RENDER_ITEM_TYPE_SPRITE;
-	item.pObjHandle = pSprObjHandle;
-	item.SpriteParam.PosX = posX;
-	item.SpriteParam.PosY = posY;
-	item.SpriteParam.ScaleX = scaleX;
-	item.SpriteParam.ScaleY = scaleY;
-	item.SpriteParam.bUseRect = FALSE;
-	item.SpriteParam.Rect = {};
-	item.SpriteParam.pTexHandle = nullptr;
-	item.SpriteParam.Z = z;
-
-	bool bAdded = false;
-	switch (renderPass)
+	if (m_pDepthStencil)
 	{
-	case ERenderPassType::Opaque:
-		bAdded = m_ppRenderQueueOpaque[m_CurrThreadIndex]->Add(&item);
-		ASSERT(bAdded, "Render Queue is full.");
-		break;
-	case ERenderPassType::Transparent:
-		bAdded = m_ppRenderQueueTrasnparent[m_CurrThreadIndex]->Add(&item);
-		ASSERT(bAdded, "Render Queue Transparent is full.");
-		break;
-	default:
-		ASSERT(false, "Invalid render pass.");
-		break;
+		m_pDepthStencil->Release();
+		m_pDepthStencil = nullptr;
 	}
-	ASSERT(bAdded, "Render Queue is full. or Invalid render pass.");
 
-	m_CurrThreadIndex++;
-	m_CurrThreadIndex = m_CurrThreadIndex % m_NumRenderThreads;
+	if (FAILED(m_pSwapChain->ResizeBuffers(SWAP_CHAIN_FRAME_COUNT, backBufferWidth, backBufferHeight, DXGI_FORMAT_R8G8B8A8_UNORM, m_SwapChainFlags)))
+	{
+		ASSERT(false, "Failed to resize Swap Chain buffers.");
+		return false;
+	}
+
+	m_uiRenderTargetIndex = m_pSwapChain->GetCurrentBackBufferIndex();
+
+	// Create frame resources.
+	CD3DX12_CPU_DESCRIPTOR_HANDLE rtvHandle(m_pRTVHeap->GetCPUDescriptorHandleForHeapStart());
+
+	// Create a RTV for each frame.
+	for (int n = 0; n < SWAP_CHAIN_FRAME_COUNT; n++)
+	{
+		m_pSwapChain->GetBuffer(n, IID_PPV_ARGS(&m_pRenderTargets[n]));
+		m_pD3DDevice->CreateRenderTargetView(m_pRenderTargets[n], nullptr, rtvHandle);
+		rtvHandle.Offset(1, m_rtvDescriptorSize);
+	}
+
+	createDepthStencil(backBufferWidth, backBufferHeight);
+
+	m_Width = backBufferWidth;
+	m_Height = backBufferHeight;
+	m_Viewport.Width = (float)m_Width;
+	m_Viewport.Height = (float)m_Height;
+	m_ScissorRect.left = 0;
+	m_ScissorRect.top = 0;
+	m_ScissorRect.right = m_Width;
+	m_ScissorRect.bottom = m_Height;
+
+	initCamera();
+
+	return true;
 }
 
 void ENGINECALL D3D12Renderer::SetCameraPos(float x, float y, float z)

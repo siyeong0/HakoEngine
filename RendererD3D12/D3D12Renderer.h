@@ -28,12 +28,14 @@ public:
 
 	// Derived from IRenderer
 	bool ENGINECALL Initialize(HWND hWnd, bool bEnableDebugLayer, bool bEnableGBV, bool bUseGpuUploadHeaps, const WCHAR* wchShaderPath) override;
+	void ENGINECALL Cleanup() override;
 	void ENGINECALL BeginRender() override;
 	void ENGINECALL EndRender() override;
 	void ENGINECALL Present() override;
-	void ENGINECALL Cleanup() override;
 
-	bool ENGINECALL UpdateWindowSize(uint32_t backBufferWidth, uint32_t backBufferHeight) override;
+	void ENGINECALL RenderMeshObject(IMeshObject* pMeshObj, const XMMATRIX* pMatWorld, ERenderPassType renderPass) override;
+	void ENGINECALL RenderSpriteWithTex(void* pSprObjHandle, int posX, int posY, float scaleX, float scaleY, const RECT* pRect, float z, void* pTexHandle, ERenderPassType renderPass) override;
+	void ENGINECALL RenderSprite(void* pSprObjHandle, int posX, int posY, float scaleX, float scaleY, float z, ERenderPassType renderPass) override;
 
 	IMeshObject* ENGINECALL CreateBasicMeshObject() override;
 	ISprite* ENGINECALL CreateSpriteObject() override;
@@ -50,15 +52,11 @@ public:
 	void ENGINECALL DeleteFontObject(void* pFontHandle) override;
 	bool ENGINECALL WriteTextToBitmap(uint8_t* dstImage, UINT dstWidth, UINT dstHeight, UINT dstPitch, int* outWidth, int* outHeight, void* pFontObjHandle, const WCHAR* wchString, UINT len) override;
 
-	void ENGINECALL RenderMeshObject(IMeshObject* pMeshObj, const XMMATRIX* pMatWorld, ERenderPassType renderPass) override;
-	void ENGINECALL RenderSpriteWithTex(void* pSprObjHandle, int posX, int posY, float scaleX, float scaleY, const RECT* pRect, float z, void* pTexHandle, ERenderPassType renderPass) override;
-	void ENGINECALL RenderSprite(void* pSprObjHandle, int posX, int posY, float scaleX, float scaleY, float z, ERenderPassType renderPass) override;
-
+	bool ENGINECALL UpdateWindowSize(uint32_t backBufferWidth, uint32_t backBufferHeight) override;
 	void ENGINECALL SetCameraPos(float x, float y, float z) override;
 	void ENGINECALL SetCameraRot(float yaw, float pitch, float roll) override;
 	void ENGINECALL MoveCamera(float x, float y, float z) override;
 	void ENGINECALL GetCameraPos(float* outX, float* outY, float* outZ) override;
-
 	int	ENGINECALL GetCommandListCount() override;
 	bool ENGINECALL IsGpuUploadHeapsEnabled() const override;
 
