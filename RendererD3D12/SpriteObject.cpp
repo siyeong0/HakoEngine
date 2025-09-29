@@ -143,7 +143,7 @@ void SpriteObject::DrawWithTex(int threadIndex, ID3D12GraphicsCommandList6* pCom
 
 	// constant buffer의 내용을 설정
 	pConstantBufferSprite->ScreenResolution.x = (float)m_pRenderer->GetScreenWidth();
-	pConstantBufferSprite->ScreenResolution.y = (float)m_pRenderer->GetScreenHeigt();
+	pConstantBufferSprite->ScreenResolution.y = (float)m_pRenderer->GetScreenHeight();
 	pConstantBufferSprite->Position = *pPos;
 	pConstantBufferSprite->Scale = *pScale;
 	pConstantBufferSprite->TexSize.x = (float)texWidth;

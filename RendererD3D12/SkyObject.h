@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include "ConstantBuffer.h"
 
 class D3D12Renderer;
@@ -7,7 +7,6 @@ class SkyObject
 {
 public:
 	bool Initialize(D3D12Renderer* pRenderer);
-	void Update(float dt);
 	void Draw(int threadIndex, ID3D12GraphicsCommandList6* pCommandList);
 	void Cleanup();
 

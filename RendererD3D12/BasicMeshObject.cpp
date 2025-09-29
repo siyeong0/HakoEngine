@@ -90,8 +90,16 @@ void ENGINECALL BasicMeshObject::EndCreateMesh()
 
 bool BasicMeshObject::Initialize(D3D12Renderer* pRenderer)
 {
+	bool bResult = false;
 	m_pRenderer = pRenderer;
-	return initCommonResources();
+
+	bResult = initCommonResources();
+	if (!bResult)
+	{
+		ASSERT(false, "BasicMesh: init common resources failed");
+	}
+	lb_return:
+	return bResult;
 }
 
 void BasicMeshObject::Draw(int threadIndex, ID3D12GraphicsCommandList6* pCommandList, const XMMATRIX* wordMatrix)
@@ -184,8 +192,16 @@ bool BasicMeshObject::initCommonResources()
 		goto lb_true;
 	}
 
-	initRootSinagture();
-	initPipelineState();
+	if (!initRootSinagture())
+	{
+		ASSERT(false, "BasicMesh: init root signature failed");
+		return false;
+	}
+	if (!initPipelineState())
+	{
+		ASSERT(false, "BasicMesh: init pipeline state failed");
+		return false;
+	}
 
 lb_true:
 	return ++m_InitRefCount;
@@ -323,6 +339,7 @@ bool BasicMeshObject::initPipelineState()
 	psoDesc.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;
 	psoDesc.DSVFormat = DXGI_FORMAT_D32_FLOAT;
 	psoDesc.SampleDesc.Count = 1;
+
 	hr = pD3DDeivce->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&m_pPipelineState));
 	ASSERT(SUCCEEDED(hr), "Failed to create pipeline state.");
 
@@ -336,7 +353,6 @@ bool BasicMeshObject::initPipelineState()
 		pShaderManager->ReleaseShader(pPixelShader);
 		pPixelShader = nullptr;
 	}
-
 	return true;
 }
 

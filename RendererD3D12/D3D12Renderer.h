@@ -77,7 +77,7 @@ public:
 	inline uint32_t GetSrvDescriptorSize() const { return m_srvDescriptorSize; }
 	inline SingleDescriptorAllocator* GetSingleDescriptorAllocator() const { return m_pSingleDescriptorAllocator; }
 	inline int GetScreenWidth() const { return m_Width; }
-	inline int GetScreenHeigt() const { return m_Height; }
+	inline int GetScreenHeight() const { return m_Height; }
 	inline float GetDPI() const { return m_DPI; }
 	inline bool IsGpuUploadHeapsEnabledInl() const { return m_bGpuUploadHeapsEnabled; }
 
