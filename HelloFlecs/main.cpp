@@ -1,4 +1,5 @@
 ﻿// App.cpp : Defines the entry point for the application.
+#include <iostream>
 #include <Windows.h>
 #include <windowsx.h>
 #include "Resource.h"
@@ -56,6 +57,15 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance,
 
 #ifdef _DEBUG
 	_CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
+	// Open console window
+	{
+		AllocConsole();
+		FILE* fp;
+		freopen_s(&fp, "CONOUT$", "w", stdout);
+		freopen_s(&fp, "CONOUT$", "w", stderr);
+		freopen_s(&fp, "CONIN$", "r", stdin);
+		std::cout << "HelloFlecs Console" << std::endl;
+	}
 #endif
 	// Initialize global strings
 	LoadStringW(hInstance, IDS_APP_TITLE, szTitle, MAX_LOADSTRING);
