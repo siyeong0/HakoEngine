@@ -515,12 +515,13 @@ bool Game::Initialize(HWND hWnd, bool bEnableDebugLayer, bool bEnableGBV)
 
 void Game::Run()
 {
-	m_FrameCount++;
-
 	uint64_t currTick = GetTickCount64();
 
 	// game business logic
-	Update(currTick);
+	if (Update(currTick))
+	{
+		++m_FrameCount;
+	}
 
 	if (currTick - m_PrevFrameCheckTick > 1000)
 	{
@@ -539,21 +540,15 @@ void Game::Run()
 
 bool Game::Update(uint64_t currTick)
 {
-	// Update Scene with 60FPS
-	if (currTick - m_PrevUpdateTick < 16)
-	{
-		return false;
-	}
+	const uint64_t elapsedMs = currTick - m_PrevUpdateTick;
+	const float dt = (float)elapsedMs * 0.001f; // ms -> s
 	m_PrevUpdateTick = currTick;
 
-	// Update camra
-	if (m_CamOffsetX != 0.0f || m_CamOffsetY != 0.0f || m_CamOffsetZ != 0.0f)
+	if (m_CamOffsetX || m_CamOffsetY || m_CamOffsetZ) 
 	{
 		m_pRenderer->MoveCamera(m_CamOffsetX, m_CamOffsetY, m_CamOffsetZ);
 	}
 
-	// Update ECS world
-	float dt = (float)(currTick - m_PrevUpdateTick) * 0.001f;
 	m_ECSWorld.progress(dt);
 
 	return true;

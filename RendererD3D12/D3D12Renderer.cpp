@@ -380,8 +380,8 @@ void ENGINECALL D3D12Renderer::Present()
 	fence();
 	// Transfer the Back Buffer to the Primary Buffer.
 
-	//UINT m_SyncInterval = 1;	// VSync On
-	UINT m_SyncInterval = 0;	// VSync Off
+	UINT m_SyncInterval = 1;	// VSync On
+	//UINT m_SyncInterval = 0;	// VSync Off
 
 	UINT uiSyncInterval = m_SyncInterval;
 	UINT uiPresentFlags = 0;
