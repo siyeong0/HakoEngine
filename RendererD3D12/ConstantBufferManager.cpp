@@ -40,7 +40,7 @@ void ConstantBufferManager::Reset()
 	}
 }
 
-SimpleConstantBufferPool* ConstantBufferManager::GetConstantBufferPool(EConstantBufferType type)
+SimpleConstantBufferPool* ConstantBufferManager::GetConstantBufferPool(EConstantBufferType type) const
 {
 	ASSERT(type < CONSTANT_BUFFER_TYPE_COUNT);
 #pragma warning(suppress: 33010)

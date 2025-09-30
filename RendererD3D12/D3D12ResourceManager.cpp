@@ -310,7 +310,7 @@ bool D3D12ResourceManager::CreateTexture(ID3D12Resource** ppOutResource, UINT wi
 		BYTE* pDest = pMappedPtr;
 		for (UINT y = 0; y < height; y++)
 		{
-			memcpy(pDest, pSrc, width * 4);
+			memcpy(pDest, pSrc, static_cast<size_t>(width) * 4);
 			pSrc += (width * 4);
 			pDest += Footprint.Footprint.RowPitch;			
 		}

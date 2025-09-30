@@ -3,7 +3,7 @@
 struct PSOHandle
 {
 	std::string Name;
-	std::size_t Hash;
+	std::size_t Hash = 0;
 	ID3D12PipelineState* pPSO = nullptr;
 	int RefCount = 0;
 };

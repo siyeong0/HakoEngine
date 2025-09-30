@@ -72,7 +72,7 @@ bool ENGINECALL BasicMeshObject::InsertTriGroup(const uint16_t* indices, size_t 
 		ASSERT(false, "Failed to create index buffer.");
 		return false;
 	}
-	IndexedTriGroup*	pTriGroup = m_pTriGroupList + m_NumTriGroups;
+	IndexedTriGroup* pTriGroup = m_pTriGroupList + m_NumTriGroups;
 	pTriGroup->IndexBuffer = pIndexBuffer;
 	pTriGroup->IndexBufferView = indexBufferView;
 	pTriGroup->NumTriangles = static_cast<UINT>(numTriangles);
@@ -228,7 +228,7 @@ bool BasicMeshObject::initRootSinagture()
 		D3D12_ROOT_SIGNATURE_FLAG_DENY_PIXEL_SHADER_ROOT_ACCESS;
 
 	// Create an empty root signature.
-	CD3DX12_ROOT_SIGNATURE_DESC rootSignatureDesc;
+	CD3DX12_ROOT_SIGNATURE_DESC rootSignatureDesc = {};
 	//rootSignatureDesc.Init(0, nullptr, 0, nullptr, D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
 	rootSignatureDesc.Init(_countof(rootParameters), rootParameters, 1, &sampler, D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
 
