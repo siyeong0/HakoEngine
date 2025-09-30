@@ -973,6 +973,37 @@ bool ENGINECALL D3D12Renderer::IsGpuUploadHeapsEnabled() const
 // Internal methods
 // --------------------------------------------------
 
+void D3D12Renderer::ProcessByThread(int threadIndex)
+{
+	CommandListPool* pCommandListPool = m_ppCommandListPool[m_CurrContextIndex][threadIndex];	// 현재 사용중인 command list pool
+
+	// Set RenderTarget to process the rendering queue.
+	CD3DX12_CPU_DESCRIPTOR_HANDLE rtvHandle(m_pRTVHeap->GetCPUDescriptorHandleForHeapStart(), m_uiRenderTargetIndex, m_rtvDescriptorSize);
+	CD3DX12_CPU_DESCRIPTOR_HANDLE dsvHandle(m_pDSVHeap->GetCPUDescriptorHandleForHeapStart());
+
+	constexpr int NUM_ITEMS_PER_PROCESS = 400;
+	switch (m_RenderPhase.load(std::memory_order_relaxed))
+	{
+	case ERenderPassType::Opaque:
+		m_ppRenderQueueOpaque[threadIndex]->Process(
+			threadIndex, pCommandListPool, m_pCommandQueue, NUM_ITEMS_PER_PROCESS, rtvHandle, dsvHandle, &m_Viewport, &m_ScissorRect);
+		break;
+	case ERenderPassType::Transparent:
+		m_ppRenderQueueTrasnparent[threadIndex]->Process(
+			threadIndex, pCommandListPool, m_pCommandQueue, NUM_ITEMS_PER_PROCESS, rtvHandle, dsvHandle, &m_Viewport, &m_ScissorRect);
+		break;
+	default:
+		ASSERT(false, "Invalid render pass.");
+		break;
+	}
+
+	LONG currCount = _InterlockedDecrement(&m_lActiveThreadCount);
+	if (0 == currCount)
+	{
+		SetEvent(m_hCompleteEvent);
+	}
+}
+
 void D3D12Renderer::EnsureCompleted()
 {
 	// Wait for all commands.
@@ -1004,37 +1035,6 @@ void D3D12Renderer::SetCurrentPathForShader() const
 void D3D12Renderer::RestoreCurrentPath() const
 {
 	SetCurrentDirectory(m_wchCurrentPathBackup);
-}
-
-void D3D12Renderer::ProcessByThread(int threadIndex)
-{
-	CommandListPool* pCommandListPool = m_ppCommandListPool[m_CurrContextIndex][threadIndex];	// 현재 사용중인 command list pool
-
-	// Set RenderTarget to process the rendering queue.
-	CD3DX12_CPU_DESCRIPTOR_HANDLE rtvHandle(m_pRTVHeap->GetCPUDescriptorHandleForHeapStart(), m_uiRenderTargetIndex, m_rtvDescriptorSize);
-	CD3DX12_CPU_DESCRIPTOR_HANDLE dsvHandle(m_pDSVHeap->GetCPUDescriptorHandleForHeapStart());
-
-	constexpr int NUM_ITEMS_PER_PROCESS = 400;
-	switch (m_RenderPhase.load(std::memory_order_relaxed))
-	{
-	case ERenderPassType::Opaque:
-		m_ppRenderQueueOpaque[threadIndex]->Process(
-			threadIndex, pCommandListPool, m_pCommandQueue, NUM_ITEMS_PER_PROCESS, rtvHandle, dsvHandle, &m_Viewport, &m_ScissorRect);
-		break;
-	case ERenderPassType::Transparent:
-		m_ppRenderQueueTrasnparent[threadIndex]->Process(
-			threadIndex, pCommandListPool, m_pCommandQueue, NUM_ITEMS_PER_PROCESS, rtvHandle, dsvHandle, &m_Viewport, &m_ScissorRect);
-		break;
-	default:
-		ASSERT(false, "Invalid render pass.");
-		break;
-	}
-
-	LONG currCount = _InterlockedDecrement(&m_lActiveThreadCount);
-	if (0 == currCount)
-	{
-		SetEvent(m_hCompleteEvent);
-	}
 }
 
 // --------------------------------------------------

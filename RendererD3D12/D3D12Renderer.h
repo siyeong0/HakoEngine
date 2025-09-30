@@ -67,7 +67,10 @@ public:
 	D3D12Renderer() = default;
 	~D3D12Renderer() { Cleanup(); };
 
+	// from RenderThread
+	void ProcessByThread(int threadIndex);
 	void EnsureCompleted();
+
 	ID3D12Device5* GetD3DDevice() const { return m_pD3DDevice; }
 	D3D12ResourceManager* GetResourceManager() { return m_pResourceManager; }
 	ShaderManager* GetShaderManager() { return m_pShaderManager; }
@@ -89,9 +92,6 @@ public:
 
 	void SetCurrentPathForShader() const;
 	void RestoreCurrentPath() const;
-
-	// from RenderThread
-	void ProcessByThread(int threadIndex);
 
 private:
 	void initCamera();
