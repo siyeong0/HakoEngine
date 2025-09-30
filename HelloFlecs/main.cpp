@@ -78,8 +78,8 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance,
 	MSG msg;
 
 	g_pGame = new Game;
-	//g_pGame->Initialize(g_hMainWindow, TRUE, TRUE);
-	g_pGame->Initialize(g_hMainWindow, false, false);
+	g_pGame->Initialize(g_hMainWindow, true, true);
+	//g_pGame->Initialize(g_hMainWindow, false, false);
 
 	SetWindowText(g_hMainWindow, L"Dll Renderer");
 	// Main message loop:

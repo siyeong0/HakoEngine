@@ -3,6 +3,9 @@
 #include "CommandListPool.h"
 #include "BasicMeshObject.h"
 #include "SpriteObject.h"
+#include "RootSignatureManager.h"
+#include "SimpleConstantBufferPool.h"
+#include "DescriptorPool.h"
 #include "RenderQueue.h"
 
 bool RenderQueue::Initialize(D3D12Renderer* pRenderer, int MaxNumItems)
@@ -38,27 +41,55 @@ int RenderQueue::Process(
 	const D3D12_RECT* pScissorRect)
 {
 	ID3D12Device5* pD3DDevice = m_pRenderer->GetD3DDevice();
-	
+	RootSignatureManager* pRootSignatureManage = m_pRenderer->GetRootSignatureManager();
+
+	// Descriptor heap for SRV.
+	DescriptorPool* pDescriptorPool = m_pRenderer->GetDescriptorPool(threadIndex);
+	ID3D12DescriptorHeap* pSRVDescriptorHeap = pDescriptorPool->GetDescriptorHeap();
+
+	// Prepare per-frame constant buffer.
+	SimpleConstantBufferPool* pConstantBufferPool = m_pRenderer->GetConstantBufferPool(CONSTANT_BUFFER_TYPE_DEFAULT, threadIndex);
+	ConstantBufferContainer* pCB = pConstantBufferPool->Alloc();
+	ASSERT(pCB, "Failed to allocate constant buffer.");
+
+	CB_PerFrame* pCBPerFrame = (CB_PerFrame*)pCB->pSystemMemAddr;
+	const CB_PerFrame& srcCBData = m_pRenderer->GetFrameCBData();
+	// memcpy(pCBPerFrame, &m_pRenderer->GetFrameCBData(), sizeof(CB_PerFrame));
+	pCBPerFrame->ViewMatrix = XMMatrixTranspose(srcCBData.ViewMatrix);
+	pCBPerFrame->ProjMatrix = XMMatrixTranspose(srcCBData.ProjMatrix);
+	pCBPerFrame->InvViewMatrix = XMMatrixTranspose(srcCBData.InvViewMatrix);
+
+	// Command list for remaining commands.
 	ID3D12GraphicsCommandList6* ppCommandList[64] = {};
 	UINT numCmdLists = 0;
 
-	ID3D12GraphicsCommandList6* pCommandList = nullptr;
+	ID3D12GraphicsCommandList6* pCurrCommandList = nullptr;
 	int processCount = 0;
 	int processCountPerCmdList = 0;
 	const RenderItem* pItem = nullptr;
 	while (pItem = dispatch())
 	{
-		pCommandList = pCommandListPool->GetCurrentCommandList();
-		pCommandList->RSSetViewports(1, pViewport);
-		pCommandList->RSSetScissorRects(1, pScissorRect);
-		pCommandList->OMSetRenderTargets(1, &rtv, FALSE, &dsv);
+		ID3D12GraphicsCommandList6* pNextCommandList = pCommandListPool->GetCurrentCommandList();
+		if (pNextCommandList != pCurrCommandList)
+		{
+			pCurrCommandList = pNextCommandList;
+
+			pCurrCommandList->RSSetViewports(1, pViewport);
+			pCurrCommandList->RSSetScissorRects(1, pScissorRect);
+			pCurrCommandList->OMSetRenderTargets(1, &rtv, FALSE, &dsv);
+
+			pCurrCommandList->SetGraphicsRootSignature(pRootSignatureManage->Query(ERootSignatureType::GraphicsDefault));
+			pCurrCommandList->SetDescriptorHeaps(1, &pSRVDescriptorHeap);
+
+			pCurrCommandList->SetGraphicsRootConstantBufferView(0, pCB->pGPUMemAddr);
+		}
 
 		switch (pItem->Type)
 		{
 			case RENDER_ITEM_TYPE_MESH_OBJ:
 				{
 					BasicMeshObject* meshObj = reinterpret_cast<BasicMeshObject*>(pItem->pObjHandle);
-					meshObj->Draw(threadIndex, pCommandList, &pItem->MeshObjParam.matWorld);
+					meshObj->Draw(threadIndex, pCurrCommandList, &pItem->MeshObjParam.matWorld);
 				}
 				break;
 			case RENDER_ITEM_TYPE_SPRITE:
@@ -82,11 +113,11 @@ int RenderQueue::Process(
 						{
 							if (texureHandle->bUpdated)
 							{
-								UpdateTexture(pD3DDevice, pCommandList, texureHandle->pTexResource, texureHandle->pUploadBuffer);
+								UpdateTexture(pD3DDevice, pCurrCommandList, texureHandle->pTexResource, texureHandle->pUploadBuffer);
 							}
 							texureHandle->bUpdated = false;
 						}
-						spriteObj->DrawWithTex(threadIndex, pCommandList, &position, &scale, pRect, z, texureHandle);
+						spriteObj->DrawWithTex(threadIndex, pCurrCommandList, &position, &scale, pRect, z, texureHandle);
 					}
 					else
 					{
@@ -94,7 +125,7 @@ int RenderQueue::Process(
 						XMFLOAT2 position = { (float)pItem->SpriteParam.PosX, (float)pItem->SpriteParam.PosY };
 						XMFLOAT2 scale = { pItem->SpriteParam.ScaleX, pItem->SpriteParam.ScaleY };
 
-						spriteObj->Draw(threadIndex, pCommandList, &position, &scale, z);
+						spriteObj->Draw(threadIndex, pCurrCommandList, &position, &scale, z);
 					}
 				}
 				break;
@@ -108,9 +139,9 @@ int RenderQueue::Process(
 		{
 			//pCommandListPool->CloseAndExecute(pCommandQueue);
 			pCommandListPool->Close();
-			ppCommandList[numCmdLists] = pCommandList;
+			ppCommandList[numCmdLists] = pCurrCommandList;
 			numCmdLists++;
-			pCommandList = nullptr;
+			pCurrCommandList = nullptr;
 			processCountPerCmdList = 0;
 		}
 	}
@@ -120,9 +151,9 @@ int RenderQueue::Process(
 	{
 		//pCommandListPool->CloseAndExecute(pCommandQueue);
 		pCommandListPool->Close();
-		ppCommandList[numCmdLists] = pCommandList;
+		ppCommandList[numCmdLists] = pCurrCommandList;
 		numCmdLists++;
-		pCommandList = nullptr;
+		pCurrCommandList = nullptr;
 		processCountPerCmdList = 0;
 	}
 

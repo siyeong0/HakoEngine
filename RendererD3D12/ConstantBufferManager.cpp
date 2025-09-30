@@ -6,7 +6,7 @@
 
 ConstantBufferProperty g_pConstBufferPropList[] =
 {
-	CONSTANT_BUFFER_TYPE_DEFAULT, sizeof(ConstantBufferDefault),
+	CONSTANT_BUFFER_TYPE_DEFAULT, sizeof(CB_BasicMeshMatrices),
 	CONSTANT_BUFFER_TYPE_SPRITE, sizeof(ConstantBufferSprite)
 };
 

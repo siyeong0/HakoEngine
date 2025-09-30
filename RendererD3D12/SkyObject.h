@@ -15,13 +15,11 @@ public:
 	~SkyObject() { Cleanup(); };
 
 private:
-	bool initRootSinagture();
 	bool initPipelineState();
 
 private:
 	D3D12Renderer* m_pRenderer = nullptr;
 
-	static ID3D12RootSignature* m_pRootSignature; // TODO : Use RootSignaturePool
 	PSOHandle* m_pPSOHandle = nullptr;
 
 	ID3D12Resource* m_pVertexBuffer = nullptr;

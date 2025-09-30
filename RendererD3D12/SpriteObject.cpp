@@ -3,14 +3,13 @@
 #include "SimpleConstantBufferPool.h"
 #include "SingleDescriptorAllocator.h"
 #include "ShaderManager.h"
+#include "RootSignatureManager.h"
 #include "PSOManager.h"
 #include "DescriptorPool.h"
 #include "D3D12Renderer.h"
 #include "SpriteObject.h"
 
 using namespace DirectX;
-
-ID3D12RootSignature* SpriteObject::m_pRootSignature = nullptr;
 
 ID3D12Resource* SpriteObject::m_pVertexBuffer = nullptr;
 D3D12_VERTEX_BUFFER_VIEW SpriteObject::m_VertexBufferView = {};
@@ -50,8 +49,6 @@ bool SpriteObject::Initialize(D3D12Renderer* pRenderer)
 	bResult = (initCommonResources() != 0);
 	ASSERT(bResult, "Failed to initialize common resources.");
 
-	bResult = initRootSinagture();
-	ASSERT(bResult, "Failed to initialize root signature.");
 	bResult = initPipelineState();
 	ASSERT(bResult, "Failed to initialize pipeline state.");
 
@@ -103,28 +100,24 @@ void SpriteObject::Draw(int threadIndex, ID3D12GraphicsCommandList6* pCommandLis
 
 void SpriteObject::DrawWithTex(int threadIndex, ID3D12GraphicsCommandList6* pCommandList, const XMFLOAT2* pPos, const XMFLOAT2* pScale, const RECT* pRect, float Z, TextureHandle* pTexHandle)
 {
-	// 각각의 draw()작업의 무결성을 보장하려면 draw() 작업마다 다른 영역의 descriptor table(shader visible)과 다른 영역의 CBV를 사용해야 한다.
-	// 따라서 draw()할 때마다 CBV는 ConstantBuffer Pool로부터 할당받고, 렌더리용 descriptor table(shader visible)은 descriptor pool로부터 할당 받는다.
-
-	ID3D12Device5* pD3DDeivce = m_pRenderer->GetD3DDevice();
+	ID3D12Device5* pDevice = m_pRenderer->GetD3DDevice();
 	UINT srvDescriptorSize = m_pRenderer->GetSrvDescriptorSize();
 	DescriptorPool* pDescriptorPool = m_pRenderer->GetDescriptorPool(threadIndex);
-	ID3D12DescriptorHeap* pDescriptorHeap = pDescriptorPool->GetDescriptorHeap();
 	SimpleConstantBufferPool* pConstantBufferPool = m_pRenderer->GetConstantBufferPool(CONSTANT_BUFFER_TYPE_SPRITE, threadIndex);
 	PSOManager* pPSOManager = m_pRenderer->GetPSOManager();
 
+	// Texture information
 	UINT texWidth = 0;
 	UINT texHeight = 0;
-
 	D3D12_CPU_DESCRIPTOR_HANDLE srv = {};
 	if (pTexHandle)
 	{
 		D3D12_RESOURCE_DESC desc = pTexHandle->pTexResource->GetDesc();
-		texWidth = (UINT)desc.Width;
-		texHeight = (UINT)desc.Height;
+		texWidth = static_cast<UINT>(desc.Width);
+		texHeight = static_cast<UINT>(desc.Height);
 		srv = pTexHandle->SRV;
 	}
-
+	// Sample region
 	RECT rect = {};
 	if (!pRect)
 	{
@@ -135,59 +128,56 @@ void SpriteObject::DrawWithTex(int threadIndex, ID3D12GraphicsCommandList6* pCom
 		pRect = &rect;
 	}
 
-	CD3DX12_GPU_DESCRIPTOR_HANDLE gpuDescriptorTable = {};
-	CD3DX12_CPU_DESCRIPTOR_HANDLE cpuDescriptorTable = {};
+	// Root CBV binding
+	constexpr UINT ROOT_SLOT_CBV_PER_FRAME = 0;
+	constexpr UINT ROOT_SLOT_CBV_PER_DRAW = 1;
+	constexpr UINT ROOT_SLOT_SRV_TABLE = 2;
 
-	if (!pDescriptorPool->AllocDescriptorTable(&cpuDescriptorTable, &gpuDescriptorTable, DESCRIPTOR_COUNT_FOR_DRAW))
-	{
-		ASSERT(false, "Failed to allocate descriptor table");
-	}
-
-	// 각각의 draw()에 대해 독립적인 constant buffer(내부적으로는 같은 resource의 다른 영역)를 사용한다.
 	ConstantBufferContainer* pCB = pConstantBufferPool->Alloc();
-	if (!pCB)
+	ASSERT(pCB, "Failed to allocate constant buffer.");
+	ConstantBufferSprite* pCBPerDraw = reinterpret_cast<ConstantBufferSprite*>(pCB->pSystemMemAddr);
+	
+	pCBPerDraw->ScreenResolution.x = (float)m_pRenderer->GetScreenWidth();
+	pCBPerDraw->ScreenResolution.y = (float)m_pRenderer->GetScreenHeight();
+	pCBPerDraw->Position = *pPos;
+	pCBPerDraw->Scale = *pScale;
+	pCBPerDraw->TexSize.x = (float)texWidth;
+	pCBPerDraw->TexSize.y = (float)texHeight;
+	pCBPerDraw->TexSampePos.x = (float)pRect->left;
+	pCBPerDraw->TexSampePos.y = (float)pRect->top;
+	pCBPerDraw->TexSampleSize.x = (float)(pRect->right - pRect->left);
+	pCBPerDraw->TexSampleSize.y = (float)(pRect->bottom - pRect->top);
+	pCBPerDraw->Z = Z;
+	pCBPerDraw->Alpha = 1.0f;
+
+	// SRV Descriptor table (1개)
+	CD3DX12_CPU_DESCRIPTOR_HANDLE cpuTable{};
+	CD3DX12_GPU_DESCRIPTOR_HANDLE gpuTable{};
+	const UINT requiredSrvCount = 1;
+	bool bOk = pDescriptorPool->AllocDescriptorTable(&cpuTable, &gpuTable, requiredSrvCount);
+	ASSERT(bOk, "Failed to allocate descriptor table.");
+
+	if (srv.ptr) 
 	{
-		ASSERT(false, "Failed to allocate constant buffer");
+		pDevice->CopyDescriptorsSimple(1, cpuTable, srv, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 	}
-	ConstantBufferSprite* pConstantBufferSprite = (ConstantBufferSprite*)pCB->pSystemMemAddr;
-
-	// constant buffer의 내용을 설정
-	pConstantBufferSprite->ScreenResolution.x = (float)m_pRenderer->GetScreenWidth();
-	pConstantBufferSprite->ScreenResolution.y = (float)m_pRenderer->GetScreenHeight();
-	pConstantBufferSprite->Position = *pPos;
-	pConstantBufferSprite->Scale = *pScale;
-	pConstantBufferSprite->TexSize.x = (float)texWidth;
-	pConstantBufferSprite->TexSize.y = (float)texHeight;
-	pConstantBufferSprite->TexSampePos.x = (float)pRect->left;
-	pConstantBufferSprite->TexSampePos.y = (float)pRect->top;
-	pConstantBufferSprite->TexSampleSize.x = (float)(pRect->right - pRect->left);
-	pConstantBufferSprite->TexSampleSize.y = (float)(pRect->bottom - pRect->top);
-	pConstantBufferSprite->Z = Z;
-	pConstantBufferSprite->Alpha = 1.0f;
-
-	// set RootSignature
-	pCommandList->SetGraphicsRootSignature(m_pRootSignature);
-	pCommandList->SetDescriptorHeaps(1, &pDescriptorHeap);
-
-	// Descriptor Table 구성
-	// 이번에 사용할 constant buffer의 descriptor를 렌더링용(shader visible) descriptor table에 카피
-
-	CD3DX12_CPU_DESCRIPTOR_HANDLE cbvDest(cpuDescriptorTable, SPRITE_DESCRIPTOR_INDEX_CBV, srvDescriptorSize);
-	pD3DDeivce->CopyDescriptorsSimple(1, cbvDest, pCB->CBVHandle, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
-	if (srv.ptr)
+	else 
 	{
-		CD3DX12_CPU_DESCRIPTOR_HANDLE srvDest(cpuDescriptorTable, SPRITE_DESCRIPTOR_INDEX_TEX, srvDescriptorSize);
-		pD3DDeivce->CopyDescriptorsSimple(1, srvDest, srv, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+		// TODO: 더미(1x1 white) SRV가 있다면 여기서 복사
+		// pDevice->CopyDescriptorsSimple(1, cpuTable, g_DefaultWhiteSRV, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 	}
 
-	pCommandList->SetGraphicsRootDescriptorTable(0, gpuDescriptorTable);
-
+	// Pipline/Input assembler state
 	pCommandList->SetPipelineState(pPSOManager->QueryPSO(m_pPSOHandle)->pPSO);
 	pCommandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 	pCommandList->IASetVertexBuffers(0, 1, &m_VertexBufferView);
 	pCommandList->IASetIndexBuffer(&m_IndexBufferView);
+	// b1: per-draw
+	pCommandList->SetGraphicsRootConstantBufferView(ROOT_SLOT_CBV_PER_DRAW, pCB->pGPUMemAddr);
+	// t0: texture
+	pCommandList->SetGraphicsRootDescriptorTable(ROOT_SLOT_SRV_TABLE, gpuTable);
+	// Draw
 	pCommandList->DrawIndexedInstanced(6, 1, 0, 0, 0);
-
 }
 
 SpriteObject::SpriteObject()
@@ -238,69 +228,13 @@ void SpriteObject::cleanupSharedResources()
 	}
 }
 
-bool SpriteObject::initRootSinagture()
-{
-	if (m_pRootSignature)
-	{
-		return true;
-	}
-
-	HRESULT hr = S_OK;
-
-	ID3D12Device5* pD3DDeivce = m_pRenderer->GetD3DDevice();
-	ID3DBlob* pSignature = nullptr;
-	ID3DBlob* pError = nullptr;
-
-	CD3DX12_DESCRIPTOR_RANGE ranges[2] = {};
-	ranges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, 1, 0);	// b0 : Constant Buffer View
-	ranges[1].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0);	// t0 : Shader Resource View(Tex)
-
-	CD3DX12_ROOT_PARAMETER rootParameters[1] = {};
-	rootParameters[0].InitAsDescriptorTable(_countof(ranges), ranges, D3D12_SHADER_VISIBILITY_ALL);
-
-	// default sampler
-	D3D12_STATIC_SAMPLER_DESC sampler = {};
-	SetDefaultSamplerDesc(&sampler, 0);
-	sampler.Filter = D3D12_FILTER_MIN_MAG_MIP_POINT;
-
-	// Allow input layout and deny uneccessary access to certain pipeline stages.
-	D3D12_ROOT_SIGNATURE_FLAGS rootSignatureFlags =
-		D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT |
-		D3D12_ROOT_SIGNATURE_FLAG_DENY_HULL_SHADER_ROOT_ACCESS |
-		D3D12_ROOT_SIGNATURE_FLAG_DENY_DOMAIN_SHADER_ROOT_ACCESS |
-		D3D12_ROOT_SIGNATURE_FLAG_DENY_GEOMETRY_SHADER_ROOT_ACCESS |
-		D3D12_ROOT_SIGNATURE_FLAG_DENY_PIXEL_SHADER_ROOT_ACCESS;
-
-	// Create an empty root signature.
-	CD3DX12_ROOT_SIGNATURE_DESC rootSignatureDesc = {};
-	//rootSignatureDesc.Init(0, nullptr, 0, nullptr, D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
-	rootSignatureDesc.Init(_countof(rootParameters), rootParameters, 1, &sampler, D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
-
-	hr = D3D12SerializeRootSignature(&rootSignatureDesc, D3D_ROOT_SIGNATURE_VERSION_1, &pSignature, &pError);
-	ASSERT(SUCCEEDED(hr), "Failed to serialize root signature.");
-
-	hr = pD3DDeivce->CreateRootSignature(0, pSignature->GetBufferPointer(), pSignature->GetBufferSize(), IID_PPV_ARGS(&m_pRootSignature));
-	ASSERT(SUCCEEDED(hr), "Failed to create root signature.");
-	
-	if (pSignature)
-	{
-		pSignature->Release();
-		pSignature = nullptr;
-	}
-	if (pError)
-	{
-		pError->Release();
-		pError = nullptr;
-	}
-	return true;
-}
-
 bool SpriteObject::initPipelineState()
 {
 	HRESULT hr = S_OK;
 
 	ID3D12Device5* pD3DDeivce = m_pRenderer->GetD3DDevice();
 	ShaderManager* pShaderManager = m_pRenderer->GetShaderManager();
+	RootSignatureManager* pRootSignatureManager = m_pRenderer->GetRootSignatureManager();
 	PSOManager* pPSOManager = m_pRenderer->GetPSOManager();
 
 	ShaderHandle* pVertexShader = pShaderManager->CreateShaderDXC(L"Sprite.hlsl", L"VSMain", L"vs_6_0", 0);
@@ -339,7 +273,7 @@ bool SpriteObject::initPipelineState()
 	// Describe and create the graphics pipeline state object (PSO).
 	D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc = {};
 	psoDesc.InputLayout = { inputElementDescs, _countof(inputElementDescs) };
-	psoDesc.pRootSignature = m_pRootSignature;
+	psoDesc.pRootSignature = pRootSignatureManager->Query(ERootSignatureType::GraphicsDefault);
 	psoDesc.VS = CD3DX12_SHADER_BYTECODE(pVertexShader->CodeBuffer, pVertexShader->CodeSize);
 	psoDesc.PS = CD3DX12_SHADER_BYTECODE(pPixelShader->CodeBuffer, pPixelShader->CodeSize);
 	psoDesc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
@@ -422,11 +356,6 @@ void SpriteObject::cleanup()
 	{
 		m_pRenderer->DeleteTexture(m_pTexHandle);
 		m_pTexHandle = nullptr;
-	}
-	if (m_pRootSignature)
-	{
-		m_pRootSignature->Release();
-		m_pRootSignature = nullptr;
 	}
 	if (m_pPSOHandle)
 	{

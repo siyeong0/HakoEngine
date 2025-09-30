@@ -7,28 +7,6 @@ using namespace DirectX;
 constexpr UINT SWAP_CHAIN_FRAME_COUNT = 3;
 constexpr UINT MAX_PENDING_FRAME_COUNT = SWAP_CHAIN_FRAME_COUNT - 1;
 
-
-struct ConstantBufferDefault
-{
-	XMMATRIX WorldMatrix;
-	XMMATRIX ViewMatrix;
-	XMMATRIX ProjMatrix;
-};
-
-struct ConstantBufferSprite
-{
-	XMFLOAT2 ScreenResolution;
-	XMFLOAT2 Position;
-	XMFLOAT2 Scale;
-	XMFLOAT2 TexSize;
-	XMFLOAT2 TexSampePos;
-	XMFLOAT2 TexSampleSize;
-	float	Z;
-	float	Alpha;
-	float	Reserved0;
-	float	Reserved1;
-};
-
 enum EConstantBufferType
 {
 	CONSTANT_BUFFER_TYPE_DEFAULT,

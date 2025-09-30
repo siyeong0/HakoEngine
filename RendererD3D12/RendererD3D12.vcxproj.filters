@@ -78,6 +78,9 @@
     <Filter Include="RenderManager\PSOManager">
       <UniqueIdentifier>{bb96ba69-f8e5-4ade-891c-567bc937a160}</UniqueIdentifier>
     </Filter>
+    <Filter Include="RenderManager\RootSignatureManager">
+      <UniqueIdentifier>{cd09d2e1-6f75-4117-b4f3-5443b13ba06c}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h">
@@ -152,6 +155,9 @@
     <ClInclude Include="PSOManager.h">
       <Filter>RenderManager\PSOManager</Filter>
     </ClInclude>
+    <ClInclude Include="RootSignatureManager.h">
+      <Filter>RenderManager\RootSignatureManager</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="dllmain.cpp">
@@ -216,6 +222,9 @@
     </ClCompile>
     <ClCompile Include="PSOManager.cpp">
       <Filter>RenderManager\PSOManager</Filter>
+    </ClCompile>
+    <ClCompile Include="RootSignatureManager.cpp">
+      <Filter>RenderManager\RootSignatureManager</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

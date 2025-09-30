@@ -102,7 +102,7 @@ static IMeshObject* createConeMeshObject(IRenderer* pRenderer, IGeometry* pGeome
 static IMeshObject* createGridMeshObject(IRenderer* pRenderer, IGeometry* pGeometry)
 {
 	IMeshObject* pMeshObj = nullptr;
-	const WCHAR* wchTexFileName = L"./Resources/Floor.dds";
+	const WCHAR* wchTexFileName = L"./Resources/Kanna.dds";
 	// Create grid mesh
 	MeshData meshData = pGeometry->CreateGridMesh(20.0f, 20.0f, 3, 3);
 	// create BasicMeshObject from Renderer
@@ -408,13 +408,22 @@ bool Game::Initialize(HWND hWnd, bool bEnableDebugLayer, bool bEnableGBV)
 
 	// Create Game Objects
 	{
-		// Create plane
+		//// Create plane
+		//{
+		//	flecs::entity e = m_ECSWorld.entity()
+		//		.set<Position>({ 0.0f, -5.0f, 0.0f })
+		//		.set<Rotation>({ 0.0f, 0.0f, 0.0f })
+		//		.set<Scale>({ 10.0f, 10.0f, 10.0f })
+		//		.set<MeshRenderer>({ createPlaneMeshObject(m_pRenderer, m_pGeometry) });
+		//	m_Entities.emplace_back(e.id());
+		//}		
+		// Create grid
 		{
 			flecs::entity e = m_ECSWorld.entity()
 				.set<Position>({ 0.0f, -5.0f, 0.0f })
 				.set<Rotation>({ 0.0f, 0.0f, 0.0f })
 				.set<Scale>({ 10.0f, 10.0f, 10.0f })
-				.set<MeshRenderer>({ createPlaneMeshObject(m_pRenderer, m_pGeometry) });
+				.set<MeshRenderer>({ createGridMeshObject(m_pRenderer, m_pGeometry) });
 			m_Entities.emplace_back(e.id());
 		}
 		// Create cylinder

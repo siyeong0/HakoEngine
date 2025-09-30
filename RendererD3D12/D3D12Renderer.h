@@ -11,6 +11,7 @@ class D3D12ResourceManager;
 class DescriptorPool;
 class FontManager;
 class PSOManager;
+class RootSignatureManager;
 class RenderQueue;
 struct RenderThreadDesc;
 class SimpleConstantBufferPool;
@@ -69,6 +70,7 @@ public:
 	ID3D12Device5* GetD3DDevice() const { return m_pD3DDevice; }
 	D3D12ResourceManager* GetResourceManager() { return m_pResourceManager; }
 	ShaderManager* GetShaderManager() { return m_pShaderManager; }
+	RootSignatureManager* GetRootSignatureManager() { return m_pRootSignatureManager; }
 	PSOManager* GetPSOManager() { return m_pPSOManager; }
 
 	DescriptorPool* GetDescriptorPool(int threadIndex) const { return m_ppDescriptorPool[m_CurrContextIndex][threadIndex]; }
@@ -81,6 +83,7 @@ public:
 	inline float GetDPI() const { return m_DPI; }
 	inline bool IsGpuUploadHeapsEnabledInl() const { return m_bGpuUploadHeapsEnabled; }
 
+	const CB_PerFrame& GetFrameCBData() { return m_PerFrameCB; };
 	void GetViewProjMatrix(XMMATRIX* outMatView, XMMATRIX* outMatProj) const;
 
 	void SetCurrentPathForShader() const;
@@ -118,7 +121,7 @@ private:
 	HWND m_hWnd = nullptr;
 	ID3D12Device5* m_pD3DDevice = nullptr;
 	ID3D12CommandQueue* m_pCommandQueue = nullptr;
-	
+
 	SingleDescriptorAllocator* m_pSingleDescriptorAllocator = nullptr;
 
 	CommandListPool* m_ppCommandListPool[MAX_PENDING_FRAME_COUNT][MAX_RENDER_THREAD_COUNT] = {};
@@ -143,6 +146,7 @@ private:
 	D3D12ResourceManager* m_pResourceManager = nullptr;
 	FontManager* m_pFontManager = nullptr;
 	ShaderManager* m_pShaderManager = nullptr;
+	RootSignatureManager* m_pRootSignatureManager = nullptr;
 	PSOManager* m_pPSOManager = nullptr;
 
 	uint64_t m_pui64LastFenceValue[MAX_PENDING_FRAME_COUNT] = {};
@@ -171,9 +175,7 @@ private:
 	ID3D12Fence* m_pFence = nullptr;
 
 	int	m_CurrContextIndex = 0;
-	XMMATRIX m_ViewMatrix = {};
-	XMMATRIX m_InvViewMatrix = {};
-	XMMATRIX m_ProjMatrix = {};
+	CB_PerFrame m_PerFrameCB = {};
 
 	XMVECTOR m_CamPos = {};
 	XMVECTOR m_CamDir = {};

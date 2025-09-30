@@ -4,13 +4,12 @@
 #include "SingleDescriptorAllocator.h"
 #include "ShaderManager.h"
 #include "PSOManager.h"
+#include "RootSignatureManager.h"
 #include "DescriptorPool.h"
 #include "D3D12Renderer.h"
 #include "BasicMeshObject.h"
 
 using namespace DirectX;
-
-ID3D12RootSignature* BasicMeshObject::m_pRootSignature = nullptr;
 
 STDMETHODIMP BasicMeshObject::QueryInterface(REFIID refiid, void** ppv)
 {
@@ -91,164 +90,72 @@ bool BasicMeshObject::Initialize(D3D12Renderer* pRenderer)
 	bool bResult = false;
 	m_pRenderer = pRenderer;
 
-	initRootSinagture();
 	initPipelineState();
 
 	return bResult;
 }
 
-void BasicMeshObject::Draw(int threadIndex, ID3D12GraphicsCommandList6* pCommandList, const XMMATRIX* wordMatrix)
+void BasicMeshObject::Draw(int threadIndex, ID3D12GraphicsCommandList6* pCommandList, const XMMATRIX* worldMatrix)
 {
-	// 각각의 draw()작업의 무결성을 보장하려면 draw() 작업마다 다른 영역의 descriptor table(shader visible)과 다른 영역의 CBV를 사용해야 한다.
-	// 따라서 draw()할 때마다 CBV는 ConstantBuffer Pool로부터 할당받고, 렌더리용 descriptor table(shader visible)은 descriptor pool로부터 할당 받는다.
-
-	ID3D12Device5* pD3DDeivce = m_pRenderer->GetD3DDevice();
+	ID3D12Device5* pDevice = m_pRenderer->GetD3DDevice();
 	UINT srvDescriptorSize = m_pRenderer->GetSrvDescriptorSize();
 	DescriptorPool* pDescriptorPool = m_pRenderer->GetDescriptorPool(threadIndex);
-	ID3D12DescriptorHeap* pDescriptorHeap = pDescriptorPool->GetDescriptorHeap();
 	SimpleConstantBufferPool* pConstantBufferPool = m_pRenderer->GetConstantBufferPool(CONSTANT_BUFFER_TYPE_DEFAULT, threadIndex);
 	PSOManager* pPSOManager = m_pRenderer->GetPSOManager();
 
-	CD3DX12_GPU_DESCRIPTOR_HANDLE gpuDescriptorTable = {};
-	CD3DX12_CPU_DESCRIPTOR_HANDLE cpuDescriptorTable = {};
-	UINT requiredDescriptorCount = static_cast<UINT>(DESCRIPTOR_COUNT_PER_OBJ + (m_NumTriGroups * DESCRIPTOR_COUNT_PER_TRI_GROUP));
-
-	if (!pDescriptorPool->AllocDescriptorTable(&cpuDescriptorTable, &gpuDescriptorTable, requiredDescriptorCount))
-	{
-		ASSERT(false, "Failed to allocate descriptor table.");
-	}
-
-	// 각각의 draw()에 대해 독립적인 constant buffer(내부적으로는 같은 resource의 다른 영역)를 사용한다.
+	// --- 1) Constant buffer alloc and intialization. (as root cbv)
 	ConstantBufferContainer* pCB = pConstantBufferPool->Alloc();
 	ASSERT(pCB, "Failed to allocate constant buffer.");
 
-	ConstantBufferDefault* pConstantBufferDefault = (ConstantBufferDefault*)pCB->pSystemMemAddr;
+	CB_BasicMeshMatrices* pCBPerDraw = (CB_BasicMeshMatrices*)pCB->pSystemMemAddr;
+	pCBPerDraw->WorldMatrix = XMMatrixTranspose(*worldMatrix);
 
-	// constant buffer의 내용을 설정
-	// view/proj matrix
-	m_pRenderer->GetViewProjMatrix(&pConstantBufferDefault->ViewMatrix, &pConstantBufferDefault->ProjMatrix);
-	
-	// world matrix
-	pConstantBufferDefault->WorldMatrix = XMMatrixTranspose(*wordMatrix);
+	// --- 2) SRV Descriptor table (TriGroup 개수 만큼)
+	CD3DX12_CPU_DESCRIPTOR_HANDLE cpuDescriptorTable = {};
+	CD3DX12_GPU_DESCRIPTOR_HANDLE gpuDescriptorTable = {};
+	const UINT requiredSrvCount = static_cast<UINT>(m_NumTriGroups);
+	bool bOk = pDescriptorPool->AllocDescriptorTable(&cpuDescriptorTable, &gpuDescriptorTable, requiredSrvCount);
+	ASSERT(bOk, "Failed to allocate descriptor table.");
 
-	// Descriptor Table 구성
-	// 이번에 사용할 constant buffer의 descriptor를 렌더링용(shader visible) descriptor table에 카피
-
-	// per Obj
-	CD3DX12_CPU_DESCRIPTOR_HANDLE dest(cpuDescriptorTable, BASIC_MESH_DESCRIPTOR_INDEX_PER_OBJ_CBV, srvDescriptorSize);
-	pD3DDeivce->CopyDescriptorsSimple(1, dest, pCB->CBVHandle, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);	// cpu측 코드에서는 cpu descriptor handle에만 write가능
-	dest.Offset(1, srvDescriptorSize);
-
-	// per tri-group
-	for (UINT i = 0; i < m_NumTriGroups; i++)
+	CD3DX12_CPU_DESCRIPTOR_HANDLE cpuCurrDescHandleAddress = cpuDescriptorTable;
+	for (UINT i = 0; i < m_NumTriGroups; ++i)
 	{
-		IndexedTriGroup* pTriGroup = m_pTriGroupList + i;
-		TextureHandle* pTexHandle = pTriGroup->pTexHandle;
-		ASSERT(pTexHandle, "Texture not found.");
-		if (pTexHandle)
-		{
-			pD3DDeivce->CopyDescriptorsSimple(1, dest, pTexHandle->SRV, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);	// cpu측 코드에서는 cpu descriptor handle에만 write가능
-		}
-		dest.Offset(1, srvDescriptorSize);
+		const IndexedTriGroup& tg = m_pTriGroupList[i];
+		TextureHandle* pTex = tg.pTexHandle;
+		ASSERT(pTex && pTex->SRV.ptr != 0, "Texture SRV missing.");
+
+		// SRV 하나씩 렌더링 힙에 복사 (t0로 쓸 자리)
+		pDevice->CopyDescriptorsSimple(1, cpuCurrDescHandleAddress, pTex->SRV, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+		cpuCurrDescHandleAddress.Offset(1, srvDescriptorSize);
 	}
-	
-	// set RootSignature
-	pCommandList->SetGraphicsRootSignature(m_pRootSignature);
-	pCommandList->SetDescriptorHeaps(1, &pDescriptorHeap);
 
-	// ex) when TriGroupCount = 3
-	// per OBJ | TriGroup 0 | TriGroup 1 | TriGroup 2 |
-	// CBV     |     SRV    |     SRV    |     SRV    | 
-
+	// --- 3) PSO/RS/DescHeap binding.
 	pCommandList->SetPipelineState(pPSOManager->QueryPSO(m_pPSOHandle)->pPSO);
 	pCommandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 	pCommandList->IASetVertexBuffers(0, 1, &m_VertexBufferView);
 
-	// set descriptor table for root-param 0
-	pCommandList->SetGraphicsRootDescriptorTable(0, gpuDescriptorTable);	// Entry per Obj
+	// --- 4) Root CBV binding
+	constexpr UINT ROOT_SLOT_CBV_PER_FRAME = 0;
+	constexpr UINT ROOT_SLOT_CBV_PER_DRAW = 1;
+	constexpr UINT ROOT_SLOT_SRV_TABLE = 2;
 
-	CD3DX12_GPU_DESCRIPTOR_HANDLE gpuDescriptorTableForTriGroup(gpuDescriptorTable, DESCRIPTOR_COUNT_PER_OBJ, srvDescriptorSize);
-	for (UINT i = 0; i < m_NumTriGroups; i++)
+	pCommandList->SetGraphicsRootConstantBufferView(ROOT_SLOT_CBV_PER_DRAW, pCB->pGPUMemAddr);
+
+	// --- 5) TriGroup loop: t0가 가리키는 SRV를 매 드로우마다 바꿈
+	CD3DX12_GPU_DESCRIPTOR_HANDLE gpuCurrDescHandleAddress = gpuDescriptorTable; // 첫 TriGroup의 t0
+	for (UINT i = 0; i < m_NumTriGroups; ++i)
 	{
-		// set descriptor table for root-param 1
-		pCommandList->SetGraphicsRootDescriptorTable(1, gpuDescriptorTableForTriGroup);	// Entry of Tri-Groups
-		gpuDescriptorTableForTriGroup.Offset(1, srvDescriptorSize);
+		// SRV 테이블 루트 파라미터 바인딩 (t0 시작 핸들)
+		pCommandList->SetGraphicsRootDescriptorTable(ROOT_SLOT_SRV_TABLE, gpuCurrDescHandleAddress);
 
-		IndexedTriGroup* pTriGroup = m_pTriGroupList + i;
-		pCommandList->IASetIndexBuffer(&pTriGroup->IndexBufferView);
-		pCommandList->DrawIndexedInstanced(pTriGroup->NumTriangles * 3, 1, 0, 0, 0);
+		// 인덱스 버퍼/드로우
+		const IndexedTriGroup& tg = m_pTriGroupList[i];
+		pCommandList->IASetIndexBuffer(&tg.IndexBufferView);
+		pCommandList->DrawIndexedInstanced(tg.NumTriangles * 3, 1, 0, 0, 0);
+
+		// 다음 TriGroup의 SRV로 한 칸 이동 (t0만 쓰므로 1칸씩)
+		gpuCurrDescHandleAddress.Offset(1, srvDescriptorSize);
 	}
-}
-
-bool BasicMeshObject::initRootSinagture()
-{
-	if (m_pRootSignature)
-	{
-		return true;
-	}
-
-	HRESULT hr = S_OK;
-
-	ID3D12Device5* pD3DDeivce = m_pRenderer->GetD3DDevice();
-	ID3DBlob* pSignature = nullptr;
-	ID3DBlob* pError = nullptr;
-
-	// Object - CBV - RootParam(0)
-	// {
-	//   TriGrup 0 - SRV[0] - RootParam(1) - Draw()
-	//   TriGrup 1 - SRV[1] - RootParam(1) - Draw()
-	//   TriGrup 2 - SRV[2] - RootParam(1) - Draw()
-	//   TriGrup 3 - SRV[3] - RootParam(1) - Draw()
-	//   TriGrup 4 - SRV[4] - RootParam(1) - Draw()
-	//   TriGrup 5 - SRV[5] - RootParam(1) - Draw()
-	// }
-
-	CD3DX12_DESCRIPTOR_RANGE rangesPerObj[1] = {};
-	rangesPerObj[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, 1, 0);	// b0 : Constant Buffer View per Object
-
-	CD3DX12_DESCRIPTOR_RANGE rangesPerTriGroup[1] = {};
-	rangesPerTriGroup[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0);	// t0 : Shader Resource View(Tex) per Tri-Group
-
-	CD3DX12_ROOT_PARAMETER rootParameters[2] = {};
-	rootParameters[0].InitAsDescriptorTable(_countof(rangesPerObj), rangesPerObj, D3D12_SHADER_VISIBILITY_ALL);
-	rootParameters[1].InitAsDescriptorTable(_countof(rangesPerTriGroup), rangesPerTriGroup, D3D12_SHADER_VISIBILITY_ALL);
-
-
-	// default sampler
-	D3D12_STATIC_SAMPLER_DESC sampler = {};
-	SetDefaultSamplerDesc(&sampler, 0);
-	sampler.Filter = D3D12_FILTER_MIN_MAG_MIP_POINT;
-
-	// Allow input layout and deny uneccessary access to certain pipeline stages.
-	D3D12_ROOT_SIGNATURE_FLAGS rootSignatureFlags =
-		D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT |
-		D3D12_ROOT_SIGNATURE_FLAG_DENY_HULL_SHADER_ROOT_ACCESS |
-		D3D12_ROOT_SIGNATURE_FLAG_DENY_DOMAIN_SHADER_ROOT_ACCESS |
-		D3D12_ROOT_SIGNATURE_FLAG_DENY_GEOMETRY_SHADER_ROOT_ACCESS |
-		D3D12_ROOT_SIGNATURE_FLAG_DENY_PIXEL_SHADER_ROOT_ACCESS;
-
-	// Create an empty root signature.
-	CD3DX12_ROOT_SIGNATURE_DESC rootSignatureDesc = {};
-	//rootSignatureDesc.Init(0, nullptr, 0, nullptr, D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
-	rootSignatureDesc.Init(_countof(rootParameters), rootParameters, 1, &sampler, D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
-
-	hr = D3D12SerializeRootSignature(&rootSignatureDesc, D3D_ROOT_SIGNATURE_VERSION_1, &pSignature, &pError);
-	ASSERT(SUCCEEDED(hr), "Failed to serialize root signature.");
-
-	hr = pD3DDeivce->CreateRootSignature(0, pSignature->GetBufferPointer(), pSignature->GetBufferSize(), IID_PPV_ARGS(&m_pRootSignature));
-	ASSERT(SUCCEEDED(hr), "Failed to create root signature.");
-
-	if (pSignature)
-	{
-		pSignature->Release();
-		pSignature = nullptr;
-	}
-	if (pError)
-	{
-		pError->Release();
-		pError = nullptr;
-	}
-	return true;
 }
 
 bool BasicMeshObject::initPipelineState()
@@ -257,6 +164,7 @@ bool BasicMeshObject::initPipelineState()
 
 	ID3D12Device5* pD3DDeivce = m_pRenderer->GetD3DDevice();
 	ShaderManager* pShaderManager = m_pRenderer->GetShaderManager();
+	RootSignatureManager* pRootSignatureManager = m_pRenderer->GetRootSignatureManager();
 	PSOManager* pPsoManager = m_pRenderer->GetPSOManager();
 
 	ShaderHandle* pVertexShader = pShaderManager->CreateShaderDXC(L"Standard.hlsl", L"VSMain", L"vs_6_0", 0);
@@ -277,7 +185,7 @@ bool BasicMeshObject::initPipelineState()
 	// Describe and create the graphics pipeline state object (PSO).
 	D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc = {};
 	psoDesc.InputLayout = { inputElementDescs, _countof(inputElementDescs) };
-	psoDesc.pRootSignature = m_pRootSignature;
+	psoDesc.pRootSignature = pRootSignatureManager->Query(ERootSignatureType::GraphicsDefault);
 	psoDesc.VS = CD3DX12_SHADER_BYTECODE(pVertexShader->CodeBuffer, pVertexShader->CodeSize);
 	psoDesc.PS = CD3DX12_SHADER_BYTECODE(pPixelShader->CodeBuffer, pPixelShader->CodeSize);
 	psoDesc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);

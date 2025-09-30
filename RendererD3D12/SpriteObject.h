@@ -31,7 +31,6 @@ private:
 	bool initCommonResources();
 	void cleanupSharedResources();
 
-	bool initRootSinagture();
 	bool initPipelineState();
 	bool initMesh();
 
@@ -49,7 +48,6 @@ private:
 	static ID3D12Resource* m_pIndexBuffer;
 	static D3D12_INDEX_BUFFER_VIEW m_IndexBufferView;
 
-	static ID3D12RootSignature* m_pRootSignature; // TODO : Use RootSignaturePool
 	PSOHandle* m_pPSOHandle = nullptr;
 
 	int m_RefCount = 1;

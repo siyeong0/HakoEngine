@@ -1,12 +1,21 @@
 ﻿Texture2D texDiffuse : register(t0);
-SamplerState samplerDiffuse : register(s0);
 
-cbuffer CONSTANT_BUFFER_DEFAULT : register(b0)
+cbuffer CB_Frame : register(b0)
+{
+    matrix g_matView;
+    matrix g_matProj;
+    matrix g_matInvView;
+};
+
+cbuffer CB_Object : register(b1)
 {
     matrix g_matWorld;
-    matrix g_matView;
-	matrix g_matProj;
 };
+
+SamplerState samplerWrap : register(s0);
+SamplerState samplerClamp : register(s1);
+SamplerState samplerBorder : register(s2);
+SamplerState samplerMirror : register(s3);
 
 struct VSInput
 {
@@ -41,8 +50,8 @@ PSInput VSMain(VSInput input)
 
 float4 PSMain(PSInput input) : SV_TARGET
 {
-    // Sample the texture
-    float4 texColor = texDiffuse.Sample(samplerDiffuse, input.TexCoord);
+    // Sample the texture5
+    float4 texColor = texDiffuse.Sample(samplerWrap, input.TexCoord);
 
     // Diffuse lighting (Lambert)
     float3 g_LightDir = float3(0.5f, -1.0, 0.3f); // Directional light direction (normalized) TODO: move to cbuffer

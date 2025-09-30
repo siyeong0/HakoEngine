@@ -14,6 +14,7 @@
 #include "ConstantBufferManager.h"
 #include "TextureManager.h"
 #include "RenderQueue.h"
+#include "RootSignatureManager.h"
 #include "CommandListPool.h"
 #include "PSOManager.h"
 #include "RenderThread.h"
@@ -261,6 +262,9 @@ lb_exit:
 	bInited = m_pShaderManager->Initialize(this, wchShaderPath, bEnableDebugLayer); // TODO: Use "bDebugShader" parameter.
 	ASSERT(bInited, "ShaderManager initialization failed.");
 
+	m_pRootSignatureManager = new RootSignatureManager;
+	bInited = m_pRootSignatureManager->Initialize(this);
+
 	m_pPSOManager = new PSOManager;
 	bInited = m_pPSOManager->Initialize(this);
 
@@ -374,6 +378,11 @@ void ENGINECALL D3D12Renderer::Cleanup()
 	{
 		delete m_pShaderManager;
 		m_pShaderManager = nullptr;
+	}
+	if(m_pRootSignatureManager)
+	{
+		delete m_pRootSignatureManager;
+		m_pRootSignatureManager = nullptr;
 	}
 	if (m_pPSOManager)
 	{
@@ -975,8 +984,8 @@ SimpleConstantBufferPool* D3D12Renderer::GetConstantBufferPool(EConstantBufferTy
 
 void D3D12Renderer::GetViewProjMatrix(XMMATRIX* outMatView, XMMATRIX* outMatProj) const
 {
-	*outMatView = XMMatrixTranspose(m_ViewMatrix);
-	*outMatProj = XMMatrixTranspose(m_ProjMatrix);
+	*outMatView = XMMatrixTranspose(m_PerFrameCB.ViewMatrix);
+	*outMatProj = XMMatrixTranspose(m_PerFrameCB.ProjMatrix);
 }
 
 void D3D12Renderer::SetCurrentPathForShader() const
@@ -1050,20 +1059,19 @@ void D3D12Renderer::updateCamera()
 	m_CamRight = XMVector3Cross(yAxis, m_CamDir);
 	m_CamUp = XMVector3Cross(m_CamDir, m_CamRight);
 
-	// view matrix
-	m_ViewMatrix = XMMatrixLookToLH(m_CamPos, m_CamDir, m_CamUp);
+	// View matrix
+	m_PerFrameCB.ViewMatrix = XMMatrixLookToLH(m_CamPos, m_CamDir, m_CamUp);
+	XMVECTOR determinant;
+	m_PerFrameCB.InvViewMatrix = XMMatrixInverse(&determinant, m_PerFrameCB.ViewMatrix);
 
-	// 시야각 (FOV) 설정 (라디안 단위)
-	float fovY = XM_PIDIV4; // 90도 (라디안으로 변환)
+	// FOV(rad)
+	float fovY = XM_PIDIV4; // 90 deg
 
 	// projection matrix
 	float fAspectRatio = (float)m_Width / (float)m_Height;
 	float fNear = 0.1f;
 	float fFar = 1000.0f;
-	m_ProjMatrix = XMMatrixPerspectiveFovLH(fovY, fAspectRatio, fNear, fFar);
-
-	XMVECTOR determinant;
-	m_InvViewMatrix = XMMatrixInverse(&determinant, m_ViewMatrix);
+	m_PerFrameCB.ProjMatrix = XMMatrixPerspectiveFovLH(fovY, fAspectRatio, fNear, fFar);
 }
 
 bool D3D12Renderer::createDepthStencil(int width, int height)

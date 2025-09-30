@@ -159,6 +159,7 @@
     <ClInclude Include="RenderItem.h" />
     <ClInclude Include="RenderQueue.h" />
     <ClInclude Include="RenderThread.h" />
+    <ClInclude Include="RootSignatureManager.h" />
     <ClInclude Include="ShaderHandle.h" />
     <ClInclude Include="ShaderManager.h" />
     <ClInclude Include="ShaderUtil.h" />
@@ -191,6 +192,7 @@
     <ClCompile Include="PSOManager.cpp" />
     <ClCompile Include="RenderQueue.cpp" />
     <ClCompile Include="RenderThread.cpp" />
+    <ClCompile Include="RootSignatureManager.cpp" />
     <ClCompile Include="ShaderManager.cpp" />
     <ClCompile Include="ShaderUtil.cpp" />
     <ClCompile Include="SimpleConstantBufferPool.cpp" />

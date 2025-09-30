@@ -1,7 +1,9 @@
 ﻿Texture2D texDiffuse : register(t0);
 SamplerState samplerDiffuse : register(s0);
 
-cbuffer CONSTANT_BUFFER_SPRITE : register(b0)
+// CBuffer for frame info : register(b0)
+
+cbuffer CONSTANT_BUFFER_SPRITE : register(b1)
 {
     float2 g_ScreenRes;
     float2 g_Pos;

@@ -47,6 +47,7 @@
 #include <unordered_map>
 
 #include "Renderer_typedef.h"
+#include "ConstantBuffer.h"
 #include "Interface/IRenderer.h"
 #include "Interface/IMeshObject.h"
 #include "Interface/ISpriteObject.h"

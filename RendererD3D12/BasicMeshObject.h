@@ -44,10 +44,9 @@ public:
 	~BasicMeshObject() { cleanup(); }
 
 	bool Initialize(D3D12Renderer* pRenderer);
-	void Draw(int threadIndex, ID3D12GraphicsCommandList6* pCommandList, const XMMATRIX* worlMatrix);
+	void Draw(int threadIndex, ID3D12GraphicsCommandList6* pCommandList, const XMMATRIX* worldMatrix);
 
 private:
-	bool initRootSinagture();
 	bool initPipelineState();
 
 	void deleteTriGroup(IndexedTriGroup* pTriGroup);
@@ -60,7 +59,6 @@ private:
 	ID3D12Resource* m_pVertexBuffer = nullptr;
 	D3D12_VERTEX_BUFFER_VIEW m_VertexBufferView = {};
 
-	static ID3D12RootSignature* m_pRootSignature; // TODO : Use RootSignaturePool
 	PSOHandle* m_pPSOHandle = nullptr;
 
 	IndexedTriGroup* m_pTriGroupList = nullptr;
