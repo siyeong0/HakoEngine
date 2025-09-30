@@ -7,22 +7,34 @@
     <Filter Include="Geometry">
       <UniqueIdentifier>{d5a9ff51-b30a-4660-b8e8-293fa694bf07}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Graphics\Renderer">
+      <UniqueIdentifier>{fc2fe898-ed21-4e1e-8317-9b2db4dbd095}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Graphics\HfxBake">
+      <UniqueIdentifier>{26a6794a-3ef9-4483-b2c2-8a909dd29cb8}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="$(MSBuildThisFileDirectory)IRenderer.h">
-      <Filter>Graphics</Filter>
-    </ClInclude>
-    <ClInclude Include="$(MSBuildThisFileDirectory)IMeshObject.h">
-      <Filter>Graphics</Filter>
-    </ClInclude>
-    <ClInclude Include="$(MSBuildThisFileDirectory)ISpriteObject.h">
-      <Filter>Graphics</Filter>
-    </ClInclude>
     <ClInclude Include="$(MSBuildThisFileDirectory)IGeometry.h">
       <Filter>Geometry</Filter>
     </ClInclude>
     <ClInclude Include="$(MSBuildThisFileDirectory)ERenderPassType.h">
-      <Filter>Graphics</Filter>
+      <Filter>Graphics\Renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)IMeshObject.h">
+      <Filter>Graphics\Renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)IRenderer.h">
+      <Filter>Graphics\Renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)ISpriteObject.h">
+      <Filter>Graphics\Renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)IHfxBake.h">
+      <Filter>Graphics\HfxBake</Filter>
+    </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)AtmosStruct.h">
+      <Filter>Graphics\HfxBake</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

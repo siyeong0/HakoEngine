@@ -1,4 +1,4 @@
-﻿// App.cpp : Defines the entry point for the application.
+﻿// HelloFlecs main.cpp : Defines the entry point for the application.
 #include <iostream>
 #include <Windows.h>
 #include <windowsx.h>
@@ -30,9 +30,8 @@ extern "C" { __declspec(dllexport) extern const char* D3D12SDKPath = ".\\D3D12\\
 
 #pragma comment(lib, "Shlwapi.lib")
 
-
+// Constants:
 static constexpr UINT MAX_LOADSTRING = 100;
-void openConsoleWindow();
 
 // Global Variables:
 Game* g_pGame = nullptr;
@@ -46,6 +45,8 @@ ATOM                MyRegisterClass(HINSTANCE hInstance);
 BOOL                InitInstance(HINSTANCE, int);
 LRESULT CALLBACK    WndProc(HWND, UINT, WPARAM, LPARAM);
 INT_PTR CALLBACK    About(HWND, UINT, WPARAM, LPARAM);
+
+void openConsoleWindow();
 
 int WINAPI wWinMain(_In_ HINSTANCE hInstance,
 	_In_opt_ HINSTANCE hPrevInstance,
