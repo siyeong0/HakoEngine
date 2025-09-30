@@ -54,10 +54,16 @@ int RenderQueue::Process(
 
 	CB_PerFrame* pCBPerFrame = (CB_PerFrame*)pCB->pSystemMemAddr;
 	const CB_PerFrame& srcCBData = m_pRenderer->GetFrameCBData();
-	// memcpy(pCBPerFrame, &m_pRenderer->GetFrameCBData(), sizeof(CB_PerFrame));
 	pCBPerFrame->ViewMatrix = XMMatrixTranspose(srcCBData.ViewMatrix);
 	pCBPerFrame->ProjMatrix = XMMatrixTranspose(srcCBData.ProjMatrix);
+	pCBPerFrame->ViewProjMatrix = XMMatrixTranspose(srcCBData.ViewProjMatrix);
 	pCBPerFrame->InvViewMatrix = XMMatrixTranspose(srcCBData.InvViewMatrix);
+	pCBPerFrame->InvProjMatrix = XMMatrixTranspose(srcCBData.InvProjMatrix);
+	pCBPerFrame->InvViewProjMatrix = XMMatrixTranspose(srcCBData.InvViewProjMatrix);
+
+	pCBPerFrame->LightDir = srcCBData.LightDir;
+	pCBPerFrame->LightColor = srcCBData.LightColor;
+	pCBPerFrame->Ambient = srcCBData.Ambient;
 
 	// Command list for remaining commands.
 	ID3D12GraphicsCommandList6* ppCommandList[64] = {};

@@ -11,6 +11,7 @@ interface IRenderer : public IUnknown
 {
 	virtual bool ENGINECALL Initialize(HWND hWnd, bool bEnableDebugLayer, bool bEnableGBV, bool bUseGpuUploadHeaps, const WCHAR* wchShaderPath) = 0;
 	virtual void ENGINECALL Cleanup() = 0;
+	virtual void ENGINECALL Update(float dt) = 0;
 	virtual void ENGINECALL BeginRender() = 0;
 	virtual void ENGINECALL EndRender() = 0;
 	virtual void ENGINECALL Present() = 0;

@@ -294,6 +294,8 @@ bool Game::Initialize(HWND hWnd, bool bEnableDebugLayer, bool bEnableGBV)
 			.kind(phaseBeginRender)
 			.each([this]()
 				{
+					float dt = m_ECSWorld.delta_time();
+					m_pRenderer->Update(dt);	// TODO: 빼도 되나?
 					m_pRenderer->BeginRender();
 				});
 

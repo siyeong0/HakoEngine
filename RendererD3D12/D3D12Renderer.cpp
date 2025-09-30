@@ -447,6 +447,13 @@ void ENGINECALL D3D12Renderer::Cleanup()
 	}
 }
 
+void ENGINECALL D3D12Renderer::Update(float dt)
+{
+	m_PerFrameCB.LightDir = XMFLOAT3(-0.577f, -0.577f, -0.577f);
+	m_PerFrameCB.LightColor = XMFLOAT3(1.0f, 1.0f, 1.0f);
+	m_PerFrameCB.Ambient = XMFLOAT3(0.3f, 0.3f, 0.3f);
+}
+
 void ENGINECALL D3D12Renderer::BeginRender()
 {
 	//
@@ -1052,7 +1059,6 @@ void D3D12Renderer::updateCamera()
 	XMMATRIX matRotPitch = XMMatrixRotationX(m_fCamPitch);
 	XMMATRIX matRotYaw = XMMatrixRotationY(m_fCamYaw);
 
-
 	XMMATRIX matCamRot = XMMatrixMultiply(matRotPitch, matRotYaw);
 
 	m_CamDir = XMVector3Transform(zAxis, matCamRot);
@@ -1061,17 +1067,25 @@ void D3D12Renderer::updateCamera()
 
 	// View matrix
 	m_PerFrameCB.ViewMatrix = XMMatrixLookToLH(m_CamPos, m_CamDir, m_CamUp);
-	XMVECTOR determinant;
-	m_PerFrameCB.InvViewMatrix = XMMatrixInverse(&determinant, m_PerFrameCB.ViewMatrix);
 
-	// FOV(rad)
-	float fovY = XM_PIDIV4; // 90 deg
+	// Projection matrix
+	float fovY = XM_PIDIV4; // (rad)
+	float aspectRatio = (float)m_Width / (float)m_Height;
+	float nearZ = 0.1f;
+	float farZ = 1000.0f;
+	m_PerFrameCB.ProjMatrix = XMMatrixPerspectiveFovLH(fovY, aspectRatio, nearZ, farZ);
 
-	// projection matrix
-	float fAspectRatio = (float)m_Width / (float)m_Height;
-	float fNear = 0.1f;
-	float fFar = 1000.0f;
-	m_PerFrameCB.ProjMatrix = XMMatrixPerspectiveFovLH(fovY, fAspectRatio, fNear, fFar);
+	// View-Projection matrix
+	m_PerFrameCB.ViewProjMatrix = XMMatrixMultiply(m_PerFrameCB.ViewMatrix, m_PerFrameCB.ProjMatrix);
+
+	// Inverse matrices
+	XMVECTOR det;
+	m_PerFrameCB.InvViewMatrix = XMMatrixInverse(&det, m_PerFrameCB.ViewMatrix);
+	ASSERT(det.m128_f32[0] != 0.0f, "Matrix is not invertible.");
+	m_PerFrameCB.InvProjMatrix = XMMatrixInverse(&det, m_PerFrameCB.ProjMatrix);
+	ASSERT(det.m128_f32[0] != 0.0f, "Matrix is not invertible.");
+	m_PerFrameCB.InvViewProjMatrix = XMMatrixInverse(&det, m_PerFrameCB.ViewProjMatrix);
+	ASSERT(det.m128_f32[0] != 0.0f, "Matrix is not invertible.");
 }
 
 bool D3D12Renderer::createDepthStencil(int width, int height)

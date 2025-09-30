@@ -31,6 +31,7 @@ public:
 	// Derived from IRenderer
 	bool ENGINECALL Initialize(HWND hWnd, bool bEnableDebugLayer, bool bEnableGBV, bool bUseGpuUploadHeaps, const WCHAR* wchShaderPath) override;
 	void ENGINECALL Cleanup() override;
+	void ENGINECALL Update(float dt) override;
 	void ENGINECALL BeginRender() override;
 	void ENGINECALL EndRender() override;
 	void ENGINECALL Present() override;

@@ -7,7 +7,17 @@ struct CB_PerFrame
 {
 	XMMATRIX ViewMatrix;
 	XMMATRIX ProjMatrix;
+	XMMATRIX ViewProjMatrix;
 	XMMATRIX InvViewMatrix;
+	XMMATRIX InvProjMatrix;
+	XMMATRIX InvViewProjMatrix;
+
+	XMFLOAT3 LightDir; // Directional light direction (normalized)
+	float _pad0;
+	XMFLOAT3 LightColor; // Light color
+	float _pad1;
+	XMFLOAT3 Ambient; // Ambient light color
+	float _pad2;
 };
 
 struct CB_BasicMeshMatrices

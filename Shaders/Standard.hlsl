@@ -1,10 +1,20 @@
 ﻿Texture2D texDiffuse : register(t0);
 
-cbuffer CB_Frame : register(b0)
+cbuffer CB_PerFrame : register(b0)
 {
-    matrix g_matView;
-    matrix g_matProj;
-    matrix g_matInvView;
+    matrix g_ViewMatrix;
+    matrix g_ProjMatrix;
+    matrix g_ViewProjMatrix;
+    matrix g_InvViewMatrix;
+    matrix g_InvProjMatrix;
+    matrix g_InvViewProjMatrix;
+    
+    float3 g_LightDir; // Directional light direction (normalized)
+    float _pad0;
+    float3 g_LightColor; // Light color
+    float _pad1;
+    float3 g_Ambient; // Ambient light color
+    float _pad2;
 };
 
 cbuffer CB_Object : register(b1)
@@ -35,7 +45,7 @@ PSInput VSMain(VSInput input)
 {
     PSInput result = (PSInput)0;
     
-    matrix matViewProj = mul(g_matView, g_matProj);        // view x proj
+    matrix matViewProj = mul(g_ViewMatrix, g_ProjMatrix);        // view x proj
     matrix matWorldViewProj = mul(g_matWorld, matViewProj);   // world x view x proj
     
     result.Position = mul(input.Position, matWorldViewProj); // pojtected vertex = vertex x world x view x proj
@@ -54,12 +64,8 @@ float4 PSMain(PSInput input) : SV_TARGET
     float4 texColor = texDiffuse.Sample(samplerWrap, input.TexCoord);
 
     // Diffuse lighting (Lambert)
-    float3 g_LightDir = float3(0.5f, -1.0, 0.3f); // Directional light direction (normalized) TODO: move to cbuffer
     float NdotL = saturate(dot(normalize(input.Normal), -normalize(g_LightDir)));
-
-    float3 g_LightColor = float3(1.0f, 1.0f, 1.0f); // White light TODO: move to cbuffer
     float3 diffuse = g_LightColor * NdotL;
-    float3 g_Ambient = float3(0.4f, 0.4f, 0.4f); // Ambient light color TODO: move to cbuffer
     float3 ambient = g_Ambient;
 
     float3 finalColor = texColor.rgb * (diffuse + ambient);
