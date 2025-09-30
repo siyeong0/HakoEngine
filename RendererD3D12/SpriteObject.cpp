@@ -3,6 +3,7 @@
 #include "SimpleConstantBufferPool.h"
 #include "SingleDescriptorAllocator.h"
 #include "ShaderManager.h"
+#include "PSOManager.h"
 #include "DescriptorPool.h"
 #include "D3D12Renderer.h"
 #include "SpriteObject.h"
@@ -10,7 +11,6 @@
 using namespace DirectX;
 
 ID3D12RootSignature* SpriteObject::m_pRootSignature = nullptr;
-ID3D12PipelineState* SpriteObject::m_pPipelineState = nullptr;
 
 ID3D12Resource* SpriteObject::m_pVertexBuffer = nullptr;
 D3D12_VERTEX_BUFFER_VIEW SpriteObject::m_VertexBufferView = {};
@@ -29,7 +29,6 @@ STDMETHODIMP_(ULONG) SpriteObject::AddRef()
 {
 	m_RefCount++;
 	return m_RefCount;
-
 }
 
 STDMETHODIMP_(ULONG) SpriteObject::Release()
@@ -46,14 +45,24 @@ bool SpriteObject::Initialize(D3D12Renderer* pRenderer)
 {
 	m_pRenderer = pRenderer;
 
-	return initCommonResources();
+	bool bResult = false;
+	
+	bResult = (initCommonResources() != 0);
+	ASSERT(bResult, "Failed to initialize common resources.");
+
+	bResult = initRootSinagture();
+	ASSERT(bResult, "Failed to initialize root signature.");
+	bResult = initPipelineState();
+	ASSERT(bResult, "Failed to initialize pipeline state.");
+
+	return bResult;
 }
 
 bool SpriteObject::Initialize(D3D12Renderer* pRenderer, const WCHAR* wchTexFileName, const RECT* pRectOrNull)
 {
-	m_pRenderer = pRenderer;
+	bool bResult = Initialize(pRenderer);
+	ASSERT(bResult, "Failed to initialize sprite object.");
 
-	bool bResult = (initCommonResources() != 0);
 	if (bResult)
 	{
 		UINT texWidth = 1;
@@ -102,6 +111,7 @@ void SpriteObject::DrawWithTex(int threadIndex, ID3D12GraphicsCommandList6* pCom
 	DescriptorPool* pDescriptorPool = m_pRenderer->GetDescriptorPool(threadIndex);
 	ID3D12DescriptorHeap* pDescriptorHeap = pDescriptorPool->GetDescriptorHeap();
 	SimpleConstantBufferPool* pConstantBufferPool = m_pRenderer->GetConstantBufferPool(CONSTANT_BUFFER_TYPE_SPRITE, threadIndex);
+	PSOManager* pPSOManager = m_pRenderer->GetPSOManager();
 
 	UINT texWidth = 0;
 	UINT texHeight = 0;
@@ -172,7 +182,7 @@ void SpriteObject::DrawWithTex(int threadIndex, ID3D12GraphicsCommandList6* pCom
 
 	pCommandList->SetGraphicsRootDescriptorTable(0, gpuDescriptorTable);
 
-	pCommandList->SetPipelineState(m_pPipelineState);
+	pCommandList->SetPipelineState(pPSOManager->QueryPSO(m_pPSOHandle)->pPSO);
 	pCommandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 	pCommandList->IASetVertexBuffers(0, 1, &m_VertexBufferView);
 	pCommandList->IASetIndexBuffer(&m_IndexBufferView);
@@ -198,8 +208,6 @@ bool SpriteObject::initCommonResources()
 		goto lb_true;
 	}
 
-	initRootSinagture();
-	initPipelineState();
 	initMesh();
 
 lb_true:
@@ -217,16 +225,6 @@ void SpriteObject::cleanupSharedResources()
 	int refCount = --m_InitRefCount;
 	if (!refCount)
 	{
-		if (m_pRootSignature)
-		{
-			m_pRootSignature->Release();
-			m_pRootSignature = nullptr;
-		}
-		if (m_pPipelineState)
-		{
-			m_pPipelineState->Release();
-			m_pPipelineState = nullptr;
-		}
 		if (m_pVertexBuffer)
 		{
 			m_pVertexBuffer->Release();
@@ -242,6 +240,11 @@ void SpriteObject::cleanupSharedResources()
 
 bool SpriteObject::initRootSinagture()
 {
+	if (m_pRootSignature)
+	{
+		return true;
+	}
+
 	HRESULT hr = S_OK;
 
 	ID3D12Device5* pD3DDeivce = m_pRenderer->GetD3DDevice();
@@ -298,6 +301,7 @@ bool SpriteObject::initPipelineState()
 
 	ID3D12Device5* pD3DDeivce = m_pRenderer->GetD3DDevice();
 	ShaderManager* pShaderManager = m_pRenderer->GetShaderManager();
+	PSOManager* pPSOManager = m_pRenderer->GetPSOManager();
 
 	ShaderHandle* pVertexShader = pShaderManager->CreateShaderDXC(L"Sprite.hlsl", L"VSMain", L"vs_6_0", 0);
 	ASSERT(pVertexShader, "Shader compilation failed.");
@@ -352,8 +356,9 @@ bool SpriteObject::initPipelineState()
 	psoDesc.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;
 	psoDesc.DSVFormat = DXGI_FORMAT_D32_FLOAT;
 	psoDesc.SampleDesc.Count = 1;
-	hr = pD3DDeivce->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&m_pPipelineState));
-	ASSERT(SUCCEEDED(hr), "Failed to create pipeline state.");
+
+	m_pPSOHandle = pPSOManager->CreatePSO(psoDesc, "Sprite");
+	ASSERT(m_pPSOHandle, "Failed to create PSO.");
 
 	if (pVertexShader)
 	{
@@ -417,6 +422,17 @@ void SpriteObject::cleanup()
 	{
 		m_pRenderer->DeleteTexture(m_pTexHandle);
 		m_pTexHandle = nullptr;
+	}
+	if (m_pRootSignature)
+	{
+		m_pRootSignature->Release();
+		m_pRootSignature = nullptr;
+	}
+	if (m_pPSOHandle)
+	{
+		PSOManager* pPSOManager = m_pRenderer->GetPSOManager();
+		pPSOManager->ReleasePSO(m_pPSOHandle);
+		m_pPSOHandle = nullptr;
 	}
 	cleanupSharedResources();
 }

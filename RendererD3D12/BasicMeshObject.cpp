@@ -3,6 +3,7 @@
 #include "SimpleConstantBufferPool.h"
 #include "SingleDescriptorAllocator.h"
 #include "ShaderManager.h"
+#include "PSOManager.h"
 #include "DescriptorPool.h"
 #include "D3D12Renderer.h"
 #include "BasicMeshObject.h"
@@ -10,9 +11,6 @@
 using namespace DirectX;
 
 ID3D12RootSignature* BasicMeshObject::m_pRootSignature = nullptr;
-ID3D12PipelineState* BasicMeshObject::m_pPipelineState = nullptr;
-int BasicMeshObject::m_InitRefCount = 0;
-
 
 STDMETHODIMP BasicMeshObject::QueryInterface(REFIID refiid, void** ppv)
 {
@@ -93,8 +91,8 @@ bool BasicMeshObject::Initialize(D3D12Renderer* pRenderer)
 	bool bResult = false;
 	m_pRenderer = pRenderer;
 
-	bResult = initCommonResources();
-	ASSERT(bResult, "BasicMesh: init common resources failed");
+	initRootSinagture();
+	initPipelineState();
 
 	return bResult;
 }
@@ -109,7 +107,7 @@ void BasicMeshObject::Draw(int threadIndex, ID3D12GraphicsCommandList6* pCommand
 	DescriptorPool* pDescriptorPool = m_pRenderer->GetDescriptorPool(threadIndex);
 	ID3D12DescriptorHeap* pDescriptorHeap = pDescriptorPool->GetDescriptorHeap();
 	SimpleConstantBufferPool* pConstantBufferPool = m_pRenderer->GetConstantBufferPool(CONSTANT_BUFFER_TYPE_DEFAULT, threadIndex);
-	
+	PSOManager* pPSOManager = m_pRenderer->GetPSOManager();
 
 	CD3DX12_GPU_DESCRIPTOR_HANDLE gpuDescriptorTable = {};
 	CD3DX12_CPU_DESCRIPTOR_HANDLE cpuDescriptorTable = {};
@@ -162,7 +160,7 @@ void BasicMeshObject::Draw(int threadIndex, ID3D12GraphicsCommandList6* pCommand
 	// per OBJ | TriGroup 0 | TriGroup 1 | TriGroup 2 |
 	// CBV     |     SRV    |     SRV    |     SRV    | 
 
-	pCommandList->SetPipelineState(m_pPipelineState);
+	pCommandList->SetPipelineState(pPSOManager->QueryPSO(m_pPSOHandle)->pPSO);
 	pCommandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 	pCommandList->IASetVertexBuffers(0, 1, &m_VertexBufferView);
 
@@ -182,55 +180,13 @@ void BasicMeshObject::Draw(int threadIndex, ID3D12GraphicsCommandList6* pCommand
 	}
 }
 
-bool BasicMeshObject::initCommonResources()
-{
-	if (m_InitRefCount)
-	{
-		goto lb_true;
-	}
-
-	if (!initRootSinagture())
-	{
-		ASSERT(false, "BasicMesh: init root signature failed");
-		return false;
-	}
-	if (!initPipelineState())
-	{
-		ASSERT(false, "BasicMesh: init pipeline state failed");
-		return false;
-	}
-
-lb_true:
-	return ++m_InitRefCount;
-}
-
-void BasicMeshObject::cleanupSharedResources()
-{
-	if (!m_InitRefCount)
-	{
-		return;
-	}
-
-	ShaderManager* pShaderManager = m_pRenderer->GetShaderManager();
-
-	int refCount = --m_InitRefCount;
-	if (!refCount)
-	{
-		if (m_pRootSignature)
-		{
-			m_pRootSignature->Release();
-			m_pRootSignature = nullptr;
-		}
-		if (m_pPipelineState)
-		{
-			m_pPipelineState->Release();
-			m_pPipelineState = nullptr;
-		}
-	}
-}
-
 bool BasicMeshObject::initRootSinagture()
 {
+	if (m_pRootSignature)
+	{
+		return true;
+	}
+
 	HRESULT hr = S_OK;
 
 	ID3D12Device5* pD3DDeivce = m_pRenderer->GetD3DDevice();
@@ -301,6 +257,7 @@ bool BasicMeshObject::initPipelineState()
 
 	ID3D12Device5* pD3DDeivce = m_pRenderer->GetD3DDevice();
 	ShaderManager* pShaderManager = m_pRenderer->GetShaderManager();
+	PSOManager* pPsoManager = m_pRenderer->GetPSOManager();
 
 	ShaderHandle* pVertexShader = pShaderManager->CreateShaderDXC(L"Standard.hlsl", L"VSMain", L"vs_6_0", 0);
 	ASSERT(pVertexShader, "Shader compilation failed.");
@@ -337,8 +294,8 @@ bool BasicMeshObject::initPipelineState()
 	psoDesc.DSVFormat = DXGI_FORMAT_D32_FLOAT;
 	psoDesc.SampleDesc.Count = 1;
 
-	hr = pD3DDeivce->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&m_pPipelineState));
-	ASSERT(SUCCEEDED(hr), "Failed to create pipeline state.");
+	m_pPSOHandle = pPsoManager->CreatePSO(psoDesc, "BasicMesh");
+	ASSERT(m_pPSOHandle, "Failed to query pipeline state.");
 
 	if (pVertexShader)
 	{
@@ -361,8 +318,8 @@ void BasicMeshObject::deleteTriGroup(IndexedTriGroup* pTriGroup)
 void BasicMeshObject::cleanup()
 {
 	m_pRenderer->EnsureCompleted();
+
 	// delete all triangles-group
-	
 	if (m_pTriGroupList)
 	{
 		for (UINT i = 0; i < m_NumTriGroups; i++)
@@ -387,5 +344,11 @@ void BasicMeshObject::cleanup()
 		m_pVertexBuffer->Release();
 		m_pVertexBuffer = nullptr;
 	}
-	cleanupSharedResources();
+
+	if (m_pPSOHandle)
+	{
+		PSOManager* pPsoManager = m_pRenderer->GetPSOManager();
+		pPsoManager->ReleasePSO(m_pPSOHandle);
+		m_pPSOHandle = nullptr;
+	}
 }

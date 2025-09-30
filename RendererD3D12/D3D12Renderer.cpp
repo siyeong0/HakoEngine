@@ -15,6 +15,7 @@
 #include "TextureManager.h"
 #include "RenderQueue.h"
 #include "CommandListPool.h"
+#include "PSOManager.h"
 #include "RenderThread.h"
 #include "D3D12Renderer.h"
 
@@ -260,6 +261,9 @@ lb_exit:
 	bInited = m_pShaderManager->Initialize(this, wchShaderPath, bEnableDebugLayer); // TODO: Use "bDebugShader" parameter.
 	ASSERT(bInited, "ShaderManager initialization failed.");
 
+	m_pPSOManager = new PSOManager;
+	bInited = m_pPSOManager->Initialize(this);
+
 	DWORD numPhysicalCores = 0;
 	DWORD numLogicalCores = 0;
 	GetPhysicalCoreCount(&numPhysicalCores, &numLogicalCores);
@@ -370,6 +374,11 @@ void ENGINECALL D3D12Renderer::Cleanup()
 	{
 		delete m_pShaderManager;
 		m_pShaderManager = nullptr;
+	}
+	if (m_pPSOManager)
+	{
+		delete m_pPSOManager;
+		m_pPSOManager = nullptr;
 	}
 
 	if (m_pSingleDescriptorAllocator)

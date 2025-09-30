@@ -17,6 +17,7 @@ struct IndexedTriGroup
 	TextureHandle* pTexHandle = nullptr;
 };
 
+struct PSOHandle;
 class D3D12Renderer;
 
 class BasicMeshObject : public IMeshObject
@@ -46,9 +47,6 @@ public:
 	void Draw(int threadIndex, ID3D12GraphicsCommandList6* pCommandList, const XMMATRIX* worlMatrix);
 
 private:
-	bool initCommonResources();
-	void cleanupSharedResources();
-
 	bool initRootSinagture();
 	bool initPipelineState();
 
@@ -56,16 +54,14 @@ private:
 	void cleanup();
 
 private:
-	// Shared by all CBasicMeshObject instances.
-	static ID3D12RootSignature* m_pRootSignature;
-	static ID3D12PipelineState* m_pPipelineState;
-	static int m_InitRefCount;
-
 	int m_RefCount = 1;
 	D3D12Renderer* m_pRenderer = nullptr;
 
 	ID3D12Resource* m_pVertexBuffer = nullptr;
 	D3D12_VERTEX_BUFFER_VIEW m_VertexBufferView = {};
+
+	static ID3D12RootSignature* m_pRootSignature; // TODO : Use RootSignaturePool
+	PSOHandle* m_pPSOHandle = nullptr;
 
 	IndexedTriGroup* m_pTriGroupList = nullptr;
 	size_t m_NumTriGroups = 0;

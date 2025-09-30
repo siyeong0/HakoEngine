@@ -1,6 +1,7 @@
 ﻿#pragma once
 #include "ConstantBuffer.h"
 
+struct PSOHandle;
 class D3D12Renderer;
 
 class SkyObject
@@ -20,8 +21,8 @@ private:
 private:
 	D3D12Renderer* m_pRenderer = nullptr;
 
-	ID3D12RootSignature* m_pRootSignature = nullptr;
-	ID3D12PipelineState* m_pPipelineState = nullptr;
+	static ID3D12RootSignature* m_pRootSignature; // TODO : Use RootSignaturePool
+	PSOHandle* m_pPSOHandle = nullptr;
 
 	ID3D12Resource* m_pVertexBuffer = nullptr;
 	D3D12_VERTEX_BUFFER_VIEW m_VertexBufferView = {};

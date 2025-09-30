@@ -5,18 +5,19 @@
 
 #define USE_MULTI_THREAD
 
+class ConstantBufferManager;
+class CommandListPool;
 class D3D12ResourceManager;
 class DescriptorPool;
+class FontManager;
+class PSOManager;
+class RenderQueue;
+struct RenderThreadDesc;
 class SimpleConstantBufferPool;
 class SingleDescriptorAllocator;
 class SkyObject;
-class ConstantBufferManager;
-class FontManager;
-class TextureManager;
 class ShaderManager;
-class RenderQueue;
-class CommandListPool;
-struct RenderThreadDesc;
+class TextureManager;
 
 class D3D12Renderer : public IRenderer
 {
@@ -68,6 +69,7 @@ public:
 	ID3D12Device5* GetD3DDevice() const { return m_pD3DDevice; }
 	D3D12ResourceManager* GetResourceManager() { return m_pResourceManager; }
 	ShaderManager* GetShaderManager() { return m_pShaderManager; }
+	PSOManager* GetPSOManager() { return m_pPSOManager; }
 
 	DescriptorPool* GetDescriptorPool(int threadIndex) const { return m_ppDescriptorPool[m_CurrContextIndex][threadIndex]; }
 	SimpleConstantBufferPool* GetConstantBufferPool(EConstantBufferType type, int threadIndex) const;
@@ -141,6 +143,7 @@ private:
 	D3D12ResourceManager* m_pResourceManager = nullptr;
 	FontManager* m_pFontManager = nullptr;
 	ShaderManager* m_pShaderManager = nullptr;
+	PSOManager* m_pPSOManager = nullptr;
 
 	uint64_t m_pui64LastFenceValue[MAX_PENDING_FRAME_COUNT] = {};
 	uint64_t m_ui64FenceVaule = 0;

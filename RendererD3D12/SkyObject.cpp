@@ -1,14 +1,16 @@
 ﻿#include "pch.h"
 #include "SkyObject.h"
-
 #include "D3D12Renderer.h"
 #include "D3D12ResourceManager.h"
 #include "SimpleConstantBufferPool.h"
 #include "DescriptorPool.h"
+#include "PSOManager.h"
 #include "SingleDescriptorAllocator.h"
 #include "ShaderManager.h"
 
 static float s_SunTheta = 0.0f;
+
+ID3D12RootSignature* SkyObject::m_pRootSignature = nullptr;
 
 bool SkyObject::Initialize(D3D12Renderer* pRenderer)
 {
@@ -34,6 +36,7 @@ void SkyObject::Draw(int threadIndex, ID3D12GraphicsCommandList6* pCommandList)
 	ID3D12Device5* pDevice = m_pRenderer->GetD3DDevice();
 	DescriptorPool* pDescriptorPool = m_pRenderer->GetDescriptorPool(threadIndex);
 	ID3D12DescriptorHeap* pDescriptorHeap = pDescriptorPool->GetDescriptorHeap();
+	PSOManager* pPSOManager = m_pRenderer->GetPSOManager();
 	SimpleConstantBufferPool* pCBPool = m_pRenderer->GetConstantBufferPool(CONSTANT_BUFFER_TYPE_DEFAULT, threadIndex);
 	const UINT srvDescSize = m_pRenderer->GetSrvDescriptorSize();
 
@@ -90,7 +93,7 @@ void SkyObject::Draw(int threadIndex, ID3D12GraphicsCommandList6* pCommandList)
 	// Draw
 	pCommandList->SetGraphicsRootSignature(m_pRootSignature);
 	pCommandList->SetDescriptorHeaps(1, &pDescriptorHeap);
-	pCommandList->SetPipelineState(m_pPipelineState);
+	pCommandList->SetPipelineState(pPSOManager->QueryPSO(m_pPSOHandle)->pPSO);
 	pCommandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 	pCommandList->SetGraphicsRootDescriptorTable(0, gpuTable);
 	pCommandList->DrawInstanced(3, 1, 0, 0);
@@ -98,17 +101,38 @@ void SkyObject::Draw(int threadIndex, ID3D12GraphicsCommandList6* pCommandList)
 
 void SkyObject::Cleanup()
 {
-	if (m_pVertexBuffer) { m_pVertexBuffer->Release();  m_pVertexBuffer = nullptr; }
-	if (m_pIndexBuffer) { m_pIndexBuffer->Release();   m_pIndexBuffer = nullptr; }
+	if (m_pVertexBuffer) 
+	{ 
+		m_pVertexBuffer->Release(); 
+		m_pVertexBuffer = nullptr; 
+	}
+	if (m_pIndexBuffer) 
+	{ 
+		m_pIndexBuffer->Release();  
+		m_pIndexBuffer = nullptr; }
 	m_VertexBufferView = {};
 	m_IndexBufferView = {};
 
-	if (m_pPipelineState) { m_pPipelineState->Release(); m_pPipelineState = nullptr; }
-	if (m_pRootSignature) { m_pRootSignature->Release(); m_pRootSignature = nullptr; }
+	if (m_pRootSignature) 
+	{ 
+		m_pRootSignature->Release(); 
+		m_pRootSignature = nullptr; 
+	}
+	if (m_pPSOHandle) 
+	{ 
+		PSOManager* pPSOManager = m_pRenderer->GetPSOManager();
+		pPSOManager->ReleasePSO(m_pPSOHandle);
+		m_pPSOHandle = nullptr;
+	}
 }
 
 bool SkyObject::initRootSinagture()
 {
+	if (m_pRootSignature)
+	{
+		return true;
+	}
+
 	HRESULT hr = S_OK;
 
 	ID3D12Device5* pDevice = m_pRenderer->GetD3DDevice();
@@ -157,6 +181,7 @@ bool SkyObject::initPipelineState()
 
 	ID3D12Device5* pDevice = m_pRenderer->GetD3DDevice();
 	ShaderManager* pShaderManager = m_pRenderer->GetShaderManager();
+	PSOManager* pPSOManager = m_pRenderer->GetPSOManager();
 
 	// Sky.hlsl (VSMain/PSMain)
 	ShaderHandle* pVertexShader = pShaderManager->CreateShaderDXC(L"ProceduralSky.hlsl", L"VSMain", L"vs_6_0", 0);
@@ -183,8 +208,8 @@ bool SkyObject::initPipelineState()
 	posDesc.DSVFormat = DXGI_FORMAT_D32_FLOAT;
 	posDesc.SampleDesc.Count = 1;
 
-	hr = pDevice->CreateGraphicsPipelineState(&posDesc, IID_PPV_ARGS(&m_pPipelineState));
-	ASSERT(SUCCEEDED(hr), "Sky: CreateGraphicsPipelineState failed");
+	m_pPSOHandle = pPSOManager->CreatePSO(posDesc, "Sky");
+	ASSERT(m_pPSOHandle, "Sky: CreatePSO failed");
 
 	if (pVertexShader)
 	{

@@ -75,6 +75,9 @@
     <Filter Include="RenderManager\ShaderManager">
       <UniqueIdentifier>{dd50c0bc-cc2d-4132-b090-8518f766e816}</UniqueIdentifier>
     </Filter>
+    <Filter Include="RenderManager\PSOManager">
+      <UniqueIdentifier>{bb96ba69-f8e5-4ade-891c-567bc937a160}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h">
@@ -146,6 +149,9 @@
     <ClInclude Include="RenderItem.h">
       <Filter>RenderManager\RenderQueue</Filter>
     </ClInclude>
+    <ClInclude Include="PSOManager.h">
+      <Filter>RenderManager\PSOManager</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="dllmain.cpp">
@@ -207,6 +213,9 @@
     </ClCompile>
     <ClCompile Include="SkyObject.cpp">
       <Filter>RenderObject\SkyObject</Filter>
+    </ClCompile>
+    <ClCompile Include="PSOManager.cpp">
+      <Filter>RenderManager\PSOManager</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

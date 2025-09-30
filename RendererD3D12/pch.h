@@ -43,6 +43,7 @@
 #include <string>
 #include <vector>
 #include <list>
+#include <mutex>
 #include <unordered_map>
 
 #include "Renderer_typedef.h"

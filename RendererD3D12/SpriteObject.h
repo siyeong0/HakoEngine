@@ -6,6 +6,7 @@ enum ESpriteDescriptorIndex
 	SPRITE_DESCRIPTOR_INDEX_TEX = 1
 };
 
+struct PSOHandle;
 class D3D12Renderer;
 
 class SpriteObject : public ISprite
@@ -38,8 +39,6 @@ private:
 
 private:
 	// shared by all CSpriteObject instances.
-	static ID3D12RootSignature* m_pRootSignature;
-	static ID3D12PipelineState* m_pPipelineState;
 	static int m_InitRefCount;
 
 	// vertex data
@@ -49,6 +48,9 @@ private:
 	// index data
 	static ID3D12Resource* m_pIndexBuffer;
 	static D3D12_INDEX_BUFFER_VIEW m_IndexBufferView;
+
+	static ID3D12RootSignature* m_pRootSignature; // TODO : Use RootSignaturePool
+	PSOHandle* m_pPSOHandle = nullptr;
 
 	int m_RefCount = 1;
 	TextureHandle* m_pTexHandle = nullptr;
