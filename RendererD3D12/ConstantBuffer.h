@@ -3,6 +3,10 @@
 
 using namespace DirectX;
 
+constexpr UINT ROOT_SLOT_CBV_PER_FRAME = 0;
+constexpr UINT ROOT_SLOT_CBV_PER_DRAW = 1;
+constexpr UINT ROOT_SLOT_SRV_TABLE = 2;
+
 struct CB_PerFrame
 {
 	XMMATRIX ViewMatrix;

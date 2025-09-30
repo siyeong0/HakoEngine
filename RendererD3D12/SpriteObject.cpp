@@ -129,10 +129,6 @@ void SpriteObject::DrawWithTex(int threadIndex, ID3D12GraphicsCommandList6* pCom
 	}
 
 	// Root CBV binding
-	constexpr UINT ROOT_SLOT_CBV_PER_FRAME = 0;
-	constexpr UINT ROOT_SLOT_CBV_PER_DRAW = 1;
-	constexpr UINT ROOT_SLOT_SRV_TABLE = 2;
-
 	ConstantBufferContainer* pCB = pConstantBufferPool->Alloc();
 	ASSERT(pCB, "Failed to allocate constant buffer.");
 	ConstantBufferSprite* pCBPerDraw = reinterpret_cast<ConstantBufferSprite*>(pCB->pSystemMemAddr);

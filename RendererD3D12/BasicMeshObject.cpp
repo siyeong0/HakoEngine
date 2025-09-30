@@ -135,10 +135,6 @@ void BasicMeshObject::Draw(int threadIndex, ID3D12GraphicsCommandList6* pCommand
 	pCommandList->IASetVertexBuffers(0, 1, &m_VertexBufferView);
 
 	// --- 4) Root CBV binding
-	constexpr UINT ROOT_SLOT_CBV_PER_FRAME = 0;
-	constexpr UINT ROOT_SLOT_CBV_PER_DRAW = 1;
-	constexpr UINT ROOT_SLOT_SRV_TABLE = 2;
-
 	pCommandList->SetGraphicsRootConstantBufferView(ROOT_SLOT_CBV_PER_DRAW, pCB->pGPUMemAddr);
 
 	// --- 5) TriGroup loop: t0가 가리키는 SRV를 매 드로우마다 바꿈
