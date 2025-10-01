@@ -24,12 +24,12 @@ struct ConstantBufferProperty
 
 struct CB_PerFrame
 {
-	XMMATRIX ViewMatrix;
-	XMMATRIX ProjMatrix;
-	XMMATRIX ViewProjMatrix;
-	XMMATRIX InvViewMatrix;
-	XMMATRIX InvProjMatrix;
-	XMMATRIX InvViewProjMatrix;
+	XMMATRIX View;
+	XMMATRIX Proj;
+	XMMATRIX ViewProj;
+	XMMATRIX InvView;
+	XMMATRIX InvProj;
+	XMMATRIX InvViewProj;
 
 	XMFLOAT3 LightDir; // Directional light direction (normalized)
 	float _pad0;
@@ -60,23 +60,23 @@ struct CB_SpriteObject
 
 struct CB_AtmosConstants
 {
-	XMFLOAT3 CameraPosPlanetCS;
+	XMFLOAT3 CameraPosPlanetCoord;
 	float _pad0;               // padding for 16B alignment
 
-	XMFLOAT3 SunDirW;
+	XMFLOAT3 SunDir;
 	float SunExposure;
+	XMFLOAT3 SunIrradiance;   // solar irradiance at TOA
+	float _pad1;
 
 	// Radii
 	float PlanetRadius;         // Rg
 	float AtmosphereHeight;     // H
 	float TopRadius;            // Rt = Rg + H
-	float _pad1;                  // padding (to make next float align 16B)
+	float _pad2;                // padding (to make next float align 16B)
 
 	// Mie phase
-	XMFLOAT3 SunIrradiance;   // solar irradiance at TOA
 	float  MieG;
 	XMFLOAT3 MieTint;           // normalized tint
-	float _pad2;
 
 	// LUT logical sizes (as floats for consistency with HLSL)
 	float TW;	// Transmittance size

@@ -54,12 +54,12 @@ int RenderQueue::Process(
 
 	CB_PerFrame* pCBPerFrame = (CB_PerFrame*)pCB->pSystemMemAddr;
 	const CB_PerFrame& srcCBData = m_pRenderer->GetFrameCBData();
-	pCBPerFrame->ViewMatrix = XMMatrixTranspose(srcCBData.ViewMatrix);
-	pCBPerFrame->ProjMatrix = XMMatrixTranspose(srcCBData.ProjMatrix);
-	pCBPerFrame->ViewProjMatrix = XMMatrixTranspose(srcCBData.ViewProjMatrix);
-	pCBPerFrame->InvViewMatrix = XMMatrixTranspose(srcCBData.InvViewMatrix);
-	pCBPerFrame->InvProjMatrix = XMMatrixTranspose(srcCBData.InvProjMatrix);
-	pCBPerFrame->InvViewProjMatrix = XMMatrixTranspose(srcCBData.InvViewProjMatrix);
+	pCBPerFrame->View = XMMatrixTranspose(srcCBData.View);
+	pCBPerFrame->Proj = XMMatrixTranspose(srcCBData.Proj);
+	pCBPerFrame->ViewProj = XMMatrixTranspose(srcCBData.ViewProj);
+	pCBPerFrame->InvView = XMMatrixTranspose(srcCBData.InvView);
+	pCBPerFrame->InvProj = XMMatrixTranspose(srcCBData.InvProj);
+	pCBPerFrame->InvViewProj = XMMatrixTranspose(srcCBData.InvViewProj);
 
 	pCBPerFrame->LightDir = srcCBData.LightDir;
 	pCBPerFrame->LightColor = srcCBData.LightColor;

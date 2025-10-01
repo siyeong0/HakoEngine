@@ -1022,8 +1022,8 @@ SimpleConstantBufferPool* D3D12Renderer::GetConstantBufferPool(EConstantBufferTy
 
 void D3D12Renderer::GetViewProjMatrix(XMMATRIX* outMatView, XMMATRIX* outMatProj) const
 {
-	*outMatView = XMMatrixTranspose(m_PerFrameCB.ViewMatrix);
-	*outMatProj = XMMatrixTranspose(m_PerFrameCB.ProjMatrix);
+	*outMatView = XMMatrixTranspose(m_PerFrameCB.View);
+	*outMatProj = XMMatrixTranspose(m_PerFrameCB.Proj);
 }
 
 void D3D12Renderer::SetCurrentPathForShader() const
@@ -1066,25 +1066,25 @@ void D3D12Renderer::updateCamera()
 	m_CamUp = XMVector3Normalize(XMVector3Cross(m_CamDir, m_CamRight));
 
 	// View matrix
-	m_PerFrameCB.ViewMatrix = XMMatrixLookToLH(m_CamPos, m_CamDir, m_CamUp);
+	m_PerFrameCB.View = XMMatrixLookToLH(m_CamPos, m_CamDir, m_CamUp);
 
 	// Projection matrix
 	float fovY = XM_PIDIV4; // (rad)
 	float aspectRatio = (float)m_Width / (float)m_Height;
 	float nearZ = 0.1f;
 	float farZ = 1000.0f;
-	m_PerFrameCB.ProjMatrix = XMMatrixPerspectiveFovLH(fovY, aspectRatio, nearZ, farZ);
+	m_PerFrameCB.Proj = XMMatrixPerspectiveFovLH(fovY, aspectRatio, nearZ, farZ);
 
 	// View-Projection matrix
-	m_PerFrameCB.ViewProjMatrix = XMMatrixMultiply(m_PerFrameCB.ViewMatrix, m_PerFrameCB.ProjMatrix);
+	m_PerFrameCB.ViewProj = XMMatrixMultiply(m_PerFrameCB.View, m_PerFrameCB.Proj);
 
 	// Inverse matrices
 	XMVECTOR det;
-	m_PerFrameCB.InvViewMatrix = XMMatrixInverse(&det, m_PerFrameCB.ViewMatrix);
+	m_PerFrameCB.InvView = XMMatrixInverse(&det, m_PerFrameCB.View);
 	ASSERT(det.m128_f32[0] != 0.0f, "Matrix is not invertible.");
-	m_PerFrameCB.InvProjMatrix = XMMatrixInverse(&det, m_PerFrameCB.ProjMatrix);
+	m_PerFrameCB.InvProj = XMMatrixInverse(&det, m_PerFrameCB.Proj);
 	ASSERT(det.m128_f32[0] != 0.0f, "Matrix is not invertible.");
-	m_PerFrameCB.InvViewProjMatrix = XMMatrixInverse(&det, m_PerFrameCB.ViewProjMatrix);
+	m_PerFrameCB.InvViewProj = XMMatrixInverse(&det, m_PerFrameCB.ViewProj);
 	ASSERT(det.m128_f32[0] != 0.0f, "Matrix is not invertible.");
 }
 

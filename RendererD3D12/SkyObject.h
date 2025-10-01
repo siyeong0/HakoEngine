@@ -20,13 +20,11 @@ private:
 private:
 	D3D12Renderer* m_pRenderer = nullptr;
 
-	PSOHandle* m_pPSOHandle = nullptr;
-
 	ID3D12Resource* m_pVertexBuffer = nullptr;
 	D3D12_VERTEX_BUFFER_VIEW m_VertexBufferView = {};
-
 	ID3D12Resource* m_pIndexBuffer = nullptr;
 	D3D12_INDEX_BUFFER_VIEW m_IndexBufferView = {};
+	PSOHandle* m_pPSOHandle = nullptr;
 
 	TextureHandle* m_pTransmittanceTex = nullptr;
 	TextureHandle* m_pScatteringTex = nullptr;

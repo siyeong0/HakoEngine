@@ -26,13 +26,13 @@ void ComputeAtmosCPU(const AtmosParams& in, AtmosResult* out)
 	std::cout << "HfxBake::ComputeAtmos (CPU, single-scattering only)..." << std::endl;
 	ASSERT(out, "Output pointer is null.");
 
-	// 행성 지오메트리
+	// Planet geometry
 	PlanetGeom pg = {};
 	pg.Rg = in.PlanetRadius;
 	pg.Rt = in.PlanetRadius + in.AtmosphereHeight;
 	ASSERT(pg.Rg > 0.0f && pg.Rt > pg.Rg, "Invalid planet/atmosphere radius.");
 
-	// 해상도 읽기
+	// Resolutions
 	const int TW = in.TransmittanceW, TH = in.TransmittanceH;
 	const int SR = in.ScatteringR, SMU = in.ScatteringMu, SMUS = in.ScatteringMuS, SNU = in.ScatteringNu;
 	const int EW = in.IrradianceW, EH = in.IrradianceH;
@@ -40,7 +40,7 @@ void ComputeAtmosCPU(const AtmosParams& in, AtmosResult* out)
 	ASSERT(TW > 0 && TH > 0 && SR > 0 && SMU > 0 && SMUS > 0 && SNU > 0 && EW > 0 && EH > 0,
 		"Invalid LUT dimensions.");
 
-	// 출력 버퍼 준비(기존 포인터가 있다면 해제는 호출자 규약에 따르세요)
+	// Prepare output buffers.
 	out->TransmittanceW = TW; out->TransmittanceH = TH;
 	out->ScatteringR = SR; out->ScatteringMu = SMU; out->ScatteringMuS = SMUS; out->ScatteringNu = SNU;
 	out->IrradianceW = EW; out->IrradianceH = EH;
@@ -63,7 +63,7 @@ void ComputeAtmosCPU(const AtmosParams& in, AtmosResult* out)
 	}
 
 	// ----------------------------- Transmittance 2D -----------------------------
-	// 매핑(간단 버전): r ∈ [Rg, Rt], mu ∈ [-1, 1]를 균등 샘플
+	// Simplified version : r ∈ [Rg, Rt], mu ∈ [-1, 1] uniform sample
 	for (int j = 0; j < TH; ++j)
 	{
 		float v = (j + 0.5f) / float(TH);
@@ -85,7 +85,7 @@ void ComputeAtmosCPU(const AtmosParams& in, AtmosResult* out)
 	}
 
 	// ----------------------------- Scattering 4D (packed) -----------------------
-	// 차원: (r, mu, mu_s, nu). 현재 구현은 "단산란 & 위상 미적용" → nu에 무관, 모든 nu slice 동일.
+	// Dim : (r, mu, mu_s, nu). 현재 구현은 "단산란 & 위상 미적용" → nu에 무관, 모든 nu slice 동일.
 	for (int ir = 0; ir < SR; ++ir)
 	{
 		float fr = (ir + 0.5f) / float(SR);
@@ -119,7 +119,7 @@ void ComputeAtmosCPU(const AtmosParams& in, AtmosResult* out)
 	}
 
 	// ----------------------------- Irradiance 2D --------------------------------
-	// (r, mu_s) 맵으로 정의: j→r, i→mu_s
+	// (r, mu_s). j→r, i→mu_s
 	for (int j = 0; j < EH; ++j) 
 	{
 		float fr = (j + 0.5f) / float(EH);

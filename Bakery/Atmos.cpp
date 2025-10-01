@@ -15,7 +15,7 @@ static AtmosParams MakeEarthLikeParams();
 static bool Save2DRGBasDDS(const float* srcRGB, int W, int H, const std::wstring& path);
 static bool SaveScattering3D_RGBA_DDS(const float* srcRGBA, int R, int MU, int MU_S, int NU, const std::wstring& path);
 
-// ---------------- 실행 샘플 ----------------
+// ---------------- Sample ----------------
 void RunAtmosPrecomputeAndSave()
 {
 	AtmosParams atmosParams = MakeEarthLikeParams();
@@ -53,12 +53,12 @@ void RunAtmosPrecomputeAndSave()
 	delete[] atmosResult.IrradianceRGB;
 }
 
-// ---------------- 샘플 파라미터 빌더 ----------------
+// ---------------- Sample Parameter Builder ----------------
 static AtmosParams MakeEarthLikeParams()
 {
 	AtmosParams p{};
-	p.PlanetRadius = 6'360'000.0f;
-	p.AtmosphereHeight = 60'000.0f;   // TOA = 6,420km (샘플값)
+	p.PlanetRadius = 6'360'000.0f;	// Earth radius ~6,360km
+	p.AtmosphereHeight = 60'000.0f;	// TOA = 6,420km (Earth is ~100km, but can be ignored above ~60km)
 
 	// Rayleigh (approx Earth)
 	p.RayleighScattering = FLOAT3{ 5.802e-6f, 13.558e-6f, 33.1e-6f };
@@ -78,10 +78,10 @@ static AtmosParams MakeEarthLikeParams()
 	p.Ozone.Layers[1] = DensityLayer{ 0,0,0,0,0 };
 
 	p.GroundAlbedo = FLOAT3{ 0.1f, 0.1f, 0.1f };
-	p.SolarIrradiance = FLOAT3{ 1.0f, 1.0f, 1.0f };   // 스케일 팩터
-	p.SunAngularRadius = 0.004675f;                    // ≈0.267°
+	p.SolarIrradiance = FLOAT3{ 1.0f, 1.0f, 1.0f };	// 스케일 팩터
+	p.SunAngularRadius = 0.004675f; // ≈0.267°
 
-	// LUT sizes (Bruneton 스타일)
+	// LUT sizes (Bruneton style)
 	p.TransmittanceW = 256; p.TransmittanceH = 64;
 	p.ScatteringR = 32;  p.ScatteringMu = 128; p.ScatteringMuS = 32; p.ScatteringNu = 8;
 	p.IrradianceW = 64;  p.IrradianceH = 16;
@@ -90,7 +90,7 @@ static AtmosParams MakeEarthLikeParams()
 	return p;
 }
 
-// ---------------- DDS 저장 유틸 ----------------
+// ---------------- DDS Save util ----------------
 // 2D RGB(float*) -> RGBA32F DDS
 static bool Save2DRGBasDDS(const float* srcRGB, int W, int H, const std::wstring& path)
 {
@@ -119,8 +119,8 @@ static bool Save2DRGBasDDS(const float* srcRGB, int W, int H, const std::wstring
 	return SUCCEEDED(SaveToDDSFile(*im, DDS_FLAGS_NONE, path.c_str()));
 }
 
-// 3D RGBA(float*) -> DDS (Scattering: NU*MU_S × MU × R 로 패킹한 3D)
-// srcRGBA의 인덱싱은: ((((r * MU + mu) * MU_S + mu_s) * NU + nu) * 4 + c)
+// 3D RGBA(float*) -> DDS (Scattering(4D): packed to 3D -> NU*MU_S × MU × R)
+// Indexing of srcRGBA: ((((r * MU + mu) * MU_S + mu_s) * NU + nu) * 4 + c)
 static bool SaveScattering3D_RGBA_DDS(
 	const float* srcRGBA,
 	int R, int MU, int MU_S, int NU,
@@ -128,7 +128,7 @@ static bool SaveScattering3D_RGBA_DDS(
 {
 	using namespace DirectX;
 
-	// 3D 텍스처 물리 해상도: X = NU*MU_S, Y = MU, Z = R
+	// Resoulution of 3d texture : X = NU*MU_S, Y = MU, Z = R
 	const int W = NU * MU_S;
 	const int H = MU;
 	const int D = R;
@@ -140,7 +140,6 @@ static bool SaveScattering3D_RGBA_DDS(
 		return false;
 	}
 
-	// DirectXTex 3D 접근: GetImage(mip=0, item=zSlice, array=0)
 	for (int z = 0; z < D; ++z)
 	{
 		const Image* slice = img.GetImage(0, 0, z);
