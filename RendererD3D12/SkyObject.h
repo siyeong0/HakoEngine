@@ -27,4 +27,8 @@ private:
 
 	ID3D12Resource* m_pIndexBuffer = nullptr;
 	D3D12_INDEX_BUFFER_VIEW m_IndexBufferView = {};
+
+	TextureHandle* m_pTransmittanceTex = nullptr;
+	TextureHandle* m_pScatteringTex = nullptr;
+	TextureHandle* m_pIrradianceTex = nullptr;
 };

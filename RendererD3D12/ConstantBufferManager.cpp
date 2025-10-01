@@ -6,8 +6,10 @@
 
 ConstantBufferProperty g_pConstBufferPropList[] =
 {
-	CONSTANT_BUFFER_TYPE_DEFAULT, sizeof(CB_BasicMeshMatrices),
-	CONSTANT_BUFFER_TYPE_SPRITE, sizeof(ConstantBufferSprite)
+	{ CONSTANT_BUFFER_TYPE_PER_FRAME, sizeof(CB_PerFrame) },
+	{ CONSTANT_BUFFER_TYPE_MESH, sizeof(CB_MeshObject) },
+	{ CONSTANT_BUFFER_TYPE_SPRITE, sizeof(CB_SpriteObject) },
+	{ CONSTANT_BUFFER_TYPE_ATMOS_CONSTANTS, sizeof(CB_AtmosConstants) },
 };
 
 ConstantBufferManager::~ConstantBufferManager()
@@ -29,7 +31,7 @@ bool ConstantBufferManager::Initialize(ID3D12Device* pD3DDevice, int maxNumCBV)
 		m_ppConstantBufferPool[i] = new SimpleConstantBufferPool;
 		m_ppConstantBufferPool[i]->Initialize(pD3DDevice, (EConstantBufferType)i, static_cast<UINT>(AlignConstantBufferSize(g_pConstBufferPropList[i].Size)), maxNumCBV);
 	}
-	return TRUE;
+	return true;
 }
 
 void ConstantBufferManager::Reset()

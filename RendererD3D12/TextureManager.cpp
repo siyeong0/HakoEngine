@@ -34,20 +34,55 @@ TextureHandle* TextureManager::CreateTextureFromFile(const WCHAR* wchFileName)
 	{
 		if (m_pResourceManager->CreateTextureFromFile(&pTexResource, &desc, wchFileName, bUseGpuUploadHeaps))
 		{
-			D3D12_SHADER_RESOURCE_VIEW_DESC SRVDesc = {};
-			SRVDesc.Format = desc.Format;
-			SRVDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-			SRVDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
-			SRVDesc.Texture2D.MipLevels = desc.MipLevels;
+			D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
+			srvDesc.Format = desc.Format;
+			srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
 
+			if (desc.Dimension == D3D12_RESOURCE_DIMENSION_TEXTURE2D)
+			{
+				if (desc.DepthOrArraySize > 1)
+				{
+					if (desc.DepthOrArraySize == 6 && (desc.Flags & D3D12_RESOURCE_FLAG_ALLOW_SIMULTANEOUS_ACCESS) == 0)
+					{
+						// CubeMap
+						srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURECUBE;
+						srvDesc.TextureCube.MipLevels = desc.MipLevels;
+					}
+					else
+					{
+						// 2D Array
+						srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2DARRAY;
+						srvDesc.Texture2DArray.MipLevels = desc.MipLevels;
+						srvDesc.Texture2DArray.ArraySize = desc.DepthOrArraySize;
+					}
+				}
+				else
+				{
+					// Normal 2D texture
+					srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+					srvDesc.Texture2D.MipLevels = desc.MipLevels;
+				}
+			}
+			else if (desc.Dimension == D3D12_RESOURCE_DIMENSION_TEXTURE3D)
+			{
+				srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE3D;
+				srvDesc.Texture2D.MipLevels = desc.MipLevels;
+			}
+			else
+			{
+				ASSERT(false, "Unsupported texture type.\n");
+			}
+
+			// Descriptor heap allocation and SRV creation
 			if (pSingleDescriptorAllocator->AllocDescriptorHandle(&srv))
 			{
-				pD3DDevice->CreateShaderResourceView(pTexResource, &SRVDesc, srv);
+				pD3DDevice->CreateShaderResourceView(pTexResource, &srvDesc, srv);
 
 				pOutTexHandle = allocTextureHandle();
 				pOutTexHandle->pTexResource = pTexResource;
 				pOutTexHandle->bFromFile = TRUE;
 				pOutTexHandle->SRV = srv;
+				pOutTexHandle->Dimension = srvDesc.ViewDimension;
 
 				auto bResult = m_HashTable.insert({ wchFileName,  pOutTexHandle }).second;
 				ASSERT(bResult, "HashTable insertion failed.\n");

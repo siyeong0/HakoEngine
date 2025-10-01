@@ -20,7 +20,7 @@ public:
 
 private:
 	ConstantBufferContainer* m_pCBContainerList = nullptr;
-	EConstantBufferType m_ConstantBufferType = CONSTANT_BUFFER_TYPE_DEFAULT;
+	EConstantBufferType m_ConstantBufferType = CONSTANT_BUFFER_TYPE_COUNT;
 	ID3D12DescriptorHeap* m_pCBVHeap = nullptr;
 	ID3D12Resource* m_pResource = nullptr;
 	uint8_t* m_pSystemMemAddr = nullptr;

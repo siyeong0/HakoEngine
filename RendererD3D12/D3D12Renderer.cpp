@@ -1061,9 +1061,9 @@ void D3D12Renderer::updateCamera()
 
 	XMMATRIX matCamRot = XMMatrixMultiply(matRotPitch, matRotYaw);
 
-	m_CamDir = XMVector3Transform(zAxis, matCamRot);
-	m_CamRight = XMVector3Cross(yAxis, m_CamDir);
-	m_CamUp = XMVector3Cross(m_CamDir, m_CamRight);
+	m_CamDir = XMVector3Normalize(XMVector3Transform(zAxis, matCamRot));
+	m_CamRight = XMVector3Normalize(XMVector3Cross(yAxis, m_CamDir));
+	m_CamUp = XMVector3Normalize(XMVector3Cross(m_CamDir, m_CamRight));
 
 	// View matrix
 	m_PerFrameCB.ViewMatrix = XMMatrixLookToLH(m_CamPos, m_CamDir, m_CamUp);

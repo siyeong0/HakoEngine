@@ -139,10 +139,12 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="ComputeAtmos.h" />
     <ClInclude Include="HfxBake.h" />
     <ClInclude Include="pch.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="ComputeAtmos.cpp" />
     <ClCompile Include="dllmain.cpp" />
     <ClCompile Include="HfxBake.cpp" />
     <ClCompile Include="pch.cpp">

@@ -131,7 +131,7 @@ void SpriteObject::DrawWithTex(int threadIndex, ID3D12GraphicsCommandList6* pCom
 	// Root CBV binding
 	ConstantBufferContainer* pCB = pConstantBufferPool->Alloc();
 	ASSERT(pCB, "Failed to allocate constant buffer.");
-	ConstantBufferSprite* pCBPerDraw = reinterpret_cast<ConstantBufferSprite*>(pCB->pSystemMemAddr);
+	CB_SpriteObject* pCBPerDraw = reinterpret_cast<CB_SpriteObject*>(pCB->pSystemMemAddr);
 	
 	pCBPerDraw->ScreenResolution.x = (float)m_pRenderer->GetScreenWidth();
 	pCBPerDraw->ScreenResolution.y = (float)m_pRenderer->GetScreenHeight();

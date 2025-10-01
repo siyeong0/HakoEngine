@@ -10,26 +10,7 @@
 #pragma comment(lib, "D3DCompiler.lib")
 #pragma comment(lib, "d2d1.lib")
 #pragma comment(lib, "dwrite.lib")
-
-#if defined(_M_ARM64EC) || defined(_M_ARM64)
-#ifdef _DEBUG
-#pragma comment(lib, "../DirectXTex/DirectXTex/Bin/Desktop_2022/ARM64/debug/DirectXTex.lib")
-#else
-#pragma comment(lib, "../DirectXTex/DirectXTex/Bin/Desktop_2022/ARM64/release/DirectXTex.lib")
-#endif
-#elif defined(_M_AMD64)
-#ifdef _DEBUG
-#pragma comment(lib, "../DirectXTex/DirectXTex/Bin/Desktop_2022/x64/debug/DirectXTex.lib")
-#else
-#pragma comment(lib, "../DirectXTex/DirectXTex/Bin/Desktop_2022/x64/release/DirectXTex.lib")
-#endif
-#elif defined(_M_IX86)
-#ifdef _DEBUG
-#pragma comment(lib, "../DirectXTex/DirectXTex/Bin/Desktop_2022/win32/debug/DirectXTex.lib")
-#else
-#pragma comment(lib, "../DirectXTex/DirectXTex/Bin/Desktop_2022/win32/release/DirectXTex.lib")
-#endif
-#endif
+#pragma comment(lib, "DirectXTex.lib")
 
 bool ENGINECALL DllMain(HMODULE hModule,
 	DWORD  ul_reason_for_call,

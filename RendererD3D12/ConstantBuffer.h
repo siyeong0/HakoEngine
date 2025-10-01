@@ -7,6 +7,21 @@ constexpr UINT ROOT_SLOT_CBV_PER_FRAME = 0;
 constexpr UINT ROOT_SLOT_CBV_PER_DRAW = 1;
 constexpr UINT ROOT_SLOT_SRV_TABLE = 2;
 
+enum EConstantBufferType
+{
+	CONSTANT_BUFFER_TYPE_PER_FRAME,
+	CONSTANT_BUFFER_TYPE_MESH,
+	CONSTANT_BUFFER_TYPE_SPRITE,
+	CONSTANT_BUFFER_TYPE_ATMOS_CONSTANTS,
+	CONSTANT_BUFFER_TYPE_COUNT
+};
+
+struct ConstantBufferProperty
+{
+	EConstantBufferType Type;
+	size_t Size;
+};
+
 struct CB_PerFrame
 {
 	XMMATRIX ViewMatrix;
@@ -24,12 +39,12 @@ struct CB_PerFrame
 	float _pad2;
 };
 
-struct CB_BasicMeshMatrices
+struct CB_MeshObject
 {
 	XMMATRIX WorldMatrix;
 };
 
-struct ConstantBufferSprite
+struct CB_SpriteObject
 {
 	XMFLOAT2 ScreenResolution;
 	XMFLOAT2 Position;
@@ -43,15 +58,31 @@ struct ConstantBufferSprite
 	float	Reserved1;
 };
 
-
-struct CB_SkyMatrices
+struct CB_AtmosConstants
 {
-	XMFLOAT4X4 InvProj;
-	XMFLOAT4X4 InvView; // 회전만의 inverse view(= camera rotation matrix)
-};
+	XMFLOAT3 CameraPosPlanetCS;
+	float _pad0;               // padding for 16B alignment
 
-struct CB_SkyParams
-{
 	XMFLOAT3 SunDirW;
-	float pad1;
+	float SunExposure;
+
+	// Radii
+	float PlanetRadius;         // Rg
+	float AtmosphereHeight;     // H
+	float TopRadius;            // Rt = Rg + H
+	float _pad1;                  // padding (to make next float align 16B)
+
+	// Mie phase
+	XMFLOAT3 SunIrradiance;   // solar irradiance at TOA
+	float  MieG;
+	XMFLOAT3 MieTint;           // normalized tint
+	float _pad2;
+
+	// LUT logical sizes (as floats for consistency with HLSL)
+	float TW;	// Transmittance size
+	float TH;
+	float SR;	// Scattering dimensions
+	float SMU;
+	float SMUS;
+	float SNU;
 };

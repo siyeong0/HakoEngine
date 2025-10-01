@@ -1,8 +1,6 @@
 ﻿#include "pch.h"
 #include "HfxBake.h"
 
-#include <iostream>
-
 bool ENGINECALL HfxBake::Initialize()
 {
 	std::cout << "HfxBake::Initialize called." << std::endl;
@@ -14,9 +12,43 @@ void ENGINECALL HfxBake::Cleanup()
 	std::cout << "HfxBake::Cleanup called." << std::endl;
 }
 
+// ================================================================
+// Apove is the member method implementation of IHfxBake interface.
+// Underneath is the global facade implementation.
+// ================================================================
+// Global facade vs. member methods — why this split?
+// • Member methods (above) are the *real backend implementation* of the IHfxBake interface.
+//   - They own/use internal state (resources, lifetime).
+//   - Different backends (CPU reference, D3D12, CUDA, stub) implement these virtual methods.
+//   - They live on an actual object instance (created by the app/DLL factory).
+//
+// • Global facade functions (below) are a thin, static-style API for callers.
+//   - Callers use a single entry point: hfx::PrecomputeAtmos(...).
+//   - The facade *forwards* to whichever IHfxBake backend was registered via hfx::SetBackend().
+//   - This keeps headers simple and hides global state: g_backend is file-local (no external symbol).
+//   - It decouples the app from a specific implementation and preserves ABI: the app never calls
+//     a DLL symbol directly, only the facade → easy to hot-swap backends.
+//
+// • Why separate them?
+//   - Convenience: “static function” UX for the engine code, while still using a pluggable instance.
+//   - Encapsulation: backend pointer is private to this TU; other TUs can’t see or mutate it.
+//   - Flexibility: swap implementations (CPU/D3D12/CUDA) without changing call sites.
+//   - Testability: register a mock IHfxBake for unit tests.
+//   - ODR/visibility safety: avoids inline/global variables leaking across translation units.
+//
+// • Lifecycle & usage:
+//   - Call hfx::SetBackend(&impl) once during boot (before any facade call).
+//   - Call hfx::ShutDown() during shutdown to clear the pointer.
+//   - Facade asserts if no backend is set.
+//
+// • Threading note:
+//   - Initialize/SetBackend/ShutDown should be done in a single-threaded init/shutdown phase,
+//     or guarded externally if used from multiple threads.
+
+#include "ComputeAtmos.h"
+
 bool ENGINECALL HfxBake::PrecomputeAtmos(const AtmosParams& in, AtmosResult* out) const
 {
-	std::cout << "HfxBake::PrecomputeAtmos called." << std::endl;
-
+	ComputeAtmosCPU(in, out);
 	return true;
 }

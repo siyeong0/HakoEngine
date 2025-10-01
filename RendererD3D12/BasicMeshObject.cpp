@@ -100,14 +100,14 @@ void BasicMeshObject::Draw(int threadIndex, ID3D12GraphicsCommandList6* pCommand
 	ID3D12Device5* pDevice = m_pRenderer->GetD3DDevice();
 	UINT srvDescriptorSize = m_pRenderer->GetSrvDescriptorSize();
 	DescriptorPool* pDescriptorPool = m_pRenderer->GetDescriptorPool(threadIndex);
-	SimpleConstantBufferPool* pConstantBufferPool = m_pRenderer->GetConstantBufferPool(CONSTANT_BUFFER_TYPE_DEFAULT, threadIndex);
+	SimpleConstantBufferPool* pMeshConstantBufferPool = m_pRenderer->GetConstantBufferPool(CONSTANT_BUFFER_TYPE_MESH, threadIndex);
 	PSOManager* pPSOManager = m_pRenderer->GetPSOManager();
 
 	// --- 1) Constant buffer alloc and intialization. (as root cbv)
-	ConstantBufferContainer* pCB = pConstantBufferPool->Alloc();
-	ASSERT(pCB, "Failed to allocate constant buffer.");
+	ConstantBufferContainer* cb = pMeshConstantBufferPool->Alloc();
+	ASSERT(cb, "Failed to allocate constant buffer.");
 
-	CB_BasicMeshMatrices* pCBPerDraw = (CB_BasicMeshMatrices*)pCB->pSystemMemAddr;
+	CB_MeshObject* pCBPerDraw = (CB_MeshObject*)cb->pSystemMemAddr;
 	pCBPerDraw->WorldMatrix = XMMatrixTranspose(*worldMatrix);
 
 	// --- 2) SRV Descriptor table (TriGroup 개수 만큼)
@@ -135,7 +135,7 @@ void BasicMeshObject::Draw(int threadIndex, ID3D12GraphicsCommandList6* pCommand
 	pCommandList->IASetVertexBuffers(0, 1, &m_VertexBufferView);
 
 	// --- 4) Root CBV binding
-	pCommandList->SetGraphicsRootConstantBufferView(ROOT_SLOT_CBV_PER_DRAW, pCB->pGPUMemAddr);
+	pCommandList->SetGraphicsRootConstantBufferView(ROOT_SLOT_CBV_PER_DRAW, cb->pGPUMemAddr);
 
 	// --- 5) TriGroup loop: t0가 가리키는 SRV를 매 드로우마다 바꿈
 	CD3DX12_GPU_DESCRIPTOR_HANDLE gpuCurrDescHandleAddress = gpuDescriptorTable; // 첫 TriGroup의 t0

@@ -10,6 +10,7 @@
 #include "Common/Common.h"
 #include "Interface/IHfxBake.h"
 
+#include "Atmos.h"
 
 HMODULE m_hHfxBakeDLL = nullptr;
 IHfxBake* m_pHfxBake = nullptr;
@@ -59,17 +60,7 @@ int main()
 
 	// Precompute Atmosphere
 	{
-		AtmosParams atmosParams = {};
-		atmosParams.PlanetRadius = 6360000.0f;        // Radius of the planet in meters
-		atmosParams.AtmosphereHeight = 100000.0f;    // Height of the atmosphere in meters
-		atmosParams.RayleighScattering = 5.8e-6f;  // Rayleigh scattering coefficient
-		atmosParams.MieScattering = 3.0e-6f;       // Mie scattering coefficient
-		atmosParams.SunIntensity = 20.0f;        // Intensity of the sun
-		atmosParams.SunAngularDiameter = 0.53f;  // Angular diameter of the sun in degrees
-		atmosParams.MieG = 0.76f;               // Mie phase function asymmetry factor
-
-		AtmosResult atmosResult = {};
-		hfx::PrecomputeAtmos(atmosParams, &atmosResult);
+		RunAtmosPrecomputeAndSave();
 	}
 
 	// Cleanup

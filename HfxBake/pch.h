@@ -19,6 +19,7 @@
 #include <windows.h>
 
 // C RunTime Header Files
+#include <iostream>
 #include <cmath>
 #include <cstdint>
 

@@ -16,6 +16,9 @@
     <Filter Include="HfxBakeBody">
       <UniqueIdentifier>{6c7d99cf-4cc1-4b64-9084-8b23a6656e52}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Atmospheric">
+      <UniqueIdentifier>{bfcfe90c-5ab7-4c58-9dd2-76a575bfc1ef}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h">
@@ -23,6 +26,9 @@
     </ClInclude>
     <ClInclude Include="HfxBake.h">
       <Filter>HfxBakeBody</Filter>
+    </ClInclude>
+    <ClInclude Include="ComputeAtmos.h">
+      <Filter>Atmospheric</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -34,6 +40,9 @@
     </ClCompile>
     <ClCompile Include="HfxBake.cpp">
       <Filter>HfxBakeBody</Filter>
+    </ClCompile>
+    <ClCompile Include="ComputeAtmos.cpp">
+      <Filter>Atmospheric</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>
