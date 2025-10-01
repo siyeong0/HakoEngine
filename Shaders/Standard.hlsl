@@ -2,12 +2,12 @@
 
 cbuffer CB_PerFrame : register(b0)
 {
-    matrix g_ViewMatrix;
-    matrix g_ProjMatrix;
-    matrix g_ViewProjMatrix;
-    matrix g_InvViewMatrix;
-    matrix g_InvProjMatrix;
-    matrix g_InvViewProjMatrix;
+    matrix g_View;
+    matrix g_Proj;
+    matrix g_ViewProj;
+    matrix g_InvView;
+    matrix g_InvProj;
+    matrix g_InvViewProj;
     
     float3 g_LightDir; // Directional light direction (normalized)
     float _pad0;
@@ -19,13 +19,13 @@ cbuffer CB_PerFrame : register(b0)
 
 cbuffer CB_Object : register(b1)
 {
-    matrix g_matWorld;
+    matrix g_World;
 };
 
-SamplerState samplerWrap : register(s0);
-SamplerState samplerClamp : register(s1);
-SamplerState samplerBorder : register(s2);
-SamplerState samplerMirror : register(s3);
+SamplerState g_SamplerWrap : register(s0);
+SamplerState g_SamplerClamp : register(s1);
+SamplerState g_SamplerBorder : register(s2);
+SamplerState g_SamplerMirror : register(s3);
 
 struct VSInput
 {
@@ -45,14 +45,13 @@ PSInput VSMain(VSInput input)
 {
     PSInput result = (PSInput)0;
     
-    matrix matViewProj = mul(g_ViewMatrix, g_ProjMatrix);        // view x proj
-    matrix matWorldViewProj = mul(g_matWorld, matViewProj);   // world x view x proj
+    matrix worldViewProj = mul(g_World, g_ViewProj);   // world x view x proj
     
-    result.Position = mul(input.Position, matWorldViewProj); // pojtected vertex = vertex x world x view x proj
+    result.Position = mul(input.Position, worldViewProj); // pojtected vertex = vertex x world x view x proj
     result.TexCoord = input.TexCoord;
     
     // Use tangent as fake normal (normalize it in world space)
-    float3 fakeNormal = mul((float3x3) g_matWorld, input.Tangent);
+    float3 fakeNormal = mul((float3x3) g_World, input.Tangent);
     result.Normal = normalize(fakeNormal);
     
     return result;
@@ -61,7 +60,7 @@ PSInput VSMain(VSInput input)
 float4 PSMain(PSInput input) : SV_TARGET
 {
     // Sample the texture5
-    float4 texColor = texDiffuse.Sample(samplerWrap, input.TexCoord);
+    float4 texColor = texDiffuse.Sample(g_SamplerWrap, input.TexCoord);
 
     // Diffuse lighting (Lambert)
     float NdotL = saturate(dot(normalize(input.Normal), -normalize(g_LightDir)));
