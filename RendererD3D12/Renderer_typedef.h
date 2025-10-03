@@ -24,3 +24,35 @@ struct FontHandle
 	float FontSize;
 	WCHAR wchFontFamilyName[512];
 };
+
+// Ray Tracing
+
+const UINT PAYLOAD_SIZE = 20;
+const DWORD MAX_TRIGROUP_COUNT_PER_BLAS = 16;
+
+struct ROOT_ARG
+{
+	D3D12_GPU_DESCRIPTOR_HANDLE srvVB;
+	D3D12_GPU_DESCRIPTOR_HANDLE srvIB;
+	D3D12_GPU_DESCRIPTOR_HANDLE srvTexDiffuse;
+};
+
+struct BLAS_BUILD_TRIGROUP_INFO
+{
+	ID3D12Resource* pIB;
+	ID3D12Resource* pTexResource;
+	DWORD	dwIndexNum;
+	BOOL	bNotOpaque;
+};
+
+struct BLAS_INSTANCE
+{
+	void* pSrcMeshObj;
+	ID3D12Resource* pBLAS;
+	XMMATRIX matTransform;
+
+	DWORD	dwID;
+	UINT	ShaderRecordIndex;
+	DWORD	dwVertexCount;
+	DWORD	dwTriGroupCount;
+};

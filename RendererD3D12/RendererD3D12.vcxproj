@@ -161,6 +161,7 @@
     <ClInclude Include="FontManager.h" />
     <ClInclude Include="pch.h" />
     <ClInclude Include="PSOManager.h" />
+    <ClInclude Include="RayTracingManager.h" />
     <ClInclude Include="Renderer_typedef.h" />
     <ClInclude Include="RenderItem.h" />
     <ClInclude Include="RenderQueue.h" />
@@ -168,6 +169,8 @@
     <ClInclude Include="RootSignatureManager.h" />
     <ClInclude Include="ShaderHandle.h" />
     <ClInclude Include="ShaderManager.h" />
+    <ClInclude Include="ShaderRecord.h" />
+    <ClInclude Include="ShaderTable.h" />
     <ClInclude Include="ShaderUtil.h" />
     <ClInclude Include="SimpleConstantBufferPool.h" />
     <ClInclude Include="SingleDescriptorAllocator.h" />
@@ -196,10 +199,12 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="PSOManager.cpp" />
+    <ClCompile Include="RayTracingManager.cpp" />
     <ClCompile Include="RenderQueue.cpp" />
     <ClCompile Include="RenderThread.cpp" />
     <ClCompile Include="RootSignatureManager.cpp" />
     <ClCompile Include="ShaderManager.cpp" />
+    <ClCompile Include="ShaderTable.cpp" />
     <ClCompile Include="ShaderUtil.cpp" />
     <ClCompile Include="SimpleConstantBufferPool.cpp" />
     <ClCompile Include="SingleDescriptorAllocator.cpp" />
@@ -218,6 +223,23 @@
       <FileType>Document</FileType>
     </CustomBuild>
     <CustomBuild Include="..\Shaders\Standard.hlsl">
+      <FileType>Document</FileType>
+    </CustomBuild>
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="..\Shaders\Raytracing.hlsl">
+      <FileType>Document</FileType>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">dxc %(FullPath) /T lib_6_3 /res_may_alias /Fc ./Shaders/%(FileName).csm</Command>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Compliing %(FileName).hlsl</Message>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">./Shaders/%(FileName).csm</Outputs>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">dxc %(FullPath) /T lib_6_3 /res_may_alias /Fc ./Shaders/%(FileName).csm</Command>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Compliing %(FileName).hlsl</Message>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">./Shaders/%(FileName).csm</Outputs>
+    </CustomBuild>
+    <CustomBuild Include="..\Shaders\Raytracing_common.hlsl">
+      <FileType>Document</FileType>
+    </CustomBuild>
+    <CustomBuild Include="..\Shaders\Raytracing_typedef.hlsl">
       <FileType>Document</FileType>
     </CustomBuild>
   </ItemGroup>

@@ -84,6 +84,12 @@
     <Filter Include="Shaders">
       <UniqueIdentifier>{7b34de71-54d8-4b65-a50b-5659902085b2}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Raytracing">
+      <UniqueIdentifier>{cd2179de-b7c1-483e-8482-c52edf9d6394}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Raytracing\ShaderTable">
+      <UniqueIdentifier>{80f84f24-e9ac-423f-a2df-8920287078b5}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h">
@@ -161,6 +167,15 @@
     <ClInclude Include="RootSignatureManager.h">
       <Filter>RenderManager\RootSignatureManager</Filter>
     </ClInclude>
+    <ClInclude Include="RayTracingManager.h">
+      <Filter>Raytracing</Filter>
+    </ClInclude>
+    <ClInclude Include="ShaderTable.h">
+      <Filter>Raytracing\ShaderTable</Filter>
+    </ClInclude>
+    <ClInclude Include="ShaderRecord.h">
+      <Filter>Raytracing\ShaderTable</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="dllmain.cpp">
@@ -229,6 +244,12 @@
     <ClCompile Include="RootSignatureManager.cpp">
       <Filter>RenderManager\RootSignatureManager</Filter>
     </ClCompile>
+    <ClCompile Include="RayTracingManager.cpp">
+      <Filter>Raytracing</Filter>
+    </ClCompile>
+    <ClCompile Include="ShaderTable.cpp">
+      <Filter>Raytracing\ShaderTable</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
@@ -241,6 +262,15 @@
       <Filter>Shaders</Filter>
     </CustomBuild>
     <CustomBuild Include="..\Shaders\Standard.hlsl">
+      <Filter>Shaders</Filter>
+    </CustomBuild>
+    <CustomBuild Include="..\Shaders\Raytracing.hlsl">
+      <Filter>Shaders</Filter>
+    </CustomBuild>
+    <CustomBuild Include="..\Shaders\Raytracing_common.hlsl">
+      <Filter>Shaders</Filter>
+    </CustomBuild>
+    <CustomBuild Include="..\Shaders\Raytracing_typedef.hlsl">
       <Filter>Shaders</Filter>
     </CustomBuild>
   </ItemGroup>

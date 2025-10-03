@@ -10,6 +10,7 @@ ConstantBufferProperty g_pConstBufferPropList[] =
 	{ CONSTANT_BUFFER_TYPE_MESH, sizeof(CB_MeshObject) },
 	{ CONSTANT_BUFFER_TYPE_SPRITE, sizeof(CB_SpriteObject) },
 	{ CONSTANT_BUFFER_TYPE_ATMOS_CONSTANTS, sizeof(CB_AtmosConstants) },
+	{ CONSTANT_BUFFER_TYPE_RAY_TRACING, sizeof(CB_RayTracing) },
 };
 
 ConstantBufferManager::~ConstantBufferManager()

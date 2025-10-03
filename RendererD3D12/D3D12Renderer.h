@@ -19,6 +19,7 @@ class SingleDescriptorAllocator;
 class SkyObject;
 class ShaderManager;
 class TextureManager;
+class RayTracingManager;
 
 class D3D12Renderer : public IRenderer
 {
@@ -190,5 +191,8 @@ private:
 
 	WCHAR m_wchCurrentPathBackup[_MAX_PATH] = {};
 	WCHAR m_wchShaderPath[_MAX_PATH] = {};
+
+	// Ray tracing
+	RayTracingManager* m_pRayTracingManager = nullptr;
 };
 

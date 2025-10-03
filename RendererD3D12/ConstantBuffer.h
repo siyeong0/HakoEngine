@@ -13,6 +13,7 @@ enum EConstantBufferType
 	CONSTANT_BUFFER_TYPE_MESH,
 	CONSTANT_BUFFER_TYPE_SPRITE,
 	CONSTANT_BUFFER_TYPE_ATMOS_CONSTANTS,
+	CONSTANT_BUFFER_TYPE_RAY_TRACING,
 	CONSTANT_BUFFER_TYPE_COUNT
 };
 
@@ -85,4 +86,12 @@ struct CB_AtmosConstants
 	float SMU;
 	float SMUS;
 	float SNU;
+};
+
+struct CB_RayTracing
+{
+	float Near;
+	float Far;
+	UINT MaxRadianceRayRecursionDepth;
+	UINT Reserved0;
 };
