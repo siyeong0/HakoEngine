@@ -81,6 +81,9 @@
     <Filter Include="RenderManager\RootSignatureManager">
       <UniqueIdentifier>{cd09d2e1-6f75-4117-b4f3-5443b13ba06c}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Shaders">
+      <UniqueIdentifier>{7b34de71-54d8-4b65-a50b-5659902085b2}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h">
@@ -229,5 +232,16 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="..\Shaders\Sprite.hlsl">
+      <Filter>Shaders</Filter>
+    </CustomBuild>
+    <CustomBuild Include="..\Shaders\AtmosphericSky.hlsl">
+      <Filter>Shaders</Filter>
+    </CustomBuild>
+    <CustomBuild Include="..\Shaders\Standard.hlsl">
+      <Filter>Shaders</Filter>
+    </CustomBuild>
   </ItemGroup>
 </Project>
