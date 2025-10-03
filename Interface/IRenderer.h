@@ -9,7 +9,7 @@
 
 interface IRenderer : public IUnknown
 {
-	virtual bool ENGINECALL Initialize(HWND hWnd, bool bEnableDebugLayer, bool bEnableGBV, bool bUseGpuUploadHeaps, const WCHAR* wchShaderPath) = 0;
+	virtual bool ENGINECALL Initialize(HWND hWnd, bool bEnableDebugLayer, bool bEnableGBV, bool bEnableShaderDebug, bool bUseGpuUploadHeaps, const WCHAR* wchShaderPath) = 0;
 	virtual void ENGINECALL Cleanup() = 0;
 	virtual void ENGINECALL Update(float dt) = 0;
 	virtual void ENGINECALL BeginRender() = 0;

@@ -113,7 +113,7 @@ static IMeshObject* createGridMeshObject(IRenderer* pRenderer, IGeometry* pGeome
 	return pMeshObj;
 }
 
-bool Game::Initialize(HWND hWnd, bool bEnableDebugLayer, bool bEnableGBV)
+bool Game::Initialize(HWND hWnd, bool bEnableDebugLayer, bool bEnableGBV, bool bEnableShaderDebug)
 {
 	// Load Renderer DLL
 	{
@@ -206,7 +206,7 @@ bool Game::Initialize(HWND hWnd, bool bEnableDebugLayer, bool bEnableGBV)
 	bUseGpuUploadHeaps = true;
 #endif
 
-	m_pRenderer->Initialize(hWnd, bEnableDebugLayer, bEnableGBV, bUseGpuUploadHeaps, wchShaderPath);
+	m_pRenderer->Initialize(hWnd, bEnableDebugLayer, bEnableGBV, bEnableShaderDebug, bUseGpuUploadHeaps, wchShaderPath);
 	m_hWnd = hWnd;
 
 	// Initialize flecs

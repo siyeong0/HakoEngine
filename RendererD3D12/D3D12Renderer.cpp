@@ -49,7 +49,13 @@ STDMETHODIMP_(ULONG) D3D12Renderer::Release()
 // IRenderer methods
 // --------------------------------------------------
 
-bool ENGINECALL D3D12Renderer::Initialize(HWND hWnd, bool bEnableDebugLayer, bool bEnableGBV, bool bUseGpuUploadHeaps, const WCHAR* wchShaderPath)
+bool ENGINECALL D3D12Renderer::Initialize(
+	HWND hWnd, 
+	bool bEnableDebugLayer, 
+	bool bEnableGBV, 
+	bool bEnableShaderDebug,
+	bool bUseGpuUploadHeaps,
+	const WCHAR* wchShaderPath)
 {
 	HRESULT hr = S_OK;
 	ID3D12Debug* pDebugController = nullptr;
@@ -259,7 +265,7 @@ lb_exit:
 	ASSERT(bInited, "TextureManager initialization failed.");
 
 	m_pShaderManager = new ShaderManager;
-	bInited = m_pShaderManager->Initialize(this, wchShaderPath, bEnableDebugLayer); // TODO: Use "bDebugShader" parameter.
+	bInited = m_pShaderManager->Initialize(this, wchShaderPath, bEnableShaderDebug);
 	ASSERT(bInited, "ShaderManager initialization failed.");
 
 	m_pRootSignatureManager = new RootSignatureManager;
