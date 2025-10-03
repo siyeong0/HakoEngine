@@ -27,32 +27,32 @@ struct FontHandle
 
 // Ray Tracing
 
-const UINT PAYLOAD_SIZE = 20;
-const DWORD MAX_TRIGROUP_COUNT_PER_BLAS = 16;
+const size_t PAYLOAD_SIZE = 20;
+const size_t MAX_TRIGROUP_COUNT_PER_BLAS = 16;
 
-struct ROOT_ARG
+struct RootArgument
 {
-	D3D12_GPU_DESCRIPTOR_HANDLE srvVB;
-	D3D12_GPU_DESCRIPTOR_HANDLE srvIB;
-	D3D12_GPU_DESCRIPTOR_HANDLE srvTexDiffuse;
+	D3D12_GPU_DESCRIPTOR_HANDLE SrvVB;
+	D3D12_GPU_DESCRIPTOR_HANDLE SrvIB;
+	D3D12_GPU_DESCRIPTOR_HANDLE SrvTexDiffuse;
 };
 
-struct BLAS_BUILD_TRIGROUP_INFO
+struct BLASBuilTriGroupInfo
 {
 	ID3D12Resource* pIB;
 	ID3D12Resource* pTexResource;
-	DWORD	dwIndexNum;
-	BOOL	bNotOpaque;
+	UINT NumIndices;
+	bool bNotOpaque;
 };
 
-struct BLAS_INSTANCE
+struct BALSInstance
 {
 	void* pSrcMeshObj;
 	ID3D12Resource* pBLAS;
-	XMMATRIX matTransform;
+	XMMATRIX Transform;
 
-	DWORD	dwID;
-	UINT	ShaderRecordIndex;
-	DWORD	dwVertexCount;
-	DWORD	dwTriGroupCount;
+	uint32_t ID;
+	UINT ShaderRecordIndex;
+	UINT NumVertices;
+	UINT NumTriGroups;
 };

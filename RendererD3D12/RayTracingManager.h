@@ -13,8 +13,8 @@ public:
 	void Cleanup();
 
 	void DoRaytracing(ID3D12GraphicsCommandList6* pCommandList);
-	BLAS_INSTANCE* AllocBLAS(ID3D12Resource* pVertexBuffer, UINT vertexSize, UINT numVertices, const BLAS_BUILD_TRIGROUP_INFO* pTriGroupInfoList, UINT numTriGroupInfos, bool bAllowUpdate);
-	void FreeBLAS(BLAS_INSTANCE* pBlasHandle);
+	BALSInstance* AllocBLAS(ID3D12Resource* pVertexBuffer, UINT vertexSize, UINT numVertices, const BLASBuilTriGroupInfo* pTriGroupInfoList, UINT numTriGroupInfos, bool bAllowUpdate);
+	void FreeBLAS(BALSInstance* pBlasHandle);
 
 	void UpdateWindowSize(UINT width, UINT height);
 
@@ -23,8 +23,8 @@ public:
 
 private:
 	bool initAccelerationStructure();
-	BLAS_INSTANCE* buildBLAS(ID3D12Resource* pVertexBuffer, UINT vertexSize, UINT numVertices, const BLAS_BUILD_TRIGROUP_INFO* pTriGroupInfoList, UINT numTriGroupInfos, bool bAllowUpdate);
-	ID3D12Resource* buildTLAS(ID3D12Resource* pInstanceDescResource, BLAS_INSTANCE** ppInstanceList, UINT numBlasInstances, bool bAllowUpdate, UINT currContextIndex);
+	BALSInstance* buildBLAS(ID3D12Resource* pVertexBuffer, UINT vertexSize, UINT numVertices, const BLASBuilTriGroupInfo* pTriGroupInfoList, UINT numTriGroupInfos, bool bAllowUpdate);
+	ID3D12Resource* buildTLAS(ID3D12Resource* pInstanceDescResource, BALSInstance** ppInstanceList, UINT numBlasInstances, bool bAllowUpdate, UINT currContextIndex);
 
 	bool createOutputDiffuseBuffer(UINT width, UINT height);
 	void cleanupOutputDiffuseBuffer();
@@ -102,11 +102,11 @@ private:
 	UINT m_HitGroupShaderRecordNum = 0;
 	UINT m_ShaderIdentifierSize = D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES;
 
-	std::list<BLAS_INSTANCE*> m_BlasInstanceList; // BLAS Instance list
+	std::list<BALSInstance*> m_BlasInstanceList; // BLAS Instance list
 
 	ID3D12Resource* m_pBLASInstanceDescResouce = nullptr;
 	ID3D12Resource* m_pTLAS = nullptr;
-	BLAS_INSTANCE* m_pBlasInstance = nullptr;
+	BALSInstance* m_pBlasInstance = nullptr;
 
 	// Mesh Data
 	ID3D12Resource* m_pVertexBuffer = nullptr;	// vertex data

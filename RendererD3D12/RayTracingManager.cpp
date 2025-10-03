@@ -192,23 +192,23 @@ void RayTracingManager::DoRaytracing(ID3D12GraphicsCommandList6* pCommandList)
 	pCommandList->ResourceBarrier((UINT)_countof(rcBarrierInv), rcBarrierInv);
 }
 
-BLAS_INSTANCE* RayTracingManager::AllocBLAS(
+BALSInstance* RayTracingManager::AllocBLAS(
 	ID3D12Resource* pVertexBuffer,
 	UINT vertexSize,
 	UINT numVertices,
-	const BLAS_BUILD_TRIGROUP_INFO* pTriGroupInfoList,
+	const BLASBuilTriGroupInfo* pTriGroupInfoList,
 	UINT numTriGroupInfos,
 	bool bAllowUpdate)
 {
-	BLAS_INSTANCE* pBlasInstance = buildBLAS(pVertexBuffer, vertexSize, numVertices, pTriGroupInfoList, numTriGroupInfos, bAllowUpdate);
+	BALSInstance* pBlasInstance = buildBLAS(pVertexBuffer, vertexSize, numVertices, pTriGroupInfoList, numTriGroupInfos, bAllowUpdate);
 	m_BlasInstanceList.emplace_back(pBlasInstance);
 
 	return pBlasInstance;
 }
 
-void RayTracingManager::FreeBLAS(BLAS_INSTANCE* pBlasHandle)
+void RayTracingManager::FreeBLAS(BALSInstance* pBlasHandle)
 {
-	BLAS_INSTANCE* pBlasInstance = (BLAS_INSTANCE*)pBlasHandle;
+	BALSInstance* pBlasInstance = (BALSInstance*)pBlasHandle;
 
 	m_BlasInstanceList.remove(pBlasInstance);
 
@@ -238,11 +238,11 @@ bool RayTracingManager::initAccelerationStructure()
 	D3D12ResourceManager* pResourceManager = m_pRenderer->GetResourceManager();
 
 	// Build BLAS
-	BLAS_BUILD_TRIGROUP_INFO buildInfo = {};
+	BLASBuilTriGroupInfo buildInfo = {};
 
 	buildInfo.pIB = m_pIndexBuffer;
 	buildInfo.bNotOpaque = false;
-	buildInfo.dwIndexNum = 6;
+	buildInfo.NumIndices = 6;
 
 	m_pBlasInstance = AllocBLAS(m_pVertexBuffer, sizeof(SpriteVertex), 4, &buildInfo, 1, true);
 
@@ -250,8 +250,8 @@ bool RayTracingManager::initAccelerationStructure()
 	buildShaderTables();
 
 	// Build TLAS
-	BLAS_INSTANCE* ppBlasInstancelist[256] = {};
-	uint64_t numBlasInstances = 0;
+	BALSInstance* ppBlasInstancelist[256] = {};
+	UINT numBlasInstances = 0;
 
 	for (auto pCurr : m_BlasInstanceList)
 	{
@@ -267,11 +267,11 @@ bool RayTracingManager::initAccelerationStructure()
 	return true;
 }
 
-BLAS_INSTANCE* RayTracingManager::buildBLAS(
+BALSInstance* RayTracingManager::buildBLAS(
 	ID3D12Resource* pVertexBuffer,
 	UINT vertexSize,
 	UINT numVertices,
-	const BLAS_BUILD_TRIGROUP_INFO* pTriGroupInfoList,
+	const BLASBuilTriGroupInfo* pTriGroupInfoList,
 	UINT numTriGroupInfos,
 	bool bAllowUpdate)
 {
@@ -280,19 +280,19 @@ BLAS_INSTANCE* RayTracingManager::buildBLAS(
 	//
 	// 추후에 ID3D12CommandList포인터와 UINT CurContextIndex를 받아서 중첩렌더링을 처리할 수 있도록 수정한다.
 	//
-	BLAS_INSTANCE* pBlasInstance = nullptr;
+	BALSInstance* pBlasInstance = nullptr;
 	ID3D12Resource* pBLAS = nullptr;
 
 	ID3D12Device5* pD3DDevice = m_pRenderer->GetD3DDevice();
 
 	ASSERT(numTriGroupInfos < MAX_TRIGROUP_COUNT_PER_BLAS, "Too many triangle groups in BLAS");
 
-	size_t blasInstanceMemSize = sizeof(BLAS_INSTANCE) - sizeof(ROOT_ARG) + sizeof(ROOT_ARG) * numTriGroupInfos;
-	pBlasInstance = (BLAS_INSTANCE*)malloc(blasInstanceMemSize);
+	size_t blasInstanceMemSize = sizeof(BALSInstance) - sizeof(RootArgument) + sizeof(RootArgument) * numTriGroupInfos;
+	pBlasInstance = (BALSInstance*)malloc(blasInstanceMemSize);
 	memset(pBlasInstance, 0, blasInstanceMemSize);
-	pBlasInstance->dwID = 0;
-	pBlasInstance->matTransform = XMMatrixIdentity();
-	pBlasInstance->dwVertexCount = numVertices;
+	pBlasInstance->ID = 0;
+	pBlasInstance->Transform = XMMatrixIdentity();
+	pBlasInstance->NumVertices = numVertices;
 
 	// Fill D3D12_RAYTRACING_GEOMETRY_DESC arrays
 
@@ -305,7 +305,7 @@ BLAS_INSTANCE* RayTracingManager::buildBLAS(
 
 		pGeomDescList[i].Type = D3D12_RAYTRACING_GEOMETRY_TYPE_TRIANGLES;
 		pGeomDescList[i].Triangles.IndexBuffer = IB_GPU_Ptr;
-		pGeomDescList[i].Triangles.IndexCount = pTriGroupInfoList[i].dwIndexNum;
+		pGeomDescList[i].Triangles.IndexCount = pTriGroupInfoList[i].NumIndices;
 		pGeomDescList[i].Triangles.IndexFormat = DXGI_FORMAT_R16_UINT;
 		pGeomDescList[i].Triangles.Transform3x4 = 0;
 		pGeomDescList[i].Triangles.VertexFormat = DXGI_FORMAT_R32G32B32_FLOAT;
@@ -402,14 +402,14 @@ BLAS_INSTANCE* RayTracingManager::buildBLAS(
 	}
 
 	pBlasInstance->pBLAS = pBLAS;
-	pBlasInstance->dwTriGroupCount = numTriGroupInfos;
+	pBlasInstance->NumTriGroups = numTriGroupInfos;
 
 	return pBlasInstance;
 }
 
 ID3D12Resource* RayTracingManager::buildTLAS(
 	ID3D12Resource* pInstanceDescResource,
-	BLAS_INSTANCE** ppInstanceList,
+	BALSInstance** ppInstanceList,
 	UINT numBlasInstances,
 	bool bAllowUpdate,
 	UINT currContextIndex)
@@ -471,11 +471,11 @@ ID3D12Resource* RayTracingManager::buildTLAS(
 	D3D12_RAYTRACING_INSTANCE_DESC* pInstanceDescEntry = pInstanceDescList;
 	for (UINT i = 0; i < numBlasInstances; i++)
 	{
-		const BLAS_INSTANCE* pInstanceSrc = ppInstanceList[i];
-		XMMATRIX matTranspose = XMMatrixTranspose(pInstanceSrc->matTransform);
+		const BALSInstance* pInstanceSrc = ppInstanceList[i];
+		XMMATRIX matTranspose = XMMatrixTranspose(pInstanceSrc->Transform);
 		memcpy(pInstanceDescEntry->Transform, &matTranspose, sizeof(pInstanceDescEntry->Transform));
 
-		pInstanceDescEntry->InstanceID = pInstanceSrc->dwID; // This value will be exposed to the shader via InstanceID()
+		pInstanceDescEntry->InstanceID = pInstanceSrc->ID; // This value will be exposed to the shader via InstanceID()
 		pInstanceDescEntry->InstanceContributionToHitGroupIndex = pInstanceSrc->ShaderRecordIndex;
 		pInstanceDescEntry->Flags = D3D12_RAYTRACING_INSTANCE_FLAG_NONE;
 		pInstanceDescEntry->AccelerationStructure = pInstanceSrc->pBLAS->GetGPUVirtualAddress();
@@ -776,12 +776,12 @@ void RayTracingManager::buildShaderTables()
 
 	// hitgroup Shader Table
 	m_pHitGroupShaderTable = new ShaderTable;
-	m_pHitGroupShaderTable->Initiailze(m_pD3DDevice, m_ShaderIdentifierSize + sizeof(ROOT_ARG), L"HitGroupShaderTable");
+	m_pHitGroupShaderTable->Initiailze(m_pD3DDevice, m_ShaderIdentifierSize + sizeof(RootArgument), L"HitGroupShaderTable");
 	void* pHitGroupShaderIdentifier = pStateObjectProperties->GetShaderIdentifier(g_HitGroupName[0]);
 
-	ROOT_ARG rootArg = {};	// 이 샘플에서는 hit시에 전달할 파라미터(texture, vertex data등)가 없음.
+	RootArgument rootArg = {};	// 이 샘플에서는 hit시에 전달할 파라미터(texture, vertex data등)가 없음.
 	m_pHitGroupShaderTable->CommitResource(1);
-	ShaderRecord record = ShaderRecord(pHitGroupShaderIdentifier, m_ShaderIdentifierSize, &rootArg, sizeof(ROOT_ARG));
+	ShaderRecord record = ShaderRecord(pHitGroupShaderIdentifier, m_ShaderIdentifierSize, &rootArg, sizeof(RootArgument));
 	m_pHitGroupShaderTable->InsertShaderRecord(&record);
 	m_HitGroupShaderTableStrideInBytes = m_pHitGroupShaderTable->GetShaderRecordSize();
 	m_HitGroupShaderRecordNum = m_pHitGroupShaderTable->GetShaderRecordNum();
