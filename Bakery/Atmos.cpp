@@ -7,7 +7,7 @@
 #pragma comment(lib, "DirectXTex.lib")
 
 #include "Common/Common.h"
-#include "Interface/IHfxBake.h" // hfx::PrecomputeAtmos
+#include "Interface/IPrelight.h" // hfx::PrecomputeAtmos
 
 #include "Atmos.h"
 

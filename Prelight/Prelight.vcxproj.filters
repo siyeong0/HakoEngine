@@ -1,0 +1,43 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="MainEntry">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;h++;hm;inl;inc;ipp;xsd</Extensions>
+    </Filter>
+    <Filter Include="PrelightBody">
+      <UniqueIdentifier>{6ae610ad-61e2-4953-ac56-d77a5e8385db}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="pch">
+      <UniqueIdentifier>{bcb11573-cad3-4880-8ed0-b8cb02f98281}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="AtmosphericSky">
+      <UniqueIdentifier>{7f61c8f8-b38b-445b-adfb-36552dd7b1ad}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Prelight.h">
+      <Filter>PrelightBody</Filter>
+    </ClInclude>
+    <ClInclude Include="pch.h">
+      <Filter>pch</Filter>
+    </ClInclude>
+    <ClInclude Include="ComputeAtmos.h">
+      <Filter>AtmosphericSky</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="dllmain.cpp">
+      <Filter>MainEntry</Filter>
+    </ClCompile>
+    <ClCompile Include="Prelight.cpp">
+      <Filter>PrelightBody</Filter>
+    </ClCompile>
+    <ClCompile Include="pch.cpp">
+      <Filter>pch</Filter>
+    </ClCompile>
+    <ClCompile Include="ComputeAtmos.cpp">
+      <Filter>AtmosphericSky</Filter>
+    </ClCompile>
+  </ItemGroup>
+</Project>

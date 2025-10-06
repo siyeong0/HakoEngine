@@ -518,66 +518,66 @@ void ENGINECALL D3D12Renderer::EndRender()
 	CD3DX12_CPU_DESCRIPTOR_HANDLE dsvHandle(m_pDSVHeap->GetCPUDescriptorHandleForHeapStart());
 
 	// Do raytracing and copy the output to the back buffer.
+	//{
+	//	ID3D12GraphicsCommandList6* pCommandList = pCommandListPool->GetCurrentCommandList();
+
+	//	// const float BackColor[] = { 0.0f, 0.0f, 1.0f, 1.0f };
+	//	// pCommandList->ClearRenderTargetView(rtvHandle, BackColor, 0, nullptr);
+	//	// pCommandList->ClearDepthStencilView(dsvHandle, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
+
+	//	pCommandList->RSSetViewports(1, &m_Viewport);
+	//	pCommandList->RSSetScissorRects(1, &m_ScissorRect);
+	//	pCommandList->OMSetRenderTargets(1, &rtvHandle, FALSE, &dsvHandle);
+
+	//	m_pRayTracingManager->DoRaytracing(pCommandList);
+	//	ID3D12Resource* pRayTracingOuputResource = m_pRayTracingManager->GetOutputResource();
+
+	//	D3D12_RESOURCE_BARRIER preCopyBarriers[2];
+	//	preCopyBarriers[0] = CD3DX12_RESOURCE_BARRIER::Transition(m_pRenderTargets[m_uiRenderTargetIndex], D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_COPY_DEST);
+	//	preCopyBarriers[1] = CD3DX12_RESOURCE_BARRIER::Transition(pRayTracingOuputResource, D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_COPY_SOURCE);
+	//	pCommandList->ResourceBarrier(ARRAYSIZE(preCopyBarriers), preCopyBarriers);
+
+	//	pCommandList->CopyResource(m_pRenderTargets[m_uiRenderTargetIndex], pRayTracingOuputResource);
+
+	//	D3D12_RESOURCE_BARRIER postCopyBarriers[2];
+	//	postCopyBarriers[0] = CD3DX12_RESOURCE_BARRIER::Transition(m_pRenderTargets[m_uiRenderTargetIndex], D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_RENDER_TARGET);
+	//	postCopyBarriers[1] = CD3DX12_RESOURCE_BARRIER::Transition(pRayTracingOuputResource, D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE);
+	//	pCommandList->ResourceBarrier(ARRAYSIZE(postCopyBarriers), postCopyBarriers);
+
+	//	// Present
+	//	// pCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_pRenderTargets[m_uiRenderTargetIndex], D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT));
+	//	pCommandListPool->CloseAndExecute(m_pCommandQueue);
+	//}
+
+#ifdef USE_MULTI_THREAD
+	// ---- Phase 1: Opaque ----
+	m_RenderPhase.store(ERenderPassType::Opaque, std::memory_order_relaxed);
+	m_lActiveThreadCount = m_NumRenderThreads;
+	for (int i = 0; i < m_NumRenderThreads; i++)
 	{
-		ID3D12GraphicsCommandList6* pCommandList = pCommandListPool->GetCurrentCommandList();
-
-		// const float BackColor[] = { 0.0f, 0.0f, 1.0f, 1.0f };
-		// pCommandList->ClearRenderTargetView(rtvHandle, BackColor, 0, nullptr);
-		// pCommandList->ClearDepthStencilView(dsvHandle, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
-
-		pCommandList->RSSetViewports(1, &m_Viewport);
-		pCommandList->RSSetScissorRects(1, &m_ScissorRect);
-		pCommandList->OMSetRenderTargets(1, &rtvHandle, FALSE, &dsvHandle);
-
-		m_pRayTracingManager->DoRaytracing(pCommandList);
-		ID3D12Resource* pRayTracingOuputResource = m_pRayTracingManager->GetOutputResource();
-
-		D3D12_RESOURCE_BARRIER preCopyBarriers[2];
-		preCopyBarriers[0] = CD3DX12_RESOURCE_BARRIER::Transition(m_pRenderTargets[m_uiRenderTargetIndex], D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_COPY_DEST);
-		preCopyBarriers[1] = CD3DX12_RESOURCE_BARRIER::Transition(pRayTracingOuputResource, D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_COPY_SOURCE);
-		pCommandList->ResourceBarrier(ARRAYSIZE(preCopyBarriers), preCopyBarriers);
-
-		pCommandList->CopyResource(m_pRenderTargets[m_uiRenderTargetIndex], pRayTracingOuputResource);
-
-		D3D12_RESOURCE_BARRIER postCopyBarriers[2];
-		postCopyBarriers[0] = CD3DX12_RESOURCE_BARRIER::Transition(m_pRenderTargets[m_uiRenderTargetIndex], D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_RENDER_TARGET);
-		postCopyBarriers[1] = CD3DX12_RESOURCE_BARRIER::Transition(pRayTracingOuputResource, D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE);
-		pCommandList->ResourceBarrier(ARRAYSIZE(postCopyBarriers), postCopyBarriers);
-
-		// Present
-		// pCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_pRenderTargets[m_uiRenderTargetIndex], D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT));
-		pCommandListPool->CloseAndExecute(m_pCommandQueue);
+		SetEvent(m_pThreadDescList[i].hEventList[RENDER_THREAD_EVENT_TYPE_PROCESS]);
 	}
-
-//#ifdef USE_MULTI_THREAD
-//	// ---- Phase 1: Opaque ----
-//	m_RenderPhase.store(ERenderPassType::Opaque, std::memory_order_relaxed);
-//	m_lActiveThreadCount = m_NumRenderThreads;
-//	for (int i = 0; i < m_NumRenderThreads; i++)
-//	{
-//		SetEvent(m_pThreadDescList[i].hEventList[RENDER_THREAD_EVENT_TYPE_PROCESS]);
-//	}
-//	WaitForSingleObject(m_hCompleteEvent, INFINITE);
-//	// ---- Phase 2: Transparent ----
-//	m_RenderPhase.store(ERenderPassType::Transparent, std::memory_order_relaxed);
-//	m_lActiveThreadCount = m_NumRenderThreads;
-//	for (int i = 0; i < m_NumRenderThreads; i++)
-//	{
-//		SetEvent(m_pThreadDescList[i].hEventList[RENDER_THREAD_EVENT_TYPE_PROCESS]);
-//	}
-//	WaitForSingleObject(m_hCompleteEvent, INFINITE);
-//	// TODO: OIT support.
-//#else
-//	// Each CommandList processes 400 items.
-//	for (int i = 0; i < m_NumRenderThreads; i++)
-//	{
-//		m_ppRenderQueueOpaque[i]->Process(i, pCommandListPool, m_pCommandQueue, 400, rtvHandle, dsvHandle, &m_Viewport, &m_ScissorRect);
-//	}
-//	for (int i = 0; i < m_NumRenderThreads; i++)
-//	{
-//		m_ppRenderQueueTrasnparent[i]->Process(i, pCommandListPool, m_pCommandQueue, 400, rtvHandle, dsvHandle, &m_Viewport, &m_ScissorRect);
-//	}
-//#endif	
+	WaitForSingleObject(m_hCompleteEvent, INFINITE);
+	// ---- Phase 2: Transparent ----
+	m_RenderPhase.store(ERenderPassType::Transparent, std::memory_order_relaxed);
+	m_lActiveThreadCount = m_NumRenderThreads;
+	for (int i = 0; i < m_NumRenderThreads; i++)
+	{
+		SetEvent(m_pThreadDescList[i].hEventList[RENDER_THREAD_EVENT_TYPE_PROCESS]);
+	}
+	WaitForSingleObject(m_hCompleteEvent, INFINITE);
+	// TODO: OIT support.
+#else
+	// Each CommandList processes 400 items.
+	for (int i = 0; i < m_NumRenderThreads; i++)
+	{
+		m_ppRenderQueueOpaque[i]->Process(i, pCommandListPool, m_pCommandQueue, 400, rtvHandle, dsvHandle, &m_Viewport, &m_ScissorRect);
+	}
+	for (int i = 0; i < m_NumRenderThreads; i++)
+	{
+		m_ppRenderQueueTrasnparent[i]->Process(i, pCommandListPool, m_pCommandQueue, 400, rtvHandle, dsvHandle, &m_Viewport, &m_ScissorRect);
+	}
+#endif	
 	// Present
 	ID3D12GraphicsCommandList6* pCommandList = pCommandListPool->GetCurrentCommandList();
 	pCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_pRenderTargets[m_uiRenderTargetIndex], D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT));

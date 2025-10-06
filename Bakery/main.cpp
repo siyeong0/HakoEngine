@@ -8,55 +8,55 @@
 #endif
 
 #include "Common/Common.h"
-#include "Interface/IHfxBake.h"
+#include "Interface/IPrelight.h"
 
 #include "Atmos.h"
 
-HMODULE m_hHfxBakeDLL = nullptr;
-IHfxBake* m_pHfxBake = nullptr;
+HMODULE m_hPrelightDLL = nullptr;
+IPrelight* m_pPrelight = nullptr;
 
 int main()
 {
 	// Load Bakery DLL
 	{
-		const WCHAR* wchHfxBakeFileName = nullptr;
+		const WCHAR* wchPrelightFileName = nullptr;
 #if defined(_M_ARM64EC) || defined(_M_ARM64)
 #ifdef _DEBUG
-		wchHfxBakeFileName = L"HfxBake_arm64_debug.dll";
+		wchPrelightFileName = L"Prelight_arm64_debug.dll";
 #else
-		wchHfxBakeFileName = L"HfxBake_arm64_release.dll";
+		wchPrelightFileName = L"Prelight_arm64_release.dll";
 #endif
 #elif defined(_M_AMD64)
 #ifdef _DEBUG
-		wchHfxBakeFileName = L"HfxBake.dll"; // TODO : arm64_debug.dll";
+		wchPrelightFileName = L"Prelight.dll"; // TODO : arm64_debug.dll";
 #else
-		wchHfxBakeFileName = L"HfxBake.dll";
+		wchPrelightFileName = L"Prelight.dll";
 #endif
 #elif defined(_M_IX86)
 #ifdef _DEBUG
-		wchHfxBakeFileName = L"HfxBake_x86_debug.dll";
+		wchPrelightFileName = L"Prelight_x86_debug.dll";
 #else
-		wchHfxBakeFileName = L"HfxBake_x86_release.dll";
+		wchPrelightFileName = L"Prelight_x86_release.dll";
 #endif
 #endif
 		WCHAR wchErrTxt[128] = {};
 		int	errCode = 0;
 
-		m_hHfxBakeDLL = LoadLibrary(wchHfxBakeFileName);
-		if (!m_hHfxBakeDLL)
+		m_hPrelightDLL = LoadLibrary(wchPrelightFileName);
+		if (!m_hPrelightDLL)
 		{
 			errCode = GetLastError();
-			swprintf_s(wchErrTxt, L"Fail to LoadLibrary(%s) - Error Code: %u", wchHfxBakeFileName, errCode);
+			swprintf_s(wchErrTxt, L"Fail to LoadLibrary(%s) - Error Code: %u", wchPrelightFileName, errCode);
 
-			ASSERT(false, "Fail to load HfxBake DLL");
+			ASSERT(false, "Fail to load Prelight DLL");
 		}
-		CREATE_INSTANCE_FUNC pCreateFunc = (CREATE_INSTANCE_FUNC)GetProcAddress(m_hHfxBakeDLL, "DllCreateInstance");
-		pCreateFunc(&m_pHfxBake);
+		CREATE_INSTANCE_FUNC pCreateFunc = (CREATE_INSTANCE_FUNC)GetProcAddress(m_hPrelightDLL, "DllCreateInstance");
+		pCreateFunc(&m_pPrelight);
 	}
 
 	// Initialize Bakery
-	m_pHfxBake->Initialize();
-	hfx::SetBackend(m_pHfxBake);
+	m_pPrelight->Initialize();
+	hfx::SetBackend(m_pPrelight);
 
 	// Precompute Atmosphere
 	{
@@ -65,7 +65,7 @@ int main()
 
 	// Cleanup
 	hfx::ShutDown();
-	m_pHfxBake->Cleanup();
+	m_pPrelight->Cleanup();
 
 	return 0;
 }

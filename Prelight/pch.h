@@ -23,7 +23,7 @@
 #include <cmath>
 #include <cstdint>
 
-#include "Interface/IHfxBake.h"
+#include "Interface/IPrelight.h"
 #include "Common/Common.h"
 
 #endif //PCH_H

@@ -1,6 +1,6 @@
 ﻿// dllmain.cpp : Defines the entry point for the DLL application.
 #include "pch.h"
-#include "HfxBake.h"
+#include "Prelight.h"
 
 BOOL APIENTRY DllMain(HMODULE hModule,
     DWORD  ul_reason_for_call,
@@ -22,15 +22,15 @@ extern "C" __declspec(dllexport)
 HRESULT WINAPI DllCreateInstance(void** ppv)
 {
     HRESULT hr;
-    IHfxBake* pHfxBake = new HfxBake;
+    IPrelight* pPrelight = new Prelight;
 
-    if (!pHfxBake)
+    if (!pPrelight)
     {
         hr = E_OUTOFMEMORY;
         goto lb_return;
     }
     hr = S_OK;
-    *ppv = pHfxBake;
+    *ppv = pPrelight;
 
 lb_return:
     return hr;

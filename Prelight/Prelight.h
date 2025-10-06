@@ -1,19 +1,19 @@
 ﻿#pragma once
 #include "Common/Common.h"
-#include "Interface/IHfxBake.h"
+#include "Interface/IPrelight.h"
 
-class HfxBake : public IHfxBake
+class Prelight : public IPrelight
 {
 public:
-	// Derived from IHfxBake
+	// Derived from IPrelight
 	bool ENGINECALL Initialize() override;
 	void ENGINECALL Cleanup() override;
 
 	bool ENGINECALL PrecomputeAtmos(const AtmosParams& in, AtmosResult* out) const override;
 
 	// Internal methods
-	HfxBake() = default;
-	virtual ~HfxBake() { Cleanup(); };
+	Prelight() = default;
+	virtual ~Prelight() { Cleanup(); };
 
 private:
 

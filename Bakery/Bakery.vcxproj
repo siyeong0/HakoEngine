@@ -133,12 +133,12 @@
     <ClCompile Include="main.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\HfxBake\HfxBake.vcxproj">
-      <Project>{a79a32e6-7521-4034-8b67-90249e2bb51a}</Project>
-    </ProjectReference>
+    <ClInclude Include="Atmos.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Atmos.h" />
+    <ProjectReference Include="..\Prelight\Prelight.vcxproj">
+      <Project>{3d168d86-ce51-42cf-9348-4e5ee1c2cee4}</Project>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

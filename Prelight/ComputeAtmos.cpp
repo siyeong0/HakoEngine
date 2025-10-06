@@ -23,7 +23,7 @@ static void ComputeDirectIrradianceRGB(
 
 void ComputeAtmosCPU(const AtmosParams& in, AtmosResult* out)
 {
-	std::cout << "HfxBake::ComputeAtmos (CPU, single-scattering only)..." << std::endl;
+	std::cout << "Prelight::ComputeAtmos (CPU, single-scattering only)..." << std::endl;
 	ASSERT(out, "Output pointer is null.");
 
 	// Planet geometry
@@ -55,7 +55,7 @@ void ComputeAtmosCPU(const AtmosParams& in, AtmosResult* out)
 
 	if (!out->TransmittanceRGB || !out->ScatteringRGBA || !out->IrradianceRGB)
 	{
-		std::cerr << "[HfxBake] Allocation failed." << std::endl;
+		std::cerr << "[Prelight] Allocation failed." << std::endl;
 		delete[] out->TransmittanceRGB; out->TransmittanceRGB = nullptr;
 		delete[] out->ScatteringRGBA;   out->ScatteringRGBA = nullptr;
 		delete[] out->IrradianceRGB;    out->IrradianceRGB = nullptr;
@@ -140,7 +140,7 @@ void ComputeAtmosCPU(const AtmosParams& in, AtmosResult* out)
 		}
 	}
 
-	std::cout << "HfxBake::ComputeAtmos done (CPU reference: single scattering, no phase in LUT)." << std::endl;
+	std::cout << "Prelight::ComputeAtmos done (CPU reference: single scattering, no phase in LUT)." << std::endl;
 }
 
 // ---------------------------- Internal helpers ----------------------------

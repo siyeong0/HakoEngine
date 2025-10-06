@@ -3,7 +3,7 @@
 #include "Common/Common.h"
 #include "AtmosStruct.h"
 
-struct IHfxBake
+struct IPrelight
 {
 	virtual bool ENGINECALL Initialize() = 0;
 	virtual void ENGINECALL Cleanup() = 0;
@@ -13,9 +13,9 @@ struct IHfxBake
 
 namespace hfx
 {
-	inline const IHfxBake* g_pBackend = nullptr;
+	inline const IPrelight* g_pBackend = nullptr;
 
-	inline void SetBackend(IHfxBake* impl)
+	inline void SetBackend(IPrelight* impl)
 	{
 		g_pBackend = impl;
 	}
@@ -27,7 +27,7 @@ namespace hfx
 
 	inline bool PrecomputeAtmos(const AtmosParams& in, AtmosResult* out)
 	{
-		ASSERT(g_pBackend, "IHfxBake backend is not set.");
+		ASSERT(g_pBackend, "Prelight backend is not set.");
 		return g_pBackend->PrecomputeAtmos(in, out);
 	}
 } // namespace hfx
