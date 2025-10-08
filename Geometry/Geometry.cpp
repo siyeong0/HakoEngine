@@ -63,36 +63,41 @@ MeshData ENGINECALL Geometry::CreateBoxMesh(float width, float height, float dep
 	const FLOAT2 uv11{ 1.0f, 1.0f };
 	const FLOAT2 uv01{ 0.0f, 1.0f };
 
-	// +Z (Front)
-	outVertices.emplace_back(Vertex{ {-ex, +ey, +ez}, uv00, {+1, 0, 0} }); // TL
-	outVertices.emplace_back(Vertex{ {-ex, -ey, +ez}, uv01, {+1, 0, 0} }); // BL
-	outVertices.emplace_back(Vertex{ {+ex, -ey, +ez}, uv11, {+1, 0, 0} }); // BR
-	outVertices.emplace_back(Vertex{ {+ex, +ey, +ez}, uv10, {+1, 0, 0} }); // TR
-	// -Z (Back)
-	outVertices.emplace_back(Vertex{ {+ex, +ey, -ez}, uv00, {-1, 0, 0} }); // TL
-	outVertices.emplace_back(Vertex{ {+ex, -ey, -ez}, uv01, {-1, 0, 0} }); // BL
-	outVertices.emplace_back(Vertex{ {-ex, -ey, -ez}, uv11, {-1, 0, 0} }); // BR
-	outVertices.emplace_back(Vertex{ {-ex, +ey, -ez}, uv10, {-1, 0, 0} }); // TR
-	// -X (Left)
-	outVertices.emplace_back(Vertex{ {-ex, +ey, -ez}, uv00, {0, 0, +1} }); // TL
-	outVertices.emplace_back(Vertex{ {-ex, -ey, -ez}, uv01, {0, 0, +1} }); // BL
-	outVertices.emplace_back(Vertex{ {-ex, -ey, +ez}, uv11, {0, 0, +1} }); // BR
-	outVertices.emplace_back(Vertex{ {-ex, +ey, +ez}, uv10, {0, 0, +1} }); // TR
-	// +X (Right)
-	outVertices.emplace_back(Vertex{ {+ex, +ey, +ez}, uv00, {0, 0, -1} }); // TL
-	outVertices.emplace_back(Vertex{ {+ex, -ey, +ez}, uv01, {0, 0, -1} }); // BL
-	outVertices.emplace_back(Vertex{ {+ex, -ey, -ez}, uv11, {0, 0, -1} }); // BR
-	outVertices.emplace_back(Vertex{ {+ex, +ey, -ez}, uv10, {0, 0, -1} }); // TR
-	// +Y (Top)
-	outVertices.emplace_back(Vertex{ {-ex, +ey, -ez}, uv00, {+1, 0, 0} }); // TL
-	outVertices.emplace_back(Vertex{ {-ex, +ey, +ez}, uv01, {+1, 0, 0} }); // BL
-	outVertices.emplace_back(Vertex{ {+ex, +ey, +ez}, uv11, {+1, 0, 0} }); // BR
-	outVertices.emplace_back(Vertex{ {+ex, +ey, -ez}, uv10, {+1, 0, 0} }); // TR
-	// -Y (Bottom)
-	outVertices.emplace_back(Vertex{ {-ex, -ey, +ez}, uv00, {+1, 0, 0} }); // TL
-	outVertices.emplace_back(Vertex{ {-ex, -ey, -ez}, uv01, {+1, 0, 0} }); // BL
-	outVertices.emplace_back(Vertex{ {+ex, -ey, -ez}, uv11, {+1, 0, 0} }); // BR
-	outVertices.emplace_back(Vertex{ {+ex, -ey, +ez}, uv10, {+1, 0, 0} }); // TR
+	// +Z (Front)  N = (0,0,+1),  T = (1,0,0)
+	outVertices.emplace_back(Vertex{ {-ex, +ey, +ez}, uv00, FLOAT3{0,0,+1}, FLOAT3{+1,0,0} }); // TL
+	outVertices.emplace_back(Vertex{ {-ex, -ey, +ez}, uv01, FLOAT3{0,0,+1}, FLOAT3{+1,0,0} }); // BL
+	outVertices.emplace_back(Vertex{ {+ex, -ey, +ez}, uv11, FLOAT3{0,0,+1}, FLOAT3{+1,0,0} }); // BR
+	outVertices.emplace_back(Vertex{ {+ex, +ey, +ez}, uv10, FLOAT3{0,0,+1}, FLOAT3{+1,0,0} }); // TR
+
+	// -Z (Back)   N = (0,0,-1), T = (-1,0,0)
+	outVertices.emplace_back(Vertex{ {+ex, +ey, -ez}, uv00, FLOAT3{0,0,-1}, FLOAT3{-1,0,0} }); // TL
+	outVertices.emplace_back(Vertex{ {+ex, -ey, -ez}, uv01, FLOAT3{0,0,-1}, FLOAT3{-1,0,0} }); // BL
+	outVertices.emplace_back(Vertex{ {-ex, -ey, -ez}, uv11, FLOAT3{0,0,-1}, FLOAT3{-1,0,0} }); // BR
+	outVertices.emplace_back(Vertex{ {-ex, +ey, -ez}, uv10, FLOAT3{0,0,-1}, FLOAT3{-1,0,0} }); // TR
+
+	// -X (Left)   N = (-1,0,0), T = (0,0,+1)
+	outVertices.emplace_back(Vertex{ {-ex, +ey, -ez}, uv00, FLOAT3{-1,0,0}, FLOAT3{0,0,+1} }); // TL
+	outVertices.emplace_back(Vertex{ {-ex, -ey, -ez}, uv01, FLOAT3{-1,0,0}, FLOAT3{0,0,+1} }); // BL
+	outVertices.emplace_back(Vertex{ {-ex, -ey, +ez}, uv11, FLOAT3{-1,0,0}, FLOAT3{0,0,+1} }); // BR
+	outVertices.emplace_back(Vertex{ {-ex, +ey, +ez}, uv10, FLOAT3{-1,0,0}, FLOAT3{0,0,+1} }); // TR
+
+	// +X (Right)  N = (+1,0,0), T = (0,0,-1)
+	outVertices.emplace_back(Vertex{ {+ex, +ey, +ez}, uv00, FLOAT3{+1,0,0}, FLOAT3{0,0,-1} }); // TL
+	outVertices.emplace_back(Vertex{ {+ex, -ey, +ez}, uv01, FLOAT3{+1,0,0}, FLOAT3{0,0,-1} }); // BL
+	outVertices.emplace_back(Vertex{ {+ex, -ey, -ez}, uv11, FLOAT3{+1,0,0}, FLOAT3{0,0,-1} }); // BR
+	outVertices.emplace_back(Vertex{ {+ex, +ey, -ez}, uv10, FLOAT3{+1,0,0}, FLOAT3{0,0,-1} }); // TR
+
+	// +Y (Top)    N = (0,+1,0), T = (+1,0,0)
+	outVertices.emplace_back(Vertex{ {-ex, +ey, -ez}, uv00, FLOAT3{0,+1,0}, FLOAT3{+1,0,0} }); // TL
+	outVertices.emplace_back(Vertex{ {-ex, +ey, +ez}, uv01, FLOAT3{0,+1,0}, FLOAT3{+1,0,0} }); // BL
+	outVertices.emplace_back(Vertex{ {+ex, +ey, +ez}, uv11, FLOAT3{0,+1,0}, FLOAT3{+1,0,0} }); // BR
+	outVertices.emplace_back(Vertex{ {+ex, +ey, -ez}, uv10, FLOAT3{0,+1,0}, FLOAT3{+1,0,0} }); // TR
+
+	// -Y (Bottom) N = (0,-1,0), T = (+1,0,0)
+	outVertices.emplace_back(Vertex{ {-ex, -ey, +ez}, uv00, FLOAT3{0,-1,0}, FLOAT3{+1,0,0} }); // TL
+	outVertices.emplace_back(Vertex{ {-ex, -ey, -ez}, uv01, FLOAT3{0,-1,0}, FLOAT3{+1,0,0} }); // BL
+	outVertices.emplace_back(Vertex{ {+ex, -ey, -ez}, uv11, FLOAT3{0,-1,0}, FLOAT3{+1,0,0} }); // BR
+	outVertices.emplace_back(Vertex{ {+ex, -ey, +ez}, uv10, FLOAT3{0,-1,0}, FLOAT3{+1,0,0} }); // TR
 
 	for (int i = 0; i < 6; ++i)
 	{
@@ -141,9 +146,10 @@ MeshData ENGINECALL Geometry::CreateSphereMesh(float radius, int segments, int r
 
 			FLOAT3 pos = { radius * st * cp, radius * ct, radius * st * sp };
 			FLOAT2 uv = { u, v };
-			FLOAT3 tan = { -sp, 0.0f, +cp }; // Tangent along longitude
+			FLOAT3 nrm = { st * cp, ct, st * sp };
+			FLOAT3 tan = { -sp, 0.0f, +cp };
 
-			outVertices.push_back(Vertex{ pos, uv, tan });
+			outVertices.push_back(Vertex{ pos, uv, nrm, tan });
 		}
 	}
 
@@ -198,8 +204,8 @@ MeshData ENGINECALL Geometry::CreateGridMesh(float width, float height, int rows
 			FLOAT3 pos = { px, 0.0f, pz };
 			FLOAT2 uv = { (float)x, (float)z };
 			FLOAT3 tan = { 1.0f, 0.0f, 0.0f };
-
-			outVertices.emplace_back(Vertex{ pos, uv, tan });
+			FLOAT3 nrm = { 0.0f, 1.0f, 0.0f };
+			outVertices.emplace_back(Vertex{ pos, uv, nrm, tan });
 		}
 	}
 
@@ -251,8 +257,8 @@ MeshData ENGINECALL Geometry::CreateCylinderMesh(float radius, float height, int
 			FLOAT3 pos = { radius * cp, py, radius * sp };
 			FLOAT2 uv = { u, 1.0f - vy };
 			FLOAT3 tan = { -sp, 0.0f, +cp };
-
-			outVertices.emplace_back(Vertex{ pos, uv, tan });
+			FLOAT3 nrm = { cp, 0.0f,  sp };
+			outVertices.emplace_back(Vertex{ pos, uv, nrm, tan });
 		}
 	}
 
@@ -270,10 +276,10 @@ MeshData ENGINECALL Geometry::CreateCylinderMesh(float radius, float height, int
 
 	// Top and bottom caps (similar to cone version, skipped here for brevity)
 	uint16_t topCenterIndex = (uint16_t)outVertices.size();
-	outVertices.emplace_back(Vertex{ FLOAT3{0, +halfH, 0}, FLOAT2{0.5f, 0.0f}, FLOAT3{1,0,0} });
+	outVertices.emplace_back(Vertex{ FLOAT3{0, +halfH, 0}, FLOAT2{0.5f, 0.0f}, FLOAT3{0,+1,0}, FLOAT3{1,0,0} });
 
 	uint16_t bottomCenterIndex = (uint16_t)outVertices.size();
-	outVertices.emplace_back(Vertex{ FLOAT3{0, -halfH, 0}, FLOAT2{0.5f, 1.0f}, FLOAT3{1,0,0} });
+	outVertices.emplace_back(Vertex{ FLOAT3{0, -halfH, 0}, FLOAT2{0.5f, 1.0f}, FLOAT3{0,-1,0}, FLOAT3{1,0,0} });
 
 	// Top ring
 	for (int s = 0; s <= segments; ++s)
@@ -285,7 +291,8 @@ MeshData ENGINECALL Geometry::CreateCylinderMesh(float radius, float height, int
 
 		FLOAT3 pos = { radius * cp, +halfH, radius * sp };
 		FLOAT2 uv = { 0.5f + 0.5f * cp, 0.5f - 0.5f * sp };
-		outVertices.emplace_back(Vertex{ pos, uv, FLOAT3{1,0,0} });
+		FLOAT3 nrm = { 0,+1,0 };
+		outVertices.emplace_back(Vertex{ pos, uv, nrm, FLOAT3{1,0,0} });
 
 		uint16_t curr = (uint16_t)(outVertices.size() - 1);
 		uint16_t next = (uint16_t)(topCenterIndex + 2 + ((s + 1) % (segments + 1)));
@@ -309,7 +316,8 @@ MeshData ENGINECALL Geometry::CreateCylinderMesh(float radius, float height, int
 
 		FLOAT3 pos = { radius * cp, -halfH, radius * sp };
 		FLOAT2 uv = { 0.5f + 0.5f * cp, 0.5f + 0.5f * sp };
-		outVertices.emplace_back(Vertex{ pos, uv, FLOAT3{1,0,0} });
+		FLOAT3 nrm = { 0,-1,0 };
+		outVertices.emplace_back(Vertex{ pos, uv, nrm, FLOAT3{1,0,0} });
 
 		uint16_t curr = (uint16_t)(outVertices.size() - 1);
 		uint16_t next = (uint16_t)(bottomStart + ((s + 1) % (segments + 1)));
@@ -350,8 +358,8 @@ MeshData ENGINECALL Geometry::CreateConeMesh(float radius, float height, int seg
 		FLOAT3 pos = { radius * cp, -halfH, radius * sp };
 		FLOAT2 uv = { u, 1.0f };
 		FLOAT3 tan = { -sp, 0.0f, +cp };
-
-		outVertices.emplace_back(Vertex{ pos, uv, tan });
+		FLOAT3 nrm = { cp, radius / height, sp };
+		outVertices.emplace_back(Vertex{ pos, uv, nrm, tan });
 	}
 
 	// Apex
@@ -359,7 +367,8 @@ MeshData ENGINECALL Geometry::CreateConeMesh(float radius, float height, int seg
 	for (int s = 0; s < sideCols; ++s)
 	{
 		float u = (float)s / (float)segments;
-		outVertices.emplace_back(Vertex{ FLOAT3{0, +halfH, 0}, FLOAT2{u, 0}, FLOAT3{1,0,0} });
+		FLOAT3 nrm = { outVertices[s].Normal.x, outVertices[s].Normal.y, outVertices[s].Normal.z };
+		outVertices.emplace_back(Vertex{ FLOAT3{0, +halfH, 0}, FLOAT2{u, 0}, nrm, FLOAT3{1,0,0} });
 	}
 
 	// Side indices
@@ -376,7 +385,7 @@ MeshData ENGINECALL Geometry::CreateConeMesh(float radius, float height, int seg
 
 	// Bottom cap similar to cylinder
 	uint16_t bottomCenterIndex = (uint16_t)outVertices.size();
-	outVertices.emplace_back(Vertex{ FLOAT3{0, -halfH, 0}, FLOAT2{0.5f, 0.5f}, FLOAT3{1,0,0} });
+	outVertices.emplace_back(Vertex{ FLOAT3{0, -halfH, 0}, FLOAT2{0.5f, 0.5f}, FLOAT3{0,-1,0}, FLOAT3{1,0,0} });
 
 	uint16_t baseStart = 0;
 	for (int s = 0; s < segments; ++s)
@@ -407,10 +416,10 @@ MeshData ENGINECALL Geometry::CreatePlaneMesh(float width, float height)
 	const float halfH = height * 0.5f;
 
 	// XZ plane, Y=0
-	outVertices.emplace_back(Vertex{ FLOAT3{-halfW, 0, -halfH}, FLOAT2{0,0}, FLOAT3{1,0,0} });
-	outVertices.emplace_back(Vertex{ FLOAT3{-halfW, 0, +halfH}, FLOAT2{0,1}, FLOAT3{1,0,0} });
-	outVertices.emplace_back(Vertex{ FLOAT3{+halfW, 0, +halfH}, FLOAT2{1,1}, FLOAT3{1,0,0} });
-	outVertices.emplace_back(Vertex{ FLOAT3{+halfW, 0, -halfH}, FLOAT2{1,0}, FLOAT3{1,0,0} });
+	outVertices.emplace_back(Vertex{ FLOAT3{-halfW, 0, -halfH}, FLOAT2{0,0}, FLOAT3{0,1,0}, FLOAT3{1,0,0} });
+	outVertices.emplace_back(Vertex{ FLOAT3{-halfW, 0, +halfH}, FLOAT2{0,1}, FLOAT3{0,1,0}, FLOAT3{1,0,0} });
+	outVertices.emplace_back(Vertex{ FLOAT3{+halfW, 0, +halfH}, FLOAT2{1,1}, FLOAT3{0,1,0}, FLOAT3{1,0,0} });
+	outVertices.emplace_back(Vertex{ FLOAT3{+halfW, 0, -halfH}, FLOAT2{1,0}, FLOAT3{0,1,0}, FLOAT3{1,0,0} });
 
 	// Indices
 	outIndices.emplace_back(0); outIndices.emplace_back(1); outIndices.emplace_back(2);

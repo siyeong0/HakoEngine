@@ -39,10 +39,10 @@ struct Vertex
 {
 	FLOAT3 Position;
 	FLOAT2 TexCoord;
+	FLOAT3 Normal;
 	FLOAT3 Tangent;
 };
-static_assert(sizeof(Vertex) == 32, "Vertex size mismatch");
-
+static_assert(sizeof(Vertex) == 44, "Vertex size mismatch");
 
 struct SpriteVertex
 {

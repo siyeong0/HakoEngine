@@ -14,12 +14,14 @@ static const uint g_IndicesPerTriangle = 3;
 static const uint g_TriangleIndexStride = g_IndicesPerTriangle * g_IndexSizeInBytes;
 
 
-struct BasicVertex
+struct Vertex
 {
     float3 Pos;
-    float4 Color;
     float2 UV;
+    float3 Normal;
+    float3 Tangent;
 };
+    
 struct Ray
 {
     float3 origin;

@@ -31,6 +31,7 @@ struct VSInput
 {
     float4 Position : POSITION;
     float2 TexCoord : TEXCOORD0;
+    float3 Normal   : NORMAL;
     float3 Tangent  : TANGENT;
 };
 
@@ -41,25 +42,33 @@ struct PSInput
     float3 Normal   : NORMAL;
 };
 
+float3x3 inverseTranspose(float3x3 M)
+{
+    float3 c0 = float3(M._11, M._21, M._31);
+    float3 c1 = float3(M._12, M._22, M._32);
+    float3 c2 = float3(M._13, M._23, M._33);
+    float3 r0 = cross(c1, c2);
+    float3 r1 = cross(c2, c0);
+    float3 r2 = cross(c0, c1);
+    float det = dot(c0, r0);
+    return transpose(float3x3(r0, r1, r2) / det); // = M^{-T}
+}
+
 PSInput VSMain(VSInput input)
 {
-    PSInput result = (PSInput)0;
+    PSInput vsout = (PSInput)0;
     
     matrix worldViewProj = mul(g_World, g_ViewProj);   // world x view x proj
     
-    result.Position = mul(input.Position, worldViewProj); // pojtected vertex = vertex x world x view x proj
-    result.TexCoord = input.TexCoord;
+    vsout.Position = mul(input.Position, worldViewProj); // pojtected vertex = vertex x world x view x proj
+    vsout.TexCoord = input.TexCoord;
+    vsout.Normal = normalize(mul(input.Normal, inverseTranspose((float3x3) g_World)));
     
-    // Use tangent as fake normal (normalize it in world space)
-    float3 fakeNormal = mul((float3x3) g_World, input.Tangent);
-    result.Normal = normalize(fakeNormal);
-    
-    return result;
+    return vsout;
 }
 
 float4 PSMain(PSInput input) : SV_TARGET
 {
-    // Sample the texture5
     float4 texColor = texDiffuse.Sample(g_SamplerWrap, input.TexCoord);
 
     // Diffuse lighting (Lambert)
