@@ -38,7 +38,7 @@ private:
 	void cleanupShaderTables();
 
 	void createDescriptorHeapCBV_SRV_UAV();
-	void cleanupDescriptorHeapForCBV_SRV_UAV();
+	void cleanupDescriptorHeapCBV_SRV_UAV();
 
 	void createShaderVisibleHeap();
 	void cleanupDispatchHeap();
@@ -67,6 +67,13 @@ private:
 		DISPATCH_DESCRIPTOR_INDEX_OUTPUT_DEPTH,
 		DISPATCH_DESCRIPTOR_INDEX_COUNT,
 	};
+	enum LOCAL_ROOT_PARAMETER_INDEX
+	{
+		LOCAL_ROOT_PARAMETER_INDEX_VB,
+		LOCAL_ROOT_PARAMETER_INDEX_IB,
+		LOCAL_ROOT_PARAMETER_INDEX_TEX,
+		LOCAL_ROOT_PARAMETER_COUNT,
+	};
 	static const UINT MAX_RECURSION_DEPTH = 1;
 	static const UINT MAX_RADIANCE_RECURSION_DEPTH = std::min<UINT>(MAX_RECURSION_DEPTH, 1u);
 
@@ -88,6 +95,7 @@ private:
 
 	ShaderHandle* m_pRayShader = nullptr;
 	ID3D12RootSignature* m_pRaytracingGlobalRootSignature = nullptr;
+	ID3D12RootSignature* m_pRaytracingLocalRootSignature = nullptr;
 	ID3D12StateObject* m_pDXRStateObject = nullptr;
 
 	ID3D12DescriptorHeap* m_pCommonDescriptorHeap = nullptr;
@@ -108,7 +116,12 @@ private:
 	ID3D12Resource* m_pTLAS = nullptr;
 	BALSInstance* m_pBlasInstance = nullptr;
 
+	// TODO: remove later
 	// Mesh Data
 	ID3D12Resource* m_pVertexBuffer = nullptr;	// vertex data
 	ID3D12Resource* m_pIndexBuffer = nullptr;	// index data
+	ID3D12Resource* m_pTexResource = nullptr;
+	UINT	m_TexWidth = 0;
+	UINT	m_TexHeight = 0;
+	DXGI_FORMAT m_TexFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
 };

@@ -41,6 +41,9 @@ struct BLASBuilTriGroupInfo
 {
 	ID3D12Resource* pIB;
 	ID3D12Resource* pTexResource;
+	UINT TexWidth;
+	UINT TexHeight;
+	DXGI_FORMAT TexFormat;
 	UINT NumIndices;
 	bool bNotOpaque;
 };
@@ -55,4 +58,9 @@ struct BALSInstance
 	UINT ShaderRecordIndex;
 	UINT NumVertices;
 	UINT NumTriGroups;
+
+	// Local params
+	D3D12_CPU_DESCRIPTOR_HANDLE SrvCpuHandle;
+	D3D12_GPU_DESCRIPTOR_HANDLE SrvGpuHandle;
+	RootArgument pRootArg[1];
 };

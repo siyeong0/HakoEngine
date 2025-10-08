@@ -517,8 +517,11 @@ void ENGINECALL D3D12Renderer::EndRender()
 	CD3DX12_CPU_DESCRIPTOR_HANDLE rtvHandle(m_pRTVHeap->GetCPUDescriptorHandleForHeapStart(), m_uiRenderTargetIndex, m_rtvDescriptorSize);
 	CD3DX12_CPU_DESCRIPTOR_HANDLE dsvHandle(m_pDSVHeap->GetCPUDescriptorHandleForHeapStart());
 
+	// TODO: Combine raytracing output and rasterized output.
+	bool bUseRayTracing = true;
+
 	// Do raytracing and copy the output to the back buffer.
-	if (false)
+	if (bUseRayTracing)
 	{
 		ID3D12GraphicsCommandList6* pCommandList = pCommandListPool->GetCurrentCommandList();
 
@@ -550,35 +553,38 @@ void ENGINECALL D3D12Renderer::EndRender()
 		pCommandListPool->CloseAndExecute(m_pCommandQueue);
 	}
 
+	if (!bUseRayTracing)
+	{
 #ifdef USE_MULTI_THREAD
-	// ---- Phase 1: Opaque ----
-	m_RenderPhase.store(ERenderPassType::Opaque, std::memory_order_relaxed);
-	m_lActiveThreadCount = m_NumRenderThreads;
-	for (int i = 0; i < m_NumRenderThreads; i++)
-	{
-		SetEvent(m_pThreadDescList[i].hEventList[RENDER_THREAD_EVENT_TYPE_PROCESS]);
-	}
-	WaitForSingleObject(m_hCompleteEvent, INFINITE);
-	// ---- Phase 2: Transparent ----
-	m_RenderPhase.store(ERenderPassType::Transparent, std::memory_order_relaxed);
-	m_lActiveThreadCount = m_NumRenderThreads;
-	for (int i = 0; i < m_NumRenderThreads; i++)
-	{
-		SetEvent(m_pThreadDescList[i].hEventList[RENDER_THREAD_EVENT_TYPE_PROCESS]);
-	}
-	WaitForSingleObject(m_hCompleteEvent, INFINITE);
-	// TODO: OIT support.
+		// ---- Phase 1: Opaque ----
+		m_RenderPhase.store(ERenderPassType::Opaque, std::memory_order_relaxed);
+		m_lActiveThreadCount = m_NumRenderThreads;
+		for (int i = 0; i < m_NumRenderThreads; i++)
+		{
+			SetEvent(m_pThreadDescList[i].hEventList[RENDER_THREAD_EVENT_TYPE_PROCESS]);
+		}
+		WaitForSingleObject(m_hCompleteEvent, INFINITE);
+		// ---- Phase 2: Transparent ----
+		m_RenderPhase.store(ERenderPassType::Transparent, std::memory_order_relaxed);
+		m_lActiveThreadCount = m_NumRenderThreads;
+		for (int i = 0; i < m_NumRenderThreads; i++)
+		{
+			SetEvent(m_pThreadDescList[i].hEventList[RENDER_THREAD_EVENT_TYPE_PROCESS]);
+		}
+		WaitForSingleObject(m_hCompleteEvent, INFINITE);
+		// TODO: OIT support.
 #else
-	// Each CommandList processes 400 items.
-	for (int i = 0; i < m_NumRenderThreads; i++)
-	{
-		m_ppRenderQueueOpaque[i]->Process(i, pCommandListPool, m_pCommandQueue, 400, rtvHandle, dsvHandle, &m_Viewport, &m_ScissorRect);
-	}
-	for (int i = 0; i < m_NumRenderThreads; i++)
-	{
-		m_ppRenderQueueTrasnparent[i]->Process(i, pCommandListPool, m_pCommandQueue, 400, rtvHandle, dsvHandle, &m_Viewport, &m_ScissorRect);
-	}
+		// Each CommandList processes 400 items.
+		for (int i = 0; i < m_NumRenderThreads; i++)
+		{
+			m_ppRenderQueueOpaque[i]->Process(i, pCommandListPool, m_pCommandQueue, 400, rtvHandle, dsvHandle, &m_Viewport, &m_ScissorRect);
+		}
+		for (int i = 0; i < m_NumRenderThreads; i++)
+		{
+			m_ppRenderQueueTrasnparent[i]->Process(i, pCommandListPool, m_pCommandQueue, 400, rtvHandle, dsvHandle, &m_Viewport, &m_ScissorRect);
+		}
 #endif	
+	}
 
 	// Present
 	ID3D12GraphicsCommandList6* pCommandList = pCommandListPool->GetCurrentCommandList();
