@@ -147,12 +147,12 @@ lb_exit:
 
 	if (pDebugController)
 	{
-		SetDebugLayerInfo(m_pD3DDevice);
+		D3DUtil::SetDebugLayerInfo(m_pD3DDevice);
 	}
 
 	if (bUseGpuUploadHeaps)
 	{
-		m_bGpuUploadHeapsEnabled = CheckSupportGpuUploadHeap(m_pD3DDevice);
+		m_bGpuUploadHeapsEnabled = D3DUtil::CheckSupportGpuUploadHeap(m_pD3DDevice);
 	}
 	else
 	{

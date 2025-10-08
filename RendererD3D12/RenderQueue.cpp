@@ -119,7 +119,7 @@ int RenderQueue::Process(
 						{
 							if (texureHandle->bUpdated)
 							{
-								UpdateTexture(pD3DDevice, pCurrCommandList, texureHandle->pTexResource, texureHandle->pUploadBuffer);
+								D3DUtil::UpdateTexture(pD3DDevice, pCurrCommandList, texureHandle->pTexResource, texureHandle->pUploadBuffer);
 							}
 							texureHandle->bUpdated = false;
 						}

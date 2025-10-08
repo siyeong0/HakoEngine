@@ -47,10 +47,10 @@ bool RootSignatureManager::Initialize(D3D12Renderer* pRenderer)
 
 		// Static samplers
 		D3D12_STATIC_SAMPLER_DESC samplers[4] = {};
-		SetSamplerDesc_Wrap(&samplers[0], 0);
-		SetSamplerDesc_Clamp(&samplers[1], 1);
-		SetSamplerDesc_Border(&samplers[2], 2);
-		SetSamplerDesc_Mirror(&samplers[3], 3);
+		D3DUtil::SetSamplerDesc_Wrap(&samplers[0], 0);
+		D3DUtil::SetSamplerDesc_Clamp(&samplers[1], 1);
+		D3DUtil::SetSamplerDesc_Border(&samplers[2], 2);
+		D3DUtil::SetSamplerDesc_Mirror(&samplers[3], 3);
 
 		D3D12_ROOT_SIGNATURE_DESC rootSignatureDesc = {};
 		rootSignatureDesc.NumParameters = _countof(params);

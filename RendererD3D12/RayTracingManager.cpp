@@ -267,7 +267,7 @@ bool RayTracingManager::initAccelerationStructure()
 		numBlasInstances++;
 	}
 
-	CreateUploadBuffer(m_pD3DDevice, nullptr, sizeof(D3D12_RAYTRACING_INSTANCE_DESC) * numBlasInstances, &m_pBLASInstanceDescResouce, L"InstanceDescs");
+	D3DUtil::CreateUploadBuffer(m_pD3DDevice, nullptr, sizeof(D3D12_RAYTRACING_INSTANCE_DESC) * numBlasInstances, &m_pBLASInstanceDescResouce, L"InstanceDescs");
 
 	m_pTLAS = buildTLAS(m_pBLASInstanceDescResouce, ppBlasInstancelist, numBlasInstances, false, 0);
 
@@ -371,7 +371,7 @@ BALSInstance* RayTracingManager::buildBLAS(
 		//  - the system will be doing this type of access in its implementation of acceleration structure builds behind the scenes.
 		//  - from the app point of view, synchronization of writes/reads to acceleration structures is accomplished using UAV barriers.
 		D3D12_RESOURCE_STATES initialResourceState = D3D12_RESOURCE_STATE_RAYTRACING_ACCELERATION_STRUCTURE;
-		hr = CreateUAVBuffer(m_pD3DDevice, info.ResultDataMaxSizeInBytes, &pBLAS, initialResourceState, L"BottomLevelAccelerationStructure");
+		hr = D3DUtil::CreateUAVBuffer(m_pD3DDevice, info.ResultDataMaxSizeInBytes, &pBLAS, initialResourceState, L"BottomLevelAccelerationStructure");
 		ASSERT(SUCCEEDED(hr), "Failed to create BLAS resource.");
 
 		// Bottom Level Acceleration Structure desc
@@ -506,7 +506,7 @@ ID3D12Resource* RayTracingManager::buildTLAS(
 	D3D12_GPU_VIRTUAL_ADDRESS pScratchGPUAddress = pScratchResource->GetGPUVirtualAddress();
 
 	D3D12_RESOURCE_STATES initialResourceState = D3D12_RESOURCE_STATE_RAYTRACING_ACCELERATION_STRUCTURE;
-	hr = CreateUAVBuffer(m_pD3DDevice, info.ResultDataMaxSizeInBytes, &pTLASResource, initialResourceState, L"TopLevelAccelerationStructure");
+	hr = D3DUtil::CreateUAVBuffer(m_pD3DDevice, info.ResultDataMaxSizeInBytes, &pTLASResource, initialResourceState, L"TopLevelAccelerationStructure");
 	ASSERT(SUCCEEDED(hr), "Failed to create TLAS resource.");
 
 	// Allocate resources for acceleration structures.
@@ -698,18 +698,18 @@ void RayTracingManager::createRootSignatures()
 
 	// sampler
 	D3D12_STATIC_SAMPLER_DESC samplers[4] = {};
-	SetSamplerDesc_Wrap(samplers + 0, 0);	// Wrap Linear
-	SetSamplerDesc_Clamp(samplers + 1, 1);	// Clamp Linear
-	SetSamplerDesc_Wrap(samplers + 2, 2);	// Wrap Point
+	D3DUtil::SetSamplerDesc_Wrap(samplers + 0, 0);	// Wrap Linear
+	D3DUtil::SetSamplerDesc_Clamp(samplers + 1, 1);	// Clamp Linear
+	D3DUtil::SetSamplerDesc_Wrap(samplers + 2, 2);	// Wrap Point
 	samplers[2].Filter = D3D12_FILTER_MIN_MAG_MIP_POINT;
-	SetSamplerDesc_Mirror(samplers + 3, 3);	// Mirror Linear
+	D3DUtil::SetSamplerDesc_Mirror(samplers + 3, 3);	// Mirror Linear
 	samplers[3].Filter = D3D12_FILTER_MIN_MAG_MIP_LINEAR;
 	for (DWORD i = 0; i < (DWORD)_countof(samplers); i++)
 	{
 		samplers[i].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
 	}
 	CD3DX12_ROOT_SIGNATURE_DESC globalRootSignatureDesc(ARRAYSIZE(GlobalRootParameters), GlobalRootParameters, (DWORD)_countof(samplers), samplers);
-	SerializeAndCreateRaytracingRootSignature(m_pD3DDevice, &globalRootSignatureDesc, &m_pRaytracingGlobalRootSignature);
+	D3DUtil::SerializeAndCreateRaytracingRootSignature(m_pD3DDevice, &globalRootSignatureDesc, &m_pRaytracingGlobalRootSignature);
 
 	// Local Root Signature
 	// space1
@@ -722,7 +722,7 @@ void RayTracingManager::createRootSignatures()
 
 	CD3DX12_ROOT_SIGNATURE_DESC localRootSignatureDesc(ARRAYSIZE(localRootParameters), localRootParameters, 0, nullptr);
 	localRootSignatureDesc.Flags = D3D12_ROOT_SIGNATURE_FLAG_LOCAL_ROOT_SIGNATURE;
-	SerializeAndCreateRaytracingRootSignature(m_pD3DDevice, &localRootSignatureDesc, &m_pRaytracingLocalRootSignature);
+	D3DUtil::SerializeAndCreateRaytracingRootSignature(m_pD3DDevice, &localRootSignatureDesc, &m_pRaytracingLocalRootSignature);
 }
 
 void RayTracingManager::createRaytracingPipelineStateObject()

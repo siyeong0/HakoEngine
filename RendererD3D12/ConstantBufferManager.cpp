@@ -30,7 +30,7 @@ bool ConstantBufferManager::Initialize(ID3D12Device* pD3DDevice, int maxNumCBV)
 	for (int i = 0; i < CONSTANT_BUFFER_TYPE_COUNT; i++)
 	{
 		m_ppConstantBufferPool[i] = new SimpleConstantBufferPool;
-		m_ppConstantBufferPool[i]->Initialize(pD3DDevice, (EConstantBufferType)i, static_cast<UINT>(AlignConstantBufferSize(g_pConstBufferPropList[i].Size)), maxNumCBV);
+		m_ppConstantBufferPool[i]->Initialize(pD3DDevice, (EConstantBufferType)i, static_cast<UINT>(D3DUtil::AlignConstantBufferSize(g_pConstBufferPropList[i].Size)), maxNumCBV);
 	}
 	return true;
 }
