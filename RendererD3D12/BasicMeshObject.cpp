@@ -6,6 +6,7 @@
 #include "PSOManager.h"
 #include "RootSignatureManager.h"
 #include "DescriptorPool.h"
+#include "RayTracingManager.h"
 #include "D3D12Renderer.h"
 #include "BasicMeshObject.h"
 
@@ -59,7 +60,7 @@ bool ENGINECALL BasicMeshObject::InsertTriGroup(const uint16_t* indices, size_t 
 	size_t srvDescriptorSize = m_pRenderer->GetSrvDescriptorSize();
 	D3D12ResourceManager* pResourceManager = m_pRenderer->GetResourceManager();
 	SingleDescriptorAllocator* pSingleDescriptorAllocator = m_pRenderer->GetSingleDescriptorAllocator();
-	BOOL bUseGpuUploadHeaps = m_pRenderer->IsGpuUploadHeapsEnabledInl();
+	bool bUseGpuUploadHeaps = m_pRenderer->IsGpuUploadHeapsEnabledInl();
 
 	ID3D12Resource* pIndexBuffer = nullptr;
 	D3D12_INDEX_BUFFER_VIEW indexBufferView = {};
@@ -76,13 +77,16 @@ bool ENGINECALL BasicMeshObject::InsertTriGroup(const uint16_t* indices, size_t 
 	pTriGroup->IndexBufferView = indexBufferView;
 	pTriGroup->NumTriangles = static_cast<UINT>(numTriangles);
 	pTriGroup->pTexHandle = (TextureHandle*)m_pRenderer->CreateTextureFromFile(wchTexFileName);
+	pTriGroup->bOpaque = true;
 	m_NumTriGroups++;
 	return true;
 }
 
 void ENGINECALL BasicMeshObject::EndCreateMesh()
 {
-
+	// TODO: RT 사용시만
+	RayTracingManager* pRayTracingManager = m_pRenderer->GetRayTracingManager();
+	m_pBlasInstance = pRayTracingManager->AllocBLAS(m_pVertexBuffer, sizeof(Vertex), m_VertexBufferView.SizeInBytes / sizeof(Vertex), m_pTriGroupList, m_NumTriGroups, false);
 }
 
 bool BasicMeshObject::Initialize(D3D12Renderer* pRenderer)
@@ -152,6 +156,12 @@ void BasicMeshObject::Draw(int threadIndex, ID3D12GraphicsCommandList6* pCommand
 		// 다음 TriGroup의 SRV로 한 칸 이동 (t0만 쓰므로 1칸씩)
 		gpuCurrDescHandleAddress.Offset(1, srvDescriptorSize);
 	}
+}
+
+void BasicMeshObject::UpdateBLASTransform(const XMMATRIX& worldMatrix)
+{
+	RayTracingManager* pRayTracingManager = m_pRenderer->GetRayTracingManager();
+	pRayTracingManager->UpdateBLASTransform(m_pBlasInstance, worldMatrix);
 }
 
 bool BasicMeshObject::initPipelineState()

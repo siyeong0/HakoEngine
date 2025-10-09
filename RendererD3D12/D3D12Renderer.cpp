@@ -527,6 +527,24 @@ void ENGINECALL D3D12Renderer::EndRender()
 	// Do raytracing and copy the output to the back buffer.
 	if (bUseRayTracing)
 	{
+		while (!m_ppRenderQueueRayTracing.empty())
+		{
+			RenderItem& item = m_ppRenderQueueRayTracing.front();
+			ASSERT(item.Type == RENDER_ITEM_TYPE_MESH_OBJ);
+			BasicMeshObject* pMeshObj = (BasicMeshObject*)(item.pObjHandle);
+			pMeshObj->UpdateBLASTransform(item.MeshObjParam.matWorld);
+			m_ppRenderQueueRayTracing.pop();
+		}
+
+		if (m_pRayTracingManager->IsUpdatedAccelerationStructure())
+		{
+			for (UINT i = 0; i < MAX_PENDING_FRAME_COUNT; i++)
+			{
+				waitForFenceValue(m_pui64LastFenceValue[i]);
+			}
+			m_pRayTracingManager->UpdateAccelerationStructure();
+		}
+
 		ID3D12GraphicsCommandList6* pCommandList = pCommandListPool->GetCurrentCommandList();
 
 		// const float BackColor[] = { 0.0f, 0.0f, 1.0f, 1.0f };
@@ -648,6 +666,13 @@ void ENGINECALL D3D12Renderer::RenderMeshObject(
 	item.Type = RENDER_ITEM_TYPE_MESH_OBJ;
 	item.pObjHandle = pMeshObj;
 	item.MeshObjParam.matWorld = *pMatWorld;
+
+	// TOOD: RT 사용시만
+	if (renderPass == ERenderPassType::Opaque)
+	{
+		m_ppRenderQueueRayTracing.push(item); // TODO: Support multiple threads.
+		return;
+	}
 
 	bool bAdded = false;
 	switch (renderPass)

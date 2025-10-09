@@ -4,6 +4,7 @@
 #include "ConstantBufferManager.h"
 #include "ShaderManager.h"
 #include "ShaderRecord.h"
+#include "Common/IndexCreator.h"
 #include "D3D12Renderer.h"
 #include "ShaderTable.h"
 #include "RayTracingManager.h"
@@ -16,13 +17,20 @@ const wchar_t* g_AnyHitShaderName[] = { L"MyAnyHitShader_RadianceRay" };
 // Hit groups.
 const wchar_t* g_HitGroupName[] = { L"MyHitGroup_Triangle_RadianceRay" };
 
-bool RayTracingManager::Initialize(D3D12Renderer* pRenderer, UINT width, UINT height)
+bool RayTracingManager::Initialize(D3D12Renderer* pRenderer, UINT width, UINT height, UINT maxNumBLASs)
 {
 	HRESULT hr = S_OK;
 
 	m_pRenderer = pRenderer;
 	m_pD3DDevice = pRenderer->GetD3DDevice();
 	ShaderManager* pShaderManager = pRenderer->GetShaderManager();
+
+	m_MaxNumBLASs = maxNumBLASs;
+
+	m_MaxNumShaderVisibleHeapDescriptors = DISPATCH_DESCRIPTOR_INDEX_COUNT + (LOCAL_ROOT_PARAM_DESCRIPTOR_COUNT * MAX_TRIGROUP_COUNT_PER_BLAS * m_MaxNumBLASs);
+
+	m_pIndexCreator = new CIndexCreator;
+	m_pIndexCreator->Initialize(m_MaxNumBLASs);
 
 	D3D12_COMMAND_QUEUE_DESC queueDesc = {};
 	queueDesc.Flags = D3D12_COMMAND_QUEUE_FLAG_NONE;
@@ -38,7 +46,7 @@ bool RayTracingManager::Initialize(D3D12Renderer* pRenderer, UINT width, UINT he
 	m_Height = height;
 
 	createDescriptorHeapCBV_SRV_UAV();
-	createShaderVisibleHeap();
+	createShaderVisibleHeap(m_MaxNumShaderVisibleHeapDescriptors);
 
 	m_pRayShader = pShaderManager->CreateShaderDXC(L"Raytracing.hlsl", L"", L"lib_6_3", 0);
 
@@ -48,11 +56,7 @@ bool RayTracingManager::Initialize(D3D12Renderer* pRenderer, UINT width, UINT he
 	createRootSignatures();
 	createRaytracingPipelineStateObject();
 
-	// build geometry
-	initMesh();
-
-	// build acceleration structure
-	initAccelerationStructure();
+	buildShaderTables();
 
 	return true;
 }
@@ -121,10 +125,15 @@ void RayTracingManager::Cleanup()
 			blasInstance->pBLAS = nullptr;
 		}
 	}
-	cleanupMesh();
 
 	cleanupDescriptorHeapCBV_SRV_UAV();
 	cleanupDispatchHeap();
+
+	if (m_pIndexCreator)
+	{
+		delete m_pIndexCreator;
+		m_pIndexCreator = nullptr;
+	}
 }
 
 void RayTracingManager::DoRaytracing(ID3D12GraphicsCommandList6* pCommandList)
@@ -208,28 +217,74 @@ BLASInstance* RayTracingManager::AllocBLAS(
 	ID3D12Resource* pVertexBuffer,
 	UINT vertexSize,
 	UINT numVertices,
-	const BLASBuilTriGroupInfo* pTriGroupInfoList,
+	const IndexedTriGroup* pTriGroupInfoList,
 	UINT numTriGroupInfos,
 	bool bAllowUpdate)
 {
 	BLASInstance* pBlasInstance = buildBLAS(pVertexBuffer, vertexSize, numVertices, pTriGroupInfoList, numTriGroupInfos, bAllowUpdate);
 	m_BlasInstanceList.emplace_back(pBlasInstance);
+	m_UpdateAccelerationStructureFlags = UPDATE_ACCELERATION_STRCTURE_TYPE_HIT_GROUP_SHADER_TABLE | UPDATE_ACCELERATION_STRCTURE_TYPE_TLAS;
 
 	return pBlasInstance;
 }
 
 void RayTracingManager::FreeBLAS(BLASInstance* pBlasHandle)
 {
-	BLASInstance* pBlasInstance = (BLASInstance*)pBlasHandle;
+	m_pFreedBlasInstanceList.emplace_back(pBlasHandle);
+	m_UpdateAccelerationStructureFlags = UPDATE_ACCELERATION_STRCTURE_TYPE_HIT_GROUP_SHADER_TABLE | UPDATE_ACCELERATION_STRCTURE_TYPE_TLAS;
+}
 
-	m_BlasInstanceList.remove(pBlasInstance);
+bool RayTracingManager::UpdateAccelerationStructure()
+{
+	ID3D12Device5* pD3DDeivce = m_pRenderer->GetD3DDevice();
+	D3D12ResourceManager* pResourceManager = m_pRenderer->GetResourceManager();
 
-	if (pBlasInstance->pBLAS)
+	// Build TLAS
+	BLASInstance* ppBlasInstancelist[1024] = {};
+	UINT numBlasInstances = 0;
+	UINT numRequiredShaderRecordCount = 0;
+
+	for (auto curr : m_BlasInstanceList)
 	{
-		pBlasInstance->pBLAS->Release();
-		pBlasInstance->pBLAS = nullptr;
+		ASSERT(numBlasInstances < (uint64_t)_countof(ppBlasInstancelist), "Too many BLAS instances");
+		ppBlasInstancelist[numBlasInstances] = curr;
+		numBlasInstances++;
+		numRequiredShaderRecordCount += curr->NumTriGroups;
 	}
-	free(pBlasInstance);
+
+	if (m_UpdateAccelerationStructureFlags & UPDATE_ACCELERATION_STRCTURE_TYPE_HIT_GROUP_SHADER_TABLE)
+	{
+		// HitGroupShaderTable갱신과 함께 BLAS별로 ShderReocordIndex를 설정한다.
+		updateHitGroupShaderTable(numRequiredShaderRecordCount);
+		m_UpdateAccelerationStructureFlags &= (~UPDATE_ACCELERATION_STRCTURE_TYPE_HIT_GROUP_SHADER_TABLE);
+	}
+	// TLAS빌드
+	if (m_UpdateAccelerationStructureFlags & UPDATE_ACCELERATION_STRCTURE_TYPE_TLAS)
+	{
+		if (m_pTLAS)
+		{
+			m_pTLAS->Release();
+			m_pTLAS = nullptr;
+		}
+		if (m_pBLASInstanceDescResouce)
+		{
+			m_pBLASInstanceDescResouce->Release();
+			m_pBLASInstanceDescResouce = nullptr;
+		}
+		// TLAS빌드를 위한 인스턴스 리소스 할당
+		D3DUtil::CreateUploadBuffer(m_pD3DDevice, nullptr, sizeof(D3D12_RAYTRACING_INSTANCE_DESC) * numBlasInstances, &m_pBLASInstanceDescResouce, L"InstanceDescs");
+
+		m_pTLAS = buildTLAS(m_pBLASInstanceDescResouce, ppBlasInstancelist, numBlasInstances, FALSE, 0);
+		m_UpdateAccelerationStructureFlags &= (~UPDATE_ACCELERATION_STRCTURE_TYPE_TLAS);
+	}
+
+	return true;
+}
+
+void RayTracingManager::UpdateBLASTransform(BLASInstance* pBlasInstance, const XMMATRIX& worldMatrix)
+{
+	pBlasInstance->Transform = worldMatrix;
+	m_UpdateAccelerationStructureFlags |= UPDATE_ACCELERATION_STRCTURE_TYPE_TLAS;
 }
 
 void RayTracingManager::UpdateWindowSize(UINT width, UINT height)
@@ -243,49 +298,11 @@ void RayTracingManager::UpdateWindowSize(UINT width, UINT height)
 	createOutputDepthBuffer(m_Width, m_Height);
 }
 
-bool RayTracingManager::initAccelerationStructure()
-{
-	// TODO: 바깥에서 버텍스데이터와 텍스처를 입력하는 식으로 변경할 것
-	ID3D12Device5* pD3DDeivce = m_pRenderer->GetD3DDevice();
-	D3D12ResourceManager* pResourceManager = m_pRenderer->GetResourceManager();
-
-	// Build BLAS
-	BLASBuilTriGroupInfo buildInfo = {};
-	buildInfo.pIB = m_pIndexBuffer;
-	buildInfo.bNotOpaque = false;
-	buildInfo.NumIndices = 6;
-	buildInfo.pTexResource = m_pTexResource;
-	buildInfo.TexFormat = m_TexFormat;
-	buildInfo.TexWidth = m_TexWidth;
-	buildInfo.TexHeight = m_TexHeight;
-	m_pBlasInstance = AllocBLAS(m_pVertexBuffer, sizeof(Vertex), 4, &buildInfo, 1, true);
-
-	// Build Shader Tables
-	buildShaderTables();
-
-	// Build TLAS
-	BLASInstance* ppBlasInstancelist[256] = {};
-	UINT numBlasInstances = 0;
-
-	for (auto pCurr : m_BlasInstanceList)
-	{
-		ASSERT(numBlasInstances < (uint64_t)_countof(ppBlasInstancelist), "Too many BLAS instances");
-		ppBlasInstancelist[numBlasInstances] = pCurr;
-		numBlasInstances++;
-	}
-
-	D3DUtil::CreateUploadBuffer(m_pD3DDevice, nullptr, sizeof(D3D12_RAYTRACING_INSTANCE_DESC) * numBlasInstances, &m_pBLASInstanceDescResouce, L"InstanceDescs");
-
-	m_pTLAS = buildTLAS(m_pBLASInstanceDescResouce, ppBlasInstancelist, numBlasInstances, false, 0);
-
-	return true;
-}
-
 BLASInstance* RayTracingManager::buildBLAS(
 	ID3D12Resource* pVertexBuffer,
 	UINT vertexSize,
 	UINT numVertices,
-	const BLASBuilTriGroupInfo* pTriGroupInfoList,
+	const IndexedTriGroup* pTriGroupInfoList,
 	UINT numTriGroupInfos,
 	bool bAllowUpdate)
 {
@@ -301,10 +318,13 @@ BLASInstance* RayTracingManager::buildBLAS(
 
 	ASSERT(numTriGroupInfos < MAX_TRIGROUP_COUNT_PER_BLAS, "Too many triangle groups in BLAS");
 
+	uint32_t index = m_pIndexCreator->Alloc();
+	ASSERT(index != -1, "Failed to allocate index for BLASInstance.");
+
 	size_t blasInstanceMemSize = sizeof(BLASInstance) - sizeof(RootArgument) + sizeof(RootArgument) * numTriGroupInfos;
 	pBlasInstance = (BLASInstance*)malloc(blasInstanceMemSize);
 	memset(pBlasInstance, 0, blasInstanceMemSize);
-	pBlasInstance->ID = 0;
+	pBlasInstance->ID = index;
 	pBlasInstance->Transform = XMMatrixIdentity();
 	pBlasInstance->NumVertices = numVertices;
 
@@ -313,11 +333,11 @@ BLASInstance* RayTracingManager::buildBLAS(
 	D3D12_GPU_VIRTUAL_ADDRESS VB_GPU_Ptr = pVertexBuffer->GetGPUVirtualAddress();
 	for (UINT i = 0; i < numTriGroupInfos; i++)
 	{
-		D3D12_GPU_VIRTUAL_ADDRESS IB_GPU_Ptr = pTriGroupInfoList[i].pIB->GetGPUVirtualAddress();
+		D3D12_GPU_VIRTUAL_ADDRESS IB_GPU_Ptr = pTriGroupInfoList[i].IndexBuffer->GetGPUVirtualAddress();
 
 		pGeomDescList[i].Type = D3D12_RAYTRACING_GEOMETRY_TYPE_TRIANGLES;
 		pGeomDescList[i].Triangles.IndexBuffer = IB_GPU_Ptr;
-		pGeomDescList[i].Triangles.IndexCount = pTriGroupInfoList[i].NumIndices;
+		pGeomDescList[i].Triangles.IndexCount = pTriGroupInfoList[i].NumTriangles * 3;
 		pGeomDescList[i].Triangles.IndexFormat = DXGI_FORMAT_R16_UINT;
 		pGeomDescList[i].Triangles.Transform3x4 = 0;
 		pGeomDescList[i].Triangles.VertexFormat = DXGI_FORMAT_R32G32B32_FLOAT;
@@ -327,14 +347,7 @@ BLASInstance* RayTracingManager::buildBLAS(
 		// Mark the geometry as opaque. 
 		// PERFORMANCE TIP: mark geometry as opaque whenever applicable as it can enable important ray processing optimizations.
 		// Note: When rays encounter opaque geometry an any hit shader will not be executed whether it is present or not.
-		if (pTriGroupInfoList[i].bNotOpaque)
-		{
-			pGeomDescList[i].Flags = D3D12_RAYTRACING_GEOMETRY_FLAG_NONE;
-		}
-		else
-		{
-			pGeomDescList[i].Flags = D3D12_RAYTRACING_GEOMETRY_FLAG_OPAQUE;
-		}
+		pGeomDescList[i].Flags = pTriGroupInfoList[i].bOpaque ? D3D12_RAYTRACING_GEOMETRY_FLAG_OPAQUE : D3D12_RAYTRACING_GEOMETRY_FLAG_NONE;
 	}
 
 	// Build BLAS
@@ -415,7 +428,7 @@ BLASInstance* RayTracingManager::buildBLAS(
 
 	// Set Local Root Parameters
 	{
-		UINT descriptorIndex = DISPATCH_DESCRIPTOR_INDEX_COUNT + (pBlasInstance->ID * MAX_TRIGROUP_COUNT_PER_BLAS);
+		UINT descriptorIndex = DISPATCH_DESCRIPTOR_INDEX_COUNT + (LOCAL_ROOT_PARAM_DESCRIPTOR_COUNT * pBlasInstance->ID * MAX_TRIGROUP_COUNT_PER_BLAS);
 		CD3DX12_CPU_DESCRIPTOR_HANDLE srvCpu(m_pShaderVisibleDescriptorHeap->GetCPUDescriptorHandleForHeapStart(), descriptorIndex, m_DescriptorSize);
 		CD3DX12_GPU_DESCRIPTOR_HANDLE srvGpu(m_pShaderVisibleDescriptorHeap->GetGPUDescriptorHandleForHeapStart(), descriptorIndex, m_DescriptorSize);
 
@@ -439,26 +452,24 @@ BLASInstance* RayTracingManager::buildBLAS(
 
 			// Create Shader Resource from Index Buffer			
 			srvDesc.Buffer.FirstElement = 0;
-			srvDesc.Buffer.NumElements = (pTriGroupInfoList[i].NumIndices * 2) / 4;	// compute shader에서 4bytes 단위로 읽어야 하므로...
+			srvDesc.Buffer.NumElements = (pTriGroupInfoList[i].NumTriangles * 3 * 2) / 4;	// compute shader에서 4bytes 단위로 읽어야 하므로...
 			srvDesc.Format = DXGI_FORMAT_R32_TYPELESS;
 			srvDesc.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_RAW;
 			srvDesc.Buffer.StructureByteStride = 0;
 
-			m_pD3DDevice->CreateShaderResourceView(pTriGroupInfoList[i].pIB, &srvDesc, srvCpu);
+			m_pD3DDevice->CreateShaderResourceView(pTriGroupInfoList[i].IndexBuffer, &srvDesc, srvCpu);
 			pBlasInstance->pRootArg[i].SrvIB = srvGpu;
 			srvCpu.Offset(1, m_DescriptorSize);
 			srvGpu.Offset(1, m_DescriptorSize);
 
 			// Create Shader Resource View from TextureResource
-			if (pTriGroupInfoList[i].pTexResource)
+			if (pTriGroupInfoList[i].pTexHandle)
 			{
-				D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
-				srvDesc.Format = pTriGroupInfoList[i].TexFormat;
-				srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-				srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
-				srvDesc.Texture2D.MipLevels = 1;
-
-				m_pD3DDevice->CreateShaderResourceView(m_pTexResource, &srvDesc, srvCpu);
+				D3D12_CPU_DESCRIPTOR_HANDLE srvTexSrc = pTriGroupInfoList[i].pTexHandle->SRV;
+				if (srvTexSrc.ptr)
+				{
+					pD3DDevice->CopyDescriptorsSimple(1, srvCpu, srvTexSrc, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+				}
 			}
 			pBlasInstance->pRootArg[i].SrvIB = srvGpu;
 			srvCpu.Offset(1, m_DescriptorSize);
@@ -590,6 +601,68 @@ ID3D12Resource* RayTracingManager::buildTLAS(
 	}
 
 	return pTLASResource;
+}
+
+void RayTracingManager::updateHitGroupShaderTable(UINT numShaderRecords)
+{
+	//
+	// wait필요
+	//
+
+	// ShaderRecord in HitGroup Table
+	// |                 0               |                 1               | .... |                 N-1             |        
+	// | [ShaderIdntifier-RootArguments] | [ShaderIdntifier-RootArguments] | .... | [ShaderIdntifier-RootArguments] |
+
+	// Get shader identifiers.
+	ID3D12StateObjectProperties* pStateObjectProperties = nullptr;
+	m_pDXRStateObject->QueryInterface(IID_PPV_ARGS(&pStateObjectProperties));
+
+	// hitgroup Shader Table
+	void* pHitGroupShaderIdentifier = pStateObjectProperties->GetShaderIdentifier(g_HitGroupName[0]);
+	m_pHitGroupShaderTable->CommitResource(numShaderRecords);
+
+	UINT shaderRecordIndex = 0;
+	for (auto& curr : m_BlasInstanceList)
+	{
+		// pBlasInstance->ShaderRecordIndex는 HitGroupShaderTable에서의 ShaderRecord 시작 인덱스.
+		// 이 값은 TLAS빌드 시에 D3D12_RAYTRACING_INSTANCE_DESC::InstanceContributionToHitGroupIndex에 대입한다.
+		curr->ShaderRecordIndex = shaderRecordIndex;
+		for (UINT i = 0; i < curr->NumTriGroups; i++)
+		{
+			ShaderRecord record = ShaderRecord(pHitGroupShaderIdentifier, m_ShaderIdentifierSize, &curr->pRootArg[i], sizeof(RootArgument));
+			m_pHitGroupShaderTable->InsertShaderRecord(&record);
+			shaderRecordIndex++;
+		}
+	}
+
+	m_HitGroupShaderTableStrideInBytes = m_pHitGroupShaderTable->GetShaderRecordSize();
+	m_HitGroupShaderRecordNum = m_pHitGroupShaderTable->GetShaderRecordNum();
+
+	if (pStateObjectProperties)
+	{
+		pStateObjectProperties->Release();
+		pStateObjectProperties = nullptr;
+	}
+}
+
+void RayTracingManager::cleanupPendingFreeedBlasInstace()
+{
+	for (auto& curr : m_pFreedBlasInstanceList)
+	{
+		auto iter = std::find(m_BlasInstanceList.begin(), m_BlasInstanceList.end(), curr);
+		ASSERT(iter != m_BlasInstanceList.end(), "Invalid BLAS handle to free.");
+		if (curr->pBLAS)
+		{
+			uint32_t id = curr->ID;
+			m_pIndexCreator->Free(id);
+			curr->ID = -1;
+			curr->pBLAS->Release();
+			curr->pBLAS = nullptr;
+		}
+		free(curr);
+		m_BlasInstanceList.erase(iter);
+	}
+	m_pFreedBlasInstanceList.clear();
 }
 
 bool RayTracingManager::createOutputDiffuseBuffer(UINT width, UINT height)
@@ -850,26 +923,6 @@ void RayTracingManager::buildShaderTables()
 	m_pHitGroupShaderTable->Initiailze(m_pD3DDevice, m_ShaderIdentifierSize + sizeof(RootArgument), L"HitGroupShaderTable");
 	void* pHitGroupShaderIdentifier = pStateObjectProperties->GetShaderIdentifier(g_HitGroupName[0]);
 
-	// TODO: 여러 개의 BLAS를 사용하게 되면 HitGroupShader Table에서의 위치가 0이 아니다. 실시간 업데이트 지원필요
-	// ShaderRecord in HitGroup Table
-	// |                 0               |                 1               | .... |                 N-1             |        
-	// | [ShaderIdntifier-RootArguments] | [ShaderIdntifier-RootArguments] | .... | [ShaderIdntifier-RootArguments] |
-
-	// m_pBlasInstance->ShaderRecordIndex는 HitGroupShaderTable에서의 ShaderRecord 시작 인덱스.
-	// 이 값은 TLAS빌드 시에 D3D12_RAYTRACING_INSTANCE_DESC::InstanceContributionToHitGroupIndex에 대입한다.
-	m_pBlasInstance->ShaderRecordIndex = 0;	// BLAS가 1개 뿐이므로 확실히 0이다. 하지만 여러 개의 BLAS를 사용하게 되면 HitGroupShader Table에서의 위치가 0이 아니
-
-	RootArgument rootArg = {};
-	rootArg.SrvVB = m_pBlasInstance->pRootArg[0].SrvVB;
-	rootArg.SrvIB = m_pBlasInstance->pRootArg[0].SrvIB;
-	rootArg.SrvTexDiffuse = m_pBlasInstance->pRootArg[0].SrvTexDiffuse;
-
-	m_pHitGroupShaderTable->CommitResource(1);
-	ShaderRecord record = ShaderRecord(pHitGroupShaderIdentifier, m_ShaderIdentifierSize, &rootArg, sizeof(RootArgument));
-	m_pHitGroupShaderTable->InsertShaderRecord(&record);
-	m_HitGroupShaderTableStrideInBytes = m_pHitGroupShaderTable->GetShaderRecordSize();
-	m_HitGroupShaderRecordNum = m_pHitGroupShaderTable->GetShaderRecordNum();
-
 	if (pStateObjectProperties)
 	{
 		pStateObjectProperties->Release();
@@ -920,10 +973,10 @@ void RayTracingManager::cleanupDescriptorHeapCBV_SRV_UAV()
 	}
 }
 
-void RayTracingManager::createShaderVisibleHeap()
+void RayTracingManager::createShaderVisibleHeap(UINT maxNumDescriptors)
 {
 	D3D12_DESCRIPTOR_HEAP_DESC heapDesc = {};
-	heapDesc.NumDescriptors = DISPATCH_DESCRIPTOR_INDEX_COUNT + LOCAL_ROOT_PARAMETER_COUNT;
+	heapDesc.NumDescriptors = maxNumDescriptors;
 	heapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
 	heapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
 
@@ -1010,113 +1063,5 @@ void RayTracingManager::waitForFenceValue()
 	{
 		m_pFence->SetEventOnCompletion(ExpectedFenceValue, m_hFenceEvent);
 		WaitForSingleObject(m_hFenceEvent, INFINITE);
-	}
-}
-
-bool RayTracingManager::initMesh()
-{
-	bool bResult = false;
-	HRESULT hr = S_OK;
-
-	ID3D12Device5* pD3DDeivce = m_pRenderer->GetD3DDevice();
-	D3D12ResourceManager* pResourceManager = m_pRenderer->GetResourceManager();
-
-	// TODO: 바깥에서 버텍스데이터와 텍스처를 입력하는 식으로 변경할 것
-	// Create the vertex buffer.
-	Vertex vertices[] =
-	{
-		{ { -0.25f, 0.25f, 0.1f }, { 0.0f, 1.0f }, {0.0f, 0.0f, 1.0f} },
-		{ { 0.25f, 0.25f, 0.1f }, { 0.0f, 0.0f }, {0.0f, 0.0f, 1.0f} },
-		{ { 0.25f, -0.25f, 0.1f }, { 1.0f, 0.0f }, {0.0f, 0.0f, 1.0f} },
-		{ { -0.25f, -0.25f, 0.1f }, { 1.0f, 1.0f }, {0.0f, 0.0f, 1.0f} }
-	};
-
-	uint16_t indices[] =
-	{
-		0, 1, 2,
-		0, 2, 3
-	};
-
-	D3D12_VERTEX_BUFFER_VIEW vertexBufferView = {};
-	D3D12_INDEX_BUFFER_VIEW indexBufferView = {};
-
-	if (FAILED(pResourceManager->CreateVertexBuffer(sizeof(Vertex), (size_t)_countof(vertices), &vertexBufferView, &m_pVertexBuffer, vertices, false)))
-	{
-		ASSERT(false, "Failed to create vertex buffer");
-		goto lb_return;
-	}
-
-	const size_t numFaces = 2;
-	size_t indicesSize = numFaces * 3 * sizeof(uint16_t);
-	size_t alignedIndicesSize = (indicesSize / 16 + ((indicesSize % 16) != 0)) * 16;
-	size_t alignedIndexNum = alignedIndicesSize / sizeof(uint16_t);
-
-	if (FAILED(pResourceManager->CreateIndexBuffer(alignedIndexNum, &indexBufferView, &m_pIndexBuffer, indices, sizeof(indices) > 0)))
-	{
-		ASSERT(false, "Failed to create index buffer");
-		goto lb_return;
-	}
-
-	// Create Texture
-	const UINT texWidth = 16;
-	const UINT texHeight = 16;;
-	DXGI_FORMAT texFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
-
-	uint8_t* pImage = (uint8_t*)malloc(texWidth * texHeight * 4);
-	memset(pImage, 0, texWidth * texHeight * 4);
-
-	BOOL bFirstColorIsWhite = TRUE;
-
-	for (UINT y = 0; y < texHeight; y++)
-	{
-		for (UINT x = 0; x < texWidth; x++)
-		{
-
-			RGBA* pDest = (RGBA*)(pImage + (x + y * texWidth) * 4);
-
-			pDest->r = rand() % 255;
-			pDest->g = rand() % 255;
-			pDest->b = rand() % 255;
-
-			if ((bFirstColorIsWhite + x) % 2)
-			{
-				pDest->r = 255;
-				pDest->g = 255;
-				pDest->b = 255;
-			}
-			else
-			{
-				pDest->r = 0;
-				pDest->g = 0;
-				pDest->b = 0;
-			}
-			pDest->a = 255;
-		}
-		bFirstColorIsWhite++;
-		bFirstColorIsWhite %= 2;
-	}
-	pResourceManager->CreateTexture(&m_pTexResource, texWidth, texHeight, texFormat, pImage);
-	m_TexWidth = texWidth;
-	m_TexHeight = texHeight;
-	m_TexFormat = texFormat;
-
-	free(pImage);
-
-	bResult = true;
-lb_return:
-	return bResult;
-}
-
-void RayTracingManager::cleanupMesh()
-{
-	if (m_pVertexBuffer)
-	{
-		m_pVertexBuffer->Release();
-		m_pVertexBuffer = nullptr;
-	}
-	if (m_pIndexBuffer)
-	{
-		m_pIndexBuffer->Release();
-		m_pIndexBuffer = nullptr;
 	}
 }

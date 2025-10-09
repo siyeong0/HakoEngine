@@ -3,6 +3,10 @@
 #include "Interface/IRenderer.h"
 #include "Renderer_typedef.h"
 
+// TODO: Remove
+#include <queue>
+#include "RenderItem.h"
+
 #define USE_MULTI_THREAD
 
 class ConstantBufferManager;
@@ -73,6 +77,7 @@ public:
 	void EnsureCompleted();
 
 	ID3D12Device5* GetD3DDevice() const { return m_pD3DDevice; }
+	RayTracingManager* GetRayTracingManager() { return m_pRayTracingManager; }
 	D3D12ResourceManager* GetResourceManager() { return m_pResourceManager; }
 	ShaderManager* GetShaderManager() { return m_pShaderManager; }
 	RootSignatureManager* GetRootSignatureManager() { return m_pRootSignatureManager; }
@@ -132,10 +137,12 @@ private:
 
 	static constexpr size_t NUM_RENDER_QUEUE_ITEMS_OPAQUE = 8192;
 	static constexpr size_t NUM_RENDER_QUEUE_ITEMS_TRANSPARENT = 2048;
+	static constexpr size_t NUM_RENDER_QUEUE_ITEMS_RAYTRACING = 8192;
 
 	std::atomic<ERenderPassType> m_RenderPhase = {};
 	RenderQueue* m_ppRenderQueueOpaque[MAX_RENDER_THREAD_COUNT] = {};
 	RenderQueue* m_ppRenderQueueTrasnparent[MAX_RENDER_THREAD_COUNT] = {};
+	std::queue<RenderItem> m_ppRenderQueueRayTracing;
 
 	int m_NumRenderThreads = 0;
 	int m_CurrThreadIndex = 0;

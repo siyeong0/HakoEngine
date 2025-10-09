@@ -9,14 +9,6 @@ enum EBasicMeshDescriptorIndexPerTriGroup
 	BASIC_MESH_DESCRIPTOR_INDEX_PER_TRI_GROUP_TEX = 0
 };
 
-struct IndexedTriGroup
-{
-	ID3D12Resource* IndexBuffer = nullptr;
-	D3D12_INDEX_BUFFER_VIEW IndexBufferView = {};
-	UINT NumTriangles = 0;
-	TextureHandle* pTexHandle = nullptr;
-};
-
 struct PSOHandle;
 class D3D12Renderer;
 
@@ -45,6 +37,7 @@ public:
 
 	bool Initialize(D3D12Renderer* pRenderer);
 	void Draw(int threadIndex, ID3D12GraphicsCommandList6* pCommandList, const XMMATRIX* worldMatrix);
+	void UpdateBLASTransform(const XMMATRIX& worldMatrix);
 
 private:
 	bool initPipelineState();
@@ -64,6 +57,8 @@ private:
 	IndexedTriGroup* m_pTriGroupList = nullptr;
 	size_t m_NumTriGroups = 0;
 	size_t m_MaxNumTriGroups = 0;
+
+	BLASInstance* m_pBlasInstance = nullptr;
 };
 
 

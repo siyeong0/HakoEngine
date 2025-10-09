@@ -37,15 +37,13 @@ struct RootArgument
 	D3D12_GPU_DESCRIPTOR_HANDLE SrvTexDiffuse;
 };
 
-struct BLASBuilTriGroupInfo
+struct IndexedTriGroup
 {
-	ID3D12Resource* pIB;
-	ID3D12Resource* pTexResource;
-	UINT TexWidth;
-	UINT TexHeight;
-	DXGI_FORMAT TexFormat;
-	UINT NumIndices;
-	bool bNotOpaque;
+	ID3D12Resource* IndexBuffer = nullptr;
+	D3D12_INDEX_BUFFER_VIEW IndexBufferView = {};
+	UINT NumTriangles = 0;
+	TextureHandle* pTexHandle = nullptr;
+	bool bOpaque = true;
 };
 
 struct BLASInstance
