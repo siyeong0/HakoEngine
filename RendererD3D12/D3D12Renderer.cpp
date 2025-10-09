@@ -522,7 +522,7 @@ void ENGINECALL D3D12Renderer::EndRender()
 	CD3DX12_CPU_DESCRIPTOR_HANDLE dsvHandle(m_pDSVHeap->GetCPUDescriptorHandleForHeapStart());
 
 	// TODO: Combine raytracing output and rasterized output.
-	bool bUseRayTracing = false;
+	bool bUseRayTracing = true;
 
 	// Do raytracing and copy the output to the back buffer.
 	if (bUseRayTracing)

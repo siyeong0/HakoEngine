@@ -48,7 +48,7 @@ struct BLASBuilTriGroupInfo
 	bool bNotOpaque;
 };
 
-struct BALSInstance
+struct BLASInstance
 {
 	void* pSrcMeshObj;
 	ID3D12Resource* pBLAS;

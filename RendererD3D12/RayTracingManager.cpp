@@ -113,6 +113,14 @@ void RayTracingManager::Cleanup()
 		m_pBLASInstanceDescResouce->Release();
 		m_pBLASInstanceDescResouce = nullptr;
 	}
+	for (auto& blasInstance : m_BlasInstanceList)
+	{
+		if (blasInstance->pBLAS)
+		{
+			blasInstance->pBLAS->Release();
+			blasInstance->pBLAS = nullptr;
+		}
+	}
 	cleanupMesh();
 
 	cleanupDescriptorHeapCBV_SRV_UAV();
@@ -196,7 +204,7 @@ void RayTracingManager::DoRaytracing(ID3D12GraphicsCommandList6* pCommandList)
 	pCommandList->ResourceBarrier((UINT)_countof(rcBarrierInv), rcBarrierInv);
 }
 
-BALSInstance* RayTracingManager::AllocBLAS(
+BLASInstance* RayTracingManager::AllocBLAS(
 	ID3D12Resource* pVertexBuffer,
 	UINT vertexSize,
 	UINT numVertices,
@@ -204,15 +212,15 @@ BALSInstance* RayTracingManager::AllocBLAS(
 	UINT numTriGroupInfos,
 	bool bAllowUpdate)
 {
-	BALSInstance* pBlasInstance = buildBLAS(pVertexBuffer, vertexSize, numVertices, pTriGroupInfoList, numTriGroupInfos, bAllowUpdate);
+	BLASInstance* pBlasInstance = buildBLAS(pVertexBuffer, vertexSize, numVertices, pTriGroupInfoList, numTriGroupInfos, bAllowUpdate);
 	m_BlasInstanceList.emplace_back(pBlasInstance);
 
 	return pBlasInstance;
 }
 
-void RayTracingManager::FreeBLAS(BALSInstance* pBlasHandle)
+void RayTracingManager::FreeBLAS(BLASInstance* pBlasHandle)
 {
-	BALSInstance* pBlasInstance = (BALSInstance*)pBlasHandle;
+	BLASInstance* pBlasInstance = (BLASInstance*)pBlasHandle;
 
 	m_BlasInstanceList.remove(pBlasInstance);
 
@@ -256,7 +264,7 @@ bool RayTracingManager::initAccelerationStructure()
 	buildShaderTables();
 
 	// Build TLAS
-	BALSInstance* ppBlasInstancelist[256] = {};
+	BLASInstance* ppBlasInstancelist[256] = {};
 	UINT numBlasInstances = 0;
 
 	for (auto pCurr : m_BlasInstanceList)
@@ -273,7 +281,7 @@ bool RayTracingManager::initAccelerationStructure()
 	return true;
 }
 
-BALSInstance* RayTracingManager::buildBLAS(
+BLASInstance* RayTracingManager::buildBLAS(
 	ID3D12Resource* pVertexBuffer,
 	UINT vertexSize,
 	UINT numVertices,
@@ -286,15 +294,15 @@ BALSInstance* RayTracingManager::buildBLAS(
 	//
 	// 추후에 ID3D12CommandList포인터와 UINT CurContextIndex를 받아서 중첩렌더링을 처리할 수 있도록 수정한다.
 	//
-	BALSInstance* pBlasInstance = nullptr;
+	BLASInstance* pBlasInstance = nullptr;
 	ID3D12Resource* pBLAS = nullptr;
 
 	ID3D12Device5* pD3DDevice = m_pRenderer->GetD3DDevice();
 
 	ASSERT(numTriGroupInfos < MAX_TRIGROUP_COUNT_PER_BLAS, "Too many triangle groups in BLAS");
 
-	size_t blasInstanceMemSize = sizeof(BALSInstance) - sizeof(RootArgument) + sizeof(RootArgument) * numTriGroupInfos;
-	pBlasInstance = (BALSInstance*)malloc(blasInstanceMemSize);
+	size_t blasInstanceMemSize = sizeof(BLASInstance) - sizeof(RootArgument) + sizeof(RootArgument) * numTriGroupInfos;
+	pBlasInstance = (BLASInstance*)malloc(blasInstanceMemSize);
 	memset(pBlasInstance, 0, blasInstanceMemSize);
 	pBlasInstance->ID = 0;
 	pBlasInstance->Transform = XMMatrixIdentity();
@@ -466,7 +474,7 @@ BALSInstance* RayTracingManager::buildBLAS(
 
 ID3D12Resource* RayTracingManager::buildTLAS(
 	ID3D12Resource* pInstanceDescResource,
-	BALSInstance** ppInstanceList,
+	BLASInstance** ppInstanceList,
 	UINT numBlasInstances,
 	bool bAllowUpdate,
 	UINT currContextIndex)
@@ -528,7 +536,7 @@ ID3D12Resource* RayTracingManager::buildTLAS(
 	D3D12_RAYTRACING_INSTANCE_DESC* pInstanceDescEntry = pInstanceDescList;
 	for (UINT i = 0; i < numBlasInstances; i++)
 	{
-		const BALSInstance* pInstanceSrc = ppInstanceList[i];
+		const BLASInstance* pInstanceSrc = ppInstanceList[i];
 		XMMATRIX matTranspose = XMMatrixTranspose(pInstanceSrc->Transform);
 		memcpy(pInstanceDescEntry->Transform, &matTranspose, sizeof(pInstanceDescEntry->Transform));
 
