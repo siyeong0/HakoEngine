@@ -12,7 +12,7 @@ enum RenderItemType
 
 struct RenderObjectParam
 {
-	XMMATRIX matWorld;
+	Matrix4x4 matWorld;
 };
 
 struct RenderSpriteParam

@@ -46,7 +46,7 @@
 #include <mutex>
 #include <unordered_map>
 
-#include "Renderer_typedef.h"
+#include "RenderTypes.h"
 #include "ConstantBuffer.h"
 #include "Interface/IRenderer.h"
 #include "Interface/IMeshObject.h"

@@ -3,25 +3,26 @@
 #include <cmath>
 #include "Common/ProcessorInfo.h"
 #include "BasicMeshObject.h"
-#include "SpriteObject.h"
+#include "CommandListPool.h"
+#include "ConstantBufferManager.h"
 #include "D3D12ResourceManager.h"
-#include "FontManager.h"
 #include "DescriptorPool.h"
+#include "FontManager.h"
+#include "PSOManager.h"
+#include "RayTracingManager.h"
+#include "RenderQueue.h"
+#include "RenderThread.h"
+#include "RootSignatureManager.h"
+#include "ShaderManager.h"
 #include "SimpleConstantBufferPool.h"
 #include "SingleDescriptorAllocator.h"
-#include "ShaderManager.h"
 #include "SkyObject.h"
-#include "ConstantBufferManager.h"
+#include "SpriteObject.h"
 #include "TextureManager.h"
-#include "RenderQueue.h"
-#include "RootSignatureManager.h"
-#include "CommandListPool.h"
-#include "PSOManager.h"
-#include "RenderThread.h"
-#include "RayTracingManager.h"
+
 #include "D3D12Renderer.h"
 
-bool g_bUseRayTracing = false;
+bool g_bUseRayTracing = true;
 using namespace DirectX;
 
 // --------------------------------------------------
@@ -350,6 +351,7 @@ void ENGINECALL D3D12Renderer::Cleanup()
 	SAFE_DELETE(m_pRootSignatureManager);
 	SAFE_DELETE(m_pPSOManager);
 	SAFE_DELETE(m_pRayTracingManager);
+
 	SAFE_DELETE(m_pSingleDescriptorAllocator);
 
 	cleanupDescriptorHeapForRTV();
@@ -547,8 +549,8 @@ void ENGINECALL D3D12Renderer::Present()
 	fence();
 	// Transfer the Back Buffer to the Primary Buffer.
 
-	uint m_SyncInterval = 1;	// VSync On
-	//uint m_SyncInterval = 0;	// VSync Off
+	//uint m_SyncInterval = 1;	// VSync On
+	uint m_SyncInterval = 0;	// VSync Off
 
 	uint uiSyncInterval = m_SyncInterval;
 	uint uiPresentFlags = 0;
@@ -579,7 +581,7 @@ void ENGINECALL D3D12Renderer::Present()
 
 void ENGINECALL D3D12Renderer::RenderMeshObject(
 	IMeshObject* pMeshObj,
-	const XMMATRIX* pMatWorld,
+	const Matrix4x4* pMatWorld,
 	ERenderPassType renderPass)
 {
 	RenderItem item = {};
@@ -977,6 +979,11 @@ bool ENGINECALL D3D12Renderer::IsGpuUploadHeapsEnabled() const
 // Internal methods
 // --------------------------------------------------
 
+D3D12Renderer::~D3D12Renderer()
+{
+	Cleanup();
+}
+
 void D3D12Renderer::ProcessByThread(int threadIndex)
 {
 	CommandListPool* pCommandListPool = m_ppCommandListPool[m_CurrContextIndex][threadIndex];	// 현재 사용중인 command list pool
@@ -1024,7 +1031,7 @@ SimpleConstantBufferPool* D3D12Renderer::GetConstantBufferPool(CONSTANT_BUFFER_T
 	return pConstBufferPool;
 }
 
-void D3D12Renderer::GetViewProjMatrix(XMMATRIX* outMatView, XMMATRIX* outMatProj) const
+void D3D12Renderer::GetViewProjMatrix(Matrix4x4* outMatView, Matrix4x4* outMatProj) const
 {
 	*outMatView = XMMatrixTranspose(m_PerFrameCB.View);
 	*outMatProj = XMMatrixTranspose(m_PerFrameCB.Proj);
@@ -1060,33 +1067,33 @@ void D3D12Renderer::updateCamera()
 	XMVECTOR zAxis = XMVectorSet(0.0f, 0.0f, 1.0f, 0.0f);
 	XMVECTOR xAxis = XMVectorSet(1.0f, 0.0f, 0.0f, 0.0f);
 
-	XMMATRIX matRotPitch = XMMatrixRotationX(m_fCamPitch);
-	XMMATRIX matRotYaw = XMMatrixRotationY(m_fCamYaw);
+	Matrix4x4 matRotPitch = XMMatrixRotationX(m_fCamPitch);
+	Matrix4x4 matRotYaw = XMMatrixRotationY(m_fCamYaw);
 
-	XMMATRIX matCamRot = XMMatrixMultiply(matRotPitch, matRotYaw);
+	Matrix4x4 matCamRot = XMMatrixMultiply(matRotPitch, matRotYaw);
 
 	m_CamDir = XMVector3Normalize(XMVector3Transform(zAxis, matCamRot));
 	m_CamRight = XMVector3Normalize(XMVector3Cross(yAxis, m_CamDir));
 	m_CamUp = XMVector3Normalize(XMVector3Cross(m_CamDir, m_CamRight));
 
 	// View matrix
-	XMMATRIX view = XMMatrixLookToLH(m_CamPos, m_CamDir, m_CamUp);
+	Matrix4x4 view = XMMatrixLookToLH(m_CamPos, m_CamDir, m_CamUp);
 
 	// Proj matrix
 	float fovY = XM_PIDIV4; // (rad)
 	float aspectRatio = (float)m_Width / (float)m_Height;
-	XMMATRIX proj = XMMatrixPerspectiveFovLH(fovY, aspectRatio, NEAR_Z, FAR_Z);
+	Matrix4x4 proj = XMMatrixPerspectiveFovLH(fovY, aspectRatio, NEAR_Z, FAR_Z);
 
 	// View x Proj matrix
-	XMMATRIX viewProj = XMMatrixMultiply(view, proj);
+	Matrix4x4 viewProj = XMMatrixMultiply(view, proj);
 
 	// Inverse matrices
 	XMVECTOR det;
-	XMMATRIX invView = XMMatrixInverse(&det, view);
+	Matrix4x4 invView = XMMatrixInverse(&det, view);
 	ASSERT(det.m128_f32[0] != 0.0f, "Matrix is not invertible.");
-	XMMATRIX invProj = XMMatrixInverse(&det, proj);
+	Matrix4x4 invProj = XMMatrixInverse(&det, proj);
 	ASSERT(det.m128_f32[0] != 0.0f, "Matrix is not invertible.");
-	XMMATRIX invViewProj = XMMatrixInverse(&det, viewProj);
+	Matrix4x4 invViewProj = XMMatrixInverse(&det, viewProj);
 	ASSERT(det.m128_f32[0] != 0.0f, "Matrix is not invertible.");
 
 	// Store to the constant buffer.

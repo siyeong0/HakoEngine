@@ -86,7 +86,7 @@ void ENGINECALL BasicMeshObject::EndCreateMesh()
 {
 	// TODO: RT 사용시만
 	RayTracingManager* pRayTracingManager = m_pRenderer->GetRayTracingManager();
-	m_pBlasInstance = pRayTracingManager->AllocBLAS(m_pVertexBuffer, sizeof(Vertex), m_VertexBufferView.SizeInBytes / sizeof(Vertex), m_pTriGroupList, m_NumTriGroups, false);
+	m_pBLASHandle = pRayTracingManager->AllocBLAS(m_pVertexBuffer, sizeof(Vertex), m_VertexBufferView.SizeInBytes / sizeof(Vertex), m_pTriGroupList, m_NumTriGroups, false);
 }
 
 bool BasicMeshObject::Initialize(D3D12Renderer* pRenderer)
@@ -99,7 +99,7 @@ bool BasicMeshObject::Initialize(D3D12Renderer* pRenderer)
 	return bResult;
 }
 
-void BasicMeshObject::Draw(int threadIndex, ID3D12GraphicsCommandList6* pCommandList, const XMMATRIX* worldMatrix)
+void BasicMeshObject::Draw(int threadIndex, ID3D12GraphicsCommandList6* pCommandList, const Matrix4x4* worldMatrix)
 {
 	ID3D12Device5* pDevice = m_pRenderer->GetD3DDevice();
 	uint srvDescriptorSize = m_pRenderer->GetSrvDescriptorSize();
@@ -157,10 +157,10 @@ void BasicMeshObject::Draw(int threadIndex, ID3D12GraphicsCommandList6* pCommand
 	}
 }
 
-void BasicMeshObject::UpdateBLASTransform(const XMMATRIX& worldMatrix)
+void BasicMeshObject::UpdateBLASTransform(const Matrix4x4& worldMatrix)
 {
 	RayTracingManager* pRayTracingManager = m_pRenderer->GetRayTracingManager();
-	pRayTracingManager->UpdateBLASTransform(m_pBlasInstance, worldMatrix);
+	pRayTracingManager->UpdateBLASTransform(m_pBLASHandle, worldMatrix);
 }
 
 bool BasicMeshObject::initPipelineState()
@@ -246,5 +246,5 @@ void BasicMeshObject::cleanup()
 
 	SAFE_RELEASE(m_pVertexBuffer);
 	SAFE_CLEANUP(m_pPSOHandle, m_pRenderer->GetPSOManager()->ReleasePSO);
-	SAFE_CLEANUP(m_pBlasInstance, m_pRenderer->GetRayTracingManager()->FreeBLAS);
+	SAFE_CLEANUP(m_pBLASHandle, m_pRenderer->GetRayTracingManager()->FreeBLAS);
 }

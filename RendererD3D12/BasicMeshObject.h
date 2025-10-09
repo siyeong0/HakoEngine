@@ -36,8 +36,8 @@ public:
 	~BasicMeshObject() { cleanup(); }
 
 	bool Initialize(D3D12Renderer* pRenderer);
-	void Draw(int threadIndex, ID3D12GraphicsCommandList6* pCommandList, const XMMATRIX* worldMatrix);
-	void UpdateBLASTransform(const XMMATRIX& worldMatrix);
+	void Draw(int threadIndex, ID3D12GraphicsCommandList6* pCommandList, const Matrix4x4* worldMatrix);
+	void UpdateBLASTransform(const Matrix4x4& worldMatrix);
 
 private:
 	bool initPipelineState();
@@ -58,7 +58,7 @@ private:
 	uint m_NumTriGroups = 0;
 	uint m_MaxNumTriGroups = 0;
 
-	BLASInstance* m_pBlasInstance = nullptr;
+	BLASHandle* m_pBLASHandle = nullptr;
 };
 
 

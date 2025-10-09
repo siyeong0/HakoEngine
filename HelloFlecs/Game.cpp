@@ -32,7 +32,7 @@ static IMeshObject* createBoxMeshObject(IRenderer* pRenderer, IGeometry* pGeomet
 
 	// create BasicMeshObject from Renderer
 	pMeshObj = pRenderer->CreateBasicMeshObject();
-	pMeshObj->BeginCreateMesh(meshData.Vertices.data(), meshData.Vertices.size(), 6);	// 박스의 6면-1면당 삼각형 2개-인덱스 6개
+	pMeshObj->BeginCreateMesh(meshData.Vertices.data(), (uint)meshData.Vertices.size(), 6);	// 박스의 6면-1면당 삼각형 2개-인덱스 6개
 	for (int i = 0; i < 6; i++)
 	{
 		pMeshObj->InsertTriGroup(meshData.Indices.data() + i * 6, 2, wchTexFileNameList[i]);
@@ -50,8 +50,8 @@ static IMeshObject* createSphereMeshObject(IRenderer* pRenderer, IGeometry* pGeo
 	MeshData meshData = pGeometry->CreateSphereMesh(1.0f, 20, 20);
 	// create BasicMeshObject from Renderer
 	pMeshObj = pRenderer->CreateBasicMeshObject();
-	pMeshObj->BeginCreateMesh(meshData.Vertices.data(), meshData.Vertices.size(), 1);
-	pMeshObj->InsertTriGroup(meshData.Indices.data(), meshData.Indices.size() / 3, wchTexFileName);
+	pMeshObj->BeginCreateMesh(meshData.Vertices.data(), (uint)meshData.Vertices.size(), 1);
+	pMeshObj->InsertTriGroup(meshData.Indices.data(), (uint)meshData.Indices.size() / 3, wchTexFileName);
 	pMeshObj->EndCreateMesh();
 
 	return pMeshObj;
@@ -65,8 +65,8 @@ static IMeshObject* createPlaneMeshObject(IRenderer* pRenderer, IGeometry* pGeom
 	MeshData meshData = pGeometry->CreatePlaneMesh(20.0f, 20.0f);
 	// create BasicMeshObject from Renderer
 	pMeshObj = pRenderer->CreateBasicMeshObject();
-	pMeshObj->BeginCreateMesh(meshData.Vertices.data(), meshData.Vertices.size(), 1);
-	pMeshObj->InsertTriGroup(meshData.Indices.data(), meshData.Indices.size() / 3, wchTexFileName);
+	pMeshObj->BeginCreateMesh(meshData.Vertices.data(), (uint)meshData.Vertices.size(), 1);
+	pMeshObj->InsertTriGroup(meshData.Indices.data(), (uint)meshData.Indices.size() / 3, wchTexFileName);
 	pMeshObj->EndCreateMesh();
 	return pMeshObj;
 }
@@ -79,8 +79,8 @@ static IMeshObject* createCylinderMeshObject(IRenderer* pRenderer, IGeometry* pG
 	MeshData meshData = pGeometry->CreateCylinderMesh(0.5f, 2.0f, 20);
 	// create BasicMeshObject from Renderer
 	pMeshObj = pRenderer->CreateBasicMeshObject();
-	pMeshObj->BeginCreateMesh(meshData.Vertices.data(), meshData.Vertices.size(), 1);
-	pMeshObj->InsertTriGroup(meshData.Indices.data(), meshData.Indices.size() / 3, wchTexFileName);
+	pMeshObj->BeginCreateMesh(meshData.Vertices.data(), (uint)meshData.Vertices.size(), 1);
+	pMeshObj->InsertTriGroup(meshData.Indices.data(), (uint)meshData.Indices.size() / 3, wchTexFileName);
 	pMeshObj->EndCreateMesh();
 	return pMeshObj;
 }
@@ -93,8 +93,8 @@ static IMeshObject* createConeMeshObject(IRenderer* pRenderer, IGeometry* pGeome
 	MeshData meshData = pGeometry->CreateConeMesh(1.0f, 2.0f, 20);
 	// create BasicMeshObject from Renderer
 	pMeshObj = pRenderer->CreateBasicMeshObject();
-	pMeshObj->BeginCreateMesh(meshData.Vertices.data(), meshData.Vertices.size(), 1);
-	pMeshObj->InsertTriGroup(meshData.Indices.data(), meshData.Indices.size() / 3, wchTexFileName);
+	pMeshObj->BeginCreateMesh(meshData.Vertices.data(), (uint)meshData.Vertices.size(), 1);
+	pMeshObj->InsertTriGroup(meshData.Indices.data(), (uint)meshData.Indices.size() / 3, wchTexFileName);
 	pMeshObj->EndCreateMesh();
 	return pMeshObj;
 }
@@ -107,8 +107,8 @@ static IMeshObject* createGridMeshObject(IRenderer* pRenderer, IGeometry* pGeome
 	MeshData meshData = pGeometry->CreateGridMesh(20.0f, 20.0f, 3, 3);
 	// create BasicMeshObject from Renderer
 	pMeshObj = pRenderer->CreateBasicMeshObject();
-	pMeshObj->BeginCreateMesh(meshData.Vertices.data(), meshData.Vertices.size(), 1);
-	pMeshObj->InsertTriGroup(meshData.Indices.data(), meshData.Indices.size() / 3, wchTexFileName);
+	pMeshObj->BeginCreateMesh(meshData.Vertices.data(), (uint)meshData.Vertices.size(), 1);
+	pMeshObj->InsertTriGroup(meshData.Indices.data(), (uint)meshData.Indices.size() / 3, wchTexFileName);
 	pMeshObj->EndCreateMesh();
 	return pMeshObj;
 }
@@ -304,10 +304,10 @@ bool Game::Initialize(HWND hWnd, bool bEnableDebugLayer, bool bEnableGBV, bool b
 			.multi_threaded(false)	// TODO: test multi threading
 			.each([this](const Position& p, const Rotation& r, const Scale& s, const MeshRenderer& mesh)
 				{
-					DirectX::XMMATRIX matScale = DirectX::XMMatrixScaling(s.x, s.y, s.z);
-					DirectX::XMMATRIX matRot = DirectX::XMMatrixRotationRollPitchYaw(r.Pitch, r.Yaw, r.Roll);
-					DirectX::XMMATRIX matTrans = DirectX::XMMatrixTranslation(p.x, p.y, p.z);
-					DirectX::XMMATRIX worldMat = matScale * matRot * matTrans;
+					Matrix4x4 matScale = DirectX::XMMatrixScaling(s.x, s.y, s.z);
+					Matrix4x4 matRot = DirectX::XMMatrixRotationRollPitchYaw(r.Pitch, r.Yaw, r.Roll);
+					Matrix4x4 matTrans = DirectX::XMMatrixTranslation(p.x, p.y, p.z);
+					Matrix4x4 worldMat = matScale * matRot * matTrans;
 					if (mesh.Mesh)
 					{
 						m_pRenderer->RenderMeshObject(mesh.Mesh, &worldMat);

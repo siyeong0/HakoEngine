@@ -24,12 +24,12 @@ struct CONSTANT_BUFFER_PROPERTY
 
 struct CONSTANT_BUFFER_PER_FRAME
 {
-	XMMATRIX View;
-	XMMATRIX Proj;
-	XMMATRIX ViewProj;
-	XMMATRIX InvView;
-	XMMATRIX InvProj;
-	XMMATRIX InvViewProj;
+	Matrix4x4 View;
+	Matrix4x4 Proj;
+	Matrix4x4 ViewProj;
+	Matrix4x4 InvView;
+	Matrix4x4 InvProj;
+	Matrix4x4 InvViewProj;
 
 	XMFLOAT3 LightDir; // Directional light direction (normalized)
 	float _pad0;
@@ -45,7 +45,7 @@ struct CONSTANT_BUFFER_PER_FRAME
 
 struct CONSTANT_BUFFER_MESH_OBJECT
 {
-	XMMATRIX WorldMatrix;
+	Matrix4x4 WorldMatrix;
 };
 
 struct CONSTANT_BUFFER_SPRITE_OBJECT

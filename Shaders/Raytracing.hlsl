@@ -123,7 +123,7 @@ void MyClosestHitShader_RadianceRay(inout RadiancePayload rayPayload, in BuiltIn
     float3 worldNormal = normalize(mul(localNormal, (float3x3) ObjectToWorld4x3())); // TODO: like Standard.hlsl. use InverseTranspose?
     
     rayPayload.depth = hitPosition.z;
-    rayPayload.radiance = texDiffuse;
+    rayPayload.radiance = texDiffuse.xyz;
 }
 
 [shader("miss")]

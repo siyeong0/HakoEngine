@@ -14,10 +14,10 @@ public:
 	void Cleanup();
 
 	void DoRaytracing(ID3D12GraphicsCommandList6* pCommandList);
-	BLASInstance* AllocBLAS(ID3D12Resource* pVertexBuffer, uint vertexSize, uint numVertices, const IndexedTriGroup* pTriGroupInfoList, uint numTriGroupInfos, bool bAllowUpdate);
-	void FreeBLAS(BLASInstance* pBlasHandle);
+	BLASHandle* AllocBLAS(ID3D12Resource* pVertexBuffer, uint vertexSize, uint numVertices, const IndexedTriGroup* pTriGroupInfoList, uint numTriGroupInfos, bool bAllowUpdate);
+	void FreeBLAS(BLASHandle* pBLASHandle);
 	bool UpdateAccelerationStructure();
-	void UpdateBLASTransform(BLASInstance* pBlasInstance, const XMMATRIX& worldMatrix);
+	void UpdateBLASTransform(BLASHandle* pBLASHandle, const Matrix4x4& worldMatrix);
 
 	void UpdateWindowSize(uint width, uint height);
 
@@ -26,11 +26,11 @@ public:
 	bool IsUpdatedAccelerationStructure() const { return (BOOL)(m_UpdateAccelerationStructureFlags != 0); }
 
 private:
-	BLASInstance* buildBLAS(ID3D12Resource* pVertexBuffer, uint vertexSize, uint numVertices, const IndexedTriGroup* pTriGroupInfoList, uint numTriGroupInfos, bool bAllowUpdate);
-	ID3D12Resource* buildTLAS(ID3D12Resource* pInstanceDescResource, BLASInstance** ppInstanceList, uint numBlasInstances, bool bAllowUpdate, uint currContextIndex);
+	BLASHandle* buildBLAS(ID3D12Resource* pVertexBuffer, uint vertexSize, uint numVertices, const IndexedTriGroup* pTriGroupInfoList, uint numTriGroupInfos, bool bAllowUpdate);
+	ID3D12Resource* buildTLAS(ID3D12Resource* pInstanceDescResource, BLASHandle** ppInstanceList, uint numBLASHandles, bool bAllowUpdate, uint currContextIndex);
 
 	void updateHitGroupShaderTable(uint numShaderRecords);
-	void cleanupPendingFreeedBlasInstace();
+	void cleanupPendingFreeedBLASInstace();
 
 	bool createOutputDiffuseBuffer(uint width, uint height);
 	void cleanupOutputDiffuseBuffer();
@@ -121,8 +121,8 @@ private:
 	uint m_ShaderIdentifierSize = D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES;
 
 	uint m_MaxNumBLASs = 0;
-	std::list<BLASInstance*> m_BlasInstanceList; // BLAS Instance list
-	std::list<BLASInstance*> m_pFreedBlasInstanceList; // Freed BLAS Instance list
+	std::list<BLASHandle*> m_BLASHandleList; // BLAS Instance list
+	std::list<BLASHandle*> m_pFreedBLASHandleList; // Freed BLAS Instance list
 
 	ID3D12Resource* m_pBLASInstanceDescResouce = nullptr;
 	ID3D12Resource* m_pTLAS = nullptr;

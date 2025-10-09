@@ -1,7 +1,7 @@
 ﻿#pragma once
 #include "Common/Common.h"
 #include "Interface/IRenderer.h"
-#include "Renderer_typedef.h"
+#include "RenderTypes.h"
 
 // TODO: Remove
 #include <queue>
@@ -9,21 +9,22 @@
 
 #define USE_MULTI_THREAD
 
-class ConstantBufferManager;
+// Forward declarations (alphabetical)
 class CommandListPool;
+class ConstantBufferManager;
 class D3D12ResourceManager;
 class DescriptorPool;
 class FontManager;
 class PSOManager;
-class RootSignatureManager;
+class RayTracingManager;
 class RenderQueue;
 struct RenderThreadDesc;
+class RootSignatureManager;
+class ShaderManager;
 class SimpleConstantBufferPool;
 class SingleDescriptorAllocator;
 class SkyObject;
-class ShaderManager;
 class TextureManager;
-class RayTracingManager;
 
 class D3D12Renderer : public IRenderer
 {
@@ -41,7 +42,7 @@ public:
 	void ENGINECALL EndRender() override;
 	void ENGINECALL Present() override;
 
-	void ENGINECALL RenderMeshObject(IMeshObject* pMeshObj, const XMMATRIX* pMatWorld, ERenderPassType renderPass) override;
+	void ENGINECALL RenderMeshObject(IMeshObject* pMeshObj, const Matrix4x4* pMatWorld, ERenderPassType renderPass) override;
 	void ENGINECALL RenderSpriteWithTex(void* pSprObjHandle, int posX, int posY, float scaleX, float scaleY, const RECT* pRect, float z, void* pTexHandle, ERenderPassType renderPass) override;
 	void ENGINECALL RenderSprite(void* pSprObjHandle, int posX, int posY, float scaleX, float scaleY, float z, ERenderPassType renderPass) override;
 
@@ -70,7 +71,12 @@ public:
 
 	// Internal
 	D3D12Renderer() = default;
-	~D3D12Renderer() { Cleanup(); };
+	~D3D12Renderer();
+
+	D3D12Renderer(const D3D12Renderer&) = delete;
+	D3D12Renderer& operator=(const D3D12Renderer&) = delete;
+	D3D12Renderer(D3D12Renderer&&) noexcept = delete;
+	D3D12Renderer& operator=(D3D12Renderer&&) noexcept = delete;
 
 	// from RenderThread
 	void ProcessByThread(int threadIndex);
@@ -94,7 +100,7 @@ public:
 	inline bool IsGpuUploadHeapsEnabledInl() const { return m_bGpuUploadHeapsEnabled; }
 
 	const CONSTANT_BUFFER_PER_FRAME& GetFrameCBData() { return m_PerFrameCB; };
-	void GetViewProjMatrix(XMMATRIX* outMatView, XMMATRIX* outMatProj) const;
+	void GetViewProjMatrix(Matrix4x4* outMatView, Matrix4x4* outMatProj) const;
 
 	void SetCurrentPathForShader() const;
 	void RestoreCurrentPath() const;
@@ -151,6 +157,8 @@ private:
 	HANDLE m_hCompleteEvent = nullptr;
 	RenderThreadDesc* m_pThreadDescList = nullptr;
 
+	RayTracingManager* m_pRayTracingManager;
+
 	TextureManager* m_pTextureManager = nullptr;
 	D3D12ResourceManager* m_pResourceManager = nullptr;
 	FontManager* m_pFontManager = nullptr;
@@ -201,8 +209,5 @@ private:
 
 	WCHAR m_wchCurrentPathBackup[_MAX_PATH] = {};
 	WCHAR m_wchShaderPath[_MAX_PATH] = {};
-
-	// Ray tracing
-	RayTracingManager* m_pRayTracingManager = nullptr;
 };
 

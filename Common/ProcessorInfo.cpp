@@ -22,7 +22,7 @@ bool GetPhysicalCoreCount(uint* pOutPhysicalCoreCount, uint* pOutLogicalCoreCoun
 		DWORD processorL3CacheCount = 0;
 		DWORD processorPackageCount = 0;
 		DWORD byteOffset = 0;
-		PCACHE_DESCRIPTOR Cache;
+		PCACHE_DESCRIPTOR cache;
 
 #pragma warning(suppress: 6387)
 		glpi = (LPFN_GLPI)GetProcAddress(GetModuleHandle(TEXT("kernel32")), "GetLogicalProcessorInformation");
@@ -82,16 +82,16 @@ bool GetPhysicalCoreCount(uint* pOutPhysicalCoreCount, uint* pOutLogicalCoreCoun
 
 			case RelationCache:
 				// Cache data is in ptr->Cache, one CACHE_DESCRIPTOR structure for each cache. 
-				Cache = &ptr->Cache;
-				if (Cache->Level == 1)
+				cache = &ptr->Cache;
+				if (cache->Level == 1)
 				{
 					processorL1CacheCount++;
 				}
-				else if (Cache->Level == 2)
+				else if (cache->Level == 2)
 				{
 					processorL2CacheCount++;
 				}
-				else if (Cache->Level == 3)
+				else if (cache->Level == 3)
 				{
 					processorL3CacheCount++;
 				}

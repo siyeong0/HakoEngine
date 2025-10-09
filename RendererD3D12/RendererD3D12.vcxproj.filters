@@ -134,7 +134,7 @@
     <ClInclude Include="TextureManager.h">
       <Filter>RenderManager\TextureManager</Filter>
     </ClInclude>
-    <ClInclude Include="Renderer_typedef.h">
+    <ClInclude Include="RenderTypes.h">
       <Filter>Common</Filter>
     </ClInclude>
     <ClInclude Include="D3DUtil.h">
@@ -144,9 +144,6 @@
       <Filter>Util\ShaderUtil</Filter>
     </ClInclude>
     <ClInclude Include="ShaderManager.h">
-      <Filter>RenderManager\ShaderManager</Filter>
-    </ClInclude>
-    <ClInclude Include="ShaderHandle.h">
       <Filter>RenderManager\ShaderManager</Filter>
     </ClInclude>
     <ClInclude Include="D3D12Renderer.h">

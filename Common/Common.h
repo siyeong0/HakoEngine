@@ -12,7 +12,9 @@ using namespace DirectX;
 
 // Typedef
 using uint = unsigned int;
+using Matrix4x4 = DirectX::XMMATRIX;
 
+// Basic Structures
 struct FLOAT2
 {
     float x;

@@ -162,12 +162,11 @@
     <ClInclude Include="pch.h" />
     <ClInclude Include="PSOManager.h" />
     <ClInclude Include="RayTracingManager.h" />
-    <ClInclude Include="Renderer_typedef.h" />
+    <ClInclude Include="RenderTypes.h" />
     <ClInclude Include="RenderItem.h" />
     <ClInclude Include="RenderQueue.h" />
     <ClInclude Include="RenderThread.h" />
     <ClInclude Include="RootSignatureManager.h" />
-    <ClInclude Include="ShaderHandle.h" />
     <ClInclude Include="ShaderManager.h" />
     <ClInclude Include="ShaderRecord.h" />
     <ClInclude Include="ShaderTable.h" />

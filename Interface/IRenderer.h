@@ -16,7 +16,7 @@ interface IRenderer : public IUnknown
 	virtual void ENGINECALL EndRender() = 0;
 	virtual void ENGINECALL Present() = 0;
 
-	virtual void ENGINECALL RenderMeshObject(IMeshObject* pMeshObj, const XMMATRIX* pMatWorld, ERenderPassType renderPass = ERenderPassType::Opaque) = 0;
+	virtual void ENGINECALL RenderMeshObject(IMeshObject* pMeshObj, const Matrix4x4* pMatWorld, ERenderPassType renderPass = ERenderPassType::Opaque) = 0;
 	virtual void ENGINECALL RenderSpriteWithTex(void* pSprObjHandle, int posX, int posY, float scaleX, float scaleY, const RECT* pRect, float z, void* pTexHandle, ERenderPassType renderPass = ERenderPassType::Opaque) = 0;
 	virtual void ENGINECALL RenderSprite(void* pSprObjHandle, int posX, int posY, float scaleX, float scaleY, float z, ERenderPassType renderPass = ERenderPassType::Opaque) = 0;
 

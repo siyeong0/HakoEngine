@@ -1,5 +1,4 @@
 ﻿#pragma once
-#include "ShaderHandle.h"
 
 class D3D12Renderer;
 
