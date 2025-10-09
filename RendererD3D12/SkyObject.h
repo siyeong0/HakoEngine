@@ -8,8 +8,8 @@ class SkyObject
 {
 public:
 	bool Initialize(D3D12Renderer* pRenderer);
-	void Draw(int threadIndex, ID3D12GraphicsCommandList6* pCommandList);
 	void Cleanup();
+	void Draw(int threadIndex, ID3D12GraphicsCommandList6* pCommandList);
 
 	SkyObject() = default;
 	~SkyObject() { Cleanup(); };

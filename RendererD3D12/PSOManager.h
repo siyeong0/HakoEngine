@@ -20,7 +20,6 @@ public:
 	void Cleanup();
 
 	PSOHandle* CreatePSO(const D3D12_GRAPHICS_PIPELINE_STATE_DESC& posDesc, const std::string& psoName = "");
-	PSOHandle* QueryPSO(PSOHandle* handle);
 	void ReleasePSO(PSOHandle* handle);
 
 private:

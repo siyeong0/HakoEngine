@@ -20,7 +20,7 @@
 #include "RenderThread.h"
 #include "RayTracingManager.h"
 #include "D3D12Renderer.h"
-
+bool g_bUseRayTracing = false;
 using namespace DirectX;
 
 // --------------------------------------------------
@@ -334,6 +334,12 @@ void ENGINECALL D3D12Renderer::Cleanup()
 
 	fence();
 
+	if (m_pSkyObject)
+	{
+		delete m_pSkyObject;
+		m_pSkyObject = nullptr;
+	}
+
 	for (int i = 0; i < MAX_PENDING_FRAME_COUNT; i++)
 	{
 		waitForFenceValue(m_pui64LastFenceValue[i]);
@@ -522,10 +528,9 @@ void ENGINECALL D3D12Renderer::EndRender()
 	CD3DX12_CPU_DESCRIPTOR_HANDLE dsvHandle(m_pDSVHeap->GetCPUDescriptorHandleForHeapStart());
 
 	// TODO: Combine raytracing output and rasterized output.
-	bool bUseRayTracing = true;
 
 	// Do raytracing and copy the output to the back buffer.
-	if (bUseRayTracing)
+	if (g_bUseRayTracing)
 	{
 		while (!m_ppRenderQueueRayTracing.empty())
 		{
@@ -575,7 +580,7 @@ void ENGINECALL D3D12Renderer::EndRender()
 		pCommandListPool->CloseAndExecute(m_pCommandQueue);
 	}
 
-	if (!bUseRayTracing)
+	if (!g_bUseRayTracing)
 	{
 #ifdef USE_MULTI_THREAD
 		// ---- Phase 1: Opaque ----
@@ -668,7 +673,7 @@ void ENGINECALL D3D12Renderer::RenderMeshObject(
 	item.MeshObjParam.matWorld = *pMatWorld;
 
 	// TOOD: RT 사용시만
-	if (renderPass == ERenderPassType::Opaque)
+	if (g_bUseRayTracing && renderPass == ERenderPassType::Opaque)
 	{
 		m_ppRenderQueueRayTracing.push(item); // TODO: Support multiple threads.
 		return;

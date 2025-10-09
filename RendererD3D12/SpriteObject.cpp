@@ -104,7 +104,6 @@ void SpriteObject::DrawWithTex(int threadIndex, ID3D12GraphicsCommandList6* pCom
 	UINT srvDescriptorSize = m_pRenderer->GetSrvDescriptorSize();
 	DescriptorPool* pDescriptorPool = m_pRenderer->GetDescriptorPool(threadIndex);
 	SimpleConstantBufferPool* pConstantBufferPool = m_pRenderer->GetConstantBufferPool(CONSTANT_BUFFER_TYPE_SPRITE, threadIndex);
-	PSOManager* pPSOManager = m_pRenderer->GetPSOManager();
 
 	// Texture information
 	UINT texWidth = 0;
@@ -164,7 +163,7 @@ void SpriteObject::DrawWithTex(int threadIndex, ID3D12GraphicsCommandList6* pCom
 	}
 
 	// Pipline/Input assembler state
-	pCommandList->SetPipelineState(pPSOManager->QueryPSO(m_pPSOHandle)->pPSO);
+	pCommandList->SetPipelineState(m_pPSOHandle->pPSO);
 	pCommandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 	pCommandList->IASetVertexBuffers(0, 1, &m_VertexBufferView);
 	pCommandList->IASetIndexBuffer(&m_IndexBufferView);

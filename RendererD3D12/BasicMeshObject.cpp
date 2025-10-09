@@ -105,7 +105,6 @@ void BasicMeshObject::Draw(int threadIndex, ID3D12GraphicsCommandList6* pCommand
 	UINT srvDescriptorSize = m_pRenderer->GetSrvDescriptorSize();
 	DescriptorPool* pDescriptorPool = m_pRenderer->GetDescriptorPool(threadIndex);
 	SimpleConstantBufferPool* pMeshConstantBufferPool = m_pRenderer->GetConstantBufferPool(CONSTANT_BUFFER_TYPE_MESH, threadIndex);
-	PSOManager* pPSOManager = m_pRenderer->GetPSOManager();
 
 	// --- 1) Constant buffer alloc and intialization. (as root cbv)
 	ConstantBufferContainer* cb = pMeshConstantBufferPool->Alloc();
@@ -134,7 +133,7 @@ void BasicMeshObject::Draw(int threadIndex, ID3D12GraphicsCommandList6* pCommand
 	}
 
 	// --- 3) PSO/RS/DescHeap binding.
-	pCommandList->SetPipelineState(pPSOManager->QueryPSO(m_pPSOHandle)->pPSO);
+	pCommandList->SetPipelineState(m_pPSOHandle->pPSO);
 	pCommandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 	pCommandList->IASetVertexBuffers(0, 1, &m_VertexBufferView);
 
@@ -266,4 +265,7 @@ void BasicMeshObject::cleanup()
 		pPsoManager->ReleasePSO(m_pPSOHandle);
 		m_pPSOHandle = nullptr;
 	}
+
+	RayTracingManager* pRayTracingManager = m_pRenderer->GetRayTracingManager();
+	pRayTracingManager->FreeBLAS(m_pBlasInstance);
 }

@@ -27,6 +27,46 @@ bool SkyObject::Initialize(D3D12Renderer* pRenderer)
 	return true;
 }
 
+void SkyObject::Cleanup()
+{
+	if (m_pVertexBuffer)
+	{
+		m_pVertexBuffer->Release();
+		m_pVertexBuffer = nullptr;
+	}
+	if (m_pIndexBuffer)
+	{
+		m_pIndexBuffer->Release();
+		m_pIndexBuffer = nullptr;
+	}
+	m_VertexBufferView = {};
+	m_IndexBufferView = {};
+
+	if (m_pTransmittanceTex)
+	{
+		m_pRenderer->DeleteTexture(m_pTransmittanceTex);
+		m_pTransmittanceTex = nullptr;
+	}
+	if (m_pScatteringTex)
+	{
+		m_pRenderer->DeleteTexture(m_pScatteringTex);
+		m_pScatteringTex = nullptr;
+	}
+	if (m_pIrradianceTex)
+	{
+		m_pRenderer->DeleteTexture(m_pIrradianceTex);
+		m_pIrradianceTex = nullptr;
+	}
+
+	if (m_pPSOHandle)
+	{
+		PSOManager* pPSOManager = m_pRenderer->GetPSOManager();
+		pPSOManager->ReleasePSO(m_pPSOHandle);
+		m_pPSOHandle = nullptr;
+	}
+}
+
+
 void SkyObject::Draw(int threadIndex, ID3D12GraphicsCommandList6* pCommandList)
 {
 	ID3D12Device5* pDevice = m_pRenderer->GetD3DDevice();
@@ -35,7 +75,6 @@ void SkyObject::Draw(int threadIndex, ID3D12GraphicsCommandList6* pCommandList)
 	SimpleConstantBufferPool* pCameraConstantBufferPool = m_pRenderer->GetConstantBufferPool(CONSTANT_BUFFER_TYPE_PER_FRAME, threadIndex);
 	SimpleConstantBufferPool* pAtmosConstantBufferPool = m_pRenderer->GetConstantBufferPool(CONSTANT_BUFFER_TYPE_ATMOS_CONSTANTS, threadIndex);
 	RootSignatureManager* pRootSigatureManager = m_pRenderer->GetRootSignatureManager();
-	PSOManager* pPSOManager = m_pRenderer->GetPSOManager();
 
 	// Constant Buffer (b0 = CB_SkyMatrices, b1 = CB_SkyParams)
 	ConstantBufferContainer* cb0 = pCameraConstantBufferPool->Alloc();
@@ -186,7 +225,7 @@ void SkyObject::Draw(int threadIndex, ID3D12GraphicsCommandList6* pCommandList)
 
 	// ---- RS/PSO/IA
 	pCommandList->SetGraphicsRootSignature(pRootSigatureManager->Query(ERootSignatureType::GraphicsDefault));
-	pCommandList->SetPipelineState(pPSOManager->QueryPSO(m_pPSOHandle)->pPSO);
+	pCommandList->SetPipelineState(m_pPSOHandle->pPSO);
 	pCommandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
 
 	// ---- CB binding (b0, b1)
@@ -198,28 +237,6 @@ void SkyObject::Draw(int threadIndex, ID3D12GraphicsCommandList6* pCommandList)
 	pCommandList->SetGraphicsRootDescriptorTable(2, gpuDescriptorTable);
 
 	pCommandList->DrawInstanced(4, 1, 0, 0);
-}
-
-void SkyObject::Cleanup()
-{
-	if (m_pVertexBuffer) 
-	{ 
-		m_pVertexBuffer->Release(); 
-		m_pVertexBuffer = nullptr; 
-	}
-	if (m_pIndexBuffer) 
-	{ 
-		m_pIndexBuffer->Release();  
-		m_pIndexBuffer = nullptr; }
-	m_VertexBufferView = {};
-	m_IndexBufferView = {};
-
-	if (m_pPSOHandle) 
-	{ 
-		PSOManager* pPSOManager = m_pRenderer->GetPSOManager();
-		pPSOManager->ReleasePSO(m_pPSOHandle);
-		m_pPSOHandle = nullptr;
-	}
 }
 
 bool SkyObject::initPipelineState()

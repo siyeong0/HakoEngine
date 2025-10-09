@@ -78,7 +78,7 @@ void RayTracingManager::Cleanup()
 	cleanupOutputDepthBuffer();
 
 	cleanupShaderTables();
-
+	cleanupPendingFreeedBlasInstace();
 
 	// Cleanup DXRStateObject
 	if (m_pDXRStateObject)
@@ -236,8 +236,7 @@ void RayTracingManager::FreeBLAS(BLASInstance* pBlasHandle)
 
 bool RayTracingManager::UpdateAccelerationStructure()
 {
-	ID3D12Device5* pD3DDeivce = m_pRenderer->GetD3DDevice();
-	D3D12ResourceManager* pResourceManager = m_pRenderer->GetResourceManager();
+	cleanupPendingFreeedBlasInstace();
 
 	// Build TLAS
 	BLASInstance* ppBlasInstancelist[1024] = {};

@@ -73,5 +73,4 @@ CIndexCreator::~CIndexCreator()
 {
 	Check();
 	Cleanup();
-
 }
