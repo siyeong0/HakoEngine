@@ -10,7 +10,7 @@ public:
 	~ShaderManager() { Cleanup(); };
 
 	bool Initialize(D3D12Renderer* pRenderer, const WCHAR* wchShaderPath, bool bDisableOptimize);
-	ShaderHandle* CreateShaderDXC(const WCHAR* wchShaderFileName, const WCHAR* wchEntryPoint, const WCHAR* wchShaderModel, UINT flags);
+	ShaderHandle* CreateShaderDXC(const WCHAR* wchShaderFileName, const WCHAR* wchEntryPoint, const WCHAR* wchShaderModel, uint flags);
 	void ReleaseShader(ShaderHandle* pShaderHandle);
 	void Cleanup();
 

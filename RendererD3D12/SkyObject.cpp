@@ -29,48 +29,23 @@ bool SkyObject::Initialize(D3D12Renderer* pRenderer)
 
 void SkyObject::Cleanup()
 {
-	if (m_pVertexBuffer)
-	{
-		m_pVertexBuffer->Release();
-		m_pVertexBuffer = nullptr;
-	}
-	if (m_pIndexBuffer)
-	{
-		m_pIndexBuffer->Release();
-		m_pIndexBuffer = nullptr;
-	}
+	SAFE_RELEASE(m_pVertexBuffer);
+	SAFE_RELEASE(m_pIndexBuffer);
 	m_VertexBufferView = {};
 	m_IndexBufferView = {};
 
-	if (m_pTransmittanceTex)
-	{
-		m_pRenderer->DeleteTexture(m_pTransmittanceTex);
-		m_pTransmittanceTex = nullptr;
-	}
-	if (m_pScatteringTex)
-	{
-		m_pRenderer->DeleteTexture(m_pScatteringTex);
-		m_pScatteringTex = nullptr;
-	}
-	if (m_pIrradianceTex)
-	{
-		m_pRenderer->DeleteTexture(m_pIrradianceTex);
-		m_pIrradianceTex = nullptr;
-	}
+	SAFE_CLEANUP(m_pTransmittanceTex, m_pRenderer->DeleteTexture);
+	SAFE_CLEANUP(m_pScatteringTex, m_pRenderer->DeleteTexture);
+	SAFE_CLEANUP(m_pIrradianceTex, m_pRenderer->DeleteTexture);
 
-	if (m_pPSOHandle)
-	{
-		PSOManager* pPSOManager = m_pRenderer->GetPSOManager();
-		pPSOManager->ReleasePSO(m_pPSOHandle);
-		m_pPSOHandle = nullptr;
-	}
+	SAFE_CLEANUP(m_pPSOHandle, m_pRenderer->GetPSOManager()->ReleasePSO);
 }
 
 
 void SkyObject::Draw(int threadIndex, ID3D12GraphicsCommandList6* pCommandList)
 {
 	ID3D12Device5* pDevice = m_pRenderer->GetD3DDevice();
-	UINT srvDescriptorSize = m_pRenderer->GetSrvDescriptorSize();
+	uint srvDescriptorSize = m_pRenderer->GetSrvDescriptorSize();
 	DescriptorPool* pDescriptorPool = m_pRenderer->GetDescriptorPool(threadIndex);
 	SimpleConstantBufferPool* pCameraConstantBufferPool = m_pRenderer->GetConstantBufferPool(CONSTANT_BUFFER_TYPE_PER_FRAME, threadIndex);
 	SimpleConstantBufferPool* pAtmosConstantBufferPool = m_pRenderer->GetConstantBufferPool(CONSTANT_BUFFER_TYPE_ATMOS_CONSTANTS, threadIndex);
@@ -211,7 +186,7 @@ void SkyObject::Draw(int threadIndex, ID3D12GraphicsCommandList6* pCommandList)
 	CD3DX12_CPU_DESCRIPTOR_HANDLE cpuDescriptorTable = {};
 	CD3DX12_GPU_DESCRIPTOR_HANDLE gpuDescriptorTable = {};
 	ID3D12DescriptorHeap* pSRVDescriptorHeap = pDescriptorPool->GetDescriptorHeap();
-	const UINT requiredSrvCount = 3; // Transmittance, Scattering, Irradiance
+	const uint requiredSrvCount = 3; // Transmittance, Scattering, Irradiance
 	bool bOk = pDescriptorPool->AllocDescriptorTable(&cpuDescriptorTable, &gpuDescriptorTable, requiredSrvCount);
 	ASSERT(bOk, "Sky: Failed to allocate descriptor table for LUTs.");
 

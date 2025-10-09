@@ -89,8 +89,7 @@ TextureHandle* TextureManager::CreateTextureFromFile(const WCHAR* wchFileName)
 			}
 			else
 			{
-				pTexResource->Release();
-				pTexResource = nullptr;
+				SAFE_RELEASE(pTexResource);
 			}
 		}
 	}
@@ -98,7 +97,7 @@ TextureHandle* TextureManager::CreateTextureFromFile(const WCHAR* wchFileName)
 	return pOutTexHandle;
 }
 
-TextureHandle* TextureManager::CreateDynamicTexture(UINT texWidth, UINT texHeight)
+TextureHandle* TextureManager::CreateDynamicTexture(uint texWidth, uint texHeight)
 {
 	ID3D12Device* pD3DDevice = m_pRenderer->GetD3DDevice();
 	SingleDescriptorAllocator* pSingleDescriptorAllocator = m_pRenderer->GetSingleDescriptorAllocator();
@@ -129,18 +128,15 @@ TextureHandle* TextureManager::CreateDynamicTexture(UINT texWidth, UINT texHeigh
 		}
 		else
 		{
-			pTexResource->Release();
-			pTexResource = nullptr;
-
-			pUploadBuffer->Release();
-			pUploadBuffer = nullptr;
+			SAFE_RELEASE(pTexResource);
+			SAFE_RELEASE(pUploadBuffer);
 		}
 	}
 
 	return pTexHandle;
 }
 
-TextureHandle* TextureManager::CreateImmutableTexture(UINT texWidth, UINT texHeight, DXGI_FORMAT format, const uint8_t* pInitImage)
+TextureHandle* TextureManager::CreateImmutableTexture(uint texWidth, uint texHeight, DXGI_FORMAT format, const uint8_t* pInitImage)
 {
 	ID3D12Device* pD3DDevice = m_pRenderer->GetD3DDevice();
 	SingleDescriptorAllocator* pSingleDescriptorAllocator = m_pRenderer->GetSingleDescriptorAllocator();
@@ -167,8 +163,7 @@ TextureHandle* TextureManager::CreateImmutableTexture(UINT texWidth, UINT texHei
 		}
 		else
 		{
-			pTexResource->Release();
-			pTexResource = nullptr;
+			SAFE_RELEASE(pTexResource);
 		}
 	}
 
@@ -194,7 +189,7 @@ TextureHandle* TextureManager::allocTextureHandle()
 	return pTexHandle;
 }
 
-UINT TextureManager::freeTextureHandle(TextureHandle* pTexHandle)
+uint TextureManager::freeTextureHandle(TextureHandle* pTexHandle)
 {
 	ID3D12Device* pD3DDevice = m_pRenderer->GetD3DDevice();
 	SingleDescriptorAllocator* pSingleDescriptorAllocator = m_pRenderer->GetSingleDescriptorAllocator();
@@ -204,23 +199,14 @@ UINT TextureManager::freeTextureHandle(TextureHandle* pTexHandle)
 	int refCount = --pTexHandle->RefCount;
 	if (!refCount)
 	{
-		if (pTexHandle->pTexResource)
-		{
-			pTexHandle->pTexResource->Release();
-			pTexHandle->pTexResource = nullptr;
-		}
-		if (pTexHandle->pUploadBuffer)
-		{
-			pTexHandle->pUploadBuffer->Release();
-			pTexHandle->pUploadBuffer = nullptr;
-		}
+		SAFE_RELEASE(pTexHandle->pTexResource);
+		SAFE_RELEASE(pTexHandle->pUploadBuffer);
 		if (pTexHandle->SRV.ptr)
 		{
 			pSingleDescriptorAllocator->FreeDescriptorHandle(pTexHandle->SRV);
 			pTexHandle->SRV = {};
 		}
-
-		delete pTexHandle;
+		SAFE_DELETE(pTexHandle);
 	}
 	return refCount;
 }

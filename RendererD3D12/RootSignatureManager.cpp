@@ -63,29 +63,7 @@ bool RootSignatureManager::Initialize(D3D12Renderer* pRenderer)
 			D3D12_ROOT_SIGNATURE_FLAG_DENY_DOMAIN_SHADER_ROOT_ACCESS |
 			D3D12_ROOT_SIGNATURE_FLAG_DENY_GEOMETRY_SHADER_ROOT_ACCESS;
 
-		ID3DBlob* pSignature = nullptr;
-		ID3DBlob* pError = nullptr;
-
-		hr = D3D12SerializeRootSignature(&rootSignatureDesc, D3D_ROOT_SIGNATURE_VERSION_1, &pSignature, &pError);
-		ASSERT(SUCCEEDED(hr), "Failed to serialize root signature.");
-
-		ID3D12RootSignature* gfxDefaultRS;
-		hr = pDevice->CreateRootSignature(0, pSignature->GetBufferPointer(), pSignature->GetBufferSize(), IID_PPV_ARGS(&gfxDefaultRS));
-		ASSERT(SUCCEEDED(hr), "Failed to create root signature.");
-
-		gfxDefaultRS->SetName(L"RS_Gfx_Default");
-		m_RootSignatures[static_cast<size_t>(ERootSignatureType::GraphicsDefault)] = gfxDefaultRS;
-
-		if (pSignature)
-		{
-			pSignature->Release();
-			pSignature = nullptr;
-		}
-		if (pError)
-		{
-			pError->Release();
-			pError = nullptr;
-		}
+		D3DUtil::SerializeAndCreateRaytracingRootSignature(pDevice, &rootSignatureDesc, &m_RootSignatures[static_cast<size_t>(ERootSignatureType::GraphicsDefault)]);
 	}
 	// Graphics Shadow
 	{

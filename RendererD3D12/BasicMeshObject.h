@@ -15,10 +15,10 @@ class D3D12Renderer;
 class BasicMeshObject : public IMeshObject
 {
 public:
-	static constexpr UINT DESCRIPTOR_COUNT_PER_OBJ = 1;			// | Constant Buffer
-	static constexpr UINT DESCRIPTOR_COUNT_PER_TRI_GROUP = 1;	// | SRV(tex)
-	static constexpr UINT MAX_TRI_GROUP_COUNT_PER_OBJ = 8;
-	static constexpr UINT MAX_DESCRIPTOR_COUNT_FOR_DRAW = DESCRIPTOR_COUNT_PER_OBJ + (MAX_TRI_GROUP_COUNT_PER_OBJ * DESCRIPTOR_COUNT_PER_TRI_GROUP);
+	static constexpr uint DESCRIPTOR_COUNT_PER_OBJ = 1;			// | Constant Buffer
+	static constexpr uint DESCRIPTOR_COUNT_PER_TRI_GROUP = 1;	// | SRV(tex)
+	static constexpr uint MAX_TRI_GROUP_COUNT_PER_OBJ = 8;
+	static constexpr uint MAX_DESCRIPTOR_COUNT_FOR_DRAW = DESCRIPTOR_COUNT_PER_OBJ + (MAX_TRI_GROUP_COUNT_PER_OBJ * DESCRIPTOR_COUNT_PER_TRI_GROUP);
 
 public:
 	// Derived from IUnknown
@@ -27,8 +27,8 @@ public:
 	STDMETHODIMP_(ULONG)	Release();
 
 	// Derived from IMeshObject
-	bool ENGINECALL BeginCreateMesh(const Vertex* vertices, size_t numVertices, size_t numTriGroups);
-	bool ENGINECALL InsertTriGroup(const uint16_t* indices, size_t numTriangles, const WCHAR* wchTexFileName);
+	bool ENGINECALL BeginCreateMesh(const Vertex* vertices, uint numVertices, uint numTriGroups);
+	bool ENGINECALL InsertTriGroup(const uint16_t* indices, uint numTriangles, const WCHAR* wchTexFileName);
 	void ENGINECALL EndCreateMesh();
 
 	// Internal
@@ -55,8 +55,8 @@ private:
 	PSOHandle* m_pPSOHandle = nullptr;
 
 	IndexedTriGroup* m_pTriGroupList = nullptr;
-	size_t m_NumTriGroups = 0;
-	size_t m_MaxNumTriGroups = 0;
+	uint m_NumTriGroups = 0;
+	uint m_MaxNumTriGroups = 0;
 
 	BLASInstance* m_pBlasInstance = nullptr;
 };

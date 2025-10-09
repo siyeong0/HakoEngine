@@ -10,9 +10,9 @@ enum ERenderThreadEventType
 struct RenderThreadDesc
 {
 	D3D12Renderer* pRenderer;
-	UINT ThreadIndex;
+	uint ThreadIndex;
 	HANDLE hThread;
 	HANDLE hEventList[RENDER_THREAD_EVENT_TYPE_COUNT];
 };
 
-UINT WINAPI RenderThread(void* pArg);
+uint WINAPI RenderThread(void* pArg);

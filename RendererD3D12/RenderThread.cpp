@@ -8,15 +8,15 @@
 
 class D3D12Renderer;
 
-UINT WINAPI RenderThread(void* pArg)
+uint WINAPI RenderThread(void* pArg)
 {
 	RenderThreadDesc* pDesc = (RenderThreadDesc*)pArg;
 	D3D12Renderer* pRenderer = pDesc->pRenderer;
-	UINT threadIndex = pDesc->ThreadIndex;
+	uint threadIndex = pDesc->ThreadIndex;
 	const HANDLE* phEventList = pDesc->hEventList;
 	while (1)
 	{
-		UINT eventIndex = WaitForMultipleObjects(RENDER_THREAD_EVENT_TYPE_COUNT, phEventList, FALSE, INFINITE);
+		uint eventIndex = WaitForMultipleObjects(RENDER_THREAD_EVENT_TYPE_COUNT, phEventList, FALSE, INFINITE);
 
 		switch (eventIndex)
 		{

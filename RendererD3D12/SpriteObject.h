@@ -12,7 +12,7 @@ class D3D12Renderer;
 class SpriteObject : public ISprite
 {
 public:
-	static constexpr UINT DESCRIPTOR_COUNT_FOR_DRAW = 2;	// | Constant Buffer | Tex |
+	static constexpr uint DESCRIPTOR_COUNT_FOR_DRAW = 2;	// | Constant Buffer | Tex |
 public:
 	// derived from IUnknown
 	STDMETHODIMP			QueryInterface(REFIID, void** ppv);
@@ -56,7 +56,7 @@ private:
 	RECT m_Rect = {};
 	XMFLOAT2 m_Scale = { 1.0f, 1.0f };
 
-	UINT m_NumTriGroups = 0;
-	UINT m_MaxNumTriGroups = 0;
+	uint m_NumTriGroups = 0;
+	uint m_MaxNumTriGroups = 0;
 };
 

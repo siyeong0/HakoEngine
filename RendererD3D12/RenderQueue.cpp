@@ -58,7 +58,7 @@ int RenderQueue::Process(
 
 	// Command list for remaining commands.
 	ID3D12GraphicsCommandList6* ppCommandList[64] = {};
-	UINT numCmdLists = 0;
+	uint numCmdLists = 0;
 
 	ID3D12GraphicsCommandList6* pCurrCommandList = nullptr;
 	int processCount = 0;

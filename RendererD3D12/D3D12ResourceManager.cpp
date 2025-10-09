@@ -120,18 +120,14 @@ HRESULT D3D12ResourceManager::CreateVertexBuffer(size_t sizePerVertex, size_t nu
 
 	// Initialize the vertex buffer view.
 	vertexBufferView.BufferLocation = pVertexBuffer->GetGPUVirtualAddress();
-	vertexBufferView.StrideInBytes = static_cast<UINT>(sizePerVertex);
-	vertexBufferView.SizeInBytes = static_cast<UINT>(vertexBufferSize);
+	vertexBufferView.StrideInBytes = static_cast<uint>(sizePerVertex);
+	vertexBufferView.SizeInBytes = static_cast<uint>(vertexBufferSize);
 
 	*pOutVertexBufferView = vertexBufferView;
 	*ppOutBuffer = pVertexBuffer;
 
 lb_return:
-	if (pUploadBuffer)
-	{
-		pUploadBuffer->Release();
-		pUploadBuffer = nullptr;
-	}
+	SAFE_RELEASE(pUploadBuffer);
 	return hr;
 }
 
@@ -233,21 +229,17 @@ HRESULT D3D12ResourceManager::CreateIndexBuffer(size_t numIndices, D3D12_INDEX_B
 	// Initialize the vertex buffer view.
 	indexBufferView.BufferLocation = pIndexBuffer->GetGPUVirtualAddress();
 	indexBufferView.Format = DXGI_FORMAT_R16_UINT;
-	indexBufferView.SizeInBytes = static_cast<UINT>(indexBufferSize);
+	indexBufferView.SizeInBytes = static_cast<uint>(indexBufferSize);
 
 	*pOutIndexBufferView = indexBufferView;
 	*ppOutBuffer = pIndexBuffer;
 
 lb_return:
-	if (pUploadBuffer)
-	{
-		pUploadBuffer->Release();
-		pUploadBuffer = nullptr;
-	}
+	SAFE_RELEASE(pUploadBuffer);
 	return hr;
 }
 
-bool D3D12ResourceManager::CreateTexture(ID3D12Resource** ppOutResource, UINT width, UINT height, DXGI_FORMAT format, const uint8_t* pInitImage)
+bool D3D12ResourceManager::CreateTexture(ID3D12Resource** ppOutResource, uint width, uint height, DXGI_FORMAT format, const uint8_t* pInitImage)
 {
 	HRESULT hr = S_OK;
 
@@ -278,16 +270,16 @@ bool D3D12ResourceManager::CreateTexture(ID3D12Resource** ppOutResource, UINT wi
 	{
 		D3D12_RESOURCE_DESC Desc = pTexResource->GetDesc();
 		D3D12_PLACED_SUBRESOURCE_FOOTPRINT Footprint;
-		UINT	Rows = 0;
-		UINT64	RowSize = 0;
-		UINT64	TotalBytes = 0;
+		uint rows = 0;
+		uint64_t rowSize = 0;
+		uint64_t totalBytes = 0;
 
-		m_pD3DDevice->GetCopyableFootprints(&Desc, 0, 1, 0, &Footprint, &Rows, &RowSize, &TotalBytes);
+		m_pD3DDevice->GetCopyableFootprints(&Desc, 0, 1, 0, &Footprint, &rows, &rowSize, &totalBytes);
 
-		BYTE*	pMappedPtr = nullptr;
+		uint8_t* pMappedPtr = nullptr;
 		CD3DX12_RANGE readRange(0, 0);
 
-		UINT64 uploadBufferSize = GetRequiredIntermediateSize(pTexResource, 0, 1);
+		uint64_t uploadBufferSize = GetRequiredIntermediateSize(pTexResource, 0, 1);
 
 		hr = m_pD3DDevice->CreateCommittedResource(
 			&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD),
@@ -301,9 +293,9 @@ bool D3D12ResourceManager::CreateTexture(ID3D12Resource** ppOutResource, UINT wi
 		HRESULT hr = pUploadBuffer->Map(0, &readRange, reinterpret_cast<void**>(&pMappedPtr));
 		ASSERT(SUCCEEDED(hr), "Failed to Map.");
 
-		const BYTE* pSrc = pInitImage;
-		BYTE* pDest = pMappedPtr;
-		for (UINT y = 0; y < height; y++)
+		const uint8_t* pSrc = pInitImage;
+		uint8_t* pDest = pMappedPtr;
+		for (uint y = 0; y < height; y++)
 		{
 			memcpy(pDest, pSrc, static_cast<size_t>(width) * 4);
 			pSrc += (width * 4);
@@ -314,8 +306,7 @@ bool D3D12ResourceManager::CreateTexture(ID3D12Resource** ppOutResource, UINT wi
 
 		UpdateTextureForWrite(pTexResource, pUploadBuffer);
 
-		pUploadBuffer->Release();
-		pUploadBuffer = nullptr;
+		SAFE_RELEASE(pUploadBuffer);
 		
 	}
 	*ppOutResource = pTexResource;
@@ -323,7 +314,7 @@ bool D3D12ResourceManager::CreateTexture(ID3D12Resource** ppOutResource, UINT wi
 	return true;
 }
 
-bool D3D12ResourceManager::CreateTexturePair(ID3D12Resource** ppOutResource, ID3D12Resource** ppOutUploadBuffer, UINT Width, UINT Height, DXGI_FORMAT format)
+bool D3D12ResourceManager::CreateTexturePair(ID3D12Resource** ppOutResource, ID3D12Resource** ppOutUploadBuffer, uint Width, uint Height, DXGI_FORMAT format)
 {
 	HRESULT hr = S_OK;
 	ID3D12Resource*	pTexResource = nullptr;
@@ -387,15 +378,15 @@ bool D3D12ResourceManager::CreateTextureFromFile(ID3D12Resource** ppOutResource,
 		return false;
 	}
 	textureDesc = pTexResource->GetDesc();
-	UINT subresoucesize = (UINT)subresouceData.size();	
-	UINT64 uploadBufferSize = GetRequiredIntermediateSize(pTexResource, 0, subresoucesize);
+	uint subresoucesize = (uint)subresouceData.size();
+	uint64_t uploadBufferSize = GetRequiredIntermediateSize(pTexResource, 0, subresoucesize);
 
 	if (bUseGpuUploadHeaps)
 	{
-		for (UINT i = 0; i < subresoucesize; i++)
+		for (uint i = 0; i < subresoucesize; i++)
 		{
 			pTexResource->WriteToSubresource(i, nullptr, subresouceData[i].pData, 
-				static_cast<UINT>(subresouceData[i].RowPitch), static_cast<UINT>(subresouceData[i].SlicePitch));		}
+				static_cast<uint>(subresouceData[i].RowPitch), static_cast<uint>(subresouceData[i].SlicePitch));		}
 	}
 	else
 	{
@@ -427,11 +418,7 @@ bool D3D12ResourceManager::CreateTextureFromFile(ID3D12Resource** ppOutResource,
 		fence();
 		waitForFenceValue();
 
-		if (pUploadBuffer)
-		{
-			pUploadBuffer->Release();
-			pUploadBuffer = nullptr;
-		}
+		SAFE_RELEASE(pUploadBuffer);
 	}
 
 	*ppOutResource = pTexResource;
@@ -444,14 +431,14 @@ void D3D12ResourceManager::UpdateTextureForWrite(ID3D12Resource* pDestTexResourc
 {
 	HRESULT hr = S_OK;
 
-	constexpr UINT MAX_SUB_RESOURCE_NUM = 32;
+	constexpr uint MAX_SUB_RESOURCE_NUM = 32;
 	D3D12_PLACED_SUBRESOURCE_FOOTPRINT footprint[MAX_SUB_RESOURCE_NUM] = {};
-	UINT rows[MAX_SUB_RESOURCE_NUM] = {};
-	UINT64 rowSizes[MAX_SUB_RESOURCE_NUM] = {};
-	UINT64 totalBytes = 0;
+	uint rows[MAX_SUB_RESOURCE_NUM] = {};
+	uint64_t rowSizes[MAX_SUB_RESOURCE_NUM] = {};
+	uint64_t totalBytes = 0;
 
 	D3D12_RESOURCE_DESC Desc = pDestTexResource->GetDesc();
-	ASSERT(Desc.MipLevels <= (UINT)_countof(footprint));
+	ASSERT(Desc.MipLevels <= (uint)_countof(footprint));
 
 	m_pD3DDevice->GetCopyableFootprints(&Desc, 0, Desc.MipLevels, 0, footprint, rows, rowSizes, &totalBytes);
 	
@@ -462,7 +449,7 @@ void D3D12ResourceManager::UpdateTextureForWrite(ID3D12Resource* pDestTexResourc
 	ASSERT(SUCCEEDED(hr), "Failed to Reset CommandList.");
 
 	m_pCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(pDestTexResource, D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_COPY_DEST));
-	for (UINT i = 0; i < Desc.MipLevels; i++)
+	for (uint i = 0; i < Desc.MipLevels; i++)
 	{
 		D3D12_TEXTURE_COPY_LOCATION	destLocation = {};
 		destLocation.PlacedFootprint = footprint[i];
@@ -491,11 +478,7 @@ void D3D12ResourceManager::Cleanup()
 {
 	waitForFenceValue();
 
-	if (m_pCommandQueue)
-	{
-		m_pCommandQueue->Release();
-		m_pCommandQueue = nullptr;
-	}
+	SAFE_RELEASE(m_pCommandQueue);
 
 	cleanupCommandList();
 
@@ -518,16 +501,8 @@ void D3D12ResourceManager::createFence()
 
 void D3D12ResourceManager::cleanupFence()
 {
-	if (m_hFenceEvent)
-	{
-		CloseHandle(m_hFenceEvent);
-		m_hFenceEvent = nullptr;
-	}
-	if (m_pFence)
-	{
-		m_pFence->Release();
-		m_pFence = nullptr;
-	}
+	SAFE_CLOSE_HANDLE(m_hFenceEvent);
+	SAFE_RELEASE(m_pFence);
 }
 
 void D3D12ResourceManager::createCommandList()
@@ -548,19 +523,11 @@ void D3D12ResourceManager::createCommandList()
 
 void D3D12ResourceManager::cleanupCommandList()
 {
-	if (m_pCommandList)
-	{
-		m_pCommandList->Release();
-		m_pCommandList = nullptr;
-	}
-	if (m_pCommandAllocator)
-	{
-		m_pCommandAllocator->Release();
-		m_pCommandAllocator = nullptr;
-	}
+	SAFE_RELEASE(m_pCommandList);
+	SAFE_RELEASE(m_pCommandAllocator);
 }
 
-UINT64 D3D12ResourceManager::fence()
+uint64_t D3D12ResourceManager::fence()
 {
 	m_ui64FenceValue++;
 	m_pCommandQueue->Signal(m_pFence, m_ui64FenceValue);
@@ -569,7 +536,7 @@ UINT64 D3D12ResourceManager::fence()
 
 void D3D12ResourceManager::waitForFenceValue()
 {
-	const UINT64 expectedFenceValue = m_ui64FenceValue;
+	const uint64_t expectedFenceValue = m_ui64FenceValue;
 
 	// Wait until the previous frame is finished.
 	if (m_pFence->GetCompletedValue() < expectedFenceValue)

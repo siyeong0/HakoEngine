@@ -4,14 +4,14 @@
 
 #include "SimpleConstantBufferPool.h"
 
-bool SimpleConstantBufferPool::Initialize(ID3D12Device* pD3DDevice, CONSTANT_BUFFER_TYPE type, UINT sizePerCBV, int maxNumCBV)
+bool SimpleConstantBufferPool::Initialize(ID3D12Device* pD3DDevice, CONSTANT_BUFFER_TYPE type, uint sizePerCBV, int maxNumCBV)
 {
 	HRESULT hr = S_OK;
 
 	m_ConstantBufferType = type;
 	m_MaxCBVNum = maxNumCBV;
 	m_SizePerCBV = sizePerCBV;
-	UINT byteWidth = sizePerCBV * m_MaxCBVNum;
+	uint byteWidth = sizePerCBV * m_MaxCBVNum;
 
 	// Create the constant buffer.
 	hr = pD3DDevice->CreateCommittedResource(
@@ -45,7 +45,7 @@ bool SimpleConstantBufferPool::Initialize(ID3D12Device* pD3DDevice, CONSTANT_BUF
 	uint8_t* systemMemPtr = m_pSystemMemAddr;
 	CD3DX12_CPU_DESCRIPTOR_HANDLE	heapHandle(m_pCBVHeap->GetCPUDescriptorHandleForHeapStart());
 
-	UINT descriptorSize = pD3DDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+	uint descriptorSize = pD3DDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 	for (int i = 0; i < m_MaxCBVNum; i++)
 	{
 		pD3DDevice->CreateConstantBufferView(&cbvDesc, heapHandle);
@@ -81,19 +81,7 @@ void SimpleConstantBufferPool::Reset()
 
 void SimpleConstantBufferPool::Cleanup()
 {
-	if (m_pCBContainerList)
-	{
-		delete[] m_pCBContainerList;
-		m_pCBContainerList = nullptr;
-	}
-	if (m_pResource)
-	{
-		m_pResource->Release();
-		m_pResource = nullptr;
-	}
-	if (m_pCBVHeap)
-	{
-		m_pCBVHeap->Release();
-		m_pCBVHeap = nullptr;
-	}
+	SAFE_DELETE_ARRAY(m_pCBContainerList);
+	SAFE_RELEASE(m_pResource);
+	SAFE_RELEASE(m_pCBVHeap);
 }

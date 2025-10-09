@@ -8,7 +8,7 @@ public:
 	FontManager() = default;
 	~FontManager() { Cleanup(); }
 
-	bool Initialize(D3D12Renderer* pRenderer, ID3D12CommandQueue* pCommandQueue, UINT width, UINT height, bool bEnableDebugLayer);
+	bool Initialize(D3D12Renderer* pRenderer, ID3D12CommandQueue* pCommandQueue, uint width, uint height, bool bEnableDebugLayer);
 	FontHandle* CreateFontObject(const WCHAR* wchFontFamilyName, float fontSize);
 	void DeleteFontObject(FontHandle* pFontHandle);
 	bool WriteTextToBitmap(uint8_t* dstImage, int dstWidth, int dstHeight, int dstPitch, int* outWidth, int* outHeight, FontHandle* pFontHandle, const WCHAR* wchString, int len);
@@ -16,7 +16,7 @@ public:
 
 private:
 	bool createD2D(ID3D12Device* pD3DDevice, ID3D12CommandQueue* pCommandQueue, bool bEnableDebugLayer);
-	bool createDWrite(ID3D12Device* pD3DDevice, UINT texWidth, UINT texHeight, float dpi);
+	bool createDWrite(ID3D12Device* pD3DDevice, uint texWidth, uint texHeight, float dpi);
 	bool createBitmapFromText(int* outWidth, int* outHeight, IDWriteTextFormat* pTextFormat, const WCHAR* wchString, int len);
 	void cleanupDWrite();
 	void cleanupD2D();
@@ -33,7 +33,7 @@ private:
 
 	IDWriteFactory5* m_pDWFactory = nullptr;
 	DWRITE_LINE_METRICS* m_pLineMetrics = nullptr;
-	UINT m_MaxNumLineMetrics = 0;
-	UINT m_D2DBitmapWidth = 0;
-	UINT m_D2DBitmapHeight = 0;
+	uint m_MaxNumLineMetrics = 0;
+	uint m_D2DBitmapWidth = 0;
+	uint m_D2DBitmapHeight = 0;
 };

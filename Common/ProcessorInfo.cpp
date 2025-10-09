@@ -2,13 +2,12 @@
 #include "Common.h"
 #include "ProcessorInfo.h"
 
-typedef BOOL(WINAPI *LPFN_GLPI)(PSYSTEM_LOGICAL_PROCESSOR_INFORMATION, PDWORD);
-DWORD CountSetBits(ULONG_PTR bitMask);
+typedef bool(WINAPI* LPFN_GLPI)(PSYSTEM_LOGICAL_PROCESSOR_INFORMATION, PDWORD);
+uint CountSetBits(ULONG_PTR bitMask);
 
-BOOL GetPhysicalCoreCount(DWORD* pdwOutPhysicalCoreCount, DWORD* pdwOutLogicalCoreCount)
+bool GetPhysicalCoreCount(uint* pOutPhysicalCoreCount, uint* pOutLogicalCoreCount)
 {
-	BOOL	bResult = FALSE;
-
+	bool bResult = FALSE;
 	{
 		LPFN_GLPI glpi;
 
@@ -25,32 +24,30 @@ BOOL GetPhysicalCoreCount(DWORD* pdwOutPhysicalCoreCount, DWORD* pdwOutLogicalCo
 		DWORD byteOffset = 0;
 		PCACHE_DESCRIPTOR Cache;
 
-
-
+#pragma warning(suppress: 6387)
 		glpi = (LPFN_GLPI)GetProcAddress(GetModuleHandle(TEXT("kernel32")), "GetLogicalProcessorInformation");
+
 		if (nullptr == glpi)
 		{
 			SYSTEM_INFO systemInfo;
 			GetSystemInfo(&systemInfo);
-			*pdwOutPhysicalCoreCount = systemInfo.dwNumberOfProcessors;
-			*pdwOutLogicalCoreCount = systemInfo.dwNumberOfProcessors;
+			*pOutPhysicalCoreCount = systemInfo.dwNumberOfProcessors;
+			*pOutLogicalCoreCount = systemInfo.dwNumberOfProcessors;
 
 			OutputDebugStringW(L"\nGetLogicalProcessorInformation is not supported.\n");
 			goto lb_return;
 		}
 
-		BOOL done = FALSE;
+		bool done = false;
 		while (!done)
 		{
 			DWORD rc = glpi(pBuffer, &returnLength);
 
-			if (FALSE == rc)
+			if (rc == 0)
 			{
 				if (GetLastError() == ERROR_INSUFFICIENT_BUFFER)
 				{
-					if (pBuffer)
-						free(pBuffer);
-
+					SAFE_FREE(pBuffer);
 					pBuffer = (PSYSTEM_LOGICAL_PROCESSOR_INFORMATION)malloc(returnLength);
 				}
 				else
@@ -60,60 +57,60 @@ BOOL GetPhysicalCoreCount(DWORD* pdwOutPhysicalCoreCount, DWORD* pdwOutLogicalCo
 			}
 			else
 			{
-				done = TRUE;
+				done = true;
 			}
 		}
-		
+
 		ptr = pBuffer;
-		
+
 		while (byteOffset + sizeof(SYSTEM_LOGICAL_PROCESSOR_INFORMATION) <= returnLength)
 		{
 			ASSERT(ptr, "Error: Unable to allocate memory for logical processor information.\n");
 			switch (ptr->Relationship)
 			{
-				case RelationNumaNode:
-					// Non-NUMA systems report a single record of this type.
-					numaNodeCount++;
-					break;
+			case RelationNumaNode:
+				// Non-NUMA systems report a single record of this type.
+				numaNodeCount++;
+				break;
 
-				case RelationProcessorCore:
-					processorCoreCount++;
+			case RelationProcessorCore:
+				processorCoreCount++;
 
-					// A hyperthreaded core supplies more than one logical processor.
-					logicalProcessorCount += CountSetBits(ptr->ProcessorMask);
-					break;
+				// A hyperthreaded core supplies more than one logical processor.
+				logicalProcessorCount += CountSetBits(ptr->ProcessorMask);
+				break;
 
-				case RelationCache:
-					// Cache data is in ptr->Cache, one CACHE_DESCRIPTOR structure for each cache. 
-					Cache = &ptr->Cache;
-					if (Cache->Level == 1)
-					{
-						processorL1CacheCount++;
-					}
-					else if (Cache->Level == 2)
-					{
-						processorL2CacheCount++;
-					}
-					else if (Cache->Level == 3)
-					{
-						processorL3CacheCount++;
-					}
-					break;
+			case RelationCache:
+				// Cache data is in ptr->Cache, one CACHE_DESCRIPTOR structure for each cache. 
+				Cache = &ptr->Cache;
+				if (Cache->Level == 1)
+				{
+					processorL1CacheCount++;
+				}
+				else if (Cache->Level == 2)
+				{
+					processorL2CacheCount++;
+				}
+				else if (Cache->Level == 3)
+				{
+					processorL3CacheCount++;
+				}
+				break;
 
-				case RelationProcessorPackage:
-					// Logical processors share a physical package.
-					processorPackageCount++;
-					break;
+			case RelationProcessorPackage:
+				// Logical processors share a physical package.
+				processorPackageCount++;
+				break;
 
-				default:
-					OutputDebugStringW(L"\nError: Unsupported LOGICAL_PROCESSOR_RELATIONSHIP value.\n");
-					break;
+			default:
+				OutputDebugStringW(L"\nError: Unsupported LOGICAL_PROCESSOR_RELATIONSHIP value.\n");
+				break;
 			}
 			byteOffset += sizeof(SYSTEM_LOGICAL_PROCESSOR_INFORMATION);
 			ptr++;
 		}
-		*pdwOutPhysicalCoreCount = processorCoreCount;
-		*pdwOutLogicalCoreCount = logicalProcessorCount;
+		*pOutPhysicalCoreCount = processorCoreCount;
+		*pOutLogicalCoreCount = logicalProcessorCount;
 		//numaNodeCount;
 		//processorPackageCount;
 		//processorCoreCount;
@@ -122,16 +119,15 @@ BOOL GetPhysicalCoreCount(DWORD* pdwOutPhysicalCoreCount, DWORD* pdwOutLogicalCo
 		//processorL2CacheCount;
 		//processorL3CacheCount
 
-		free(pBuffer);
-
-		bResult = TRUE;
+		SAFE_FREE(pBuffer);
+		bResult = true;
 	}
 lb_return:
 	return bResult;
 }
 
 // Helper function to count set bits in the processor mask.
-DWORD CountSetBits(ULONG_PTR bitMask)
+uint CountSetBits(ULONG_PTR bitMask)
 {
 	DWORD LSHIFT = sizeof(ULONG_PTR) * 8 - 1;
 	DWORD bitSetCount = 0;

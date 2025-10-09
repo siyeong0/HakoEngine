@@ -3,9 +3,9 @@
 
 using namespace DirectX;
 
-constexpr UINT ROOT_SLOT_CBV_PER_FRAME = 0;
-constexpr UINT ROOT_SLOT_CBV_PER_DRAW = 1;
-constexpr UINT ROOT_SLOT_SRV_TABLE = 2;
+constexpr uint ROOT_SLOT_CBV_PER_FRAME = 0;
+constexpr uint ROOT_SLOT_CBV_PER_DRAW = 1;
+constexpr uint ROOT_SLOT_SRV_TABLE = 2;
 
 enum CONSTANT_BUFFER_TYPE
 {
@@ -40,7 +40,7 @@ struct CONSTANT_BUFFER_PER_FRAME
 
 	float Near;
 	float Far;
-	UINT MaxRadianceRayRecursionDepth;
+	uint MaxRadianceRayRecursionDepth;
 };
 
 struct CONSTANT_BUFFER_MESH_OBJECT

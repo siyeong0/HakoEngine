@@ -1,11 +1,11 @@
 ﻿#pragma once
-
+#include "Common/Common.h"
 #include <DirectXMath.h>
 
 using namespace DirectX;
 
-constexpr UINT SWAP_CHAIN_FRAME_COUNT = 3;
-constexpr UINT MAX_PENDING_FRAME_COUNT = SWAP_CHAIN_FRAME_COUNT - 1;
+constexpr uint SWAP_CHAIN_FRAME_COUNT = 3;
+constexpr uint MAX_PENDING_FRAME_COUNT = SWAP_CHAIN_FRAME_COUNT - 1;
 
 struct TextureHandle
 {
@@ -41,7 +41,7 @@ struct IndexedTriGroup
 {
 	ID3D12Resource* IndexBuffer = nullptr;
 	D3D12_INDEX_BUFFER_VIEW IndexBufferView = {};
-	UINT NumTriangles = 0;
+	uint NumTriangles = 0;
 	TextureHandle* pTexHandle = nullptr;
 	bool bOpaque = true;
 };
@@ -53,9 +53,9 @@ struct BLASInstance
 	XMMATRIX Transform;
 
 	uint32_t ID;
-	UINT ShaderRecordIndex;
-	UINT NumVertices;
-	UINT NumTriGroups;
+	uint ShaderRecordIndex;
+	uint NumVertices;
+	uint NumTriGroups;
 
 	// Local params
 	D3D12_CPU_DESCRIPTOR_HANDLE SrvCpuHandle;

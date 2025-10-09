@@ -17,7 +17,7 @@ const wchar_t* g_AnyHitShaderName[] = { L"MyAnyHitShader_RadianceRay" };
 // Hit groups.
 const wchar_t* g_HitGroupName[] = { L"MyHitGroup_Triangle_RadianceRay" };
 
-bool RayTracingManager::Initialize(D3D12Renderer* pRenderer, UINT width, UINT height, UINT maxNumBLASs)
+bool RayTracingManager::Initialize(D3D12Renderer* pRenderer, uint width, uint height, uint maxNumBLASs)
 {
 	HRESULT hr = S_OK;
 
@@ -65,11 +65,7 @@ void RayTracingManager::Cleanup()
 {
 	ShaderManager* pShaderManager = m_pRenderer->GetShaderManager();
 
-	if (m_pCommandQueue)
-	{
-		m_pCommandQueue->Release();
-		m_pCommandQueue = nullptr;
-	}
+	SAFE_RELEASE(m_pCommandQueue);
 
 	cleanupCommandList();
 	cleanupFence();
@@ -80,60 +76,21 @@ void RayTracingManager::Cleanup()
 	cleanupShaderTables();
 	cleanupPendingFreeedBlasInstace();
 
-	// Cleanup DXRStateObject
-	if (m_pDXRStateObject)
-	{
-		m_pDXRStateObject->Release();
-		m_pDXRStateObject = nullptr;
-	}
-	// Cleanup RootSignature
-	if (m_pRaytracingGlobalRootSignature)
-	{
-		m_pRaytracingGlobalRootSignature->Release();
-		m_pRaytracingGlobalRootSignature = nullptr;
-	}
-	if (m_pRaytracingLocalRootSignature)
-	{
-		m_pRaytracingLocalRootSignature->Release();
-		m_pRaytracingLocalRootSignature = nullptr;
-	}
-	if (m_pRayShader)
-	{
-		pShaderManager->ReleaseShader(m_pRayShader);
-		m_pRayShader = nullptr;
-	}
-	if (m_pBlasInstance)
-	{
-		FreeBLAS(m_pBlasInstance);
-		m_pBlasInstance = nullptr;
-	}
-	if (m_pTLAS)
-	{
-		m_pTLAS->Release();
-		m_pTLAS = nullptr;
-	}
-	if (m_pBLASInstanceDescResouce)
-	{
-		m_pBLASInstanceDescResouce->Release();
-		m_pBLASInstanceDescResouce = nullptr;
-	}
+	SAFE_RELEASE(m_pDXRStateObject);
+	SAFE_RELEASE(m_pRaytracingGlobalRootSignature);
+	SAFE_RELEASE(m_pRaytracingLocalRootSignature);
+	SAFE_CLEANUP(m_pRayShader, pShaderManager->ReleaseShader);
+	SAFE_RELEASE(m_pTLAS);
+	SAFE_RELEASE(m_pBLASInstanceDescResouce);
 	for (auto& blasInstance : m_BlasInstanceList)
 	{
-		if (blasInstance->pBLAS)
-		{
-			blasInstance->pBLAS->Release();
-			blasInstance->pBLAS = nullptr;
-		}
+		SAFE_RELEASE(blasInstance->pBLAS);
 	}
 
 	cleanupDescriptorHeapCBV_SRV_UAV();
 	cleanupDispatchHeap();
 
-	if (m_pIndexCreator)
-	{
-		delete m_pIndexCreator;
-		m_pIndexCreator = nullptr;
-	}
+	SAFE_DELETE(m_pIndexCreator);
 }
 
 void RayTracingManager::DoRaytracing(ID3D12GraphicsCommandList6* pCommandList)
@@ -215,10 +172,10 @@ void RayTracingManager::DoRaytracing(ID3D12GraphicsCommandList6* pCommandList)
 
 BLASInstance* RayTracingManager::AllocBLAS(
 	ID3D12Resource* pVertexBuffer,
-	UINT vertexSize,
-	UINT numVertices,
+	uint vertexSize,
+	uint numVertices,
 	const IndexedTriGroup* pTriGroupInfoList,
-	UINT numTriGroupInfos,
+	uint numTriGroupInfos,
 	bool bAllowUpdate)
 {
 	BLASInstance* pBlasInstance = buildBLAS(pVertexBuffer, vertexSize, numVertices, pTriGroupInfoList, numTriGroupInfos, bAllowUpdate);
@@ -240,8 +197,8 @@ bool RayTracingManager::UpdateAccelerationStructure()
 
 	// Build TLAS
 	BLASInstance* ppBlasInstancelist[1024] = {};
-	UINT numBlasInstances = 0;
-	UINT numRequiredShaderRecordCount = 0;
+	uint numBlasInstances = 0;
+	uint numRequiredShaderRecordCount = 0;
 
 	for (auto curr : m_BlasInstanceList)
 	{
@@ -260,16 +217,8 @@ bool RayTracingManager::UpdateAccelerationStructure()
 	// TLAS빌드
 	if (m_UpdateAccelerationStructureFlags & UPDATE_ACCELERATION_STRCTURE_TYPE_TLAS)
 	{
-		if (m_pTLAS)
-		{
-			m_pTLAS->Release();
-			m_pTLAS = nullptr;
-		}
-		if (m_pBLASInstanceDescResouce)
-		{
-			m_pBLASInstanceDescResouce->Release();
-			m_pBLASInstanceDescResouce = nullptr;
-		}
+		SAFE_RELEASE(m_pTLAS);
+		SAFE_RELEASE(m_pBLASInstanceDescResouce);
 		// TLAS빌드를 위한 인스턴스 리소스 할당
 		D3DUtil::CreateUploadBuffer(m_pD3DDevice, nullptr, sizeof(D3D12_RAYTRACING_INSTANCE_DESC) * numBlasInstances, &m_pBLASInstanceDescResouce, L"InstanceDescs");
 
@@ -286,7 +235,7 @@ void RayTracingManager::UpdateBLASTransform(BLASInstance* pBlasInstance, const X
 	m_UpdateAccelerationStructureFlags |= UPDATE_ACCELERATION_STRCTURE_TYPE_TLAS;
 }
 
-void RayTracingManager::UpdateWindowSize(UINT width, UINT height)
+void RayTracingManager::UpdateWindowSize(uint width, uint height)
 {
 	cleanupOutputDiffuseBuffer();
 	cleanupOutputDepthBuffer();
@@ -299,16 +248,16 @@ void RayTracingManager::UpdateWindowSize(UINT width, UINT height)
 
 BLASInstance* RayTracingManager::buildBLAS(
 	ID3D12Resource* pVertexBuffer,
-	UINT vertexSize,
-	UINT numVertices,
+	uint vertexSize,
+	uint numVertices,
 	const IndexedTriGroup* pTriGroupInfoList,
-	UINT numTriGroupInfos,
+	uint numTriGroupInfos,
 	bool bAllowUpdate)
 {
 	//
 	// VB한개, IB여러개
 	//
-	// 추후에 ID3D12CommandList포인터와 UINT CurContextIndex를 받아서 중첩렌더링을 처리할 수 있도록 수정한다.
+	// 추후에 ID3D12CommandList포인터와 uint currContextIndex를 받아서 중첩렌더링을 처리할 수 있도록 수정한다.
 	//
 	BLASInstance* pBlasInstance = nullptr;
 	ID3D12Resource* pBLAS = nullptr;
@@ -330,7 +279,7 @@ BLASInstance* RayTracingManager::buildBLAS(
 	// Fill D3D12_RAYTRACING_GEOMETRY_DESC arrays
 	D3D12_RAYTRACING_GEOMETRY_DESC pGeomDescList[MAX_TRIGROUP_COUNT_PER_BLAS] = {};
 	D3D12_GPU_VIRTUAL_ADDRESS VB_GPU_Ptr = pVertexBuffer->GetGPUVirtualAddress();
-	for (UINT i = 0; i < numTriGroupInfos; i++)
+	for (uint i = 0; i < numTriGroupInfos; i++)
 	{
 		D3D12_GPU_VIRTUAL_ADDRESS IB_GPU_Ptr = pTriGroupInfoList[i].IndexBuffer->GetGPUVirtualAddress();
 
@@ -418,11 +367,7 @@ BLASInstance* RayTracingManager::buildBLAS(
 		fence();
 		waitForFenceValue();
 
-		if (pScratchResource)
-		{
-			pScratchResource->Release();
-			pScratchResource = nullptr;
-		}
+		SAFE_RELEASE(pScratchResource);
 	}
 
 	// Set Local Root Parameters
@@ -435,7 +380,7 @@ BLASInstance* RayTracingManager::buildBLAS(
 		srvDesc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
 		srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
 
-		for (UINT i = 0; i < numTriGroupInfos; i++)
+		for (uint i = 0; i < numTriGroupInfos; i++)
 		{
 			// Create Shader Resource from Vertex Buffer
 			srvDesc.Buffer.FirstElement = 0;
@@ -485,9 +430,9 @@ BLASInstance* RayTracingManager::buildBLAS(
 ID3D12Resource* RayTracingManager::buildTLAS(
 	ID3D12Resource* pInstanceDescResource,
 	BLASInstance** ppInstanceList,
-	UINT numBlasInstances,
+	uint numBlasInstances,
 	bool bAllowUpdate,
-	UINT currContextIndex)
+	uint currContextIndex)
 {
 	ID3D12Resource* pTLASResource = nullptr;
 
@@ -542,9 +487,9 @@ ID3D12Resource* RayTracingManager::buildTLAS(
 	CD3DX12_RANGE readRange(0, 0);
 	pInstanceDescResource->Map(0, &readRange, (void**)&pInstanceDescList);
 
-	UINT numTlasElements = 0;
+	uint numTlasElements = 0;
 	D3D12_RAYTRACING_INSTANCE_DESC* pInstanceDescEntry = pInstanceDescList;
-	for (UINT i = 0; i < numBlasInstances; i++)
+	for (uint i = 0; i < numBlasInstances; i++)
 	{
 		const BLASInstance* pInstanceSrc = ppInstanceList[i];
 		XMMATRIX matTranspose = XMMatrixTranspose(pInstanceSrc->Transform);
@@ -593,16 +538,12 @@ ID3D12Resource* RayTracingManager::buildTLAS(
 	fence();
 	waitForFenceValue();
 
-	if (pScratchResource)
-	{
-		pScratchResource->Release();
-		pScratchResource = nullptr;
-	}
+	SAFE_RELEASE(pScratchResource);
 
 	return pTLASResource;
 }
 
-void RayTracingManager::updateHitGroupShaderTable(UINT numShaderRecords)
+void RayTracingManager::updateHitGroupShaderTable(uint numShaderRecords)
 {
 	//
 	// wait필요
@@ -620,13 +561,13 @@ void RayTracingManager::updateHitGroupShaderTable(UINT numShaderRecords)
 	void* pHitGroupShaderIdentifier = pStateObjectProperties->GetShaderIdentifier(g_HitGroupName[0]);
 	m_pHitGroupShaderTable->CommitResource(numShaderRecords);
 
-	UINT shaderRecordIndex = 0;
+	uint shaderRecordIndex = 0;
 	for (auto& curr : m_BlasInstanceList)
 	{
 		// pBlasInstance->ShaderRecordIndex는 HitGroupShaderTable에서의 ShaderRecord 시작 인덱스.
 		// 이 값은 TLAS빌드 시에 D3D12_RAYTRACING_INSTANCE_DESC::InstanceContributionToHitGroupIndex에 대입한다.
 		curr->ShaderRecordIndex = shaderRecordIndex;
-		for (UINT i = 0; i < curr->NumTriGroups; i++)
+		for (uint i = 0; i < curr->NumTriGroups; i++)
 		{
 			ShaderRecord record = ShaderRecord(pHitGroupShaderIdentifier, m_ShaderIdentifierSize, &curr->pRootArg[i], sizeof(RootArgument));
 			m_pHitGroupShaderTable->InsertShaderRecord(&record);
@@ -637,11 +578,7 @@ void RayTracingManager::updateHitGroupShaderTable(UINT numShaderRecords)
 	m_HitGroupShaderTableStrideInBytes = m_pHitGroupShaderTable->GetShaderRecordSize();
 	m_HitGroupShaderRecordNum = m_pHitGroupShaderTable->GetShaderRecordNum();
 
-	if (pStateObjectProperties)
-	{
-		pStateObjectProperties->Release();
-		pStateObjectProperties = nullptr;
-	}
+	SAFE_RELEASE(pStateObjectProperties);
 }
 
 void RayTracingManager::cleanupPendingFreeedBlasInstace()
@@ -664,7 +601,7 @@ void RayTracingManager::cleanupPendingFreeedBlasInstace()
 	m_pFreedBlasInstanceList.clear();
 }
 
-bool RayTracingManager::createOutputDiffuseBuffer(UINT width, UINT height)
+bool RayTracingManager::createOutputDiffuseBuffer(uint width, uint height)
 {
 	D3D12_RESOURCE_DESC texDesc = {};
 	texDesc.MipLevels = 1;
@@ -697,14 +634,10 @@ bool RayTracingManager::createOutputDiffuseBuffer(UINT width, UINT height)
 
 void RayTracingManager::cleanupOutputDiffuseBuffer()
 {
-	if (m_pOutputDiffuse)
-	{
-		m_pOutputDiffuse->Release();
-		m_pOutputDiffuse = nullptr;
-	}
+	SAFE_RELEASE(m_pOutputDiffuse);
 }
 
-bool RayTracingManager::createOutputDepthBuffer(UINT width, UINT height)
+bool RayTracingManager::createOutputDepthBuffer(uint width, uint height)
 {
 	// Create Output Buffer, Texture, SRV
 	D3D12_RESOURCE_DESC texDesc = {};
@@ -746,11 +679,7 @@ bool RayTracingManager::createOutputDepthBuffer(UINT width, UINT height)
 
 void RayTracingManager::cleanupOutputDepthBuffer()
 {
-	if (m_pOutputDepth)
-	{
-		m_pOutputDepth->Release();
-		m_pOutputDepth = nullptr;
-	}
+	SAFE_RELEASE(m_pOutputDepth);
 }
 
 void RayTracingManager::createRootSignatures()
@@ -922,11 +851,7 @@ void RayTracingManager::buildShaderTables()
 	m_pHitGroupShaderTable->Initiailze(m_pD3DDevice, m_ShaderIdentifierSize + sizeof(RootArgument), L"HitGroupShaderTable");
 	void* pHitGroupShaderIdentifier = pStateObjectProperties->GetShaderIdentifier(g_HitGroupName[0]);
 
-	if (pStateObjectProperties)
-	{
-		pStateObjectProperties->Release();
-		pStateObjectProperties = nullptr;
-	}
+	SAFE_RELEASE(pStateObjectProperties);
 }
 
 void RayTracingManager::cleanupShaderTables()
@@ -965,17 +890,13 @@ void RayTracingManager::createDescriptorHeapCBV_SRV_UAV()
 
 void RayTracingManager::cleanupDescriptorHeapCBV_SRV_UAV()
 {
-	if (m_pCommonDescriptorHeap)
-	{
-		m_pCommonDescriptorHeap->Release();
-		m_pCommonDescriptorHeap = nullptr;
-	}
+	SAFE_RELEASE(m_pCommonDescriptorHeap);
 }
 
-void RayTracingManager::createShaderVisibleHeap(UINT maxNumDescriptors)
+void RayTracingManager::createShaderVisibleHeap(uint maxNumDescriptors)
 {
 	D3D12_DESCRIPTOR_HEAP_DESC heapDesc = {};
-	heapDesc.NumDescriptors = maxNumDescriptors;
+	heapDesc.NumDescriptors = (UINT)maxNumDescriptors;
 	heapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
 	heapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
 
@@ -985,11 +906,7 @@ void RayTracingManager::createShaderVisibleHeap(UINT maxNumDescriptors)
 
 void RayTracingManager::cleanupDispatchHeap()
 {
-	if (m_pShaderVisibleDescriptorHeap)
-	{
-		m_pShaderVisibleDescriptorHeap->Release();
-		m_pShaderVisibleDescriptorHeap = nullptr;
-	}
+	SAFE_RELEASE(m_pShaderVisibleDescriptorHeap);
 }
 
 void RayTracingManager::createCommandList()
@@ -1007,16 +924,8 @@ void RayTracingManager::createCommandList()
 
 void RayTracingManager::cleanupCommandList()
 {
-	if (m_pCommandList)
-	{
-		m_pCommandList->Release();
-		m_pCommandList = nullptr;
-	}
-	if (m_pCommandAllocator)
-	{
-		m_pCommandAllocator->Release();
-		m_pCommandAllocator = nullptr;
-	}
+	SAFE_RELEASE(m_pCommandList);
+	SAFE_RELEASE(m_pCommandAllocator);
 }
 
 void RayTracingManager::createFence()
@@ -1034,16 +943,8 @@ void RayTracingManager::createFence()
 
 void RayTracingManager::cleanupFence()
 {
-	if (m_hFenceEvent)
-	{
-		CloseHandle(m_hFenceEvent);
-		m_hFenceEvent = nullptr;
-	}
-	if (m_pFence)
-	{
-		m_pFence->Release();
-		m_pFence = nullptr;
-	}
+	SAFE_CLOSE_HANDLE(m_hFenceEvent);
+	SAFE_RELEASE(m_pFence);	
 }
 
 uint64_t RayTracingManager::fence()

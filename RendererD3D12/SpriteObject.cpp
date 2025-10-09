@@ -62,14 +62,14 @@ bool SpriteObject::Initialize(D3D12Renderer* pRenderer, const WCHAR* wchTexFileN
 
 	if (bResult)
 	{
-		UINT texWidth = 1;
-		UINT texHeight = 1;
+		uint texWidth = 1;
+		uint texHeight = 1;
 		m_pTexHandle = (TextureHandle*)m_pRenderer->CreateTextureFromFile(wchTexFileName);
 		if (m_pTexHandle)
 		{
-			D3D12_RESOURCE_DESC	 desc = m_pTexHandle->pTexResource->GetDesc();
-			texWidth = (UINT)desc.Width;
-			texHeight = (UINT)desc.Height;
+			D3D12_RESOURCE_DESC desc = m_pTexHandle->pTexResource->GetDesc();
+			texWidth = static_cast<uint>(desc.Width);
+			texHeight = static_cast<uint>(desc.Height);
 		}
 		if (pRectOrNull)
 		{
@@ -101,19 +101,19 @@ void SpriteObject::Draw(int threadIndex, ID3D12GraphicsCommandList6* pCommandLis
 void SpriteObject::DrawWithTex(int threadIndex, ID3D12GraphicsCommandList6* pCommandList, const XMFLOAT2* pPos, const XMFLOAT2* pScale, const RECT* pRect, float Z, TextureHandle* pTexHandle)
 {
 	ID3D12Device5* pDevice = m_pRenderer->GetD3DDevice();
-	UINT srvDescriptorSize = m_pRenderer->GetSrvDescriptorSize();
+	uint srvDescriptorSize = m_pRenderer->GetSrvDescriptorSize();
 	DescriptorPool* pDescriptorPool = m_pRenderer->GetDescriptorPool(threadIndex);
 	SimpleConstantBufferPool* pConstantBufferPool = m_pRenderer->GetConstantBufferPool(CONSTANT_BUFFER_TYPE_SPRITE, threadIndex);
 
 	// Texture information
-	UINT texWidth = 0;
-	UINT texHeight = 0;
+	uint texWidth = 0;
+	uint texHeight = 0;
 	D3D12_CPU_DESCRIPTOR_HANDLE srv = {};
 	if (pTexHandle)
 	{
 		D3D12_RESOURCE_DESC desc = pTexHandle->pTexResource->GetDesc();
-		texWidth = static_cast<UINT>(desc.Width);
-		texHeight = static_cast<UINT>(desc.Height);
+		texWidth = static_cast<uint>(desc.Width);
+		texHeight = static_cast<uint>(desc.Height);
 		srv = pTexHandle->SRV;
 	}
 	// Sample region
@@ -148,7 +148,7 @@ void SpriteObject::DrawWithTex(int threadIndex, ID3D12GraphicsCommandList6* pCom
 	// SRV Descriptor table (1개)
 	CD3DX12_CPU_DESCRIPTOR_HANDLE cpuTable{};
 	CD3DX12_GPU_DESCRIPTOR_HANDLE gpuTable{};
-	const UINT requiredSrvCount = 1;
+	const uint requiredSrvCount = 1;
 	bool bOk = pDescriptorPool->AllocDescriptorTable(&cpuTable, &gpuTable, requiredSrvCount);
 	ASSERT(bOk, "Failed to allocate descriptor table.");
 
@@ -210,16 +210,8 @@ void SpriteObject::cleanupSharedResources()
 	int refCount = --m_InitRefCount;
 	if (!refCount)
 	{
-		if (m_pVertexBuffer)
-		{
-			m_pVertexBuffer->Release();
-			m_pVertexBuffer = nullptr;
-		}
-		if (m_pIndexBuffer)
-		{
-			m_pIndexBuffer->Release();
-			m_pIndexBuffer = nullptr;
-		}
+		SAFE_RELEASE(m_pVertexBuffer);
+		SAFE_RELEASE(m_pIndexBuffer);
 	}
 }
 
@@ -306,7 +298,7 @@ bool SpriteObject::initMesh()
 {
 	// TODO: 바깥에서 버텍스데이터와 텍스처를 입력하는 식으로 변경할 것
 	ID3D12Device5* pD3DDeivce = m_pRenderer->GetD3DDevice();
-	UINT srvDescriptorSize = m_pRenderer->GetSrvDescriptorSize();
+	uint srvDescriptorSize = m_pRenderer->GetSrvDescriptorSize();
 	D3D12ResourceManager*	pResourceManager = m_pRenderer->GetResourceManager();
 	SingleDescriptorAllocator* pSingleDescriptorAllocator = m_pRenderer->GetSingleDescriptorAllocator();
 	BOOL bUseGpuUploadHeaps = m_pRenderer->IsGpuUploadHeapsEnabledInl();
@@ -328,7 +320,7 @@ bool SpriteObject::initMesh()
 		0, 2, 3
 	};
 
-	const UINT vertexBufferSize = sizeof(vertices);
+	const uint vertexBufferSize = sizeof(vertices);
 	bool bUseGpuUploadHepas = m_pRenderer->IsGpuUploadHeapsEnabledInl();
 	if (FAILED(pResourceManager->CreateVertexBuffer(sizeof(SpriteVertex), (DWORD)_countof(vertices), &m_VertexBufferView, &m_pVertexBuffer, vertices, bUseGpuUploadHepas)))
 	{
@@ -347,16 +339,7 @@ bool SpriteObject::initMesh()
 
 void SpriteObject::cleanup()
 {
-	if (m_pTexHandle)
-	{
-		m_pRenderer->DeleteTexture(m_pTexHandle);
-		m_pTexHandle = nullptr;
-	}
-	if (m_pPSOHandle)
-	{
-		PSOManager* pPSOManager = m_pRenderer->GetPSOManager();
-		pPSOManager->ReleasePSO(m_pPSOHandle);
-		m_pPSOHandle = nullptr;
-	}
+	SAFE_CLEANUP(m_pTexHandle, m_pRenderer->DeleteTexture);
+	SAFE_CLEANUP(m_pPSOHandle, m_pRenderer->GetPSOManager()->ReleasePSO);
 	cleanupSharedResources();
 }

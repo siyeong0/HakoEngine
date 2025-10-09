@@ -6,7 +6,7 @@
 
 using namespace D2D1;
 
-bool FontManager::Initialize(D3D12Renderer* pRenderer, ID3D12CommandQueue* pCommandQueue, UINT width, UINT height, bool bEnableDebugLayer)
+bool FontManager::Initialize(D3D12Renderer* pRenderer, ID3D12CommandQueue* pCommandQueue, uint width, uint height, bool bEnableDebugLayer)
 {
 	ID3D12Device* pD3DDevice = pRenderer->GetD3DDevice();
 	createD2D(pD3DDevice, pCommandQueue, bEnableDebugLayer);
@@ -62,11 +62,7 @@ FontHandle* FontManager::CreateFontObject(const WCHAR* wchFontFamilyName, float 
 
 void FontManager::DeleteFontObject(FontHandle* pFontHandle)
 {
-	if (pFontHandle->pTextFormat)
-	{
-		pFontHandle->pTextFormat->Release();
-		pFontHandle->pTextFormat = nullptr;
-	}
+	SAFE_RELEASE(pFontHandle->pTextFormat);
 	delete pFontHandle;
 }
 
@@ -118,7 +114,7 @@ bool FontManager::createD2D(ID3D12Device* pD3DDevice, ID3D12CommandQueue* pComma
 	// 12's command queue.
 	HRESULT hr = S_OK;
 
-	UINT	d3d11DeviceFlags = D3D11_CREATE_DEVICE_BGRA_SUPPORT;
+	UINT d3d11DeviceFlags = D3D11_CREATE_DEVICE_BGRA_SUPPORT;
 	D2D1_FACTORY_OPTIONS d2dFactoryOptions = {};
 
 	ID2D1Factory3* pD2DFactory = nullptr;
@@ -165,36 +161,16 @@ bool FontManager::createD2D(ID3D12Device* pD3DDevice, ID3D12CommandQueue* pComma
 	ASSERT(SUCCEEDED(hr), "Failed to create ID2D1DeviceContext2 from ID2D1Device2");
 
 	// Release temporary objects.
-	if (pD3D11Device)
-	{
-		pD3D11Device->Release();
-		pD3D11Device = nullptr;
-	}
-	if (pDXGIDevice)
-	{
-		pDXGIDevice->Release();
-		pDXGIDevice = nullptr;
-	}
-	if (pD2DFactory)
-	{
-		pD2DFactory->Release();
-		pD2DFactory = nullptr;
-	}
-	if (pD3D11On12Device)
-	{
-		pD3D11On12Device->Release();
-		pD3D11On12Device = nullptr;
-	}
-	if (pD3D11DeviceContext)
-	{
-		pD3D11DeviceContext->Release();
-		pD3D11DeviceContext = nullptr;
-	}
+	SAFE_RELEASE(pD3D11Device);
+	SAFE_RELEASE(pDXGIDevice);
+	SAFE_RELEASE(pD2DFactory);
+	SAFE_RELEASE(pD3D11On12Device);
+	SAFE_RELEASE(pD3D11DeviceContext);
 
 	return true;
 }
 
-bool FontManager::createDWrite(ID3D12Device* pD3DDevice, UINT texWidth, UINT texHeight, float dpi)
+bool FontManager::createDWrite(ID3D12Device* pD3DDevice, uint texWidth, uint texHeight, float dpi)
 {
 	HRESULT hr = S_OK;
 
@@ -269,8 +245,7 @@ bool FontManager::createBitmapFromText(int* outWidth, int* outHeight, IDWriteTex
 		pD2DDeviceContext->SetTarget(nullptr);
 
 		// Release text layout.
-		textLayout->Release();
-		textLayout = nullptr;
+		SAFE_RELEASE(textLayout);
 	}
 	uint32_t width = (int)ceil(metrics.width);
 	uint32_t height = (int)ceil(metrics.height);
@@ -288,38 +263,14 @@ bool FontManager::createBitmapFromText(int* outWidth, int* outHeight, IDWriteTex
 
 void FontManager::cleanupDWrite()
 {
-	if (m_pD2DTargetBitmap)
-	{
-		m_pD2DTargetBitmap->Release();
-		m_pD2DTargetBitmap = nullptr;
-	}
-	if (m_pD2DTargetBitmapRead)
-	{
-		m_pD2DTargetBitmapRead->Release();
-		m_pD2DTargetBitmapRead = nullptr;
-	}
-	if (m_pBrush)
-	{
-		m_pBrush->Release();
-		m_pBrush = nullptr;
-	}
-	if (m_pDWFactory)
-	{
-		m_pDWFactory->Release();
-		m_pDWFactory = nullptr;
-	}
+	SAFE_RELEASE(m_pD2DTargetBitmap);
+	SAFE_RELEASE(m_pD2DTargetBitmapRead);
+	SAFE_RELEASE(m_pBrush);
+	SAFE_RELEASE(m_pDWFactory);
 }
 
 void FontManager::cleanupD2D()
 {
-	if (m_pD2DDeviceContext)
-	{
-		m_pD2DDeviceContext->Release();
-		m_pD2DDeviceContext = nullptr;
-	}
-	if (m_pD2DDevice)
-	{
-		m_pD2DDevice->Release();
-		m_pD2DDevice = nullptr;
-	}
+	SAFE_RELEASE(m_pD2DDeviceContext);
+	SAFE_RELEASE(m_pD2DDevice);
 }

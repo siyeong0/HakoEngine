@@ -25,15 +25,15 @@ interface IRenderer : public IUnknown
 	virtual ISprite* ENGINECALL CreateSpriteObject(const WCHAR* wchTexFileName) = 0;
 	virtual ISprite* ENGINECALL CreateSpriteObject(const WCHAR* wchTexFileName, int posX, int posY, int width, int height) = 0;
 
-	virtual void* ENGINECALL CreateTiledTexture(UINT texWidth, UINT texHeight, uint8_t r, uint8_t g, uint8_t b) = 0;
-	virtual void* ENGINECALL CreateDynamicTexture(UINT texWidth, UINT texHeight) = 0;
+	virtual void* ENGINECALL CreateTiledTexture(uint texWidth, uint texHeight, uint8_t r, uint8_t g, uint8_t b) = 0;
+	virtual void* ENGINECALL CreateDynamicTexture(uint texWidth, uint texHeight) = 0;
 	virtual void* ENGINECALL CreateTextureFromFile(const WCHAR* wchFileName) = 0;
-	virtual void ENGINECALL UpdateTextureWithImage(void* pTexHandle, const BYTE* pSrcBits, UINT srcWidth, UINT srcHeight) = 0;
+	virtual void ENGINECALL UpdateTextureWithImage(void* pTexHandle, const uint8_t* pSrcBits, uint srcWidth, uint srcHeight) = 0;
 	virtual void ENGINECALL DeleteTexture(void* pTexHandle) = 0;
 
 	virtual void* ENGINECALL CreateFontObject(const WCHAR* wchFontFamilyName, float fontSize) = 0;
 	virtual void ENGINECALL DeleteFontObject(void* pFontHandle) = 0;
-	virtual bool ENGINECALL WriteTextToBitmap(uint8_t* dstImage, UINT dstWidth, UINT dstHeight, UINT dstPitch, int* outWidth, int* outHeight, void* pFontObjHandle, const WCHAR* wchString, UINT len) = 0;
+	virtual bool ENGINECALL WriteTextToBitmap(uint8_t* dstImage, uint dstWidth, uint dstHeight, uint dstPitch, int* outWidth, int* outHeight, void* pFontObjHandle, const WCHAR* wchString, uint len) = 0;
 
 	virtual bool ENGINECALL UpdateWindowSize(uint32_t backBufferWidth, uint32_t backBufferHeight) = 0;
 	virtual void ENGINECALL SetCameraPos(float x, float y, float z) = 0;

@@ -23,18 +23,18 @@ public:
 	bool Update(uint64_t currTick);
 	void Cleanup();
 
-	void OnKeyDown(UINT nChar, UINT uiScanCode);
-	void OnKeyUp(UINT nChar, UINT uiScanCode);
-	void OnMouseLButtonDown(int x, int y, UINT nFlags);
-	void OnMouseLButtonUp(int x, int y, UINT nFlags);
-	void OnMouseRButtonDown(int x, int y, UINT nFlags);
-	void OnMouseRButtonUp(int x, int y, UINT nFlags);
-	void OnMouseMButtonDown(int x, int y, UINT nFlags);
-	void OnMouseMButtonUp(int x, int y, UINT nFlags);
-	void OnMouseMove(int x, int y, UINT nFlags);
+	void OnKeyDown(uint nChar, uint uiScanCode);
+	void OnKeyUp(uint nChar, uint uiScanCode);
+	void OnMouseLButtonDown(int x, int y, uint nFlags);
+	void OnMouseLButtonUp(int x, int y, uint nFlags);
+	void OnMouseRButtonDown(int x, int y, uint nFlags);
+	void OnMouseRButtonUp(int x, int y, uint nFlags);
+	void OnMouseMButtonDown(int x, int y, uint nFlags);
+	void OnMouseMButtonUp(int x, int y, uint nFlags);
+	void OnMouseMove(int x, int y, uint nFlags);
 	void OnMouseWheel(int x, int y, int iWheel);
 	void OnMouseHWheel(int x, int y, int iWheel);
-	bool UpdateWindowSize(uint32_t backBufferWidth, uint32_t backBufferHeight);
+	bool UpdateWindowSize(uint backBufferWidth, uint backBufferHeight);
 
 	IRenderer* GetRenderer() const { return m_pRenderer; }
 	IGeometry* GetGeometry() const { return m_pGeometry; }
@@ -66,7 +66,7 @@ private:
 
 	// Game Objects
 	flecs::world m_ECSWorld;
-	static constexpr UINT MAX_GAME_OBJECTS = 2 << 16;
+	static constexpr uint MAX_GAME_OBJECTS = 2 << 16;
 	std::vector<flecs::entity_t> m_Entities;
 
 	uint64_t m_PrevFrameCheckTick = 0;

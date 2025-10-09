@@ -51,7 +51,7 @@ lb_return:
 	return bResult;
 }
 
-ShaderHandle* ShaderManager::CreateShaderDXC(const WCHAR* wchShaderFileName, const WCHAR* wchEntryPoint, const WCHAR* wchShaderModel, UINT flags)
+ShaderHandle* ShaderManager::CreateShaderDXC(const WCHAR* wchShaderFileName, const WCHAR* wchEntryPoint, const WCHAR* wchShaderModel, uint flags)
 {
 	bool bResult = false;
 
@@ -105,16 +105,12 @@ ShaderHandle* ShaderManager::CreateShaderDXC(const WCHAR* wchShaderFileName, con
 	memset(newShaderHandle, 0, shaderHandleSize);
 
 	memcpy(newShaderHandle->CodeBuffer, pCodeBuffer, codeSize);
-	newShaderHandle->CodeSize = static_cast<UINT>(codeSize);
+	newShaderHandle->CodeSize = static_cast<uint>(codeSize);
 	newShaderHandle->ShaderNameLen = swprintf_s(newShaderHandle->wchShaderName, L"%s-%s", wchShaderFileName, wchEntryPoint);
 	bResult = true;
 
 lb_exit:
-	if (pBlob)
-	{
-		pBlob->Release();
-		pBlob = nullptr;
-	}
+	SAFE_RELEASE(pBlob);
 	SetCurrentDirectory(wchOldPath);
 
 	return newShaderHandle;
@@ -127,25 +123,8 @@ void ShaderManager::ReleaseShader(ShaderHandle* pShaderHandle)
 
 void ShaderManager::Cleanup()
 {
-	// Release DXC.
-	if (m_pIncludeHandler)
-	{
-		m_pIncludeHandler->Release();
-		m_pIncludeHandler = nullptr;
-	}
-	if (m_pCompiler)
-	{
-		m_pCompiler->Release();
-		m_pCompiler = nullptr;
-	}
-	if (m_pLibrary)
-	{
-		m_pLibrary->Release();
-		m_pLibrary = nullptr;
-	}
-	if (m_hDXL)
-	{
-		FreeLibrary(m_hDXL);
-		m_hDXL = nullptr;
-	}
+	SAFE_RELEASE(m_pIncludeHandler);
+	SAFE_RELEASE(m_pCompiler);
+	SAFE_RELEASE(m_pLibrary);
+	SAFE_FREE_LIBRARY(m_hDXL);
 }

@@ -2,7 +2,7 @@
 #include "ShaderRecord.h"
 #include "ShaderTable.h"
 
-bool ShaderTable::Initiailze(ID3D12Device5* pD3DDevice, UINT shaderRecordSize, const WCHAR* wchResourceName)
+bool ShaderTable::Initiailze(ID3D12Device5* pD3DDevice, uint shaderRecordSize, const WCHAR* wchResourceName)
 {
 	m_pD3DDevice = pD3DDevice;
 	m_ShaderRecordSize = D3DUtil::Align(shaderRecordSize, D3D12_RAYTRACING_SHADER_RECORD_BYTE_ALIGNMENT);
@@ -13,25 +13,17 @@ bool ShaderTable::Initiailze(ID3D12Device5* pD3DDevice, UINT shaderRecordSize, c
 
 void ShaderTable::Cleanup()
 {
-	if (m_pResource)
-	{
-		m_pResource->Release();
-		m_pResource = nullptr;
-	}
+	SAFE_RELEASE(m_pResource);
 }
 
-UINT ShaderTable::CommitResource(UINT maxNumShaderRecords)
+uint ShaderTable::CommitResource(uint maxNumShaderRecords)
 {
-	UINT MemSize = maxNumShaderRecords * m_ShaderRecordSize;
+	uint64_t memSize = maxNumShaderRecords * m_ShaderRecordSize;
 
 	// free old resource
-	if (m_pResource)
-	{
-		m_pResource->Release();
-		m_pResource = nullptr;
-	}
+	SAFE_RELEASE(m_pResource);
 
-	D3DUtil::CreateUploadBuffer(m_pD3DDevice, nullptr, MemSize, &m_pResource, m_wchResourceName);
+	D3DUtil::CreateUploadBuffer(m_pD3DDevice, nullptr, memSize, &m_pResource, m_wchResourceName);
 	ASSERT(m_pResource, "Failed to create shader table buffer");
 
 	// We don't unmap this until the app closes. Keeping buffer mapped for the lifetime of the resource is okay.

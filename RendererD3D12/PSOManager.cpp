@@ -22,7 +22,7 @@ void PSOManager::Cleanup()
 	for (auto& kv : m_PSOMap)
 	{
 		ASSERT(kv.second.pPSO, "PSO pointer is null during cleanup.");
-		kv.second.pPSO->Release();
+		SAFE_RELEASE(kv.second.pPSO);
 	}
 	m_PSOMap.clear();
 	m_pDevice = nullptr;
@@ -44,7 +44,6 @@ PSOHandle* PSOManager::CreatePSO(const D3D12_GRAPHICS_PIPELINE_STATE_DESC& posDe
 		goto lb_return;
 	}
 
-	
 	handle.Name = psoName == "" ? std::format("Unnamed_({})", m_PSOMap.size()) : psoName;
 	handle.Hash = hashFunc(posDesc);
 	HRESULT hr = m_pDevice->CreateGraphicsPipelineState(&posDesc, IID_PPV_ARGS(&handle.pPSO));
@@ -75,8 +74,7 @@ void PSOManager::ReleasePSO(PSOHandle* handle)
 	if (handle->RefCount == 0)
 	{
 		ASSERT(handle->pPSO, "PSO pointer is null.");
-		handle->pPSO->Release();
-		handle->pPSO = nullptr;
+		SAFE_RELEASE(handle->pPSO);
 		m_PSOMap.erase(it);
 	}
 }
@@ -131,7 +129,7 @@ std::size_t PSOManager::hashFunc(const D3D12_GRAPHICS_PIPELINE_STATE_DESC& d) co
 
 	// InputLayout
 	hasher.Combine(seed, (size_t)d.InputLayout.NumElements);
-	for (UINT i = 0; i < d.InputLayout.NumElements; ++i)
+	for (uint i = 0; i < d.InputLayout.NumElements; ++i)
 	{
 		const auto& e = d.InputLayout.pInputElementDescs[i];
 		if (e.SemanticName)
@@ -195,7 +193,7 @@ std::size_t PSOManager::hashFunc(const D3D12_GRAPHICS_PIPELINE_STATE_DESC& d) co
 
 	// Output/Misc
 	hasher.Combine(seed, (size_t)d.NumRenderTargets);
-	for (UINT i = 0; i < d.NumRenderTargets; ++i)
+	for (uint i = 0; i < d.NumRenderTargets; ++i)
 	{
 		hasher.Combine(seed, (size_t)d.RTVFormats[i]);
 	}

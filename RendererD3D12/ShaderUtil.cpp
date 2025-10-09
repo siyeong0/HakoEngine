@@ -3,13 +3,13 @@
 #include "Common/WriteDebugString.h"
 #include "ShaderUtil.h"
 
-bool CreateShaderCodeFromFile(uint8_t** ppOutCodeBuffer, UINT* outCodeSize, SYSTEMTIME* pOutLastWriteTime, const WCHAR* wchFileName)
+bool CreateShaderCodeFromFile(uint8_t** ppOutCodeBuffer, uint* outCodeSize, SYSTEMTIME* pOutLastWriteTime, const WCHAR* wchFileName)
 {
 	bool bResult = false;
 
-	UINT openFlags = OPEN_EXISTING;
-	UINT accessMode = GENERIC_READ;
-	UINT share = FILE_SHARE_READ;
+	DWORD openFlags = OPEN_EXISTING;
+	DWORD accessMode = GENERIC_READ;
+	DWORD share = FILE_SHARE_READ;
 
 	WCHAR	wchTxt[256] = {};
 
@@ -29,14 +29,14 @@ bool CreateShaderCodeFromFile(uint8_t** ppOutCodeBuffer, UINT* outCodeSize, SYST
 		goto lb_return;
 	}
 
-	UINT fileSize = GetFileSize(hFile, nullptr);
+	DWORD fileSize = GetFileSize(hFile, nullptr);
 	if (fileSize > 1024 * 1024)
 	{
 		swprintf_s(wchTxt, L"Invalid Shader File : %s\n", wchFileName);
 		OutputDebugStringW(wchTxt);
 		goto lb_close_return;
 	}
-	UINT codeSize = fileSize + 1;
+	uint codeSize = fileSize + 1;
 
 	uint8_t* pCodeBuffer = new uint8_t[codeSize];
 	memset(pCodeBuffer, 0, codeSize);
@@ -61,7 +61,7 @@ bool CreateShaderCodeFromFile(uint8_t** ppOutCodeBuffer, UINT* outCodeSize, SYST
 	bResult = TRUE;
 
 lb_close_return:
-	CloseHandle(hFile);
+	SAFE_CLOSE_HANDLE(hFile);
 
 lb_return:
 	return bResult;
@@ -82,13 +82,13 @@ HRESULT CompileShaderFromFileWithDXC(
 	IDxcBlob** ppOutCodeBlob,
 	bool bDisableOptimize,
 	SYSTEMTIME* outLastWriteTime,
-	UINT flags)
+	uint flags)
 {
 	HRESULT hr = S_OK;
 
 	SYSTEMTIME lastWriteTime;
 	uint8_t* pCodeBuffer = nullptr;
-	UINT codeSize = 0;
+	uint codeSize = 0;
 
 	if (!CreateShaderCodeFromFile(&pCodeBuffer, &codeSize, &lastWriteTime, wchFileName))
 	{
@@ -120,7 +120,7 @@ HRESULT CompileShaderFromFileWithDXC(
 	*/
 
 	LPCWSTR arg[16] = {};
-	UINT argCount = 0;
+	uint argCount = 0;
 	if (bDisableOptimize)
 	{
 		arg[argCount] = L"-Zi";
@@ -156,23 +156,11 @@ HRESULT CompileShaderFromFileWithDXC(
 		hr = pCompileResult->GetErrorBuffer(&pErrorBlob);
 		const char* szErrMsg = (const char*)pErrorBlob->GetBufferPointer();
 		WriteDebugStringA(DEBUG_OUTPUT_TYPE_DEBUG_CONSOLE, "Failed Compile Shader: %s\n", szErrMsg);
-		if (pErrorBlob)
-		{
-			pErrorBlob->Release();
-			pErrorBlob = nullptr;
-		}
+		SAFE_RELEASE(pErrorBlob);
 	}
 
-	if (pCompileResult)
-	{
-		pCompileResult->Release();
-		pCompileResult = nullptr;
-	}
-	if (pCodeTextBlob)
-	{
-		pCodeTextBlob->Release();
-		pCodeTextBlob = nullptr;
-	}
+	SAFE_RELEASE(pCompileResult);
+	SAFE_RELEASE(pCodeTextBlob);
 
 	DeleteShaderCode(pCodeBuffer);
 	*outLastWriteTime = lastWriteTime;

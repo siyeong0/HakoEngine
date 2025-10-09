@@ -50,15 +50,15 @@ public:
 	ISprite* ENGINECALL CreateSpriteObject(const WCHAR* wchTexFileName) override;
 	ISprite* ENGINECALL CreateSpriteObject(const WCHAR* wchTexFileName, int posX, int posY, int width, int height) override;
 
-	void* ENGINECALL CreateTiledTexture(UINT texWidth, UINT texHeight, uint8_t r, uint8_t g, uint8_t b) override;
-	void* ENGINECALL CreateDynamicTexture(UINT texWidth, UINT texHeight) override;
+	void* ENGINECALL CreateTiledTexture(uint texWidth, uint texHeight, uint8_t r, uint8_t g, uint8_t b) override;
+	void* ENGINECALL CreateDynamicTexture(uint texWidth, uint texHeight) override;
 	void* ENGINECALL CreateTextureFromFile(const WCHAR* wchFileName) override;
-	void ENGINECALL UpdateTextureWithImage(void* pTexHandle, const BYTE* pSrcBits, UINT srcWidth, UINT srcHeight) override;
+	void ENGINECALL UpdateTextureWithImage(void* pTexHandle, const uint8_t* pSrcBits, uint srcWidth, uint srcHeight) override;
 	void ENGINECALL DeleteTexture(void* pTexHandle) override;
 
 	void* ENGINECALL CreateFontObject(const WCHAR* wchFontFamilyName, float fontSize) override;
 	void ENGINECALL DeleteFontObject(void* pFontHandle) override;
-	bool ENGINECALL WriteTextToBitmap(uint8_t* dstImage, UINT dstWidth, UINT dstHeight, UINT dstPitch, int* outWidth, int* outHeight, void* pFontObjHandle, const WCHAR* wchString, UINT len) override;
+	bool ENGINECALL WriteTextToBitmap(uint8_t* dstImage, uint dstWidth, uint dstHeight, uint dstPitch, int* outWidth, int* outHeight, void* pFontObjHandle, const WCHAR* wchString, uint len) override;
 
 	bool ENGINECALL UpdateWindowSize(uint32_t backBufferWidth, uint32_t backBufferHeight) override;
 	void ENGINECALL SetCameraPos(float x, float y, float z) override;
@@ -120,9 +120,9 @@ private:
 	void cleanupRenderThreadPool();
 
 private:
-	static constexpr UINT MAX_DRAW_COUNT_PER_FRAME = 4096;
-	static constexpr UINT MAX_DESCRIPTOR_COUNT = 4096;
-	static constexpr UINT MAX_RENDER_THREAD_COUNT = 8;
+	static constexpr uint MAX_DRAW_COUNT_PER_FRAME = 4096;
+	static constexpr uint MAX_DESCRIPTOR_COUNT = 4096;
+	static constexpr uint MAX_RENDER_THREAD_COUNT = 8;
 
 	int	m_RefCount = 1;
 	HWND m_hWnd = nullptr;

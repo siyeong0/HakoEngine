@@ -33,7 +33,7 @@ STDMETHODIMP_(ULONG) BasicMeshObject::Release()
 	return refCount;
 }
 
-bool ENGINECALL BasicMeshObject::BeginCreateMesh(const Vertex* vertices, size_t numVertices, size_t numTriGroups)
+bool ENGINECALL BasicMeshObject::BeginCreateMesh(const Vertex* vertices, uint numVertices, uint numTriGroups)
 {
 	ID3D12Device5* pD3DDeivce = m_pRenderer->GetD3DDevice();
 	D3D12ResourceManager* pResourceManager = m_pRenderer->GetResourceManager();
@@ -54,7 +54,7 @@ bool ENGINECALL BasicMeshObject::BeginCreateMesh(const Vertex* vertices, size_t 
 	return true;
 }
 
-bool ENGINECALL BasicMeshObject::InsertTriGroup(const uint16_t* indices, size_t numTriangles, const WCHAR* wchTexFileName)
+bool ENGINECALL BasicMeshObject::InsertTriGroup(const uint16_t* indices, uint numTriangles, const WCHAR* wchTexFileName)
 {
 	ID3D12Device5* pD3DDeivce = m_pRenderer->GetD3DDevice();
 	size_t srvDescriptorSize = m_pRenderer->GetSrvDescriptorSize();
@@ -75,7 +75,7 @@ bool ENGINECALL BasicMeshObject::InsertTriGroup(const uint16_t* indices, size_t 
 	IndexedTriGroup* pTriGroup = m_pTriGroupList + m_NumTriGroups;
 	pTriGroup->IndexBuffer = pIndexBuffer;
 	pTriGroup->IndexBufferView = indexBufferView;
-	pTriGroup->NumTriangles = static_cast<UINT>(numTriangles);
+	pTriGroup->NumTriangles = static_cast<uint>(numTriangles);
 	pTriGroup->pTexHandle = (TextureHandle*)m_pRenderer->CreateTextureFromFile(wchTexFileName);
 	pTriGroup->bOpaque = true;
 	m_NumTriGroups++;
@@ -102,7 +102,7 @@ bool BasicMeshObject::Initialize(D3D12Renderer* pRenderer)
 void BasicMeshObject::Draw(int threadIndex, ID3D12GraphicsCommandList6* pCommandList, const XMMATRIX* worldMatrix)
 {
 	ID3D12Device5* pDevice = m_pRenderer->GetD3DDevice();
-	UINT srvDescriptorSize = m_pRenderer->GetSrvDescriptorSize();
+	uint srvDescriptorSize = m_pRenderer->GetSrvDescriptorSize();
 	DescriptorPool* pDescriptorPool = m_pRenderer->GetDescriptorPool(threadIndex);
 	SimpleConstantBufferPool* pMeshConstantBufferPool = m_pRenderer->GetConstantBufferPool(CONSTANT_BUFFER_TYPE_MESH, threadIndex);
 
@@ -116,12 +116,12 @@ void BasicMeshObject::Draw(int threadIndex, ID3D12GraphicsCommandList6* pCommand
 	// --- 2) SRV Descriptor table (TriGroup 개수 만큼)
 	CD3DX12_CPU_DESCRIPTOR_HANDLE cpuDescriptorTable = {};
 	CD3DX12_GPU_DESCRIPTOR_HANDLE gpuDescriptorTable = {};
-	const UINT requiredSrvCount = static_cast<UINT>(m_NumTriGroups);
+	const uint requiredSrvCount = static_cast<uint>(m_NumTriGroups);
 	bool bOk = pDescriptorPool->AllocDescriptorTable(&cpuDescriptorTable, &gpuDescriptorTable, requiredSrvCount);
 	ASSERT(bOk, "Failed to allocate descriptor table.");
 
 	CD3DX12_CPU_DESCRIPTOR_HANDLE cpuCurrDescHandleAddress = cpuDescriptorTable;
-	for (UINT i = 0; i < m_NumTriGroups; ++i)
+	for (uint i = 0; i < m_NumTriGroups; ++i)
 	{
 		const IndexedTriGroup& tg = m_pTriGroupList[i];
 		TextureHandle* pTex = tg.pTexHandle;
@@ -142,7 +142,7 @@ void BasicMeshObject::Draw(int threadIndex, ID3D12GraphicsCommandList6* pCommand
 
 	// --- 5) TriGroup loop: t0가 가리키는 SRV를 매 드로우마다 바꿈
 	CD3DX12_GPU_DESCRIPTOR_HANDLE gpuCurrDescHandleAddress = gpuDescriptorTable; // 첫 TriGroup의 t0
-	for (UINT i = 0; i < m_NumTriGroups; ++i)
+	for (uint i = 0; i < m_NumTriGroups; ++i)
 	{
 		// SRV 테이블 루트 파라미터 바인딩 (t0 시작 핸들)
 		pCommandList->SetGraphicsRootDescriptorTable(ROOT_SLOT_SRV_TABLE, gpuCurrDescHandleAddress);
@@ -236,36 +236,15 @@ void BasicMeshObject::cleanup()
 	// delete all triangles-group
 	if (m_pTriGroupList)
 	{
-		for (UINT i = 0; i < m_NumTriGroups; i++)
+		for (uint i = 0; i < m_NumTriGroups; i++)
 		{
-			if (m_pTriGroupList[i].IndexBuffer)
-			{
-				m_pTriGroupList[i].IndexBuffer->Release();
-				m_pTriGroupList[i].IndexBuffer = nullptr;
-			}
-			if (m_pTriGroupList[i].pTexHandle)
-			{
-				m_pRenderer->DeleteTexture(m_pTriGroupList[i].pTexHandle);
-				m_pTriGroupList[i].pTexHandle = nullptr;
-			}
+			SAFE_RELEASE(m_pTriGroupList[i].IndexBuffer);
+			SAFE_CLEANUP(m_pTriGroupList[i].pTexHandle, m_pRenderer->DeleteTexture);
 		}
-		delete[] m_pTriGroupList;
-		m_pTriGroupList = nullptr;
+		SAFE_DELETE_ARRAY(m_pTriGroupList);
 	}
 
-	if (m_pVertexBuffer)
-	{
-		m_pVertexBuffer->Release();
-		m_pVertexBuffer = nullptr;
-	}
-
-	if (m_pPSOHandle)
-	{
-		PSOManager* pPsoManager = m_pRenderer->GetPSOManager();
-		pPsoManager->ReleasePSO(m_pPSOHandle);
-		m_pPSOHandle = nullptr;
-	}
-
-	RayTracingManager* pRayTracingManager = m_pRenderer->GetRayTracingManager();
-	pRayTracingManager->FreeBLAS(m_pBlasInstance);
+	SAFE_RELEASE(m_pVertexBuffer);
+	SAFE_CLEANUP(m_pPSOHandle, m_pRenderer->GetPSOManager()->ReleasePSO);
+	SAFE_CLEANUP(m_pBlasInstance, m_pRenderer->GetRayTracingManager()->FreeBLAS);
 }

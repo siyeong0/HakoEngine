@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
-BOOL GetPhysicalCoreCount(DWORD* pdwOutPhysicalCoreCount,DWORD* pdwOutLogicalCoreCount);
+bool GetPhysicalCoreCount(uint* pOutPhysicalCoreCount, uint* pOutLogicalCoreCount);
 

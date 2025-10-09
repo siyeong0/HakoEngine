@@ -82,15 +82,13 @@ void CommandListPool::Cleanup()
 		ASSERT(pCmdList, "Available command list is null.");
 
 		ASSERT(pCmdList->pDirectCommandList, "Available direct command list is null.");
-		pCmdList->pDirectCommandList->Release();
-		pCmdList->pDirectCommandList = nullptr;
+		SAFE_RELEASE(pCmdList->pDirectCommandList);
 
 		ASSERT(pCmdList->pDirectCommandAllocator, "Available command allocator is null.");
-		pCmdList->pDirectCommandAllocator->Release();
-		pCmdList->pDirectCommandAllocator = nullptr;
+		SAFE_RELEASE(pCmdList->pDirectCommandAllocator);
 
 		--m_NumTotalCmdLists;
-		delete pCmdList;
+		SAFE_DELETE(pCmdList);
 	}
 }
 
@@ -118,8 +116,7 @@ bool CommandListPool::addCmdList()
 	if (FAILED(hr))
 	{
 		ASSERT(false, "Failed to create Command List.");
-		pDirectCommandAllocator->Release();
-		pDirectCommandAllocator = nullptr;
+		SAFE_RELEASE(pDirectCommandAllocator);
 		return false;
 	}
 

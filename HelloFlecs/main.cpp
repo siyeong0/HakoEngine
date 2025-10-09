@@ -232,7 +232,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		{
 			iMouseX = GET_X_LPARAM(lParam);
 			iMouseY = GET_Y_LPARAM(lParam);
-			g_pGame->OnMouseMove(iMouseX, iMouseY, (UINT)wParam);
+			g_pGame->OnMouseMove(iMouseX, iMouseY, (uint)wParam);
 		}
 		break;
 
@@ -241,7 +241,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		{
 			iMouseX = GET_X_LPARAM(lParam);
 			iMouseY = GET_Y_LPARAM(lParam);
-			g_pGame->OnMouseLButtonDown(iMouseX, iMouseY, (UINT)wParam);
+			g_pGame->OnMouseLButtonDown(iMouseX, iMouseY, (uint)wParam);
 		}
 		break;
 	case WM_LBUTTONUP:
@@ -249,7 +249,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		{
 			iMouseX = GET_X_LPARAM(lParam);
 			iMouseY = GET_Y_LPARAM(lParam);
-			g_pGame->OnMouseLButtonUp(iMouseX, iMouseY, (UINT)wParam);
+			g_pGame->OnMouseLButtonUp(iMouseX, iMouseY, (uint)wParam);
 		}
 		break;
 	case WM_RBUTTONDOWN:
@@ -257,7 +257,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		{
 			iMouseX = GET_X_LPARAM(lParam);
 			iMouseY = GET_Y_LPARAM(lParam);
-			g_pGame->OnMouseRButtonDown(iMouseX, iMouseY, (UINT)wParam);
+			g_pGame->OnMouseRButtonDown(iMouseX, iMouseY, (uint)wParam);
 		}
 		break;
 	case WM_RBUTTONUP:
@@ -265,7 +265,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		{
 			iMouseX = GET_X_LPARAM(lParam);
 			iMouseY = GET_Y_LPARAM(lParam);
-			g_pGame->OnMouseRButtonUp(iMouseX, iMouseY, (UINT)wParam);
+			g_pGame->OnMouseRButtonUp(iMouseX, iMouseY, (uint)wParam);
 		}
 		break;
 	case WM_MBUTTONDOWN:
@@ -273,7 +273,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		{
 			iMouseX = GET_X_LPARAM(lParam);
 			iMouseY = GET_Y_LPARAM(lParam);
-			g_pGame->OnMouseMButtonDown(iMouseX, iMouseY, (UINT)wParam);
+			g_pGame->OnMouseMButtonDown(iMouseX, iMouseY, (uint)wParam);
 		}
 		break;
 	case WM_MBUTTONUP:
@@ -281,15 +281,15 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		{
 			iMouseX = GET_X_LPARAM(lParam);
 			iMouseY = GET_Y_LPARAM(lParam);
-			g_pGame->OnMouseMButtonUp(iMouseX, iMouseY, (UINT)wParam);
+			g_pGame->OnMouseMButtonUp(iMouseX, iMouseY, (uint)wParam);
 		}
 		break;
 	case WM_KEYDOWN:
 	{
 		if (g_pGame)
 		{
-			UINT	uiScanCode = (0x00ff0000 & lParam) >> 16;
-			UINT	vkCode = MapVirtualKey(uiScanCode, MAPVK_VSC_TO_VK);
+			uint	uiScanCode = (0x00ff0000 & lParam) >> 16;
+			uint	vkCode = MapVirtualKey(uiScanCode, MAPVK_VSC_TO_VK);
 			if (!(lParam & 0x40000000))
 			{
 				g_pGame->OnKeyDown(vkCode, uiScanCode);
@@ -303,8 +303,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 	{
 		if (g_pGame)
 		{
-			UINT	uiScanCode = (0x00ff0000 & lParam) >> 16;
-			UINT	vkCode = MapVirtualKey(uiScanCode, MAPVK_VSC_TO_VK);
+			uint	uiScanCode = (0x00ff0000 & lParam) >> 16;
+			uint	vkCode = MapVirtualKey(uiScanCode, MAPVK_VSC_TO_VK);
 			g_pGame->OnKeyUp(vkCode, uiScanCode);
 		}
 	}

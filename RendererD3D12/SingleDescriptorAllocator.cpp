@@ -2,7 +2,7 @@
 
 #include "SingleDescriptorAllocator.h"
 
-bool SingleDescriptorAllocator::Initialize(ID3D12Device* pDevice, UINT maxCount, D3D12_DESCRIPTOR_HEAP_FLAGS flags)
+bool SingleDescriptorAllocator::Initialize(ID3D12Device* pDevice, uint maxCount, D3D12_DESCRIPTOR_HEAP_FLAGS flags)
 {
 	HRESULT hr = S_OK;
 
@@ -55,16 +55,8 @@ void SingleDescriptorAllocator::Cleanup()
 #ifdef _DEBUG
 	m_IndexCreator.Check();
 #endif
-	if (m_pHeap)
-	{
-		m_pHeap->Release();
-		m_pHeap = nullptr;
-	}
-	if (m_pD3DDevice)
-	{
-		m_pD3DDevice->Release();
-		m_pD3DDevice = nullptr;
-	}
+	SAFE_RELEASE(m_pHeap);
+	SAFE_RELEASE(m_pD3DDevice);
 }
 
 void SingleDescriptorAllocator::FreeDescriptorHandle(D3D12_CPU_DESCRIPTOR_HANDLE descriptorHandle)

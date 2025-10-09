@@ -11,14 +11,14 @@ public:
 
 	bool Initialize(D3D12Renderer* pRenderer, int numExpectedItems);
 	TextureHandle* CreateTextureFromFile(const WCHAR* wchFileName);
-	TextureHandle* CreateDynamicTexture(UINT texWidth, UINT texHeight);
-	TextureHandle* CreateImmutableTexture(UINT texWidth, UINT texHeight, DXGI_FORMAT format, const uint8_t* pInitImage);
+	TextureHandle* CreateDynamicTexture(uint texWidth, uint texHeight);
+	TextureHandle* CreateImmutableTexture(uint texWidth, uint texHeight, DXGI_FORMAT format, const uint8_t* pInitImage);
 	void DeleteTexture(TextureHandle* pTexHandle);
 	void Cleanup();
 
 private:
 	TextureHandle* allocTextureHandle();
-	UINT freeTextureHandle(TextureHandle* pTexHandle);
+	uint freeTextureHandle(TextureHandle* pTexHandle);
 
 private:
 	D3D12Renderer* m_pRenderer = nullptr;

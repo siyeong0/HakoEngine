@@ -336,7 +336,7 @@ bool Game::Initialize(HWND hWnd, bool bEnableDebugLayer, bool bEnableGBV, bool b
 					{
 						memset(text.pImageData, 0, (size_t)text.Width * text.Height * 4);
 						int outTextWidth = 0, outTexHeight = 0;
-						m_pRenderer->WriteTextToBitmap(text.pImageData, text.Width, text.Height, text.Width * 4, &outTextWidth, &outTexHeight, text.pFontObject, text.Text.c_str(), (UINT)text.Text.length());
+						m_pRenderer->WriteTextToBitmap(text.pImageData, text.Width, text.Height, text.Width * 4, &outTextWidth, &outTexHeight, text.pFontObject, text.Text.c_str(), (uint)text.Text.length());
 						text.Width = outTextWidth;
 						text.Height = outTexHeight;
 						m_pRenderer->UpdateTextureWithImage(text.pTextTexHandle, text.pImageData, text.Width, text.Height);
@@ -368,20 +368,14 @@ bool Game::Initialize(HWND hWnd, bool bEnableDebugLayer, bool bEnableGBV, bool b
 			.event(flecs::OnRemove)
 			.each([this](MeshRenderer& m)
 				{
-					if (m.Mesh)
-					{
-						m.Mesh->Release();
-					}
+					SAFE_RELEASE(m.Mesh);
 				});
 
 		m_ECSWorld.observer<SpriteRenderer>()
 			.event(flecs::OnRemove)
 			.each([this](SpriteRenderer& s)
 				{
-					if (s.Sprite)
-					{
-						s.Sprite->Release();
-					}
+					SAFE_RELEASE(s.Sprite);
 				});
 
 		m_ECSWorld.observer<TextRenderer>()
@@ -390,20 +384,19 @@ bool Game::Initialize(HWND hWnd, bool bEnableDebugLayer, bool bEnableGBV, bool b
 				{
 					if (t.pFontObject)
 					{
-						m_pRenderer->DeleteFontObject(t.pFontObject);
+						SAFE_CLEANUP(t.pFontObject, m_pRenderer->DeleteFontObject);
 					}
 					if (t.pTextTexHandle)
 					{
-						m_pRenderer->DeleteTexture(t.pTextTexHandle);
+						SAFE_CLEANUP(t.pTextTexHandle, m_pRenderer->DeleteTexture);
 					}
 					if (t.pImageData)
 					{
-						free(t.pImageData);
-						t.pImageData = nullptr;
+						SAFE_FREE(t.pImageData);
 					}
 					if (t.Sprite)
 					{
-						t.Sprite->Release();
+						SAFE_RELEASE(t.Sprite);
 					}
 				});
 	}
@@ -447,8 +440,8 @@ bool Game::Initialize(HWND hWnd, bool bEnableDebugLayer, bool bEnableGBV, bool b
 			m_Entities.emplace_back(e.id());
 		}
 		// Create box entities
-		const UINT BOX_OBJECT_COUNT = 50;
-		for (UINT i = 0; i < BOX_OBJECT_COUNT; i++)
+		const uint BOX_OBJECT_COUNT = 50;
+		for (uint i = 0; i < BOX_OBJECT_COUNT; i++)
 		{
 			float x = (float)((rand() % 51) - 25);	// -10m - 10m 
 			float y = (float)((rand() % 11) - 2);	// -2m - 7m
@@ -470,8 +463,8 @@ bool Game::Initialize(HWND hWnd, bool bEnableDebugLayer, bool bEnableGBV, bool b
 			m_Entities.emplace_back(e.id());
 		}
 		// Create sphere entities
-		const UINT SPHERE_OBJECT_COUNT = 30;
-		for (UINT i = 0; i < SPHERE_OBJECT_COUNT; i++)
+		const uint SPHERE_OBJECT_COUNT = 30;
+		for (uint i = 0; i < SPHERE_OBJECT_COUNT; i++)
 		{
 			float x = (float)((rand() % 51) - 25);	// -10m - 10m 
 			float y = (float)((rand() % 11) - 5);	// -5m - 5m
@@ -575,19 +568,14 @@ void Game::Cleanup()
 {
 	m_ECSWorld.release();
 
-	if (m_pRenderer)
-	{
-		m_pRenderer->Release();
-		m_pRenderer = nullptr;
-	}
-	if (m_hRendererDLL)
-	{
-		FreeLibrary(m_hRendererDLL);
-		m_hRendererDLL = nullptr;
-	}
+	SAFE_RELEASE(m_pGeometry);
+	SAFE_FREE_LIBRARY(m_hGeometryDLL);
+
+	SAFE_RELEASE(m_pRenderer);
+	SAFE_FREE_LIBRARY(m_hRendererDLL);
 }
 
-void Game::OnKeyDown(UINT nChar, UINT uiScanCode)
+void Game::OnKeyDown(uint nChar, uint uiScanCode)
 {
 	switch (nChar)
 	{
@@ -623,7 +611,7 @@ void Game::OnKeyDown(UINT nChar, UINT uiScanCode)
 	}
 }
 
-void Game::OnKeyUp(UINT nChar, UINT uiScanCode)
+void Game::OnKeyUp(uint nChar, uint uiScanCode)
 {
 	switch (nChar)
 	{
@@ -647,17 +635,17 @@ void Game::OnKeyUp(UINT nChar, UINT uiScanCode)
 	}
 }
 
-void Game::OnMouseLButtonDown(int x, int y, UINT nFlags)
+void Game::OnMouseLButtonDown(int x, int y, uint nFlags)
 {
 	m_bMouseLButtonDown = true;
 }
 
-void Game::OnMouseLButtonUp(int x, int y, UINT nFlags)
+void Game::OnMouseLButtonUp(int x, int y, uint nFlags)
 {
 	m_bMouseLButtonDown = false;
 }
 
-void Game::OnMouseRButtonDown(int x, int y, UINT nFlags)
+void Game::OnMouseRButtonDown(int x, int y, uint nFlags)
 {
 	m_bCamRotMode = true;
 	m_MouseXRButtonPressed = x;
@@ -666,23 +654,23 @@ void Game::OnMouseRButtonDown(int x, int y, UINT nFlags)
 	m_bMouseRButtonDown = true;
 }
 
-void Game::OnMouseRButtonUp(int x, int y, UINT nFlags)
+void Game::OnMouseRButtonUp(int x, int y, uint nFlags)
 {
 	m_bCamRotMode = false;
 	m_bMouseRButtonDown = false;
 }
 
-void Game::OnMouseMButtonDown(int x, int y, UINT nFlags)
+void Game::OnMouseMButtonDown(int x, int y, uint nFlags)
 {
 	m_bMouseMButtonDown = true;
 }
 
-void Game::OnMouseMButtonUp(int x, int y, UINT nFlags)
+void Game::OnMouseMButtonUp(int x, int y, uint nFlags)
 {
 	m_bMouseMButtonDown = false;
 }
 
-void Game::OnMouseMove(int x, int y, UINT nFlags)
+void Game::OnMouseMove(int x, int y, uint nFlags)
 {
 	m_PrevMouseX = m_CurrMouseX;
 	m_PrevMouseY = m_CurrMouseY;
@@ -711,7 +699,7 @@ void Game::OnMouseHWheel(int x, int y, int iWheel)
 {
 }
 
-bool Game::UpdateWindowSize(uint32_t backBufferWidth, uint32_t backBufferHeight)
+bool Game::UpdateWindowSize(uint backBufferWidth, uint backBufferHeight)
 {
 	bool bResult = false;
 	if (m_pRenderer)

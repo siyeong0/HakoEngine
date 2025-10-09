@@ -9,7 +9,7 @@ namespace D3DUtil
 		IDXGIAdapter1* adapter = nullptr;
 		*ppAdapter = nullptr;
 
-		for (UINT adapterIndex = 0; DXGI_ERROR_NOT_FOUND != pFactory->EnumAdapters1(adapterIndex, &adapter); ++adapterIndex)
+		for (uint adapterIndex = 0; DXGI_ERROR_NOT_FOUND != pFactory->EnumAdapters1(adapterIndex, &adapter); ++adapterIndex)
 		{
 			DXGI_ADAPTER_DESC1 desc;
 			adapter->GetDesc1(&desc);
@@ -35,7 +35,7 @@ namespace D3DUtil
 		IDXGIAdapter1* adapter = nullptr;
 		*ppAdapter = nullptr;
 
-		for (UINT adapterIndex = 0; DXGI_ERROR_NOT_FOUND != pFactory->EnumAdapters1(adapterIndex, &adapter); ++adapterIndex)
+		for (uint adapterIndex = 0; DXGI_ERROR_NOT_FOUND != pFactory->EnumAdapters1(adapterIndex, &adapter); ++adapterIndex)
 		{
 			DXGI_ADAPTER_DESC1 desc;
 			adapter->GetDesc1(&desc);
@@ -88,12 +88,11 @@ namespace D3DUtil
 			filter.DenyList.pIDList = hide;
 			pInfoQueue->AddStorageFilterEntries(&filter);
 
-			pInfoQueue->Release();
-			pInfoQueue = nullptr;
+			SAFE_RELEASE(pInfoQueue);
 		}
 	}
 
-	void SetDefaultSamplerDesc(D3D12_STATIC_SAMPLER_DESC* pOutSamperDesc, UINT registerIndex)
+	void SetDefaultSamplerDesc(D3D12_STATIC_SAMPLER_DESC* pOutSamperDesc, uint registerIndex)
 	{
 		D3D12_STATIC_SAMPLER_DESC sampler = {};
 		//pOutSamperDesc->Filter = D3D12_FILTER_ANISOTROPIC;
@@ -108,17 +107,17 @@ namespace D3DUtil
 		pOutSamperDesc->BorderColor = D3D12_STATIC_BORDER_COLOR_OPAQUE_WHITE;
 		pOutSamperDesc->MinLOD = -FLT_MAX;
 		pOutSamperDesc->MaxLOD = D3D12_FLOAT32_MAX;
-		pOutSamperDesc->ShaderRegister = registerIndex;
+		pOutSamperDesc->ShaderRegister = (UINT)registerIndex;
 		pOutSamperDesc->RegisterSpace = 0;
 		pOutSamperDesc->ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
 	}
 
-	void SetSamplerDesc_Wrap(D3D12_STATIC_SAMPLER_DESC* pOutSamperDesc, UINT RegisterIndex)
+	void SetSamplerDesc_Wrap(D3D12_STATIC_SAMPLER_DESC* pOutSamperDesc, uint RegisterIndex)
 	{
 		SetDefaultSamplerDesc(pOutSamperDesc, RegisterIndex);
 	}
 
-	void SetSamplerDesc_Clamp(D3D12_STATIC_SAMPLER_DESC* pOutSamperDesc, UINT RegisterIndex)
+	void SetSamplerDesc_Clamp(D3D12_STATIC_SAMPLER_DESC* pOutSamperDesc, uint RegisterIndex)
 	{
 		SetDefaultSamplerDesc(pOutSamperDesc, RegisterIndex);
 
@@ -127,7 +126,7 @@ namespace D3DUtil
 		pOutSamperDesc->AddressW = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
 	}
 
-	void SetSamplerDesc_Border(D3D12_STATIC_SAMPLER_DESC* pOutSamperDesc, UINT RegisterIndex)
+	void SetSamplerDesc_Border(D3D12_STATIC_SAMPLER_DESC* pOutSamperDesc, uint RegisterIndex)
 	{
 		SetDefaultSamplerDesc(pOutSamperDesc, RegisterIndex);
 
@@ -136,7 +135,7 @@ namespace D3DUtil
 		pOutSamperDesc->AddressW = D3D12_TEXTURE_ADDRESS_MODE_BORDER;
 	}
 
-	void SetSamplerDesc_Mirror(D3D12_STATIC_SAMPLER_DESC* pOutSamperDesc, UINT RegisterIndex)
+	void SetSamplerDesc_Mirror(D3D12_STATIC_SAMPLER_DESC* pOutSamperDesc, uint RegisterIndex)
 	{
 		SetDefaultSamplerDesc(pOutSamperDesc, RegisterIndex);
 
@@ -163,28 +162,19 @@ namespace D3DUtil
 
 		//, error ? static_cast<wchar_t*>(error->GetBufferPointer()) : nullptr);
 		hr = pDevice->CreateRootSignature(1, pBlob->GetBufferPointer(), pBlob->GetBufferSize(), IID_PPV_ARGS(ppOutRootSig));
-		if (FAILED(hr))
-			__debugbreak();
+		ASSERT(SUCCEEDED(hr), "Failed to CreateRootSignature.");
 
-		if (pBlob)
-		{
-			pBlob->Release();
-			pBlob = nullptr;
-		}
-		if (pError)
-		{
-			pError->Release();
-			pError = nullptr;
-		}
+		SAFE_RELEASE(pBlob);
+		SAFE_RELEASE(pError);
 	}
 
-	HRESULT CreateVertexBuffer(ID3D12Device* pDevice, UINT sizePerVertex, UINT numVertices, D3D12_VERTEX_BUFFER_VIEW* pOutVertexBufferView, ID3D12Resource** ppOutBuffer)
+	HRESULT CreateVertexBuffer(ID3D12Device* pDevice, uint sizePerVertex, uint numVertices, D3D12_VERTEX_BUFFER_VIEW* pOutVertexBufferView, ID3D12Resource** ppOutBuffer)
 	{
 		HRESULT hr = S_OK;
 
 		D3D12_VERTEX_BUFFER_VIEW	VertexBufferView = {};
 		ID3D12Resource* pVertexBuffer = nullptr;
-		UINT vertexBufferSize = sizePerVertex * numVertices;
+		uint vertexBufferSize = sizePerVertex * numVertices;
 
 		// create vertexbuffer for rendering
 		hr = pDevice->CreateCommittedResource(
@@ -212,7 +202,7 @@ namespace D3DUtil
 		return hr;
 	}
 
-	HRESULT CreateUAVBuffer(ID3D12Device* pDevice, UINT64 bufferSize, ID3D12Resource** ppResource, D3D12_RESOURCE_STATES initialResourceState, const WCHAR* wchResourceName)
+	HRESULT CreateUAVBuffer(ID3D12Device* pDevice, uint64_t bufferSize, ID3D12Resource** ppResource, D3D12_RESOURCE_STATES initialResourceState, const WCHAR* wchResourceName)
 	{
 		auto uploadHeapProperties = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT);
 		auto bufferDesc = CD3DX12_RESOURCE_DESC::Buffer(bufferSize, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS);
@@ -236,7 +226,7 @@ namespace D3DUtil
 		return hr;
 	}
 
-	HRESULT CreateUploadBuffer(ID3D12Device* pDevice, void* pData, UINT64 DataSize, ID3D12Resource** ppResource, const WCHAR* wchResourceName)
+	HRESULT CreateUploadBuffer(ID3D12Device* pDevice, void* pData, uint64_t DataSize, ID3D12Resource** ppResource, const WCHAR* wchResourceName)
 	{
 		auto uploadHeapProperties = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD);
 		auto bufferDesc = CD3DX12_RESOURCE_DESC::Buffer(DataSize);
@@ -270,19 +260,19 @@ namespace D3DUtil
 
 	void UpdateTexture(ID3D12Device* pD3DDevice, ID3D12GraphicsCommandList6* pCommandList, ID3D12Resource* pDestTexResource, ID3D12Resource* pSrcTexResource)
 	{
-		constexpr UINT MAX_SUB_RESOURCE_NUM = 32;
+		constexpr uint MAX_SUB_RESOURCE_NUM = 32;
 		D3D12_PLACED_SUBRESOURCE_FOOTPRINT footprint[MAX_SUB_RESOURCE_NUM] = {};
-		UINT rows[MAX_SUB_RESOURCE_NUM] = {};
-		UINT64 rowSizes[MAX_SUB_RESOURCE_NUM] = {};
-		UINT64 totalBytes = 0;
+		uint rows[MAX_SUB_RESOURCE_NUM] = {};
+		uint64_t rowSizes[MAX_SUB_RESOURCE_NUM] = {};
+		uint64_t totalBytes = 0;
 
 		D3D12_RESOURCE_DESC desc = pDestTexResource->GetDesc();
-		ASSERT(desc.MipLevels <= (UINT)_countof(footprint), "Too many sub resources.");
+		ASSERT(desc.MipLevels <= (uint)_countof(footprint), "Too many sub resources.");
 
 		pD3DDevice->GetCopyableFootprints(&desc, 0, desc.MipLevels, 0, footprint, rows, rowSizes, &totalBytes);
 
 		pCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(pDestTexResource, D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_COPY_DEST));
-		for (UINT i = 0; i < desc.MipLevels; i++)
+		for (uint i = 0; i < desc.MipLevels; i++)
 		{
 			D3D12_TEXTURE_COPY_LOCATION	destLocation = {};
 			destLocation.PlacedFootprint = footprint[i];

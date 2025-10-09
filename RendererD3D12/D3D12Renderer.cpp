@@ -20,6 +20,7 @@
 #include "RenderThread.h"
 #include "RayTracingManager.h"
 #include "D3D12Renderer.h"
+
 bool g_bUseRayTracing = false;
 using namespace DirectX;
 
@@ -64,25 +65,14 @@ bool ENGINECALL D3D12Renderer::Initialize(
 	IDXGIAdapter1* pAdapter = nullptr;
 	DXGI_ADAPTER_DESC1 AdapterDesc = {};
 
-	auto cleanupResources = [&]() {
-		if (pDebugController)
+	auto cleanupResources = [&]()
 		{
-			pDebugController->Release();
-			pDebugController = nullptr;
-		}
-		if (pAdapter)
-		{
-			pAdapter->Release();
-			pAdapter = nullptr;
-		}
-		if (pFactory)
-		{
-			pFactory->Release();
-			pFactory = nullptr;
-		}
+			SAFE_RELEASE(pDebugController);
+			SAFE_RELEASE(pAdapter);
+			SAFE_RELEASE(pFactory);
 		};
 
-	UINT createFactoryFlags = 0;
+	uint createFactoryFlags = 0;
 	m_DPI = static_cast<float>(GetDpiForWindow(hWnd));
 
 	// If use debug Layer...
@@ -101,7 +91,7 @@ bool ENGINECALL D3D12Renderer::Initialize(
 			{
 				pDebugController5->SetEnableGPUBasedValidation(TRUE);
 				pDebugController5->SetEnableAutoName(TRUE);
-				pDebugController5->Release();
+				SAFE_RELEASE(pDebugController5);
 			}
 		}
 	}
@@ -117,10 +107,10 @@ bool ENGINECALL D3D12Renderer::Initialize(
 		D3D_FEATURE_LEVEL_11_1,
 		D3D_FEATURE_LEVEL_11_0
 	};
-	UINT featureLevelNum = _countof(featureLevels);
-	for (UINT featerLevelIndex = 0; featerLevelIndex < featureLevelNum; featerLevelIndex++)
+	uint featureLevelNum = _countof(featureLevels);
+	for (uint featerLevelIndex = 0; featerLevelIndex < featureLevelNum; featerLevelIndex++)
 	{
-		UINT adapterIndex = 0;
+		uint adapterIndex = 0;
 		while (DXGI_ERROR_NOT_FOUND != pFactory->EnumAdapters1(adapterIndex, &pAdapter))
 		{
 			pAdapter->GetDesc1(&AdapterDesc);
@@ -128,8 +118,7 @@ bool ENGINECALL D3D12Renderer::Initialize(
 			{
 				goto lb_exit;
 			}
-			pAdapter->Release();
-			pAdapter = nullptr;
+			SAFE_RELEASE(pAdapter);
 			adapterIndex++;
 		}
 	}
@@ -178,10 +167,10 @@ lb_exit:
 
 	RECT rect;
 	::GetClientRect(hWnd, &rect);
-	UINT windowWidth = rect.right - rect.left;
-	UINT windowHeight = rect.bottom - rect.top;
-	UINT backBufferWidth = rect.right - rect.left;
-	UINT backBufferHeight = rect.bottom - rect.top;
+	uint windowWidth = rect.right - rect.left;
+	uint windowHeight = rect.bottom - rect.top;
+	uint backBufferWidth = rect.right - rect.left;
+	uint backBufferHeight = rect.bottom - rect.top;
 
 	// Describe and create the swap chain.
 	{
@@ -211,8 +200,7 @@ lb_exit:
 			return false;
 		}
 		pSwapChain1->QueryInterface(IID_PPV_ARGS(&m_pSwapChain));
-		pSwapChain1->Release();
-		pSwapChain1 = nullptr;
+		SAFE_RELEASE(pSwapChain1);
 		m_uiRenderTargetIndex = m_pSwapChain->GetCurrentBackBufferIndex();
 	}
 	m_Viewport.Width = (float)windowWidth;
@@ -281,8 +269,8 @@ lb_exit:
 	bInited = m_pRayTracingManager->Initialize(this, backBufferWidth, backBufferHeight);
 	ASSERT(bInited, "RayTracingManager initialization failed.");
 
-	DWORD numPhysicalCores = 0;
-	DWORD numLogicalCores = 0;
+	uint numPhysicalCores = 0;
+	uint numLogicalCores = 0;
 	GetPhysicalCoreCount(&numPhysicalCores, &numLogicalCores);
 	m_NumRenderThreads = std::min<int>(static_cast<int>(numPhysicalCores), MAX_RENDER_THREAD_COUNT);
 
@@ -334,119 +322,46 @@ void ENGINECALL D3D12Renderer::Cleanup()
 
 	fence();
 
-	if (m_pSkyObject)
-	{
-		delete m_pSkyObject;
-		m_pSkyObject = nullptr;
-	}
-
 	for (int i = 0; i < MAX_PENDING_FRAME_COUNT; i++)
 	{
 		waitForFenceValue(m_pui64LastFenceValue[i]);
 	}
 	for (int i = 0; i < m_NumRenderThreads; i++)
 	{
-		if (m_ppRenderQueueOpaque[i])
-		{
-			delete m_ppRenderQueueOpaque[i];
-			m_ppRenderQueueOpaque[i] = nullptr;
-		}
-		if (m_ppRenderQueueTrasnparent[i])
-		{
-			delete m_ppRenderQueueTrasnparent[i];
-			m_ppRenderQueueTrasnparent[i] = nullptr;
-		}
+		SAFE_DELETE(m_ppRenderQueueOpaque[i]);
+		SAFE_DELETE(m_ppRenderQueueTrasnparent[i]);
 	}
 	for (int i = 0; i < MAX_PENDING_FRAME_COUNT; i++)
 	{
 		for (int j = 0; j < m_NumRenderThreads; j++)
 		{
-			if (m_ppCommandListPool[i][j])
-			{
-				delete m_ppCommandListPool[i][j];
-				m_ppCommandListPool[i][j] = nullptr;
-			}
-			if (m_ppConstBufferManager[i][j])
-			{
-				delete m_ppConstBufferManager[i][j];
-				m_ppConstBufferManager[i][j] = nullptr;
-			}
-			if (m_ppDescriptorPool[i][j])
-			{
-				delete m_ppDescriptorPool[i][j];
-				m_ppDescriptorPool[i][j] = nullptr;
-			}
+			SAFE_DELETE(m_ppCommandListPool[i][j]);
+			SAFE_DELETE(m_ppConstBufferManager[i][j]);
+			SAFE_DELETE(m_ppDescriptorPool[i][j]);
 		}
 	}
-	if (m_pTextureManager)
-	{
-		delete m_pTextureManager;
-		m_pTextureManager = nullptr;
-	}
-	if (m_pResourceManager)
-	{
-		delete m_pResourceManager;
-		m_pResourceManager = nullptr;
-	}
-	if (m_pFontManager)
-	{
-		delete m_pFontManager;
-		m_pFontManager = nullptr;
-	}
-	if (m_pShaderManager)
-	{
-		delete m_pShaderManager;
-		m_pShaderManager = nullptr;
-	}
-	if (m_pRootSignatureManager)
-	{
-		delete m_pRootSignatureManager;
-		m_pRootSignatureManager = nullptr;
-	}
-	if (m_pPSOManager)
-	{
-		delete m_pPSOManager;
-		m_pPSOManager = nullptr;
-	}
-	if (m_pRayTracingManager)
-	{
-		delete m_pRayTracingManager;
-		m_pRayTracingManager = nullptr;
-	}
 
-	if (m_pSingleDescriptorAllocator)
-	{
-		delete m_pSingleDescriptorAllocator;
-		m_pSingleDescriptorAllocator = nullptr;
-	}
+	SAFE_DELETE(m_pSkyObject);
+
+	SAFE_DELETE(m_pTextureManager);
+	SAFE_DELETE(m_pResourceManager);
+	SAFE_DELETE(m_pFontManager);
+	SAFE_DELETE(m_pShaderManager);
+	SAFE_DELETE(m_pRootSignatureManager);
+	SAFE_DELETE(m_pPSOManager);
+	SAFE_DELETE(m_pRayTracingManager);
+	SAFE_DELETE(m_pSingleDescriptorAllocator);
 
 	cleanupDescriptorHeapForRTV();
 	cleanupDescriptorHeapForDSV();
 
 	for (int i = 0; i < SWAP_CHAIN_FRAME_COUNT; i++)
 	{
-		if (m_pRenderTargets[i])
-		{
-			m_pRenderTargets[i]->Release();
-			m_pRenderTargets[i] = nullptr;
-		}
+		SAFE_RELEASE(m_pRenderTargets[i]);
 	}
-	if (m_pDepthStencil)
-	{
-		m_pDepthStencil->Release();
-		m_pDepthStencil = nullptr;
-	}
-	if (m_pSwapChain)
-	{
-		m_pSwapChain->Release();
-		m_pSwapChain = nullptr;
-	}
-
-	if (m_pCommandQueue)
-	{
-		m_pCommandQueue->Release();
-		m_pCommandQueue = nullptr;
-	}
+	SAFE_RELEASE(m_pDepthStencil);
+	SAFE_RELEASE(m_pSwapChain);
+	SAFE_RELEASE(m_pCommandQueue);
 
 	cleanupFence();
 
@@ -543,7 +458,7 @@ void ENGINECALL D3D12Renderer::EndRender()
 
 		if (m_pRayTracingManager->IsUpdatedAccelerationStructure())
 		{
-			for (UINT i = 0; i < MAX_PENDING_FRAME_COUNT; i++)
+			for (uint i = 0; i < MAX_PENDING_FRAME_COUNT; i++)
 			{
 				waitForFenceValue(m_pui64LastFenceValue[i]);
 			}
@@ -632,11 +547,11 @@ void ENGINECALL D3D12Renderer::Present()
 	fence();
 	// Transfer the Back Buffer to the Primary Buffer.
 
-	UINT m_SyncInterval = 1;	// VSync On
-	//UINT m_SyncInterval = 0;	// VSync Off
+	uint m_SyncInterval = 1;	// VSync On
+	//uint m_SyncInterval = 0;	// VSync Off
 
-	UINT uiSyncInterval = m_SyncInterval;
-	UINT uiPresentFlags = 0;
+	uint uiSyncInterval = m_SyncInterval;
+	uint uiPresentFlags = 0;
 
 	if (!uiSyncInterval)
 	{
@@ -830,7 +745,7 @@ ISprite* ENGINECALL D3D12Renderer::CreateSpriteObject(const WCHAR* wchTexFileNam
 	return pSprObj;
 }
 
-void* ENGINECALL D3D12Renderer::CreateTiledTexture(UINT texWidth, UINT texHeight, uint8_t r, uint8_t g, uint8_t b)
+void* ENGINECALL D3D12Renderer::CreateTiledTexture(uint texWidth, uint texHeight, uint8_t r, uint8_t g, uint8_t b)
 {
 	ASSERT(m_pTextureManager, "Texture manager is not initialized.");
 	ASSERT(texWidth > 0 && texHeight > 0, "Invalid parameters.");
@@ -842,9 +757,9 @@ void* ENGINECALL D3D12Renderer::CreateTiledTexture(UINT texWidth, UINT texHeight
 
 	const RGBA WHITE = { 255, 255, 255, 255 };
 	const RGBA BLACK = { 0, 0, 0, 255 };
-	for (UINT y = 0; y < texHeight; y++)
+	for (uint y = 0; y < texHeight; y++)
 	{
-		for (UINT x = 0; x < texWidth; x++)
+		for (uint x = 0; x < texWidth; x++)
 		{
 			RGBA* pDest = reinterpret_cast<RGBA*>(image + (x + y * texWidth) * 4);
 			*pDest = (((x ^ y) & 1) == 0) ? WHITE : BLACK;
@@ -852,13 +767,12 @@ void* ENGINECALL D3D12Renderer::CreateTiledTexture(UINT texWidth, UINT texHeight
 	}
 	TextureHandle* pTexHandle = m_pTextureManager->CreateImmutableTexture(texWidth, texHeight, texFormat, image);
 
-	free(image);
-	image = nullptr;
+	SAFE_FREE(image);
 
 	return pTexHandle;
 }
 
-void* ENGINECALL D3D12Renderer::CreateDynamicTexture(UINT texWidth, UINT texHeight)
+void* ENGINECALL D3D12Renderer::CreateDynamicTexture(uint texWidth, uint texHeight)
 {
 	TextureHandle* pTexHandle = m_pTextureManager->CreateDynamicTexture(texWidth, texHeight);
 	return pTexHandle;
@@ -871,7 +785,7 @@ void* ENGINECALL D3D12Renderer::CreateTextureFromFile(const WCHAR* wchFileName)
 	return pTexHandle;
 }
 
-void ENGINECALL D3D12Renderer::UpdateTextureWithImage(void* pTexHandle, const BYTE* pSrcBits, UINT srcWidth, UINT srcHeight)
+void ENGINECALL D3D12Renderer::UpdateTextureWithImage(void* pTexHandle, const uint8_t* pSrcBits, uint srcWidth, uint srcHeight)
 {
 	TextureHandle* pTextureHandle = (TextureHandle*)pTexHandle;
 	ID3D12Resource* pDestTexResource = pTextureHandle->pTexResource;
@@ -882,21 +796,21 @@ void ENGINECALL D3D12Renderer::UpdateTextureWithImage(void* pTexHandle, const BY
 	ASSERT(srcHeight <= Desc.Height, "Source width is too large for the destination texture.");
 
 	D3D12_PLACED_SUBRESOURCE_FOOTPRINT Footprint;
-	UINT	Rows = 0;
-	UINT64	RowSize = 0;
-	UINT64	TotalBytes = 0;
+	uint rows = 0;
+	uint64_t rowSize = 0;
+	uint64_t totalBytes = 0;
 
-	m_pD3DDevice->GetCopyableFootprints(&Desc, 0, 1, 0, &Footprint, &Rows, &RowSize, &TotalBytes);
+	m_pD3DDevice->GetCopyableFootprints(&Desc, 0, 1, 0, &Footprint, &rows, &rowSize, &totalBytes);
 
-	BYTE* pMappedPtr = nullptr;
+	uint8_t* pMappedPtr = nullptr;
 	CD3DX12_RANGE readRange(0, 0);
 
 	HRESULT hr = pUploadBuffer->Map(0, &readRange, reinterpret_cast<void**>(&pMappedPtr));
 	ASSERT(SUCCEEDED(hr), "Failed to map the upload buffer.");
 
-	const BYTE* pSrc = pSrcBits;
-	BYTE* pDest = pMappedPtr;
-	for (UINT y = 0; y < srcHeight; y++)
+	const uint8_t* pSrc = pSrcBits;
+	uint8_t* pDest = pMappedPtr;
+	for (uint y = 0; y < srcHeight; y++)
 	{
 		memcpy(pDest, pSrc, (size_t)srcWidth * 4);
 		pSrc += (srcWidth * 4);
@@ -911,7 +825,7 @@ void ENGINECALL D3D12Renderer::UpdateTextureWithImage(void* pTexHandle, const BY
 void ENGINECALL D3D12Renderer::DeleteTexture(void* pTexHandle)
 {
 	// wait for all commands
-	for (UINT i = 0; i < MAX_PENDING_FRAME_COUNT; i++)
+	for (uint i = 0; i < MAX_PENDING_FRAME_COUNT; i++)
 	{
 		waitForFenceValue(m_pui64LastFenceValue[i]);
 	}
@@ -929,7 +843,7 @@ void ENGINECALL D3D12Renderer::DeleteFontObject(void* pFontHandle)
 	m_pFontManager->DeleteFontObject((FontHandle*)pFontHandle);
 }
 
-bool ENGINECALL D3D12Renderer::WriteTextToBitmap(uint8_t* dstImage, UINT dstWidth, UINT dstHeight, UINT dstPitch, int* outWidth, int* outHeight, void* pFontObjHandle, const WCHAR* wchString, UINT len)
+bool ENGINECALL D3D12Renderer::WriteTextToBitmap(uint8_t* dstImage, uint dstWidth, uint dstHeight, uint dstPitch, int* outWidth, int* outHeight, void* pFontObjHandle, const WCHAR* wchString, uint len)
 {
 	bool bResult = m_pFontManager->WriteTextToBitmap(dstImage, dstWidth, dstHeight, dstPitch, outWidth, outHeight, (FontHandle*)pFontObjHandle, wchString, len);
 	return bResult;
@@ -961,15 +875,10 @@ bool ENGINECALL D3D12Renderer::UpdateWindowSize(uint32_t backBufferWidth, uint32
 
 	for (int n = 0; n < SWAP_CHAIN_FRAME_COUNT; n++)
 	{
-		m_pRenderTargets[n]->Release();
-		m_pRenderTargets[n] = nullptr;
+		SAFE_RELEASE(m_pRenderTargets[n]);
 	}
 
-	if (m_pDepthStencil)
-	{
-		m_pDepthStencil->Release();
-		m_pDepthStencil = nullptr;
-	}
+	SAFE_RELEASE(m_pDepthStencil);
 
 	if (FAILED(m_pSwapChain->ResizeBuffers(SWAP_CHAIN_FRAME_COUNT, backBufferWidth, backBufferHeight, DXGI_FORMAT_R8G8B8A8_UNORM, m_SwapChainFlags)))
 	{
@@ -1249,16 +1158,8 @@ void D3D12Renderer::createFence()
 
 void D3D12Renderer::cleanupFence()
 {
-	if (m_hFenceEvent)
-	{
-		CloseHandle(m_hFenceEvent);
-		m_hFenceEvent = nullptr;
-	}
-	if (m_pFence)
-	{
-		m_pFence->Release();
-		m_pFence = nullptr;
-	}
+	SAFE_CLOSE_HANDLE(m_hFenceEvent);
+	SAFE_RELEASE(m_pFence);
 }
 
 uint64_t D3D12Renderer::fence()
@@ -1313,21 +1214,13 @@ bool D3D12Renderer::createDescriptorHeapForDSV()
 
 void D3D12Renderer::cleanupDescriptorHeapForRTV()
 {
-	if (m_pRTVHeap)
-	{
-		m_pRTVHeap->Release();
-		m_pRTVHeap = nullptr;
-	}
+	SAFE_RELEASE(m_pRTVHeap);
 }
 
 
 void D3D12Renderer::cleanupDescriptorHeapForDSV()
 {
-	if (m_pDSVHeap)
-	{
-		m_pDSVHeap->Release();
-		m_pDSVHeap = nullptr;
-	}
+	SAFE_RELEASE(m_pDSVHeap);
 }
 
 bool D3D12Renderer::initRenderThreadPool(int numThreads)
@@ -1345,7 +1238,7 @@ bool D3D12Renderer::initRenderThreadPool(int numThreads)
 		}
 		m_pThreadDescList[i].pRenderer = this;
 		m_pThreadDescList[i].ThreadIndex = i;
-		UINT uiThreadID = 0;
+		uint uiThreadID = 0;
 		m_pThreadDescList[i].hThread = (HANDLE)_beginthreadex(nullptr, 0, RenderThread, m_pThreadDescList + i, 0, &uiThreadID);
 	}
 	return true;
@@ -1358,24 +1251,16 @@ void D3D12Renderer::cleanupRenderThreadPool()
 		for (int i = 0; i < m_NumRenderThreads; i++)
 		{
 			SetEvent(m_pThreadDescList[i].hEventList[RENDER_THREAD_EVENT_TYPE_DESTROY]);
-
 			WaitForSingleObject(m_pThreadDescList[i].hThread, INFINITE);
-			CloseHandle(m_pThreadDescList[i].hThread);
-			m_pThreadDescList[i].hThread = nullptr;
 
 			for (int j = 0; j < RENDER_THREAD_EVENT_TYPE_COUNT; j++)
 			{
-				CloseHandle(m_pThreadDescList[i].hEventList[j]);
-				m_pThreadDescList[i].hEventList[j] = nullptr;
+				SAFE_CLOSE_HANDLE(m_pThreadDescList[i].hEventList[j]);
 			}
+			SAFE_CLOSE_HANDLE(m_pThreadDescList[i].hThread);
 		}
 
-		delete[] m_pThreadDescList;
-		m_pThreadDescList = nullptr;
+		SAFE_DELETE_ARRAY(m_pThreadDescList);
 	}
-	if (m_hCompleteEvent)
-	{
-		CloseHandle(m_hCompleteEvent);
-		m_hCompleteEvent = nullptr;
-	}
+	SAFE_CLOSE_HANDLE(m_hCompleteEvent);
 }

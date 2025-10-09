@@ -8,7 +8,7 @@ public:
 	SingleDescriptorAllocator() = default;
 	~SingleDescriptorAllocator() { Cleanup(); }
 
-	bool Initialize(ID3D12Device* pDevice, UINT maxCount, D3D12_DESCRIPTOR_HEAP_FLAGS flags);
+	bool Initialize(ID3D12Device* pDevice, uint maxCount, D3D12_DESCRIPTOR_HEAP_FLAGS flags);
 	bool AllocDescriptorHandle(D3D12_CPU_DESCRIPTOR_HANDLE* outCPUHandle);
 	void FreeDescriptorHandle(D3D12_CPU_DESCRIPTOR_HANDLE descriptorHandle);
 	bool Check(D3D12_CPU_DESCRIPTOR_HANDLE descriptorHandle);
@@ -21,6 +21,6 @@ private:
 	ID3D12Device* m_pD3DDevice = nullptr;
 	ID3D12DescriptorHeap* m_pHeap = nullptr;
 	CIndexCreator m_IndexCreator;
-	UINT m_DescriptorSize = 0;
+	uint m_DescriptorSize = 0;
 };
 

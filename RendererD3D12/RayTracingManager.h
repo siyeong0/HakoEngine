@@ -10,31 +10,31 @@ public:
 	RayTracingManager() = default;
 	~RayTracingManager() { Cleanup(); }
 
-	bool Initialize(D3D12Renderer* pRenderer, UINT width, UINT height, UINT maxNumBLASs = 1024);
+	bool Initialize(D3D12Renderer* pRenderer, uint width, uint height, uint maxNumBLASs = 1024);
 	void Cleanup();
 
 	void DoRaytracing(ID3D12GraphicsCommandList6* pCommandList);
-	BLASInstance* AllocBLAS(ID3D12Resource* pVertexBuffer, UINT vertexSize, UINT numVertices, const IndexedTriGroup* pTriGroupInfoList, UINT numTriGroupInfos, bool bAllowUpdate);
+	BLASInstance* AllocBLAS(ID3D12Resource* pVertexBuffer, uint vertexSize, uint numVertices, const IndexedTriGroup* pTriGroupInfoList, uint numTriGroupInfos, bool bAllowUpdate);
 	void FreeBLAS(BLASInstance* pBlasHandle);
 	bool UpdateAccelerationStructure();
 	void UpdateBLASTransform(BLASInstance* pBlasInstance, const XMMATRIX& worldMatrix);
 
-	void UpdateWindowSize(UINT width, UINT height);
+	void UpdateWindowSize(uint width, uint height);
 
 	ID3D12Resource* GetOutputResource() { return m_pOutputDiffuse; }
 	ID3D12Resource* GetDepthResource() { return m_pOutputDepth; }
 	bool IsUpdatedAccelerationStructure() const { return (BOOL)(m_UpdateAccelerationStructureFlags != 0); }
 
 private:
-	BLASInstance* buildBLAS(ID3D12Resource* pVertexBuffer, UINT vertexSize, UINT numVertices, const IndexedTriGroup* pTriGroupInfoList, UINT numTriGroupInfos, bool bAllowUpdate);
-	ID3D12Resource* buildTLAS(ID3D12Resource* pInstanceDescResource, BLASInstance** ppInstanceList, UINT numBlasInstances, bool bAllowUpdate, UINT currContextIndex);
+	BLASInstance* buildBLAS(ID3D12Resource* pVertexBuffer, uint vertexSize, uint numVertices, const IndexedTriGroup* pTriGroupInfoList, uint numTriGroupInfos, bool bAllowUpdate);
+	ID3D12Resource* buildTLAS(ID3D12Resource* pInstanceDescResource, BLASInstance** ppInstanceList, uint numBlasInstances, bool bAllowUpdate, uint currContextIndex);
 
-	void updateHitGroupShaderTable(UINT numShaderRecords);
+	void updateHitGroupShaderTable(uint numShaderRecords);
 	void cleanupPendingFreeedBlasInstace();
 
-	bool createOutputDiffuseBuffer(UINT width, UINT height);
+	bool createOutputDiffuseBuffer(uint width, uint height);
 	void cleanupOutputDiffuseBuffer();
-	bool createOutputDepthBuffer(UINT width, UINT height);
+	bool createOutputDepthBuffer(uint width, uint height);
 	void cleanupOutputDepthBuffer();
 
 	void createRootSignatures();
@@ -46,7 +46,7 @@ private:
 	void createDescriptorHeapCBV_SRV_UAV();
 	void cleanupDescriptorHeapCBV_SRV_UAV();
 
-	void createShaderVisibleHeap(UINT maxNumDescriptors);
+	void createShaderVisibleHeap(uint maxNumDescriptors);
 	void cleanupDispatchHeap();
 
 	void createCommandList();
@@ -82,8 +82,8 @@ private:
 		UPDATE_ACCELERATION_STRCTURE_TYPE_HIT_GROUP_SHADER_TABLE = 0b01,
 		UPDATE_ACCELERATION_STRCTURE_TYPE_TLAS = 0b10
 	};
-	static const UINT MAX_RECURSION_DEPTH = 1;
-	static const UINT MAX_RADIANCE_RECURSION_DEPTH = std::min<UINT>(MAX_RECURSION_DEPTH, 1u);
+	static const uint MAX_RECURSION_DEPTH = 1;
+	static const uint MAX_RADIANCE_RECURSION_DEPTH = std::min<uint>(MAX_RECURSION_DEPTH, 1u);
 
 
 	D3D12Renderer* m_pRenderer = nullptr;
@@ -99,8 +99,8 @@ private:
 
 	ID3D12Resource* m_pOutputDiffuse = nullptr;	// raytracing output - diffuse
 	ID3D12Resource* m_pOutputDepth = nullptr;	// raytracing output - depth	
-	UINT m_Width = 0;
-	UINT m_Height = 0;
+	uint m_Width = 0;
+	uint m_Height = 0;
 
 	ShaderHandle* m_pRayShader = nullptr;
 	ID3D12RootSignature* m_pRaytracingGlobalRootSignature = nullptr;
@@ -109,24 +109,23 @@ private:
 
 	ID3D12DescriptorHeap* m_pCommonDescriptorHeap = nullptr;
 	ID3D12DescriptorHeap* m_pShaderVisibleDescriptorHeap = nullptr;	// ID에 따라 srv,uav 위치 고정.
-	UINT m_MaxNumShaderVisibleHeapDescriptors = 0;
-	UINT m_DescriptorSize = 0;
+	uint m_MaxNumShaderVisibleHeapDescriptors = 0;
+	uint m_DescriptorSize = 0;
 
 	ShaderTable* m_pRayGenShaderTable = nullptr;
 	ShaderTable* m_pMissShaderTable = nullptr;
 	ShaderTable* m_pHitGroupShaderTable = nullptr;
-	UINT m_MissShaderTableStrideInBytes = 0;
-	UINT m_HitGroupShaderTableStrideInBytes = 0;
-	UINT m_HitGroupShaderRecordNum = 0;
-	UINT m_ShaderIdentifierSize = D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES;
+	uint m_MissShaderTableStrideInBytes = 0;
+	uint m_HitGroupShaderTableStrideInBytes = 0;
+	uint m_HitGroupShaderRecordNum = 0;
+	uint m_ShaderIdentifierSize = D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES;
 
-	UINT m_MaxNumBLASs = 0;
+	uint m_MaxNumBLASs = 0;
 	std::list<BLASInstance*> m_BlasInstanceList; // BLAS Instance list
 	std::list<BLASInstance*> m_pFreedBlasInstanceList; // Freed BLAS Instance list
 
 	ID3D12Resource* m_pBLASInstanceDescResouce = nullptr;
 	ID3D12Resource* m_pTLAS = nullptr;
-	BLASInstance* m_pBlasInstance = nullptr;
 
-	UINT m_UpdateAccelerationStructureFlags = 0;
+	uint m_UpdateAccelerationStructureFlags = 0;
 };

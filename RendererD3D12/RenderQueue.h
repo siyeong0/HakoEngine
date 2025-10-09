@@ -29,8 +29,8 @@ private:
 private:
 	D3D12Renderer* m_pRenderer = nullptr;
 	char* m_pBuffer = nullptr;
-	UINT m_MaxBufferSize = 0;
-	UINT m_AllocatedSize = 0;
-	UINT m_ReadBufferPos = 0;
-	UINT m_ItemCount = 0;
+	uint m_MaxBufferSize = 0;
+	uint m_AllocatedSize = 0;
+	uint m_ReadBufferPos = 0;
+	uint m_ItemCount = 0;
 };
