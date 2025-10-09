@@ -470,6 +470,10 @@ void ENGINECALL D3D12Renderer::Update(float dt)
 	m_PerFrameCB.LightDir = XMFLOAT3(-0.577f, -0.577f, -0.577f);
 	m_PerFrameCB.LightColor = XMFLOAT3(1.0f, 1.0f, 1.0f);
 	m_PerFrameCB.Ambient = XMFLOAT3(0.3f, 0.3f, 0.3f);
+
+	m_PerFrameCB.Near = NEAR_Z;
+	m_PerFrameCB.Far = FAR_Z;
+	m_PerFrameCB.MaxRadianceRayRecursionDepth = 1;
 }
 
 void ENGINECALL D3D12Renderer::BeginRender()
@@ -518,7 +522,7 @@ void ENGINECALL D3D12Renderer::EndRender()
 	CD3DX12_CPU_DESCRIPTOR_HANDLE dsvHandle(m_pDSVHeap->GetCPUDescriptorHandleForHeapStart());
 
 	// TODO: Combine raytracing output and rasterized output.
-	bool bUseRayTracing = true;
+	bool bUseRayTracing = false;
 
 	// Do raytracing and copy the output to the back buffer.
 	if (bUseRayTracing)
@@ -1003,11 +1007,13 @@ void ENGINECALL D3D12Renderer::MoveCamera(float x, float y, float z)
 	updateCamera();
 }
 
-void ENGINECALL D3D12Renderer::GetCameraPos(float* outX, float* outY, float* outZ)
+FLOAT3 ENGINECALL D3D12Renderer::GetCameraPos()
 {
-	*outX = m_CamPos.m128_f32[0];
-	*outY = m_CamPos.m128_f32[1];
-	*outZ = m_CamPos.m128_f32[2];
+	FLOAT3 pos;
+	pos.x = m_CamPos.m128_f32[0];
+	pos.y = m_CamPos.m128_f32[1];
+	pos.z = m_CamPos.m128_f32[2];
+	return pos;
 }
 
 int ENGINECALL D3D12Renderer::GetCommandListCount()
@@ -1072,7 +1078,7 @@ void D3D12Renderer::EnsureCompleted()
 	}
 }
 
-SimpleConstantBufferPool* D3D12Renderer::GetConstantBufferPool(EConstantBufferType type, int threadIndex) const
+SimpleConstantBufferPool* D3D12Renderer::GetConstantBufferPool(CONSTANT_BUFFER_TYPE type, int threadIndex) const
 {
 	ConstantBufferManager* pConstBufferManager = m_ppConstBufferManager[m_CurrContextIndex][threadIndex];
 	SimpleConstantBufferPool* pConstBufferPool = pConstBufferManager->GetConstantBufferPool(type);
@@ -1125,26 +1131,32 @@ void D3D12Renderer::updateCamera()
 	m_CamUp = XMVector3Normalize(XMVector3Cross(m_CamDir, m_CamRight));
 
 	// View matrix
-	m_PerFrameCB.View = XMMatrixLookToLH(m_CamPos, m_CamDir, m_CamUp);
+	XMMATRIX view = XMMatrixLookToLH(m_CamPos, m_CamDir, m_CamUp);
 
-	// Projection matrix
+	// Proj matrix
 	float fovY = XM_PIDIV4; // (rad)
 	float aspectRatio = (float)m_Width / (float)m_Height;
-	float nearZ = 0.1f;
-	float farZ = 1000.0f;
-	m_PerFrameCB.Proj = XMMatrixPerspectiveFovLH(fovY, aspectRatio, nearZ, farZ);
+	XMMATRIX proj = XMMatrixPerspectiveFovLH(fovY, aspectRatio, NEAR_Z, FAR_Z);
 
-	// View-Projection matrix
-	m_PerFrameCB.ViewProj = XMMatrixMultiply(m_PerFrameCB.View, m_PerFrameCB.Proj);
+	// View x Proj matrix
+	XMMATRIX viewProj = XMMatrixMultiply(view, proj);
 
 	// Inverse matrices
 	XMVECTOR det;
-	m_PerFrameCB.InvView = XMMatrixInverse(&det, m_PerFrameCB.View);
+	XMMATRIX invView = XMMatrixInverse(&det, view);
 	ASSERT(det.m128_f32[0] != 0.0f, "Matrix is not invertible.");
-	m_PerFrameCB.InvProj = XMMatrixInverse(&det, m_PerFrameCB.Proj);
+	XMMATRIX invProj = XMMatrixInverse(&det, proj);
 	ASSERT(det.m128_f32[0] != 0.0f, "Matrix is not invertible.");
-	m_PerFrameCB.InvViewProj = XMMatrixInverse(&det, m_PerFrameCB.ViewProj);
+	XMMATRIX invViewProj = XMMatrixInverse(&det, viewProj);
 	ASSERT(det.m128_f32[0] != 0.0f, "Matrix is not invertible.");
+
+	// Store to the constant buffer.
+	m_PerFrameCB.View = XMMatrixTranspose(view);
+	m_PerFrameCB.Proj = XMMatrixTranspose(proj);
+	m_PerFrameCB.ViewProj = XMMatrixTranspose(viewProj);
+	m_PerFrameCB.InvView = XMMatrixTranspose(invView);
+	m_PerFrameCB.InvProj = XMMatrixTranspose(invProj);
+	m_PerFrameCB.InvViewProj = XMMatrixTranspose(invViewProj);
 }
 
 bool D3D12Renderer::createDepthStencil(int width, int height)

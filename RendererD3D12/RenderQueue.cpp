@@ -52,18 +52,9 @@ int RenderQueue::Process(
 	ConstantBufferContainer* pCB = pConstantBufferPool->Alloc();
 	ASSERT(pCB, "Failed to allocate constant buffer.");
 
-	CB_PerFrame* pCBPerFrame = (CB_PerFrame*)pCB->pSystemMemAddr;
-	const CB_PerFrame& srcCBData = m_pRenderer->GetFrameCBData();
-	pCBPerFrame->View = XMMatrixTranspose(srcCBData.View);
-	pCBPerFrame->Proj = XMMatrixTranspose(srcCBData.Proj);
-	pCBPerFrame->ViewProj = XMMatrixTranspose(srcCBData.ViewProj);
-	pCBPerFrame->InvView = XMMatrixTranspose(srcCBData.InvView);
-	pCBPerFrame->InvProj = XMMatrixTranspose(srcCBData.InvProj);
-	pCBPerFrame->InvViewProj = XMMatrixTranspose(srcCBData.InvViewProj);
-
-	pCBPerFrame->LightDir = srcCBData.LightDir;
-	pCBPerFrame->LightColor = srcCBData.LightColor;
-	pCBPerFrame->Ambient = srcCBData.Ambient;
+	CONSTANT_BUFFER_PER_FRAME* pCBPerFrame = (CONSTANT_BUFFER_PER_FRAME*)pCB->pSystemMemAddr;
+	const CONSTANT_BUFFER_PER_FRAME& srcCBData = m_pRenderer->GetFrameCBData();
+	std::memcpy(pCBPerFrame, &srcCBData, sizeof(CONSTANT_BUFFER_PER_FRAME));
 
 	// Command list for remaining commands.
 	ID3D12GraphicsCommandList6* ppCommandList[64] = {};

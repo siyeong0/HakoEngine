@@ -11,7 +11,7 @@ public:
 
 	bool Initialize(ID3D12Device* pD3DDevice, int maxNumCBV);
 	void Reset();
-	SimpleConstantBufferPool* GetConstantBufferPool(EConstantBufferType type) const;
+	SimpleConstantBufferPool* GetConstantBufferPool(CONSTANT_BUFFER_TYPE type) const;
 
 private:
 	SimpleConstantBufferPool* m_ppConstantBufferPool[CONSTANT_BUFFER_TYPE_COUNT] = {};

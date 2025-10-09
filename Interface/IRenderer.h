@@ -39,7 +39,7 @@ interface IRenderer : public IUnknown
 	virtual void ENGINECALL SetCameraPos(float x, float y, float z) = 0;
 	virtual void ENGINECALL SetCameraRot(float yaw, float pitch, float roll) = 0;
 	virtual void ENGINECALL MoveCamera(float x, float y, float z) = 0;
-	virtual void ENGINECALL GetCameraPos(float* outX, float* outY, float* outZ) = 0;
+	virtual FLOAT3 ENGINECALL GetCameraPos() = 0;
 	virtual int ENGINECALL GetCommandListCount() = 0;
 	virtual bool ENGINECALL IsGpuUploadHeapsEnabled() const = 0;
 };

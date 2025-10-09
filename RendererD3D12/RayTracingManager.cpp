@@ -124,14 +124,13 @@ void RayTracingManager::DoRaytracing(ID3D12GraphicsCommandList6* pCommandList)
 	CD3DX12_CPU_DESCRIPTOR_HANDLE	dispatchHeapHandleCPU(m_pShaderVisibleDescriptorHeap->GetCPUDescriptorHandleForHeapStart());
 
 	D3D12_CPU_DESCRIPTOR_HANDLE	cbvHandle = {};
-	SimpleConstantBufferPool* pConstantBufferPool = m_pRenderer->GetConstantBufferPool(CONSTANT_BUFFER_TYPE_RAY_TRACING, 0);
+	SimpleConstantBufferPool* pConstantBufferPool = m_pRenderer->GetConstantBufferPool(CONSTANT_BUFFER_TYPE_PER_FRAME, 0);
 	ConstantBufferContainer* pCB = pConstantBufferPool->Alloc();
 	ASSERT(pCB, "Failed to allocate constant buffer.");
 
-	CB_RayTracing* pConstBuffer = (CB_RayTracing*)pCB->pSystemMemAddr;
-	pConstBuffer->MaxRadianceRayRecursionDepth = MAX_RADIANCE_RECURSION_DEPTH;
-	pConstBuffer->Near = 0.1f;
-	pConstBuffer->Far = 1000.0f;
+	CONSTANT_BUFFER_PER_FRAME* pCBPerFrame = (CONSTANT_BUFFER_PER_FRAME*)pCB->pSystemMemAddr;
+	CONSTANT_BUFFER_PER_FRAME	srcCBData = m_pRenderer->GetFrameCBData();
+	std::memcpy(pCBPerFrame, &srcCBData, sizeof(CONSTANT_BUFFER_PER_FRAME));
 
 	// (0) CBV - RayTracing
 	m_pD3DDevice->CopyDescriptorsSimple(1, dispatchHeapHandleCPU, pCB->CBVHandle, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);

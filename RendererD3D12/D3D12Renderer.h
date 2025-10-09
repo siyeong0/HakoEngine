@@ -60,7 +60,7 @@ public:
 	void ENGINECALL SetCameraPos(float x, float y, float z) override;
 	void ENGINECALL SetCameraRot(float yaw, float pitch, float roll) override;
 	void ENGINECALL MoveCamera(float x, float y, float z) override;
-	void ENGINECALL GetCameraPos(float* outX, float* outY, float* outZ) override;
+	FLOAT3 ENGINECALL GetCameraPos() override;
 	int	ENGINECALL GetCommandListCount() override;
 	bool ENGINECALL IsGpuUploadHeapsEnabled() const override;
 
@@ -79,7 +79,7 @@ public:
 	PSOManager* GetPSOManager() { return m_pPSOManager; }
 
 	DescriptorPool* GetDescriptorPool(int threadIndex) const { return m_ppDescriptorPool[m_CurrContextIndex][threadIndex]; }
-	SimpleConstantBufferPool* GetConstantBufferPool(EConstantBufferType type, int threadIndex) const;
+	SimpleConstantBufferPool* GetConstantBufferPool(CONSTANT_BUFFER_TYPE type, int threadIndex) const;
 
 	inline uint32_t GetSrvDescriptorSize() const { return m_srvDescriptorSize; }
 	inline SingleDescriptorAllocator* GetSingleDescriptorAllocator() const { return m_pSingleDescriptorAllocator; }
@@ -88,7 +88,7 @@ public:
 	inline float GetDPI() const { return m_DPI; }
 	inline bool IsGpuUploadHeapsEnabledInl() const { return m_bGpuUploadHeapsEnabled; }
 
-	const CB_PerFrame& GetFrameCBData() { return m_PerFrameCB; };
+	const CONSTANT_BUFFER_PER_FRAME& GetFrameCBData() { return m_PerFrameCB; };
 	void GetViewProjMatrix(XMMATRIX* outMatView, XMMATRIX* outMatProj) const;
 
 	void SetCurrentPathForShader() const;
@@ -177,7 +177,7 @@ private:
 	ID3D12Fence* m_pFence = nullptr;
 
 	int	m_CurrContextIndex = 0;
-	CB_PerFrame m_PerFrameCB = {};
+	CONSTANT_BUFFER_PER_FRAME m_PerFrameCB = {};
 
 	XMVECTOR m_CamPos = {};
 	XMVECTOR m_CamDir = {};
@@ -186,6 +186,9 @@ private:
 	float m_fCamYaw = 0.0f;
 	float m_fCamPitch = 0.0f;
 	float m_fCamRoll = 0.0f;
+
+	static constexpr float NEAR_Z = 0.1f;
+	static constexpr float FAR_Z = 1000.0f;
 
 	SkyObject* m_pSkyObject = {};
 

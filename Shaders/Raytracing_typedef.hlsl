@@ -39,6 +39,7 @@ struct ShadowPayload
 {
     float tHit; // Hit time <0,..> on Hit. -1 on miss.
 };
+
 static const float NEAR_PLANE = 0.01;
 static const float FAR_PLANE = 800.0;
 

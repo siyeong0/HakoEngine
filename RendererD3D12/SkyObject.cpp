@@ -44,21 +44,12 @@ void SkyObject::Draw(int threadIndex, ID3D12GraphicsCommandList6* pCommandList)
 	ASSERT(cb1, "Sky: CB alloc b1 failed");
 
 	// b0: Per-frame matrices
-	CB_PerFrame* pCBPerFrame = (CB_PerFrame*)cb0->pSystemMemAddr;
-	const CB_PerFrame& srcCBData = m_pRenderer->GetFrameCBData();
-	pCBPerFrame->View = XMMatrixTranspose(srcCBData.View);
-	pCBPerFrame->Proj = XMMatrixTranspose(srcCBData.Proj);
-	pCBPerFrame->ViewProj = XMMatrixTranspose(srcCBData.ViewProj);
-	pCBPerFrame->InvView = XMMatrixTranspose(srcCBData.InvView);
-	pCBPerFrame->InvProj = XMMatrixTranspose(srcCBData.InvProj);
-	pCBPerFrame->InvViewProj = XMMatrixTranspose(srcCBData.InvViewProj);
-
-	pCBPerFrame->LightDir = srcCBData.LightDir;
-	pCBPerFrame->LightColor = srcCBData.LightColor;
-	pCBPerFrame->Ambient = srcCBData.Ambient;
+	CONSTANT_BUFFER_PER_FRAME* pCBPerFrame = (CONSTANT_BUFFER_PER_FRAME*)cb0->pSystemMemAddr;
+	const CONSTANT_BUFFER_PER_FRAME& srcCBData = m_pRenderer->GetFrameCBData();
+	std::memcpy(pCBPerFrame, &srcCBData, sizeof(CONSTANT_BUFFER_PER_FRAME));
 
 	// b1: Atmospheric parameters
-	CB_AtmosConstants* atmosCB = reinterpret_cast<CB_AtmosConstants*>(cb1->pSystemMemAddr);
+	CONSTANT_BUFFER_ATMOS* atmosCB = reinterpret_cast<CONSTANT_BUFFER_ATMOS*>(cb1->pSystemMemAddr);
 	
 	enum EAtmospherePresets
 	{

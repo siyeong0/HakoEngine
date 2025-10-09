@@ -7,23 +7,22 @@ constexpr UINT ROOT_SLOT_CBV_PER_FRAME = 0;
 constexpr UINT ROOT_SLOT_CBV_PER_DRAW = 1;
 constexpr UINT ROOT_SLOT_SRV_TABLE = 2;
 
-enum EConstantBufferType
+enum CONSTANT_BUFFER_TYPE
 {
 	CONSTANT_BUFFER_TYPE_PER_FRAME,
 	CONSTANT_BUFFER_TYPE_MESH,
 	CONSTANT_BUFFER_TYPE_SPRITE,
 	CONSTANT_BUFFER_TYPE_ATMOS_CONSTANTS,
-	CONSTANT_BUFFER_TYPE_RAY_TRACING,
 	CONSTANT_BUFFER_TYPE_COUNT
 };
 
-struct ConstantBufferProperty
+struct CONSTANT_BUFFER_PROPERTY
 {
-	EConstantBufferType Type;
+	CONSTANT_BUFFER_TYPE Type;
 	size_t Size;
 };
 
-struct CB_PerFrame
+struct CONSTANT_BUFFER_PER_FRAME
 {
 	XMMATRIX View;
 	XMMATRIX Proj;
@@ -38,14 +37,18 @@ struct CB_PerFrame
 	float _pad1;
 	XMFLOAT3 Ambient; // Ambient light color
 	float _pad2;
+
+	float Near;
+	float Far;
+	UINT MaxRadianceRayRecursionDepth;
 };
 
-struct CB_MeshObject
+struct CONSTANT_BUFFER_MESH_OBJECT
 {
 	XMMATRIX WorldMatrix;
 };
 
-struct CB_SpriteObject
+struct CONSTANT_BUFFER_SPRITE_OBJECT
 {
 	XMFLOAT2 ScreenResolution;
 	XMFLOAT2 Position;
@@ -59,7 +62,7 @@ struct CB_SpriteObject
 	float	Reserved1;
 };
 
-struct CB_AtmosConstants
+struct CONSTANT_BUFFER_ATMOS
 {
 	XMFLOAT3 CameraPosPlanetCoord;
 	float _pad0;               // padding for 16B alignment
@@ -86,12 +89,4 @@ struct CB_AtmosConstants
 	float SMU;
 	float SMUS;
 	float SNU;
-};
-
-struct CB_RayTracing
-{
-	float Near;
-	float Far;
-	UINT MaxRadianceRayRecursionDepth;
-	UINT Reserved0;
 };

@@ -1,6 +1,6 @@
 ﻿Texture2D texDiffuse : register(t0);
 
-cbuffer CB_PerFrame : register(b0)
+cbuffer CONSTANT_BUFFER_PER_FRAME : register(b0)
 {
     matrix g_View;
     matrix g_Proj;
@@ -15,9 +15,13 @@ cbuffer CB_PerFrame : register(b0)
     float _pad1;
     float3 g_Ambient; // Ambient light color
     float _pad2;
+    
+    float g_Near;
+    float g_Far;
+    uint g_MaxRadianceRayRecursionDepth;
 };
 
-cbuffer CB_Object : register(b1)
+cbuffer CONSTANT_BUFFER_PER_OBJECT : register(b1)
 {
     matrix g_World;
 };

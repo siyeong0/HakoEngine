@@ -4,13 +4,12 @@
 
 #include "ConstantBufferManager.h"
 
-ConstantBufferProperty g_pConstBufferPropList[] =
+CONSTANT_BUFFER_PROPERTY g_pConstBufferPropList[] =
 {
-	{ CONSTANT_BUFFER_TYPE_PER_FRAME, sizeof(CB_PerFrame) },
-	{ CONSTANT_BUFFER_TYPE_MESH, sizeof(CB_MeshObject) },
-	{ CONSTANT_BUFFER_TYPE_SPRITE, sizeof(CB_SpriteObject) },
-	{ CONSTANT_BUFFER_TYPE_ATMOS_CONSTANTS, sizeof(CB_AtmosConstants) },
-	{ CONSTANT_BUFFER_TYPE_RAY_TRACING, sizeof(CB_RayTracing) },
+	{ CONSTANT_BUFFER_TYPE_PER_FRAME, sizeof(CONSTANT_BUFFER_PER_FRAME) },
+	{ CONSTANT_BUFFER_TYPE_MESH, sizeof(CONSTANT_BUFFER_MESH_OBJECT) },
+	{ CONSTANT_BUFFER_TYPE_SPRITE, sizeof(CONSTANT_BUFFER_SPRITE_OBJECT) },
+	{ CONSTANT_BUFFER_TYPE_ATMOS_CONSTANTS, sizeof(CONSTANT_BUFFER_ATMOS) },
 };
 
 ConstantBufferManager::~ConstantBufferManager()
@@ -30,7 +29,7 @@ bool ConstantBufferManager::Initialize(ID3D12Device* pD3DDevice, int maxNumCBV)
 	for (int i = 0; i < CONSTANT_BUFFER_TYPE_COUNT; i++)
 	{
 		m_ppConstantBufferPool[i] = new SimpleConstantBufferPool;
-		m_ppConstantBufferPool[i]->Initialize(pD3DDevice, (EConstantBufferType)i, static_cast<UINT>(D3DUtil::AlignConstantBufferSize(g_pConstBufferPropList[i].Size)), maxNumCBV);
+		m_ppConstantBufferPool[i]->Initialize(pD3DDevice, (CONSTANT_BUFFER_TYPE)i, static_cast<UINT>(D3DUtil::AlignConstantBufferSize(g_pConstBufferPropList[i].Size)), maxNumCBV);
 	}
 	return true;
 }
@@ -43,7 +42,7 @@ void ConstantBufferManager::Reset()
 	}
 }
 
-SimpleConstantBufferPool* ConstantBufferManager::GetConstantBufferPool(EConstantBufferType type) const
+SimpleConstantBufferPool* ConstantBufferManager::GetConstantBufferPool(CONSTANT_BUFFER_TYPE type) const
 {
 	ASSERT(type < CONSTANT_BUFFER_TYPE_COUNT);
 #pragma warning(suppress: 33010)

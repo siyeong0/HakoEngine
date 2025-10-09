@@ -4,7 +4,7 @@
 
 #include "SimpleConstantBufferPool.h"
 
-bool SimpleConstantBufferPool::Initialize(ID3D12Device* pD3DDevice, EConstantBufferType type, UINT sizePerCBV, int maxNumCBV)
+bool SimpleConstantBufferPool::Initialize(ID3D12Device* pD3DDevice, CONSTANT_BUFFER_TYPE type, UINT sizePerCBV, int maxNumCBV)
 {
 	HRESULT hr = S_OK;
 

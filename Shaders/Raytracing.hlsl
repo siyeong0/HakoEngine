@@ -47,27 +47,42 @@ RadiancePayload TraceRadianceRay(in Ray ray, in uint CurRayRecursionDepth, in ui
 
     return rayPayload;
 }
+
 [shader("raygeneration")]
 void MyRaygenShader_RadianceRay()
 {
     uint2 launchIndex = DispatchRaysIndex().xy;
     uint2 launchDim = DispatchRaysDimensions().xy;
 
-    float2 xy = launchIndex.xy + 0.5f; // center in the middle of the pixel.
-    float2 screenPos = xy / launchDim.xy * 2.0 - 1.0;
-	
-    float3 orig = float3(screenPos.xy, 0);
-    float3 dir = float3(0, 0, 1);
+    // Generate primary ray.
+    // Ray origin is the camera position.
+    float3 worldOrigin = g_InvView._41_42_43;
+    
+    // Ray direction is computed by transforming the screen space coordinate to world space.
+    float2 currPixel = float2(launchIndex.xy) + 0.5f; // center in the middle of the pixel.
+    float2 resolution = float2(launchDim.xy);
+    
+    float4 rayView = float4(
+        ((currPixel.x / resolution.x) * 2.0f - 1.0f) / g_Proj._11,
+        -((currPixel.y / resolution.y) * 2.0f - 1.0f) / g_Proj._22,
+        1.0, 0.0);
+    float4 rayDstWorld = mul(rayView, g_InvView);
+    rayDstWorld.xyz = normalize(rayDstWorld.xyz);
+    float3 worldDir = rayDstWorld.xyz;
+    
     Ray ray =
     {
-        orig,
-		dir
+        worldOrigin,
+		worldDir
     };
-    uint CurRayRecursionDepth = 0;
+    
+    // Trace primary ray.
+    uint currRayRecursionDepth = 0;
     bool cullNonOpaque = false;
     bool cullBackFace = false;
-    RadiancePayload rayPayload = TraceRadianceRay(ray, CurRayRecursionDepth, g_MaxRadianceRayRecursionDepth, NEAR_PLANE, FAR_PLANE, cullNonOpaque, cullBackFace);
+    RadiancePayload rayPayload = TraceRadianceRay(ray, currRayRecursionDepth, g_MaxRadianceRayRecursionDepth, NEAR_PLANE, FAR_PLANE, cullNonOpaque, cullBackFace);
 	
+    // Output to the screen.
     g_OutputDiffuse[launchIndex.xy] = float4(rayPayload.radiance, 1);
     g_OutputDepth[launchIndex.xy] = rayPayload.depth;
 }
