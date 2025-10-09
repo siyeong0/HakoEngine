@@ -129,6 +129,7 @@ void MyClosestHitShader_RadianceRay(inout RadiancePayload rayPayload, in BuiltIn
 [shader("miss")]
 void MyMissShader_RadianceRay(inout RadiancePayload rayPayload)
 {
+    // TODO: sky diffuse
     rayPayload.radiance = float3(0, 0, 1);
     rayPayload.depth = 1.2;
 }

@@ -159,12 +159,13 @@
     <ClInclude Include="DDSTextureLoader12.h" />
     <ClInclude Include="DescriptorPool.h" />
     <ClInclude Include="FontManager.h" />
+    <ClInclude Include="IRenderQueue.h" />
     <ClInclude Include="pch.h" />
     <ClInclude Include="PSOManager.h" />
     <ClInclude Include="RayTracingManager.h" />
+    <ClInclude Include="RenderQueueRayTracing.h" />
     <ClInclude Include="RenderTypes.h" />
-    <ClInclude Include="RenderItem.h" />
-    <ClInclude Include="RenderQueue.h" />
+    <ClInclude Include="RenderQueueRasterization.h" />
     <ClInclude Include="RenderThread.h" />
     <ClInclude Include="RootSignatureManager.h" />
     <ClInclude Include="ShaderManager.h" />
@@ -199,7 +200,8 @@
     </ClCompile>
     <ClCompile Include="PSOManager.cpp" />
     <ClCompile Include="RayTracingManager.cpp" />
-    <ClCompile Include="RenderQueue.cpp" />
+    <ClCompile Include="RenderQueueRasterization.cpp" />
+    <ClCompile Include="RenderQueueRayTracing.cpp" />
     <ClCompile Include="RenderThread.cpp" />
     <ClCompile Include="RootSignatureManager.cpp" />
     <ClCompile Include="ShaderManager.cpp" />

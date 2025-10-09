@@ -90,6 +90,15 @@
     <Filter Include="Raytracing\ShaderTable">
       <UniqueIdentifier>{80f84f24-e9ac-423f-a2df-8920287078b5}</UniqueIdentifier>
     </Filter>
+    <Filter Include="RenderManager\RenderQueue\Rasterization">
+      <UniqueIdentifier>{9b2e037d-a9d8-4cfb-98fb-bfd4fe33a927}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="RenderManager\RenderQueue\RayTracing">
+      <UniqueIdentifier>{ed7770b1-85e2-4bee-ac55-3fd0c5300e01}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="RenderManager\RenderQueue\PostProcessing">
+      <UniqueIdentifier>{4928fcc1-63ad-4731-b4b4-7e0ecbd2f951}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h">
@@ -118,9 +127,6 @@
     </ClInclude>
     <ClInclude Include="FontManager.h">
       <Filter>RenderManager\FontManager</Filter>
-    </ClInclude>
-    <ClInclude Include="RenderQueue.h">
-      <Filter>RenderManager\RenderQueue</Filter>
     </ClInclude>
     <ClInclude Include="RenderThread.h">
       <Filter>RenderManager\RenderThread</Filter>
@@ -155,9 +161,6 @@
     <ClInclude Include="SkyObject.h">
       <Filter>RenderObject\SkyObject</Filter>
     </ClInclude>
-    <ClInclude Include="RenderItem.h">
-      <Filter>RenderManager\RenderQueue</Filter>
-    </ClInclude>
     <ClInclude Include="PSOManager.h">
       <Filter>RenderManager\PSOManager</Filter>
     </ClInclude>
@@ -172,6 +175,15 @@
     </ClInclude>
     <ClInclude Include="ShaderRecord.h">
       <Filter>Raytracing\ShaderTable</Filter>
+    </ClInclude>
+    <ClInclude Include="IRenderQueue.h">
+      <Filter>RenderManager\RenderQueue</Filter>
+    </ClInclude>
+    <ClInclude Include="RenderQueueRasterization.h">
+      <Filter>RenderManager\RenderQueue\Rasterization</Filter>
+    </ClInclude>
+    <ClInclude Include="RenderQueueRayTracing.h">
+      <Filter>RenderManager\RenderQueue\RayTracing</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -204,9 +216,6 @@
     </ClCompile>
     <ClCompile Include="FontManager.cpp">
       <Filter>RenderManager\FontManager</Filter>
-    </ClCompile>
-    <ClCompile Include="RenderQueue.cpp">
-      <Filter>RenderManager\RenderQueue</Filter>
     </ClCompile>
     <ClCompile Include="RenderThread.cpp">
       <Filter>RenderManager\RenderThread</Filter>
@@ -246,6 +255,12 @@
     </ClCompile>
     <ClCompile Include="ShaderTable.cpp">
       <Filter>Raytracing\ShaderTable</Filter>
+    </ClCompile>
+    <ClCompile Include="RenderQueueRasterization.cpp">
+      <Filter>RenderManager\RenderQueue\Rasterization</Filter>
+    </ClCompile>
+    <ClCompile Include="RenderQueueRayTracing.cpp">
+      <Filter>RenderManager\RenderQueue\RayTracing</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

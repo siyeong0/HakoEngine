@@ -82,11 +82,37 @@ bool ENGINECALL BasicMeshObject::InsertTriGroup(const uint16_t* indices, uint nu
 	return true;
 }
 
-void ENGINECALL BasicMeshObject::EndCreateMesh()
+void ENGINECALL BasicMeshObject::EndCreateMesh(bool bOpaque, bool bUseRayTracingIfSupported)
 {
-	// TODO: RT 사용시만
-	RayTracingManager* pRayTracingManager = m_pRenderer->GetRayTracingManager();
-	m_pBLASHandle = pRayTracingManager->AllocBLAS(m_pVertexBuffer, sizeof(Vertex), m_VertexBufferView.SizeInBytes / sizeof(Vertex), m_pTriGroupList, m_NumTriGroups, false);
+	bool bUseRayTracing = bUseRayTracingIfSupported && m_pRenderer->IsRayTracingEnabledInl();
+
+	if (bOpaque && !bUseRayTracing)
+	{
+		m_RenderPass = RENDER_PASS_OPAQUE;
+	}
+	else if (bOpaque && bUseRayTracing)
+	{
+		m_RenderPass = RENDER_PASS_RAYTRACING_OPAQUE;
+	}
+	else if (!bOpaque && !bUseRayTracing)
+	{
+		m_RenderPass = RENDER_PASS_TRANSPARENT;
+	}
+	else if (!bOpaque && bUseRayTracing)
+	{
+		m_RenderPass = RENDER_PASS_RAYTRACING_TRANSPARENT;
+	}
+
+	if (bUseRayTracing)
+	{
+		RayTracingManager* pRayTracingManager = m_pRenderer->GetRayTracingManager();
+		m_pBLASHandle = pRayTracingManager->AllocBLAS(m_pVertexBuffer, sizeof(Vertex), m_VertexBufferView.SizeInBytes / sizeof(Vertex), m_pTriGroupList, m_NumTriGroups, false);
+	}
+}
+
+uint ENGINECALL BasicMeshObject::GetRenderPass()
+{
+	return m_RenderPass;
 }
 
 bool BasicMeshObject::Initialize(D3D12Renderer* pRenderer)

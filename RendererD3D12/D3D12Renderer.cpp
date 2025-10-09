@@ -10,7 +10,8 @@
 #include "FontManager.h"
 #include "PSOManager.h"
 #include "RayTracingManager.h"
-#include "RenderQueue.h"
+#include "RenderQueueRasterization.h"
+#include "RenderQueueRayTracing.h"
 #include "RenderThread.h"
 #include "RootSignatureManager.h"
 #include "ShaderManager.h"
@@ -22,7 +23,6 @@
 
 #include "D3D12Renderer.h"
 
-bool g_bUseRayTracing = true;
 using namespace DirectX;
 
 // --------------------------------------------------
@@ -54,6 +54,7 @@ STDMETHODIMP_(ULONG) D3D12Renderer::Release()
 
 bool ENGINECALL D3D12Renderer::Initialize(
 	HWND hWnd,
+	bool bEnableRayTracing,
 	bool bEnableDebugLayer,
 	bool bEnableGBV,
 	bool bEnableShaderDebug,
@@ -266,9 +267,29 @@ lb_exit:
 	bInited = m_pPSOManager->Initialize(this);
 	ASSERT(bInited, "PSOManager initialization failed.");
 
-	m_pRayTracingManager = new RayTracingManager;
-	bInited = m_pRayTracingManager->Initialize(this, backBufferWidth, backBufferHeight);
-	ASSERT(bInited, "RayTracingManager initialization failed.");
+	if (bEnableRayTracing)
+	{
+		bool bSupportRayTracing = false;
+		D3D12_FEATURE_DATA_D3D12_OPTIONS5 featureOptions5 = {};
+		if (SUCCEEDED(m_pD3DDevice->CheckFeatureSupport(
+			D3D12_FEATURE_D3D12_OPTIONS5,
+			&featureOptions5,
+			sizeof(featureOptions5))))
+		{
+			bSupportRayTracing = featureOptions5.RaytracingTier != D3D12_RAYTRACING_TIER_NOT_SUPPORTED;
+		}
+
+		if (bSupportRayTracing)
+		{
+			m_pRayTracingManager = new RayTracingManager;
+			bInited = m_pRayTracingManager->Initialize(this, backBufferWidth, backBufferHeight);
+			ASSERT(bInited, "RayTracingManager initialization failed.");
+		}
+		else
+		{
+			std::cout << "Ray Tracing is not supported on this device.\n";
+		}
+	}
 
 	uint numPhysicalCores = 0;
 	uint numLogicalCores = 0;
@@ -297,12 +318,14 @@ lb_exit:
 
 	for (int i = 0; i < m_NumRenderThreads; i++)
 	{
-		m_ppRenderQueueOpaque[i] = new RenderQueue;
+		m_ppRenderQueueOpaque[i] = new RenderQueueRasterization;
 		m_ppRenderQueueOpaque[i]->Initialize(this, NUM_RENDER_QUEUE_ITEMS_OPAQUE);
 
-		m_ppRenderQueueTrasnparent[i] = new RenderQueue;
+		m_ppRenderQueueTrasnparent[i] = new RenderQueueRasterization;
 		m_ppRenderQueueTrasnparent[i]->Initialize(this, NUM_RENDER_QUEUE_ITEMS_TRANSPARENT);
 	}
+	m_ppRenderQueueRayTracing[0] = new RenderQueueRayTracing; // TODO: Multi-thread support??
+	m_ppRenderQueueRayTracing[0]->Initialize(this, NUM_RENDER_QUEUE_ITEMS_RAYTRACING);
 
 	m_pSkyObject = new SkyObject;
 	m_pSkyObject->Initialize(this);
@@ -447,16 +470,9 @@ void ENGINECALL D3D12Renderer::EndRender()
 	// TODO: Combine raytracing output and rasterized output.
 
 	// Do raytracing and copy the output to the back buffer.
-	if (g_bUseRayTracing)
+	if (IsRayTracingEnabledInl())
 	{
-		while (!m_ppRenderQueueRayTracing.empty())
-		{
-			RenderItem& item = m_ppRenderQueueRayTracing.front();
-			ASSERT(item.Type == RENDER_ITEM_TYPE_MESH_OBJ);
-			BasicMeshObject* pMeshObj = (BasicMeshObject*)(item.pObjHandle);
-			pMeshObj->UpdateBLASTransform(item.MeshObjParam.matWorld);
-			m_ppRenderQueueRayTracing.pop();
-		}
+		m_ppRenderQueueRayTracing[0]->Process(0, pCommandListPool, m_pCommandQueue, 400, rtvHandle, dsvHandle, &m_Viewport, &m_ScissorRect);
 
 		if (m_pRayTracingManager->IsUpdatedAccelerationStructure())
 		{
@@ -497,11 +513,11 @@ void ENGINECALL D3D12Renderer::EndRender()
 		pCommandListPool->CloseAndExecute(m_pCommandQueue);
 	}
 
-	if (!g_bUseRayTracing)
+	// if (!IsRayTracingEnabledInl())
 	{
 #ifdef USE_MULTI_THREAD
 		// ---- Phase 1: Opaque ----
-		m_RenderPhase.store(ERenderPassType::Opaque, std::memory_order_relaxed);
+		m_RenderPhase.store(RENDER_PASS_OPAQUE, std::memory_order_relaxed);
 		m_lActiveThreadCount = m_NumRenderThreads;
 		for (int i = 0; i < m_NumRenderThreads; i++)
 		{
@@ -509,7 +525,7 @@ void ENGINECALL D3D12Renderer::EndRender()
 		}
 		WaitForSingleObject(m_hCompleteEvent, INFINITE);
 		// ---- Phase 2: Transparent ----
-		m_RenderPhase.store(ERenderPassType::Transparent, std::memory_order_relaxed);
+		m_RenderPhase.store(RENDER_PASS_TRANSPARENT, std::memory_order_relaxed);
 		m_lActiveThreadCount = m_NumRenderThreads;
 		for (int i = 0; i < m_NumRenderThreads; i++)
 		{
@@ -542,6 +558,7 @@ void ENGINECALL D3D12Renderer::EndRender()
 		m_ppRenderQueueOpaque[i]->Reset();
 		m_ppRenderQueueTrasnparent[i]->Reset();
 	}
+	m_ppRenderQueueRayTracing[0]->Reset();
 }
 
 void ENGINECALL D3D12Renderer::Present()
@@ -579,33 +596,38 @@ void ENGINECALL D3D12Renderer::Present()
 	m_CurrContextIndex = nextContextIndex;
 }
 
+bool ENGINECALL D3D12Renderer::IsRayTracingEnabled() const
+{
+	return IsRayTracingEnabledInl();
+}
+
 void ENGINECALL D3D12Renderer::RenderMeshObject(
 	IMeshObject* pMeshObj,
-	const Matrix4x4* pMatWorld,
-	ERenderPassType renderPass)
+	const Matrix4x4* pMatWorld)
 {
 	RenderItem item = {};
 	item.Type = RENDER_ITEM_TYPE_MESH_OBJ;
 	item.pObjHandle = pMeshObj;
 	item.MeshObjParam.matWorld = *pMatWorld;
 
-	// TOOD: RT 사용시만
-	if (g_bUseRayTracing && renderPass == ERenderPassType::Opaque)
-	{
-		m_ppRenderQueueRayTracing.push(item); // TODO: Support multiple threads.
-		return;
-	}
-
 	bool bAdded = false;
-	switch (renderPass)
+	switch (pMeshObj->GetRenderPass())
 	{
-	case ERenderPassType::Opaque:
+	case RENDER_PASS_OPAQUE:
 		bAdded = m_ppRenderQueueOpaque[m_CurrThreadIndex]->Add(&item);
 		ASSERT(bAdded, "Render Queue is full.");
 		break;
-	case ERenderPassType::Transparent:
+	case RENDER_PASS_TRANSPARENT:
 		bAdded = m_ppRenderQueueTrasnparent[m_CurrThreadIndex]->Add(&item);
 		ASSERT(bAdded, "Render Queue Transparent is full.");
+		break;
+	case RENDER_PASS_RAYTRACING_OPAQUE:
+		bAdded = m_ppRenderQueueRayTracing[0]->Add(&item);
+		ASSERT(bAdded, "Render Queue is full.");
+		break;
+	case RENDER_PASS_RAYTRACING_TRANSPARENT:
+		// TODO: Support transparent object in raytracing.
+		ASSERT(false, "Raytracing Transparent is not supported yet.");
 		break;
 	default:
 		ASSERT(false, "Invalid render pass.");
@@ -623,8 +645,7 @@ void ENGINECALL D3D12Renderer::RenderSpriteWithTex(
 	float scaleX, float scaleY,
 	const RECT* pRect,
 	float z,
-	void* pTexHandle,
-	ERenderPassType renderPass)
+	void* pTexHandle)
 {
 	RenderItem item = {};
 	item.Type = RENDER_ITEM_TYPE_SPRITE;
@@ -647,22 +668,8 @@ void ENGINECALL D3D12Renderer::RenderSpriteWithTex(
 	item.SpriteParam.pTexHandle = pTexHandle;
 	item.SpriteParam.Z = z;
 
-	bool bAdded = false;
-	switch (renderPass)
-	{
-	case ERenderPassType::Opaque:
-		bAdded = m_ppRenderQueueOpaque[m_CurrThreadIndex]->Add(&item);
-		ASSERT(bAdded, "Render Queue is full.");
-		break;
-	case ERenderPassType::Transparent:
-		bAdded = m_ppRenderQueueTrasnparent[m_CurrThreadIndex]->Add(&item);
-		ASSERT(bAdded, "Render Queue Transparent is full.");
-		break;
-	default:
-		ASSERT(false, "Invalid render pass.");
-		break;
-	}
-	ASSERT(bAdded, "Render Queue is full. or Invalid render pass.");
+	// Always add to Transparent queue.
+	bool bAdded = m_ppRenderQueueTrasnparent[m_CurrThreadIndex]->Add(&item);;
 
 	m_CurrThreadIndex++;
 	m_CurrThreadIndex = m_CurrThreadIndex % m_NumRenderThreads;
@@ -673,40 +680,9 @@ void ENGINECALL D3D12Renderer::RenderSprite(
 	void* pSprObjHandle,
 	int posX, int posY,
 	float scaleX, float scaleY,
-	float z,
-	ERenderPassType renderPass)
+	float z)
 {
-	RenderItem item = {};
-	item.Type = RENDER_ITEM_TYPE_SPRITE;
-	item.pObjHandle = pSprObjHandle;
-	item.SpriteParam.PosX = posX;
-	item.SpriteParam.PosY = posY;
-	item.SpriteParam.ScaleX = scaleX;
-	item.SpriteParam.ScaleY = scaleY;
-	item.SpriteParam.bUseRect = FALSE;
-	item.SpriteParam.Rect = {};
-	item.SpriteParam.pTexHandle = nullptr;
-	item.SpriteParam.Z = z;
-
-	bool bAdded = false;
-	switch (renderPass)
-	{
-	case ERenderPassType::Opaque:
-		bAdded = m_ppRenderQueueOpaque[m_CurrThreadIndex]->Add(&item);
-		ASSERT(bAdded, "Render Queue is full.");
-		break;
-	case ERenderPassType::Transparent:
-		bAdded = m_ppRenderQueueTrasnparent[m_CurrThreadIndex]->Add(&item);
-		ASSERT(bAdded, "Render Queue Transparent is full.");
-		break;
-	default:
-		ASSERT(false, "Invalid render pass.");
-		break;
-	}
-	ASSERT(bAdded, "Render Queue is full. or Invalid render pass.");
-
-	m_CurrThreadIndex++;
-	m_CurrThreadIndex = m_CurrThreadIndex % m_NumRenderThreads;
+	RenderSpriteWithTex(pSprObjHandle, posX, posY, scaleX, scaleY, nullptr, z, nullptr);
 }
 
 IMeshObject* ENGINECALL D3D12Renderer::CreateBasicMeshObject()
@@ -995,13 +971,21 @@ void D3D12Renderer::ProcessByThread(int threadIndex)
 	constexpr int NUM_ITEMS_PER_PROCESS = 400;
 	switch (m_RenderPhase.load(std::memory_order_relaxed))
 	{
-	case ERenderPassType::Opaque:
+	case RENDER_PASS_OPAQUE:
 		m_ppRenderQueueOpaque[threadIndex]->Process(
 			threadIndex, pCommandListPool, m_pCommandQueue, NUM_ITEMS_PER_PROCESS, rtvHandle, dsvHandle, &m_Viewport, &m_ScissorRect);
 		break;
-	case ERenderPassType::Transparent:
+	case RENDER_PASS_TRANSPARENT:
 		m_ppRenderQueueTrasnparent[threadIndex]->Process(
 			threadIndex, pCommandListPool, m_pCommandQueue, NUM_ITEMS_PER_PROCESS, rtvHandle, dsvHandle, &m_Viewport, &m_ScissorRect);
+		break;
+	case RENDER_PASS_RAYTRACING_OPAQUE:
+		// TODO: Raytracing support??
+		ASSERT(false, "Raytracing is not supported in multi-thread rendering.");
+		break;
+	case RENDER_PASS_RAYTRACING_TRANSPARENT:
+		// TODO: Raytracing support??
+		ASSERT(false, "Raytracing is not supported in multi-thread rendering.");
 		break;
 	default:
 		ASSERT(false, "Invalid render pass.");

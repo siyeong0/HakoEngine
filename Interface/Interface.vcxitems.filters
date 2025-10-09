@@ -18,9 +18,6 @@
     <ClInclude Include="$(MSBuildThisFileDirectory)IGeometry.h">
       <Filter>Geometry</Filter>
     </ClInclude>
-    <ClInclude Include="$(MSBuildThisFileDirectory)ERenderPassType.h">
-      <Filter>Graphics\Renderer</Filter>
-    </ClInclude>
     <ClInclude Include="$(MSBuildThisFileDirectory)IMeshObject.h">
       <Filter>Graphics\Renderer</Filter>
     </ClInclude>

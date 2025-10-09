@@ -1,17 +1,14 @@
 ﻿#pragma once
-#include "RenderItem.h"
+#include "IRenderQueue.h"
 
-class CommandListPool;
-class D3D12Renderer;
-
-class RenderQueue
+class RenderQueueRasterization : public IRenderQueue
 {	
 public:
-	RenderQueue() = default;
-	~RenderQueue() { Cleanup(); };
+	RenderQueueRasterization() = default;
+	~RenderQueueRasterization() { Cleanup(); };
 
-	bool Initialize(D3D12Renderer* pRenderer, int maxNumItems);
-	bool Add(const RenderItem* pItem);
+	bool Initialize(D3D12Renderer* pRenderer, int maxNumItems) override;
+	bool Add(const RenderItem* pItem) override;
 	int Process(int threadIndex, 
 		CommandListPool* pCommandListPool,
 		ID3D12CommandQueue* pCommandQueue, 
@@ -19,9 +16,9 @@ public:
 		D3D12_CPU_DESCRIPTOR_HANDLE rtv,
 		D3D12_CPU_DESCRIPTOR_HANDLE dsv, 
 		const D3D12_VIEWPORT* pViewport, 
-		const D3D12_RECT* pScissorRect);
-	void Reset();
-	void Cleanup();
+		const D3D12_RECT* pScissorRect) override;
+	void Reset() override;
+	void Cleanup() override;
 
 private:
 	const RenderItem* dispatch();

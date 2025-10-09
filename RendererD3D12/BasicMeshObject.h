@@ -29,7 +29,9 @@ public:
 	// Derived from IMeshObject
 	bool ENGINECALL BeginCreateMesh(const Vertex* vertices, uint numVertices, uint numTriGroups);
 	bool ENGINECALL InsertTriGroup(const uint16_t* indices, uint numTriangles, const WCHAR* wchTexFileName);
-	void ENGINECALL EndCreateMesh();
+	void ENGINECALL EndCreateMesh(bool bOpaque, bool bUseRayTracingIfSupported);
+
+	uint ENGINECALL GetRenderPass() override;
 
 	// Internal
 	BasicMeshObject() = default;
@@ -59,6 +61,8 @@ private:
 	uint m_MaxNumTriGroups = 0;
 
 	BLASHandle* m_pBLASHandle = nullptr;
+
+	uint m_RenderPass = -1;
 };
 
 

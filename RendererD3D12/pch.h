@@ -36,6 +36,7 @@
 #include <windows.h>
 
 // C RunTime Header Files
+#include <iostream>
 #include <stdlib.h>
 #include <malloc.h>
 #include <memory.h>

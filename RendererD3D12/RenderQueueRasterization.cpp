@@ -6,9 +6,9 @@
 #include "RootSignatureManager.h"
 #include "SimpleConstantBufferPool.h"
 #include "DescriptorPool.h"
-#include "RenderQueue.h"
+#include "RenderQueueRasterization.h"
 
-bool RenderQueue::Initialize(D3D12Renderer* pRenderer, int MaxNumItems)
+bool RenderQueueRasterization::Initialize(D3D12Renderer* pRenderer, int MaxNumItems)
 {
 	m_pRenderer = pRenderer;
 	m_MaxBufferSize = sizeof(RenderItem) * MaxNumItems;
@@ -18,7 +18,7 @@ bool RenderQueue::Initialize(D3D12Renderer* pRenderer, int MaxNumItems)
 	return true;
 }
 
-bool RenderQueue::Add(const RenderItem* pItem)
+bool RenderQueueRasterization::Add(const RenderItem* pItem)
 {
 	ASSERT(m_AllocatedSize + sizeof(RenderItem) <= m_MaxBufferSize);
 
@@ -30,7 +30,7 @@ bool RenderQueue::Add(const RenderItem* pItem)
 	return true;
 }
 
-int RenderQueue::Process(
+int RenderQueueRasterization::Process(
 	int threadIndex, 
 	CommandListPool* pCommandListPool, 
 	ID3D12CommandQueue* pCommandQueue, 
@@ -164,13 +164,13 @@ int RenderQueue::Process(
 	return processCount;
 }
 
-void RenderQueue::Reset()
+void RenderQueueRasterization::Reset()
 {
 	m_AllocatedSize = 0;
 	m_ReadBufferPos = 0;
 }
 
-void RenderQueue::Cleanup()
+void RenderQueueRasterization::Cleanup()
 {
 	if (m_pBuffer)
 	{
@@ -179,7 +179,7 @@ void RenderQueue::Cleanup()
 	}
 }
 
-const RenderItem* RenderQueue::dispatch()
+const RenderItem* RenderQueueRasterization::dispatch()
 {
 	if (m_ReadBufferPos + sizeof(RenderItem) > m_AllocatedSize)
 	{

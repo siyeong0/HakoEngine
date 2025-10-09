@@ -3,22 +3,22 @@
 #include <combaseapi.h>
 #include "Common/Common.h"
 
-#include "ERenderPassType.h"
 #include "IMeshObject.h"
 #include "ISpriteObject.h"
 
 interface IRenderer : public IUnknown
 {
-	virtual bool ENGINECALL Initialize(HWND hWnd, bool bEnableDebugLayer, bool bEnableGBV, bool bEnableShaderDebug, bool bUseGpuUploadHeaps, const WCHAR* wchShaderPath) = 0;
+	virtual bool ENGINECALL Initialize(HWND hWnd, bool bEnableRayTracing, bool bEnableDebugLayer, bool bEnableGBV, bool bEnableShaderDebug, bool bUseGpuUploadHeaps, const WCHAR* wchShaderPath) = 0;
 	virtual void ENGINECALL Cleanup() = 0;
+
 	virtual void ENGINECALL Update(float dt) = 0;
 	virtual void ENGINECALL BeginRender() = 0;
 	virtual void ENGINECALL EndRender() = 0;
 	virtual void ENGINECALL Present() = 0;
 
-	virtual void ENGINECALL RenderMeshObject(IMeshObject* pMeshObj, const Matrix4x4* pMatWorld, ERenderPassType renderPass = ERenderPassType::Opaque) = 0;
-	virtual void ENGINECALL RenderSpriteWithTex(void* pSprObjHandle, int posX, int posY, float scaleX, float scaleY, const RECT* pRect, float z, void* pTexHandle, ERenderPassType renderPass = ERenderPassType::Opaque) = 0;
-	virtual void ENGINECALL RenderSprite(void* pSprObjHandle, int posX, int posY, float scaleX, float scaleY, float z, ERenderPassType renderPass = ERenderPassType::Opaque) = 0;
+	virtual void ENGINECALL RenderMeshObject(IMeshObject* pMeshObj, const Matrix4x4* pMatWorld) = 0;
+	virtual void ENGINECALL RenderSpriteWithTex(void* pSprObjHandle, int posX, int posY, float scaleX, float scaleY, const RECT* pRect, float z, void* pTexHandle) = 0;
+	virtual void ENGINECALL RenderSprite(void* pSprObjHandle, int posX, int posY, float scaleX, float scaleY, float z) = 0;
 
 	virtual IMeshObject* ENGINECALL CreateBasicMeshObject() = 0;
 	virtual ISprite* ENGINECALL CreateSpriteObject() = 0;
@@ -41,5 +41,7 @@ interface IRenderer : public IUnknown
 	virtual void ENGINECALL MoveCamera(float x, float y, float z) = 0;
 	virtual FLOAT3 ENGINECALL GetCameraPos() = 0;
 	virtual int ENGINECALL GetCommandListCount() = 0;
+
+	virtual bool ENGINECALL IsRayTracingEnabled() const = 0;
 	virtual bool ENGINECALL IsGpuUploadHeapsEnabled() const = 0;
 };

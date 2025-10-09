@@ -18,7 +18,7 @@ public:
 	Game() { QCInit(); }
 	~Game() { Cleanup(); }
 
-	bool Initialize(HWND hWnd, bool bEnableDebugLayer, bool bEnableGBV, bool bEnableShaderDebug);
+	bool Initialize(HWND hWnd, bool bEnableRayTracing, bool bEnableDebugLayer, bool bEnableGBV, bool bEnableShaderDebug);
 	void Run();
 	bool Update(uint64_t currTick);
 	void Cleanup();

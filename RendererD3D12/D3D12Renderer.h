@@ -3,10 +3,6 @@
 #include "Interface/IRenderer.h"
 #include "RenderTypes.h"
 
-// TODO: Remove
-#include <queue>
-#include "RenderItem.h"
-
 #define USE_MULTI_THREAD
 
 // Forward declarations (alphabetical)
@@ -15,9 +11,9 @@ class ConstantBufferManager;
 class D3D12ResourceManager;
 class DescriptorPool;
 class FontManager;
+class IRenderQueue;
 class PSOManager;
 class RayTracingManager;
-class RenderQueue;
 struct RenderThreadDesc;
 class RootSignatureManager;
 class ShaderManager;
@@ -35,16 +31,17 @@ public:
 	STDMETHODIMP_(ULONG)	Release() override;
 
 	// Derived from IRenderer
-	bool ENGINECALL Initialize(HWND hWnd, bool bEnableDebugLayer, bool bEnableGBV, bool bEnableShaderDebug, bool bUseGpuUploadHeaps, const WCHAR* wchShaderPath) override;
+	bool ENGINECALL Initialize(HWND hWnd, bool bEnableRayTracing, bool bEnableDebugLayer, bool bEnableGBV, bool bEnableShaderDebug, bool bUseGpuUploadHeaps, const WCHAR* wchShaderPath) override;
 	void ENGINECALL Cleanup() override;
+
 	void ENGINECALL Update(float dt) override;
 	void ENGINECALL BeginRender() override;
 	void ENGINECALL EndRender() override;
 	void ENGINECALL Present() override;
 
-	void ENGINECALL RenderMeshObject(IMeshObject* pMeshObj, const Matrix4x4* pMatWorld, ERenderPassType renderPass) override;
-	void ENGINECALL RenderSpriteWithTex(void* pSprObjHandle, int posX, int posY, float scaleX, float scaleY, const RECT* pRect, float z, void* pTexHandle, ERenderPassType renderPass) override;
-	void ENGINECALL RenderSprite(void* pSprObjHandle, int posX, int posY, float scaleX, float scaleY, float z, ERenderPassType renderPass) override;
+	void ENGINECALL RenderMeshObject(IMeshObject* pMeshObj, const Matrix4x4* pMatWorld) override;
+	void ENGINECALL RenderSpriteWithTex(void* pSprObjHandle, int posX, int posY, float scaleX, float scaleY, const RECT* pRect, float z, void* pTexHandle) override;
+	void ENGINECALL RenderSprite(void* pSprObjHandle, int posX, int posY, float scaleX, float scaleY, float z) override;
 
 	IMeshObject* ENGINECALL CreateBasicMeshObject() override;
 	ISprite* ENGINECALL CreateSpriteObject() override;
@@ -67,6 +64,7 @@ public:
 	void ENGINECALL MoveCamera(float x, float y, float z) override;
 	FLOAT3 ENGINECALL GetCameraPos() override;
 	int	ENGINECALL GetCommandListCount() override;
+	bool ENGINECALL IsRayTracingEnabled() const override;
 	bool ENGINECALL IsGpuUploadHeapsEnabled() const override;
 
 	// Internal
@@ -98,6 +96,7 @@ public:
 	inline int GetScreenHeight() const { return m_Height; }
 	inline float GetDPI() const { return m_DPI; }
 	inline bool IsGpuUploadHeapsEnabledInl() const { return m_bGpuUploadHeapsEnabled; }
+	inline bool IsRayTracingEnabledInl() const { return m_pRayTracingManager != nullptr; }
 
 	const CONSTANT_BUFFER_PER_FRAME& GetFrameCBData() { return m_PerFrameCB; };
 	void GetViewProjMatrix(Matrix4x4* outMatView, Matrix4x4* outMatProj) const;
@@ -145,10 +144,10 @@ private:
 	static constexpr size_t NUM_RENDER_QUEUE_ITEMS_TRANSPARENT = 2048;
 	static constexpr size_t NUM_RENDER_QUEUE_ITEMS_RAYTRACING = 8192;
 
-	std::atomic<ERenderPassType> m_RenderPhase = {};
-	RenderQueue* m_ppRenderQueueOpaque[MAX_RENDER_THREAD_COUNT] = {};
-	RenderQueue* m_ppRenderQueueTrasnparent[MAX_RENDER_THREAD_COUNT] = {};
-	std::queue<RenderItem> m_ppRenderQueueRayTracing;
+	std::atomic<RenderPassType> m_RenderPhase = {};
+	IRenderQueue* m_ppRenderQueueOpaque[MAX_RENDER_THREAD_COUNT] = {};
+	IRenderQueue* m_ppRenderQueueTrasnparent[MAX_RENDER_THREAD_COUNT] = {};
+	IRenderQueue* m_ppRenderQueueRayTracing[1]; // TODO: Multi-thread support??
 
 	int m_NumRenderThreads = 0;
 	int m_CurrThreadIndex = 0;
@@ -157,7 +156,7 @@ private:
 	HANDLE m_hCompleteEvent = nullptr;
 	RenderThreadDesc* m_pThreadDescList = nullptr;
 
-	RayTracingManager* m_pRayTracingManager;
+	RayTracingManager* m_pRayTracingManager = nullptr;
 
 	TextureManager* m_pTextureManager = nullptr;
 	D3D12ResourceManager* m_pResourceManager = nullptr;

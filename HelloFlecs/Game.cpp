@@ -113,7 +113,12 @@ static IMeshObject* createGridMeshObject(IRenderer* pRenderer, IGeometry* pGeome
 	return pMeshObj;
 }
 
-bool Game::Initialize(HWND hWnd, bool bEnableDebugLayer, bool bEnableGBV, bool bEnableShaderDebug)
+bool Game::Initialize(
+	HWND hWnd,
+	bool bEnableRayTracing,
+	bool bEnableDebugLayer, 
+	bool bEnableGBV, 
+	bool bEnableShaderDebug)
 {
 	// Load Renderer DLL
 	{
@@ -206,7 +211,7 @@ bool Game::Initialize(HWND hWnd, bool bEnableDebugLayer, bool bEnableGBV, bool b
 	bUseGpuUploadHeaps = true;
 #endif
 
-	m_pRenderer->Initialize(hWnd, bEnableDebugLayer, bEnableGBV, bEnableShaderDebug, bUseGpuUploadHeaps, wchShaderPath);
+	m_pRenderer->Initialize(hWnd, bEnableRayTracing, bEnableDebugLayer, bEnableGBV, bEnableShaderDebug, bUseGpuUploadHeaps, wchShaderPath);
 	m_hWnd = hWnd;
 
 	// Initialize flecs
@@ -349,8 +354,7 @@ bool Game::Initialize(HWND hWnd, bool bEnableDebugLayer, bool bEnableGBV, bool b
 							(int)p.x, (int)p.y,
 							s.x, s.y, 
 							nullptr, 0.0f, 
-							text.pTextTexHandle,
-							ERenderPassType::Transparent); // Default sprite shader is using alpha blending. TODO: separate opaque and transparent sprite shaders
+							text.pTextTexHandle);
 					}
 				});
 

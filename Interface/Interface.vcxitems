@@ -15,7 +15,6 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="$(MSBuildThisFileDirectory)AtmosStruct.h" />
-    <ClInclude Include="$(MSBuildThisFileDirectory)ERenderPassType.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)IGeometry.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)IPrelight.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)IMeshObject.h" />

@@ -9,7 +9,19 @@
 #define CRTDBG_MAP_ALLOC
 #include <crtdbg.h>
 #endif
+#pragma comment(lib, "Shlwapi.lib")
 
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+bool g_bEnableRayTracing	= true;
+bool g_bEnableDebugLayer	= true;
+bool g_bEnableGBV			= true;
+bool g_bEnableShaderDebug	= true;
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+// NVIDIA Optimus
+// This variable enables NVIDIA Optimus laptops to use the dedicated NVIDIA GPU for this application.
+// When exported with the value 0x00000001, the NVIDIA driver will prioritize the high-performance GPU
+// instead of the integrated graphics. This helps ensure maximum rendering performance on systems with both GPUs.
 extern "C" { __declspec(dllexport) DWORD NvOptimusEnablement = 0x00000001; }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -27,10 +39,6 @@ extern "C" { __declspec(dllexport) extern const char* D3D12SDKPath = ".\\D3D12\\
 extern "C" { __declspec(dllexport) extern const char* D3D12SDKPath = ".\\D3D12\\"; }
 #endif
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-
-#pragma comment(lib, "Shlwapi.lib")
-
-// Constants:
 static constexpr UINT MAX_LOADSTRING = 100;
 
 // Global Variables:
@@ -45,7 +53,6 @@ ATOM                MyRegisterClass(HINSTANCE hInstance);
 BOOL                InitInstance(HINSTANCE, int);
 LRESULT CALLBACK    WndProc(HWND, UINT, WPARAM, LPARAM);
 INT_PTR CALLBACK    About(HWND, UINT, WPARAM, LPARAM);
-
 void openConsoleWindow();
 
 int WINAPI wWinMain(_In_ HINSTANCE hInstance,
@@ -79,26 +86,22 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance,
 	MSG msg;
 
 	g_pGame = new Game;
-	g_pGame->Initialize(g_hMainWindow, true, true, true);
-	//g_pGame->Initialize(g_hMainWindow, false, false, false);
+	g_pGame->Initialize(
+		g_hMainWindow, 
+		g_bEnableRayTracing, 
+		g_bEnableDebugLayer, 
+		g_bEnableGBV,
+		g_bEnableShaderDebug);
 
 	SetWindowText(g_hMainWindow, L"Dll Renderer");
 	// Main message loop:
 	while (1)
 	{
-		// call WndProc
-		//g_bCanUseWndProc == FALSE이면 DefWndProc호출
-
 		if (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE))
 		{
-			if (msg.message == WM_QUIT)
-			{
-				break;
-			}
+			if (msg.message == WM_QUIT) break;
 			TranslateMessage(&msg);
 			DispatchMessage(&msg);
-
-
 		}
 		else
 		{
@@ -108,10 +111,10 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance,
 			}
 		}
 	}
+
 	if (g_pGame)
 	{
-		delete g_pGame;
-		g_pGame = nullptr;
+		SAFE_DELETE(g_pGame);
 	}
 #ifdef _DEBUG
 	_ASSERT(_CrtCheckMemory());

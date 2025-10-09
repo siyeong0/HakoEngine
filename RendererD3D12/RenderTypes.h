@@ -4,11 +4,17 @@
 
 using namespace DirectX;
 
+// Constants
 constexpr uint SWAP_CHAIN_FRAME_COUNT = 3;
 constexpr uint MAX_PENDING_FRAME_COUNT = SWAP_CHAIN_FRAME_COUNT - 1;
 
-const size_t PAYLOAD_SIZE = 20;
-const size_t MAX_TRIGROUP_COUNT_PER_BLAS = 16;
+constexpr uint MAX_SHADER_NAME_BUFFER_LEN = 256;
+constexpr uint MAX_SHADER_NAME_LEN = MAX_SHADER_NAME_BUFFER_LEN - 1;
+constexpr uint MAX_SHADER_NUM = 2048;
+constexpr uint MAX_CODE_SIZE = (1024 * 1024);
+
+constexpr size_t PAYLOAD_SIZE = 20;
+constexpr size_t MAX_TRIGROUP_COUNT_PER_BLAS = 16;
 
 struct TextureHandle
 {
@@ -21,13 +27,6 @@ struct TextureHandle
 	int RefCount;
 };
 
-struct FontHandle
-{
-	IDWriteTextFormat*	pTextFormat;
-	float FontSize;
-	WCHAR wchFontFamilyName[512];
-};
-
 struct IndexedTriGroup
 {
 	ID3D12Resource* IndexBuffer = nullptr;
@@ -37,10 +36,12 @@ struct IndexedTriGroup
 	bool bOpaque = true;
 };
 
-constexpr uint MAX_SHADER_NAME_BUFFER_LEN = 256;
-constexpr uint MAX_SHADER_NAME_LEN = MAX_SHADER_NAME_BUFFER_LEN - 1;
-constexpr uint MAX_SHADER_NUM = 2048;
-constexpr uint MAX_CODE_SIZE = (1024 * 1024);
+struct FontHandle
+{
+	IDWriteTextFormat*	pTextFormat;
+	float FontSize;
+	WCHAR wchFontFamilyName[512];
+};
 
 struct ShaderHandle
 {
@@ -73,4 +74,46 @@ struct BLASHandle
 	D3D12_CPU_DESCRIPTOR_HANDLE SrvCpuHandle;
 	D3D12_GPU_DESCRIPTOR_HANDLE SrvGpuHandle;
 	RootArgument pRootArg[1];
+};
+
+enum RenderPassType : uint
+{
+	RENDER_PASS_OPAQUE,
+	RENDER_PASS_TRANSPARENT,
+	RENDER_PASS_RAYTRACING_OPAQUE,
+	RENDER_PASS_RAYTRACING_TRANSPARENT,
+};
+
+enum RenderItemType
+{
+	RENDER_ITEM_TYPE_MESH_OBJ,
+	RENDER_ITEM_TYPE_SPRITE
+};
+
+struct RenderObjectParam
+{
+	Matrix4x4 matWorld;
+};
+
+struct RenderSpriteParam
+{
+	int PosX;
+	int PosY;
+	float ScaleX;
+	float ScaleY;
+	RECT Rect;
+	bool bUseRect;
+	float Z;
+	void* pTexHandle;
+};
+
+struct RenderItem
+{
+	RenderItemType Type;
+	void* pObjHandle;
+	union
+	{
+		RenderObjectParam	MeshObjParam;
+		RenderSpriteParam	SpriteParam;
+	};
 };
