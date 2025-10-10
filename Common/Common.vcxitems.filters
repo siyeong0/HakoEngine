@@ -69,8 +69,5 @@
     <ClCompile Include="$(MSBuildThisFileDirectory)WriteDebugString.cpp">
       <Filter>Util\WriteDebugString</Filter>
     </ClCompile>
-    <ClCompile Include="$(MSBuildThisFileDirectory)MeshData.cpp">
-      <Filter>Geometry\MeshData</Filter>
-    </ClCompile>
   </ItemGroup>
 </Project>

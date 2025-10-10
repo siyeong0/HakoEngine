@@ -54,7 +54,7 @@ private:
 	TextureHandle* m_pTexHandle = nullptr;
 	D3D12Renderer* m_pRenderer = nullptr;
 	RECT m_Rect = {};
-	XMFLOAT2 m_Scale = { 1.0f, 1.0f };
+	FLOAT2 m_Scale = { 1.0f, 1.0f };
 
 	uint m_NumTriGroups = 0;
 	uint m_MaxNumTriGroups = 0;

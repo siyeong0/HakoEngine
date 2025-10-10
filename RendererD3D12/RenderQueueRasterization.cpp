@@ -97,8 +97,8 @@ int RenderQueueRasterization::Process(
 
 					if (texureHandle)
 					{
-						XMFLOAT2 position = { (float)pItem->SpriteParam.PosX, (float)pItem->SpriteParam.PosY };
-						XMFLOAT2 scale = { pItem->SpriteParam.ScaleX, pItem->SpriteParam.ScaleY };
+						FLOAT2 position = { (float)pItem->SpriteParam.PosX, (float)pItem->SpriteParam.PosY };
+						FLOAT2 scale = { pItem->SpriteParam.ScaleX, pItem->SpriteParam.ScaleY };
 						
 						const RECT* pRect = nullptr;
 						if (pItem->SpriteParam.bUseRect)
@@ -119,8 +119,8 @@ int RenderQueueRasterization::Process(
 					else
 					{
 						SpriteObject* spriteObj = reinterpret_cast<SpriteObject*>(pItem->pObjHandle);
-						XMFLOAT2 position = { (float)pItem->SpriteParam.PosX, (float)pItem->SpriteParam.PosY };
-						XMFLOAT2 scale = { pItem->SpriteParam.ScaleX, pItem->SpriteParam.ScaleY };
+						FLOAT2 position = { (float)pItem->SpriteParam.PosX, (float)pItem->SpriteParam.PosY };
+						FLOAT2 scale = { pItem->SpriteParam.ScaleX, pItem->SpriteParam.ScaleY };
 
 						spriteObj->Draw(threadIndex, pCurrCommandList, &position, &scale, z);
 					}

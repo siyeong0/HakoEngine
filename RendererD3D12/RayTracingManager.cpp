@@ -273,7 +273,7 @@ BLASHandle* RayTracingManager::buildBLAS(
 	pBLASHandle = (BLASHandle*)malloc(blasInstanceMemSize);
 	memset(pBLASHandle, 0, blasInstanceMemSize);
 	pBLASHandle->ID = index;
-	pBLASHandle->Transform = XMMatrixIdentity();
+	pBLASHandle->Transform = DirectX::XMMatrixIdentity();
 	pBLASHandle->NumVertices = numVertices;
 
 	// Fill D3D12_RAYTRACING_GEOMETRY_DESC arrays

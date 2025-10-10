@@ -371,7 +371,7 @@ bool D3D12ResourceManager::CreateTextureFromFile(ID3D12Resource** ppOutResource,
 
 	std::unique_ptr<uint8_t[]> ddsData;
 	std::vector<D3D12_SUBRESOURCE_DATA> subresouceData;
-	if (FAILED(LoadDDSTextureFromFile(m_pD3DDevice, wchFileName, &pTexResource, &heapProp, ddsData, subresouceData)))
+	if (FAILED(DirectX::LoadDDSTextureFromFile(m_pD3DDevice, wchFileName, &pTexResource, &heapProp, ddsData, subresouceData)))
 	{
 		return false;
 	}
