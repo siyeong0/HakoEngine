@@ -1,8 +1,5 @@
 ﻿#pragma once
 #include "Common/Common.h"
-#include <DirectXMath.h>
-
-using namespace DirectX;
 
 // Constants
 constexpr uint SWAP_CHAIN_FRAME_COUNT = 3;

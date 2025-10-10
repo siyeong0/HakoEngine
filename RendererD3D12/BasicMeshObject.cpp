@@ -10,8 +10,6 @@
 #include "D3D12Renderer.h"
 #include "BasicMeshObject.h"
 
-using namespace DirectX;
-
 STDMETHODIMP BasicMeshObject::QueryInterface(REFIID refiid, void** ppv)
 {
 	return E_NOINTERFACE;

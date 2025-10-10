@@ -14,6 +14,9 @@
     <Filter Include="AtmosphericSky">
       <UniqueIdentifier>{7f61c8f8-b38b-445b-adfb-36552dd7b1ad}</UniqueIdentifier>
     </Filter>
+    <Filter Include="ConvexDecomposition">
+      <UniqueIdentifier>{c29f9411-ce98-4b19-b4a7-6b848bdd93db}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Prelight.h">
@@ -24,6 +27,9 @@
     </ClInclude>
     <ClInclude Include="ComputeAtmos.h">
       <Filter>AtmosphericSky</Filter>
+    </ClInclude>
+    <ClInclude Include="ConvexDecomposition.h">
+      <Filter>ConvexDecomposition</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -39,5 +45,13 @@
     <ClCompile Include="ComputeAtmos.cpp">
       <Filter>AtmosphericSky</Filter>
     </ClCompile>
+    <ClCompile Include="Voxelize.cpp">
+      <Filter>ConvexDecomposition</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Voxelize.cu">
+      <Filter>ConvexDecomposition</Filter>
+    </None>
   </ItemGroup>
 </Project>

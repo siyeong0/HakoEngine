@@ -1,8 +1,6 @@
 ﻿#pragma once
 #include <DirectXMath.h>
 
-using namespace DirectX;
-
 constexpr uint ROOT_SLOT_CBV_PER_FRAME = 0;
 constexpr uint ROOT_SLOT_CBV_PER_DRAW = 1;
 constexpr uint ROOT_SLOT_SRV_TABLE = 2;
@@ -31,11 +29,11 @@ struct CONSTANT_BUFFER_PER_FRAME
 	Matrix4x4 InvProj;
 	Matrix4x4 InvViewProj;
 
-	XMFLOAT3 LightDir; // Directional light direction (normalized)
+	FLOAT3 LightDir; // Directional light direction (normalized)
 	float _pad0;
-	XMFLOAT3 LightColor; // Light color
+	FLOAT3 LightColor; // Light color
 	float _pad1;
-	XMFLOAT3 Ambient; // Ambient light color
+	FLOAT3 Ambient; // Ambient light color
 	float _pad2;
 
 	float Near;
@@ -50,12 +48,12 @@ struct CONSTANT_BUFFER_MESH_OBJECT
 
 struct CONSTANT_BUFFER_SPRITE_OBJECT
 {
-	XMFLOAT2 ScreenResolution;
-	XMFLOAT2 Position;
-	XMFLOAT2 Scale;
-	XMFLOAT2 TexSize;
-	XMFLOAT2 TexSampePos;
-	XMFLOAT2 TexSampleSize;
+	FLOAT2 ScreenResolution;
+	FLOAT2 Position;
+	FLOAT2 Scale;
+	FLOAT2 TexSize;
+	FLOAT2 TexSampePos;
+	FLOAT2 TexSampleSize;
 	float	Z;
 	float	Alpha;
 	float	Reserved0;
@@ -64,12 +62,12 @@ struct CONSTANT_BUFFER_SPRITE_OBJECT
 
 struct CONSTANT_BUFFER_ATMOS
 {
-	XMFLOAT3 CameraPosPlanetCoord;
+	FLOAT3 CameraPosPlanetCoord;
 	float _pad0;               // padding for 16B alignment
 
-	XMFLOAT3 SunDir;
+	FLOAT3 SunDir;
 	float SunExposure;
-	XMFLOAT3 SunIrradiance;   // solar irradiance at TOA
+	FLOAT3 SunIrradiance;   // solar irradiance at TOA
 	float _pad1;
 
 	// Radii
@@ -80,7 +78,7 @@ struct CONSTANT_BUFFER_ATMOS
 
 	// Mie phase
 	float  MieG;
-	XMFLOAT3 MieTint;           // normalized tint
+	FLOAT3 MieTint;           // normalized tint
 
 	// LUT logical sizes (as floats for consistency with HLSL)
 	float TW;	// Transmittance size

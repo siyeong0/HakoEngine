@@ -23,8 +23,6 @@
 
 #include "D3D12Renderer.h"
 
-using namespace DirectX;
-
 // --------------------------------------------------
 // Unknown methods
 // --------------------------------------------------
@@ -413,9 +411,9 @@ void ENGINECALL D3D12Renderer::Cleanup()
 
 void ENGINECALL D3D12Renderer::Update(float dt)
 {
-	m_PerFrameCB.LightDir = XMFLOAT3(-0.577f, -0.577f, -0.577f);
-	m_PerFrameCB.LightColor = XMFLOAT3(1.0f, 1.0f, 1.0f);
-	m_PerFrameCB.Ambient = XMFLOAT3(0.3f, 0.3f, 0.3f);
+	m_PerFrameCB.LightDir = FLOAT3(-0.577f, -0.577f, -0.577f);
+	m_PerFrameCB.LightColor = FLOAT3(1.0f, 1.0f, 1.0f);
+	m_PerFrameCB.Ambient = FLOAT3(0.3f, 0.3f, 0.3f);
 
 	m_PerFrameCB.Near = NEAR_Z;
 	m_PerFrameCB.Far = FAR_Z;
@@ -897,7 +895,7 @@ bool ENGINECALL D3D12Renderer::UpdateWindowSize(uint32_t backBufferWidth, uint32
 
 void ENGINECALL D3D12Renderer::SetCameraPos(float x, float y, float z)
 {
-	m_CamPos = XMVectorSet(x, y, z, 1.0f);
+	m_CamPos = FLOAT3(x, y, z);
 	updateCamera();
 }
 
@@ -912,25 +910,20 @@ void ENGINECALL D3D12Renderer::SetCameraRot(float yaw, float pitch, float roll)
 
 void ENGINECALL D3D12Renderer::MoveCamera(float x, float y, float z)
 {
-	XMVECTOR CamMoveForward = XMVectorScale(m_CamDir, z);
-	XMVECTOR CamMoveRight = XMVectorScale(m_CamRight, x);
-	XMVECTOR CamMoveUp = XMVectorScale(m_CamUp, y);
+	FLOAT3 camMoveForward = m_CamDir * z;
+	FLOAT3 camMoveRight = m_CamRight * x;
+	FLOAT3 camMoveUp = m_CamUp * y;
 
-	m_CamPos = XMVectorAdd(m_CamPos, CamMoveForward);
-	m_CamPos = XMVectorAdd(m_CamPos, CamMoveRight);
-	m_CamPos = XMVectorAdd(m_CamPos, CamMoveUp);
-	m_CamPos.m128_f32[3] = 1.0f;
+	m_CamPos += camMoveForward;
+	m_CamPos += camMoveRight;
+	m_CamPos += camMoveUp;
 
 	updateCamera();
 }
 
 FLOAT3 ENGINECALL D3D12Renderer::GetCameraPos()
 {
-	FLOAT3 pos;
-	pos.x = m_CamPos.m128_f32[0];
-	pos.y = m_CamPos.m128_f32[1];
-	pos.z = m_CamPos.m128_f32[2];
-	return pos;
+	return m_CamPos;
 }
 
 int ENGINECALL D3D12Renderer::GetCommandListCount()
@@ -1047,32 +1040,37 @@ void D3D12Renderer::initCamera()
 
 void D3D12Renderer::updateCamera()
 {
-	XMVECTOR yAxis = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
-	XMVECTOR zAxis = XMVectorSet(0.0f, 0.0f, 1.0f, 0.0f);
-	XMVECTOR xAxis = XMVectorSet(1.0f, 0.0f, 0.0f, 0.0f);
+	FLOAT3 xAxis = { 1.0f, 0.0f, 0.0f };
+	FLOAT3 yAxis = { 0.0f, 1.0f, 0.0f };
+	FLOAT3 zAxis = { 0.0f, 0.0f, 1.0f };
 
-	Matrix4x4 matRotPitch = XMMatrixRotationX(m_fCamPitch);
-	Matrix4x4 matRotYaw = XMMatrixRotationY(m_fCamYaw);
+	Matrix4x4 matRotPitch = DirectX::XMMatrixRotationX(m_fCamPitch);
+	Matrix4x4 matRotYaw = DirectX::XMMatrixRotationY(m_fCamYaw);
 
 	Matrix4x4 matCamRot = XMMatrixMultiply(matRotPitch, matRotYaw);
 
-	m_CamDir = XMVector3Normalize(XMVector3Transform(zAxis, matCamRot));
-	m_CamRight = XMVector3Normalize(XMVector3Cross(yAxis, m_CamDir));
-	m_CamUp = XMVector3Normalize(XMVector3Cross(m_CamDir, m_CamRight));
+	DirectX::XMVECTOR vCamDir = DirectX::XMVector3Transform(DirectX::XMVectorSet(zAxis.x, zAxis.y, zAxis.z, 0.0f), matCamRot);
+	m_CamDir = FLOAT3::Normalize({ DirectX::XMVectorGetX(vCamDir), DirectX::XMVectorGetY(vCamDir), DirectX::XMVectorGetZ(vCamDir) });
+	m_CamRight = FLOAT3::Normalize(FLOAT3::Cross(yAxis, m_CamDir));
+	m_CamUp = FLOAT3::Normalize(FLOAT3::Cross(m_CamDir, m_CamRight));
 
 	// View matrix
-	Matrix4x4 view = XMMatrixLookToLH(m_CamPos, m_CamDir, m_CamUp);
+	Matrix4x4 view = DirectX::XMMatrixLookToLH(
+		DirectX::XMVectorSet(m_CamPos.x, m_CamPos.y, m_CamPos.z, 1.0f),
+		DirectX::XMVectorSet(m_CamDir.x, m_CamDir.y, m_CamDir.z, 0.0f),
+		DirectX::XMVectorSet(m_CamUp.x, m_CamUp.y, m_CamUp.z, 0.0f)
+	);
 
 	// Proj matrix
-	float fovY = XM_PIDIV4; // (rad)
+	float fovY = DirectX::XM_PIDIV4; // (rad)
 	float aspectRatio = (float)m_Width / (float)m_Height;
-	Matrix4x4 proj = XMMatrixPerspectiveFovLH(fovY, aspectRatio, NEAR_Z, FAR_Z);
+	Matrix4x4 proj = DirectX::XMMatrixPerspectiveFovLH(fovY, aspectRatio, NEAR_Z, FAR_Z);
 
 	// View x Proj matrix
 	Matrix4x4 viewProj = XMMatrixMultiply(view, proj);
 
 	// Inverse matrices
-	XMVECTOR det;
+	DirectX::XMVECTOR det;
 	Matrix4x4 invView = XMMatrixInverse(&det, view);
 	ASSERT(det.m128_f32[0] != 0.0f, "Matrix is not invertible.");
 	Matrix4x4 invProj = XMMatrixInverse(&det, proj);
@@ -1081,12 +1079,12 @@ void D3D12Renderer::updateCamera()
 	ASSERT(det.m128_f32[0] != 0.0f, "Matrix is not invertible.");
 
 	// Store to the constant buffer.
-	m_PerFrameCB.View = XMMatrixTranspose(view);
-	m_PerFrameCB.Proj = XMMatrixTranspose(proj);
-	m_PerFrameCB.ViewProj = XMMatrixTranspose(viewProj);
-	m_PerFrameCB.InvView = XMMatrixTranspose(invView);
-	m_PerFrameCB.InvProj = XMMatrixTranspose(invProj);
-	m_PerFrameCB.InvViewProj = XMMatrixTranspose(invViewProj);
+	m_PerFrameCB.View = DirectX::XMMatrixTranspose(view);
+	m_PerFrameCB.Proj = DirectX::XMMatrixTranspose(proj);
+	m_PerFrameCB.ViewProj = DirectX::XMMatrixTranspose(viewProj);
+	m_PerFrameCB.InvView = DirectX::XMMatrixTranspose(invView);
+	m_PerFrameCB.InvProj = DirectX::XMMatrixTranspose(invProj);
+	m_PerFrameCB.InvViewProj = DirectX::XMMatrixTranspose(invViewProj);
 }
 
 bool D3D12Renderer::createDepthStencil(int width, int height)

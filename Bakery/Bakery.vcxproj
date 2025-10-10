@@ -136,6 +136,9 @@
     <ClInclude Include="Atmos.h" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\Geometry\Geometry.vcxproj">
+      <Project>{98a0940b-1a79-4001-9c8d-79f0c68e8cea}</Project>
+    </ProjectReference>
     <ProjectReference Include="..\Prelight\Prelight.vcxproj">
       <Project>{3d168d86-ce51-42cf-9348-4e5ee1c2cee4}</Project>
     </ProjectReference>

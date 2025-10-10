@@ -21,7 +21,7 @@ void RunAtmosPrecomputeAndSave()
 	AtmosParams atmosParams = MakeEarthLikeParams();
 
 	AtmosResult atmosResult{};
-	if (!hfx::PrecomputeAtmos(atmosParams, &atmosResult))
+	if (!prl::PrecomputeAtmos(atmosParams, &atmosResult))
 	{
 		std::cerr << "[Sample] PrecomputeAtmos failed.\n";
 		return;
@@ -94,15 +94,14 @@ static AtmosParams MakeEarthLikeParams()
 // 2D RGB(float*) -> RGBA32F DDS
 static bool Save2DRGBasDDS(const float* srcRGB, int W, int H, const std::wstring& path)
 {
-	using namespace DirectX;
-	ScratchImage img;
+	DirectX::ScratchImage img;
 	HRESULT hr = img.Initialize2D(DXGI_FORMAT_R32G32B32A32_FLOAT, W, H, /*arraySize*/1, /*mips*/1);
 	if (FAILED(hr))
 	{
 		return false;
 	}
 
-	const Image* im = img.GetImage(0, 0, 0);
+	const DirectX::Image* im = img.GetImage(0, 0, 0);
 	for (int y = 0; y < H; ++y)
 	{
 		float* row = reinterpret_cast<float*>(im->pixels + size_t(y) * im->rowPitch);
@@ -116,7 +115,7 @@ static bool Save2DRGBasDDS(const float* srcRGB, int W, int H, const std::wstring
 		}
 	}
 
-	return SUCCEEDED(SaveToDDSFile(*im, DDS_FLAGS_NONE, path.c_str()));
+	return SUCCEEDED(SaveToDDSFile(*im, DirectX::DDS_FLAGS_NONE, path.c_str()));
 }
 
 // 3D RGBA(float*) -> DDS (Scattering(4D): packed to 3D -> NU*MU_S × MU × R)
@@ -126,14 +125,12 @@ static bool SaveScattering3D_RGBA_DDS(
 	int R, int MU, int MU_S, int NU,
 	const std::wstring& path)
 {
-	using namespace DirectX;
-
 	// Resoulution of 3d texture : X = NU*MU_S, Y = MU, Z = R
 	const int W = NU * MU_S;
 	const int H = MU;
 	const int D = R;
 
-	ScratchImage img;
+	DirectX::ScratchImage img;
 	HRESULT hr = img.Initialize3D(DXGI_FORMAT_R32G32B32A32_FLOAT, W, H, D, /*mips*/1);
 	if (FAILED(hr))
 	{
@@ -142,7 +139,7 @@ static bool SaveScattering3D_RGBA_DDS(
 
 	for (int z = 0; z < D; ++z)
 	{
-		const Image* slice = img.GetImage(0, 0, z);
+		const DirectX::Image* slice = img.GetImage(0, 0, z);
 		for (int y = 0; y < H; ++y)
 		{
 			float* row = reinterpret_cast<float*>(slice->pixels + size_t(y) * slice->rowPitch);
@@ -166,5 +163,5 @@ static bool SaveScattering3D_RGBA_DDS(
 	}
 
 	// Save entire volume
-	return SUCCEEDED(SaveToDDSFile(img.GetImages(), img.GetImageCount(), img.GetMetadata(), DDS_FLAGS_NONE, path.c_str()));
+	return SUCCEEDED(SaveToDDSFile(img.GetImages(), img.GetImageCount(), img.GetMetadata(), DirectX::DDS_FLAGS_NONE, path.c_str()));
 }

@@ -17,8 +17,17 @@
     <ClInclude Include="$(MSBuildThisFileDirectory)WriteDebugString.h">
       <Filter>Util\WriteDebugString</Filter>
     </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)Bounds.h">
+      <Filter>Math</Filter>
+    </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)FVector3.h">
+      <Filter>Math</Filter>
+    </ClInclude>
     <ClInclude Include="$(MSBuildThisFileDirectory)MeshData.h">
-      <Filter>Geometry</Filter>
+      <Filter>Geometry\MeshData</Filter>
+    </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)FVector2.h">
+      <Filter>Math</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -40,6 +49,12 @@
     <Filter Include="Geometry">
       <UniqueIdentifier>{bde5fc60-9bd4-4ee1-9414-a87687c290a0}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Math">
+      <UniqueIdentifier>{617fbfa9-ceec-475a-9026-03cf10c6c710}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Geometry\MeshData">
+      <UniqueIdentifier>{55c8af6c-ea21-450f-bb7d-650ff622796e}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="$(MSBuildThisFileDirectory)IndexCreator.cpp">
@@ -53,6 +68,9 @@
     </ClCompile>
     <ClCompile Include="$(MSBuildThisFileDirectory)WriteDebugString.cpp">
       <Filter>Util\WriteDebugString</Filter>
+    </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)MeshData.cpp">
+      <Filter>Geometry\MeshData</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

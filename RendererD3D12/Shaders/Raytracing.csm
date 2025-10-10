@@ -1,4 +1,4 @@
-; shader hash: 27c5b448a8657c4263ae9fde7007cfaf
+; shader hash: 099338ef43c9744351f02b2c97e19a0d
 ;
 ; Buffer Definitions:
 ;
@@ -250,6 +250,10 @@ define void @"\01?MyClosestHitShader_RadianceRay@@YAXURadiancePayload@@UBuiltInT
 
 ; Function Attrs: nounwind
 define void @"\01?MyMissShader_RadianceRay@@YAXURadiancePayload@@@Z"(%struct.RadiancePayload* noalias nocapture %rayPayload) #0 {
+  %1 = getelementptr inbounds %struct.RadiancePayload, %struct.RadiancePayload* %rayPayload, i32 0, i32 0
+  store <3 x float> <float 0.000000e+00, float 0.000000e+00, float 1.000000e+00>, <3 x float>* %1, align 4
+  %2 = getelementptr inbounds %struct.RadiancePayload, %struct.RadiancePayload* %rayPayload, i32 0, i32 1
+  store float 0x3FF3333340000000, float* %2, align 4
   ret void
 }
 

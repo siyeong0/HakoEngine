@@ -193,10 +193,10 @@ private:
 	int	m_CurrContextIndex = 0;
 	CONSTANT_BUFFER_PER_FRAME m_PerFrameCB = {};
 
-	XMVECTOR m_CamPos = {};
-	XMVECTOR m_CamDir = {};
-	XMVECTOR m_CamRight = {};
-	XMVECTOR m_CamUp = {};
+	FLOAT3 m_CamPos = {};
+	FLOAT3 m_CamDir = {};
+	FLOAT3 m_CamRight = {};
+	FLOAT3 m_CamUp = {};
 	float m_fCamYaw = 0.0f;
 	float m_fCamPitch = 0.0f;
 	float m_fCamRoll = 0.0f;

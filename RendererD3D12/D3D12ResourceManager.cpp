@@ -2,8 +2,6 @@
 #include "DDSTextureLoader12.h"
 #include "D3D12ResourceManager.h"
 
-using namespace DirectX;
-
 bool D3D12ResourceManager::Initialize(ID3D12Device5* pD3DDevice)
 {
 	HRESULT hr = S_OK;

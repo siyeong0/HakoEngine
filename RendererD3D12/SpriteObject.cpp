@@ -9,8 +9,6 @@
 #include "D3D12Renderer.h"
 #include "SpriteObject.h"
 
-using namespace DirectX;
-
 ID3D12Resource* SpriteObject::m_pVertexBuffer = nullptr;
 D3D12_VERTEX_BUFFER_VIEW SpriteObject::m_VertexBufferView = {};
 
@@ -92,13 +90,13 @@ bool SpriteObject::Initialize(D3D12Renderer* pRenderer, const WCHAR* wchTexFileN
 	return bResult;
 }
 
-void SpriteObject::Draw(int threadIndex, ID3D12GraphicsCommandList6* pCommandList, const XMFLOAT2* pPos, const XMFLOAT2* pScale, float Z)
+void SpriteObject::Draw(int threadIndex, ID3D12GraphicsCommandList6* pCommandList, const FLOAT2* pPos, const FLOAT2* pScale, float Z)
 {
-	XMFLOAT2 Scale = { m_Scale.x * pScale->x, m_Scale.y * pScale->y };
-	DrawWithTex(threadIndex, pCommandList, pPos, &Scale, &m_Rect, Z, m_pTexHandle);
+	FLOAT2 scale = { m_Scale.x * pScale->x, m_Scale.y * pScale->y };
+	DrawWithTex(threadIndex, pCommandList, pPos, &scale, &m_Rect, Z, m_pTexHandle);
 }
 
-void SpriteObject::DrawWithTex(int threadIndex, ID3D12GraphicsCommandList6* pCommandList, const XMFLOAT2* pPos, const XMFLOAT2* pScale, const RECT* pRect, float Z, TextureHandle* pTexHandle)
+void SpriteObject::DrawWithTex(int threadIndex, ID3D12GraphicsCommandList6* pCommandList, const FLOAT2* pPos, const FLOAT2* pScale, const RECT* pRect, float Z, TextureHandle* pTexHandle)
 {
 	ID3D12Device5* pDevice = m_pRenderer->GetD3DDevice();
 	uint srvDescriptorSize = m_pRenderer->GetSrvDescriptorSize();

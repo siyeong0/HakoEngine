@@ -22,6 +22,7 @@
 #include <iostream>
 #include <cmath>
 #include <cstdint>
+#include <vector>
 
 #include "Interface/IPrelight.h"
 #include "Common/Common.h"

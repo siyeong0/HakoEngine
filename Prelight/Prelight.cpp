@@ -52,3 +52,11 @@ bool ENGINECALL Prelight::PrecomputeAtmos(const AtmosParams& in, AtmosResult* ou
 	ComputeAtmosCPU(in, out);
 	return true;
 }
+
+#include "ConvexDecomposition.h"
+
+bool ENGINECALL Prelight::DecomposeToConvex(const MeshData& meshData) const
+{
+	Voxelize(meshData, 0.1f);
+	return true;
+}

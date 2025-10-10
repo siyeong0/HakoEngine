@@ -5,7 +5,6 @@
 #include <Windows.h>
 
 #include <DirectXMath.h>
-using namespace DirectX;
 
 // Calling convention
 #define ENGINECALL __stdcall
@@ -14,20 +13,13 @@ using namespace DirectX;
 using uint = unsigned int;
 using Matrix4x4 = DirectX::XMMATRIX;
 
-// Basic Structures
-struct FLOAT2
-{
-    float x;
-    float y;
-};
+// Math
+#include "FVector2.h"
+using FLOAT2 = FVector2;
 static_assert(sizeof(FLOAT2) == 8, "FLOAT2 size mismatch");
 
-struct FLOAT3
-{
-    float x;
-    float y;
-    float z;
-};
+#include "FVector3.h"
+using FLOAT3 = FVector3;
 static_assert(sizeof(FLOAT3) == 12, "FLOAT3 size mismatch");
 
 struct FLOAT4
@@ -38,6 +30,8 @@ struct FLOAT4
     float w;
 };
 static_assert(sizeof(FLOAT4) == 16, "FLOAT4 size mismatch");
+
+#include "Bounds.h"
 
 union RGBA
 {
