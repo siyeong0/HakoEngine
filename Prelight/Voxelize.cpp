@@ -1,213 +1,238 @@
-#include "pch.h"
+﻿#include "pch.h"
 #include "Common/MeshData.h"
 #include "ConvexDecomposition.h"
+#include <fstream>
+#include <algorithm>
 
-inline FLOAT2 project(FLOAT3 p, FLOAT3 center, FLOAT3 tangent, FLOAT3 bitangent)
+// ------------------------ Math utils ------------------------
+static inline FLOAT3 Min3(const FLOAT3& a, const FLOAT3& b, const FLOAT3& c)
 {
-	FLOAT3 d = p - center;
-	return { FLOAT3::Dot(d, tangent), FLOAT3::Dot(d, bitangent) };
+	return { std::min({a.x,b.x,c.x}), std::min({a.y,b.y,c.y}), std::min({a.z,b.z,c.z}) };
+}
+static inline FLOAT3 Max3(const FLOAT3& a, const FLOAT3& b, const FLOAT3& c)
+{
+	return { std::max({a.x,b.x,c.x}), std::max({a.y,b.y,c.y}), std::max({a.z,b.z,c.z}) };
 }
 
-inline FLOAT3 backProject(FLOAT2 uv, float d, FLOAT3 center, FLOAT3 tangent, FLOAT3 bitangent, FLOAT3 normal)
+// Tomas Akenine-Möller, "A Fast Triangle-Box Overlap Test", 2001.
+// robust double-precision 버전 (그리드 축 기준 SAT)
+static inline bool TriBoxOverlapGridF32(
+	const float center[3],
+	const float half[3],
+	const float v0[3],
+	const float v1[3],
+	const float v2[3],
+	const float eps)
 {
-	return center + uv.x * tangent + uv.y * bitangent + d * normal;
+	// 1) 삼각형을 박스 좌표계(박스 중심 원점)로 이동
+	float p0[3] = { v0[0] - center[0], v0[1] - center[1], v0[2] - center[2] };
+	float p1[3] = { v1[0] - center[0], v1[1] - center[1], v1[2] - center[2] };
+	float p2[3] = { v2[0] - center[0], v2[1] - center[1], v2[2] - center[2] };
+	// 2) 에지
+	float e0[3] = { p1[0] - p0[0], p1[1] - p0[1], p1[2] - p0[2] };
+	float e1[3] = { p2[0] - p1[0], p2[1] - p1[1], p2[2] - p1[2] };
+	float e2[3] = { p0[0] - p2[0], p0[1] - p2[1], p0[2] - p2[2] };
+
+	auto axisTest = [&](
+		float a, float b,
+		float fa, float fb,
+		float v0a, float v0b,
+		float v1a, float v1b,
+		float v2a, float v2b,
+		float ha, float hb)->bool
+		{
+			float p0 = a * v0a - b * v0b;
+			float p1 = a * v1a - b * v1b;
+			float p2 = a * v2a - b * v2b;
+			float minp = fminf(p0, fminf(p1, p2));
+			float maxp = fmaxf(p0, fmaxf(p1, p2));
+			float rad = ha * fa + hb * fb + eps;
+			return !(minp > rad || maxp < -rad);
+		};
+
+	// 3) 9개의 cross-product 축 테스트 (X×edges, Y×edges, Z×edges)
+	// X축과의 조합
+	float fe0x = fabsf(e0[0]), fe0y = fabsf(e0[1]), fe0z = fabsf(e0[2]);
+	float fe1x = fabsf(e1[0]), fe1y = fabsf(e1[1]), fe1z = fabsf(e1[2]);
+	float fe2x = fabsf(e2[0]), fe2y = fabsf(e2[1]), fe2z = fabsf(e2[2]);
+
+	// X×edges
+	if (!axisTest(e0[2], e0[1], fe0z, fe0y, p0[1], p0[2], p1[1], p1[2], p2[1], p2[2], half[1], half[2])) return false;
+	if (!axisTest(e1[2], e1[1], fe1z, fe1y, p0[1], p0[2], p1[1], p1[2], p2[1], p2[2], half[1], half[2])) return false;
+	if (!axisTest(e2[2], e2[1], fe2z, fe2y, p0[1], p0[2], p1[1], p1[2], p2[1], p2[2], half[1], half[2])) return false;
+	// Y×edges
+	if (!axisTest(e0[2], e0[0], fe0z, fe0x, p0[0], p0[2], p1[0], p1[2], p2[0], p2[2], half[0], half[2])) return false;
+	if (!axisTest(e1[2], e1[0], fe1z, fe1x, p0[0], p0[2], p1[0], p1[2], p2[0], p2[2], half[0], half[2])) return false;
+	if (!axisTest(e2[2], e2[0], fe2z, fe2x, p0[0], p0[2], p1[0], p1[2], p2[0], p2[2], half[0], half[2])) return false;
+	// Z×edges
+	if (!axisTest(e0[1], e0[0], fe0y, fe0x, p0[0], p0[1], p1[0], p1[1], p2[0], p2[1], half[0], half[1])) return false;
+	if (!axisTest(e1[1], e1[0], fe1y, fe1x, p0[0], p0[1], p1[0], p1[1], p2[0], p2[1], half[0], half[1])) return false;
+	if (!axisTest(e2[1], e2[0], fe2y, fe2x, p0[0], p0[1], p1[0], p1[1], p2[0], p2[1], half[0], half[1])) return false;
+
+	// 4) 박스 자체 축(X,Y,Z) 투영 간단 테스트
+	auto findMinMax = [](float x0, float x1, float x2, float& mn, float& mx) {mn = fminf(x0, fminf(x1, x2)); mx = fmaxf(x0, fmaxf(x1, x2)); };
+	float mn, mx;
+	findMinMax(p0[0], p1[0], p2[0], mn, mx); if (mn > half[0] + eps || mx < -half[0] - eps) return false;
+	findMinMax(p0[1], p1[1], p2[1], mn, mx); if (mn > half[1] + eps || mx < -half[1] - eps) return false;
+	findMinMax(p0[2], p1[2], p2[2], mn, mx); if (mn > half[2] + eps || mx < -half[2] - eps) return false;
+
+	// 5) 삼각형 평면과 박스의 교차 여부 (삼각형 노멀 축)
+	float n[3] =
+	{
+		e0[1] * e1[2] - e0[2] * e1[1],
+		e0[2] * e1[0] - e0[0] * e1[2],
+		e0[0] * e1[1] - e0[1] * e1[0]
+	};
+	// 박스 반지름: |n| dot halfSize projected onto |n|-aligned axes (= |n|·halfSize on L1 norm of normalized n against axes)
+	// 더 간단하게는 박스 8코너를 평면에 투영한 min/max가 0의 양/음에 걸치면 교차.
+	// 여기서는 "plane-box overlap"의 빠른 근사:
+	float vmin[3], vmax[3];
+	for (int i = 0; i < 3; ++i)
+	{
+		if (n[i] >= 0.f)
+		{
+			vmin[i] = -half[i];
+			vmax[i] = half[i];
+		}
+		else
+		{
+			vmin[i] = half[i];
+			vmax[i] = -half[i];
+		}
+	}
+	// 삼각형 한 점(v0)에서 평면 거리
+	float d = -(n[0] * p0[0] + n[1] * p0[1] + n[2] * p0[2]);
+	float distMin = n[0] * vmin[0] + n[1] * vmin[1] + n[2] * vmin[2] + d;
+	float distMax = n[0] * vmax[0] + n[1] * vmax[1] + n[2] * vmax[2] + d;
+
+	if (distMin > eps && distMax > eps) return false;
+	if (distMin < -eps && distMax < -eps) return false;
+
+	return true;
 }
 
-// Check if point p is inside the triangle defined by vertices a, b, c in 2D space.
-inline bool isInsideTriangle2D(FLOAT2 p, FLOAT2 a, FLOAT2 b, FLOAT2 c)
-{
-	FLOAT2 ab = b - a;
-	FLOAT2 bc = c - b;
-	FLOAT2 ca = a - c;
-	FLOAT2 ap = p - a;
-	FLOAT2 bp = p - b;
-	FLOAT2 cp = p - c;
-
-	float w1 = ab.x * ap.y - ab.y * ap.x;
-	float w2 = bc.x * bp.y - bc.y * bp.x;
-	float w3 = ca.x * cp.y - ca.y * cp.x;
-	return (w1 >= 0 && w2 >= 0 && w3 >= 0) || (w1 <= 0 && w2 <= 0 && w3 <= 0);
-}
-
-// Compute barycentric coordinate of point p with respect to triangle defined by vertices a, b, c in 2D space.
-	// What is "Barycentric Coordinate"? :https://en.wikipedia.org/wiki/Barycentric_coordinate_system
-inline FLOAT3 computeBarycentric2D(FLOAT2 p, FLOAT2 a, FLOAT2 b, FLOAT2 c)
-{
-	FLOAT2 v0 = b - a, v1 = c - a, v2 = p - a;
-	float d00 = FLOAT2::Dot(v0, v0), d01 = FLOAT2::Dot(v0, v1), d11 = FLOAT2::Dot(v1, v1);
-	float d20 = FLOAT2::Dot(v2, v0), d21 = FLOAT2::Dot(v2, v1);
-	float denom = d00 * d11 - d01 * d01;
-
-	if (denom == 0.0f) return { 0.0f, 0.0f, 1.0f };
-	float v = (d11 * d20 - d01 * d21) / denom;
-	float w = (d00 * d21 - d01 * d20) / denom;
-	float u = 1.0f - v - w;
-	return { u, v, w };
-}
-
-// Compute incenter(����) of a triangle defined by three vertices.
-inline FLOAT3 computeIncenter(FLOAT3 v0, FLOAT3 v1, FLOAT3 v2)
-{
-	float a = FVector3::Length(v1 - v2);
-	float b = FVector3::Length(v2 - v0);
-	float c = FVector3::Length(v0 - v1);
-
-	float sum = a + b + c;
-	ASSERT(sum != 0.0f, "Invalid triangle. Cannot compute incenter.");
-	return (a * v0 + b * v1 + c * v2) / sum;
-}
-
-// Compute intersection point of two lines defined by FVector4{pointA.x, pointA.y, pointB.x, pointB.y}.
-inline FLOAT2 computeLineIntersection(FLOAT4 line0, FLOAT4 line1)
-{
-	FLOAT2 a{ line0.x, line0.y };
-	FLOAT2 b{ line0.z, line0.w };
-	FLOAT2 c{ line1.x, line1.y };
-	FLOAT2 d{ line1.z, line1.w };
-
-	FLOAT2 d1 = b - a;
-	FLOAT2 d2 = d - c;
-
-	float denom = d1.x * d2.y - d1.y * d2.x;
-
-	// ASSERT(denom != 0.0f, "Lines are parallel or coincident, cannot compute intersection.");
-	//if (denom == 0.0f)
-	//	return FVector2::Zero(); // Lines are parallel or coincident, return zero vector.
-
-	FLOAT2 ac = c - a;
-	float t = (ac.x * d2.y - ac.y * d2.x) / denom;
-	return a + d1 * t;
-}
-
-inline FLOAT2 outwardEdgeNormal(FLOAT2 p0, FLOAT2 p1, FLOAT2 opp)
-{
-	FLOAT2 edge = p1 - p0;
-	FLOAT2 perp = { -edge.y, edge.x }; // Perpendicular.
-
-	FLOAT2 center = (p0 + p1) * 0.5f;
-	FLOAT2 toOpp = opp - center;
-
-	perp = perp * (FLOAT2::Dot(perp, toOpp) > 0 ? -1.0f : 1.0f);
-	return FLOAT2::Normalize(perp);
-};
-
-inline FLOAT4 expandedEdge(FLOAT2 p0, FLOAT2 p1, float dist, FLOAT2 opp)
-{
-	FLOAT2 dir = outwardEdgeNormal(p0, p1, opp);
-	FLOAT2 offset = dir * dist * 2.0f; // TODO: Why 2.0??????
-	return { p0.x + offset.x, p0.y + offset.y, p1.x + offset.x, p1.y + offset.y };
-}
-
+// ------------------------------------------------------------
+// FP32 SAT 기반 표면 복셀화
+//  - 삼각형을 그리드 공간으로 변환 → tri AABB로 후보 복셀 범위 산출
+//  - 후보 복셀(center, half)과 SAT 교차 → SetVoxel(center)
+// ------------------------------------------------------------
 void voxelize(const FLOAT3* vertices, const uint16_t* indices, int numTriangles, Grid* outGrid)
 {
-	float voxelSize = outGrid->CellSize;
-	for (int faceIdx = 0; faceIdx < numTriangles; ++faceIdx)
+	const float s = outGrid->CellSize;
+	const FLOAT3 origin = outGrid->Origin;
+
+	// 보수화: halfSize/비교용
+	const float eps = 1e-4f;              // 스케일 고정 ε (그리드 공간)
+	const float halfX = 0.5f + 5e-5f;       // half(0.5)에 소량 팽창
+	const float half[3] = { halfX, halfX, halfX };
+
+	auto toGrid = [&](const FLOAT3& p)->FLOAT3 {return FLOAT3{ (p.x - origin.x) / s, (p.y - origin.y) / s, (p.z - origin.z) / s }; };
+
+	for (int f = 0; f < numTriangles; ++f)
 	{
-		// Dummy rasterization logic for illustration purposes
-		uint16_t idx0 = indices[faceIdx * 3 + 0];
-		uint16_t idx1 = indices[faceIdx * 3 + 1];
-		uint16_t idx2 = indices[faceIdx * 3 + 2];
-		const FLOAT3 v0 = vertices[idx0];
-		const FLOAT3 v1 = vertices[idx1];
-		const FLOAT3 v2 = vertices[idx2];
+		const uint16_t i0 = indices[3 * f + 0];
+		const uint16_t i1 = indices[3 * f + 1];
+		const uint16_t i2 = indices[3 * f + 2];
 
-		const FLOAT3 normal = FLOAT3::Normalize(FLOAT3::Cross(v1 - v0, v2 - v0));
-		const FLOAT3 center = computeIncenter(v0, v1, v2);
+		// 그리드 공간 좌표로 변환
+		const FLOAT3 a = toGrid(vertices[i0]);
+		const FLOAT3 b = toGrid(vertices[i1]);
+		const FLOAT3 c = toGrid(vertices[i2]);
 
-		// Projection biasis
-		const FLOAT3 tangent = (std::fabsf(normal.x) < 0.9f)
-			? FLOAT3::Normalize(FLOAT3::Cross(normal, { 1.0f, 0.0f, 0.0f }))
-			: FLOAT3::Normalize(FLOAT3::Cross(normal, { 0.0f, 1.0f, 0.0f }));
-		const FLOAT3 bitangent = FLOAT3::Normalize(FLOAT3::Cross(normal, tangent)); // guaranteed orthogonal
+		// tri AABB (그리드 공간)
+		const float minx = fminf(a.x, fminf(b.x, c.x));
+		const float miny = fminf(a.y, fminf(b.y, c.y));
+		const float minz = fminf(a.z, fminf(b.z, c.z));
+		const float maxx = fmaxf(a.x, fmaxf(b.x, c.x));
+		const float maxy = fmaxf(a.y, fmaxf(b.y, c.y));
+		const float maxz = fmaxf(a.z, fmaxf(b.z, c.z));
 
-		// Proeject vertices to dominant axis.
-		FLOAT2 p0 = project(v0, center, tangent, bitangent);
-		FLOAT2 p1 = project(v1, center, tangent, bitangent);
-		FLOAT2 p2 = project(v2, center, tangent, bitangent);
-		float d0 = FLOAT3::Dot(v0 - center, normal);
-		float d1 = FLOAT3::Dot(v1 - center, normal);
-		float d2 = FLOAT3::Dot(v2 - center, normal);
+		// 복셀 center 인덱스 범위 (center=i+0.5, 박스 half=0.5) ⇒ ±0.5 확장 + 여유 1셀
+		int gx0 = (int)floorf(minx - 0.5f) - 1;
+		int gy0 = (int)floorf(miny - 0.5f) - 1;
+		int gz0 = (int)floorf(minz - 0.5f) - 1;
+		int gx1 = (int)ceilf(maxx + 0.5f) + 1;
+		int gy1 = (int)ceilf(maxy + 0.5f) + 1;
+		int gz1 = (int)ceilf(maxz + 0.5f) + 1;
 
-		// Compute rasterization bounds.
-		FLOAT2 minP = FLOAT2::Min(FLOAT2::Min(p0, p1), p2);
-		FLOAT2 maxP = FLOAT2::Max(FLOAT2::Max(p0, p1), p2);
+		gx0 = std::max(gx0, 0);            gy0 = std::max(gy0, 0);            gz0 = std::max(gz0, 0);
+		gx1 = std::min(gx1, outGrid->nx - 1); gy1 = std::min(gy1, outGrid->ny - 1); gz1 = std::min(gz1, outGrid->nz - 1);
 
-		FLOAT2 minGrid = {
-			std::floor(minP.x / voxelSize) * voxelSize - voxelSize * 0.5f, // Center of the voxel.
-			std::floor(minP.y / voxelSize) * voxelSize - voxelSize * 0.5f
-		};
-		FLOAT2 maxGrid = {
-			std::ceil(maxP.x / voxelSize) * voxelSize + voxelSize * 0.5f,
-			std::ceil(maxP.y / voxelSize) * voxelSize + voxelSize * 0.5f
-		};
+		// float 배열 뷰 (SAT 함수 시그니처 맞춤)
+		const float v0[3] = { a.x, a.y, a.z };
+		const float v1[3] = { b.x, b.y, b.z };
+		const float v2[3] = { c.x, c.y, c.z };
 
-		// To ensure conservative rasterization,
-		// exapnd projected triangle for checking voxel coverage.
-		FLOAT4 edge01 = expandedEdge(p0, p1, voxelSize, { 0.0f, 0.0f });
-		FLOAT4 edge12 = expandedEdge(p1, p2, voxelSize, { 0.0f, 0.0f });
-		FLOAT4 edge20 = expandedEdge(p2, p0, voxelSize, { 0.0f, 0.0f });
-
-		FLOAT2 ep0 = computeLineIntersection(edge01, edge20);
-		FLOAT2 ep1 = computeLineIntersection(edge01, edge12);
-		FLOAT2 ep2 = computeLineIntersection(edge12, edge20);
-
-		// Rasterize the triangle in 2D space
-		for (float y = minGrid.y; y <= maxGrid.y; y += voxelSize)
+		for (int z = gz0; z <= gz1; ++z)
 		{
-			for (float x = minGrid.x; x <= maxGrid.x; x += voxelSize)
+			for (int y = gy0; y <= gy1; ++y)
 			{
-				FLOAT2 p = { x, y };
-				if (!isInsideTriangle2D(p, ep0, ep1, ep2)) continue;
+				for (int x = gx0; x <= gx1; ++x)
+				{
+					const float center[3] = { x + 0.5f, y + 0.5f, z + 0.5f };
 
-				FLOAT3 barycentric = computeBarycentric2D(p, p0, p1, p2);
-				float d = (barycentric.x * d0 + barycentric.y * d1 + barycentric.z * d2);
-
-				//for (int dz = -1; dz <= 1; ++dz) // For conservative rasterization, sample 3 layers.
-				//{
-				//	FLOAT3 voxelPos = backProject(p, d + dz * voxelSize, center, tangent, bitangent, normal);
-				//	outGrid->SetVoxel(voxelPos, 1);
-				//}
-				FLOAT3 voxelPos = backProject(p, d, center, tangent, bitangent, normal);
-				outGrid->SetVoxel(voxelPos, 1);
+					if (TriBoxOverlapGridF32(center, half, v0, v1, v2, eps))
+					{
+						// 월드 좌표로 되돌린 '복셀 중심'을 넘겨 SetVoxel (경계 체크 필수)
+						const FLOAT3 wp{
+							origin.x + center[0] * s,
+							origin.y + center[1] * s,
+							origin.z + center[2] * s
+						};
+						outGrid->SetVoxel(wp, 1);
+					}
+				}
 			}
 		}
 	}
 }
 
-#include <fstream>
-
+// ------------------------ Grid build + Dump (대칭 정렬 유지) ------------------------
 Grid Voxelize(const MeshData& mesh, float voxelSize)
 {
 	Bounds bounds = CalculateBounds(mesh);
-	// Dummy implementation for illustration purposes
-	Grid grid;
-	grid.CellSize = voxelSize;
-	grid.nx = static_cast<int>((bounds.Max.x - bounds.Min.x) / voxelSize);
-	grid.ny = static_cast<int>((bounds.Max.y - bounds.Min.y) / voxelSize);
-	grid.nz = static_cast<int>((bounds.Max.z - bounds.Min.z) / voxelSize);
-	grid.Origin = bounds.Min;
-	grid.Voxels.resize(grid.nx * grid.ny * grid.nz, 0);
 
+	const float s = voxelSize;
+	// 반 셀 패딩 + 원점 스냅 + ceil 해상도 (대칭 정렬)
+	bounds.Min -= FLOAT3{ s * 0.5f, s * 0.5f, s * 0.5f };
+	bounds.Max += FLOAT3{ s * 0.5f, s * 0.5f, s * 0.5f };
+
+	FLOAT3 snappedMin = bounds.Min;
+	snappedMin.x = std::floor(bounds.Min.x / s) * s;
+	snappedMin.y = std::floor(bounds.Min.y / s) * s;
+	snappedMin.z = std::floor(bounds.Min.z / s) * s;
+
+	const int nx = (int)std::ceil((bounds.Max.x - snappedMin.x) / s);
+	const int ny = (int)std::ceil((bounds.Max.y - snappedMin.y) / s);
+	const int nz = (int)std::ceil((bounds.Max.z - snappedMin.z) / s);
+
+	Grid grid;
+	grid.CellSize = s;
+	grid.nx = nx; grid.ny = ny; grid.nz = nz;
+	grid.Origin = snappedMin;
+	grid.Voxels.resize((size_t)nx * ny * nz, 0);
+
+	// 입력 포지션 복사
 	std::vector<FLOAT3> vertices(mesh.Vertices.size());
 	for (size_t i = 0; i < mesh.Vertices.size(); ++i)
-	{
 		vertices[i] = mesh.Vertices[i].Position;
-	}
 
-	voxelize(vertices.data(), mesh.Indices.data(), mesh.Indices.size() / 3, &grid);
+	voxelize(vertices.data(), mesh.Indices.data(), (int)mesh.Indices.size() / 3, &grid);
 
-	// Save to txt for debugging
+	// 디버그 덤프 (Unity 시각화용)
 	{
-		std::ofstream ofs("voxels.txt");
+		std::ofstream ofs("C:\\Dev\\VoxVis\\Assets\\voxels.txt");
+		ofs << "Voxel Grid (" << grid.nx << " x " << grid.ny << " x " << grid.nz << "), Cell Size: " << grid.CellSize << "\n";
+		ofs << "Bounds"
+			<< " Min(" << bounds.Min.x << ", " << bounds.Min.y << ", " << bounds.Min.z << ")"
+			<< " Max(" << bounds.Max.x << ", " << bounds.Max.y << ", " << bounds.Max.z << ")\n";
 		for (int z = 0; z < grid.nz; ++z)
 		{
 			ofs << "Layer " << z << ":\n";
 			for (int y = 0; y < grid.ny; ++y)
 			{
 				for (int x = 0; x < grid.nx; ++x)
-				{
 					ofs << (grid.GetVoxel(x, y, z) ? '#' : ' ') << " ";
-				}
 				ofs << "\n";
 			}
 			ofs << "\n";

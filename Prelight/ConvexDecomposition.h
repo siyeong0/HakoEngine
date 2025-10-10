@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include "pch.h"
 #include "Common/Common.h"
 
@@ -12,17 +12,17 @@ struct Grid
 
 	void SetVoxel(int x, int y, int z, uint8_t value)
 	{
-		if (x < 0 || x >= nx || y < 0 || y >= ny || z < 0 || z >= nz) return;
+		// if (x < 0 || x >= nx || y < 0 || y >= ny || z < 0 || z >= nz) return;
 		ASSERT(x >= 0 && x < nx && y >= 0 && y < ny && z >= 0 && z < nz, "Voxel index out of bounds.");
 		Voxels[x + y * nx + z * nx * ny] = value;
 	}
 
 	void SetVoxel(FLOAT3 pos, uint8_t value)
 	{
-		int x = static_cast<int>((pos.x - Origin.x) / CellSize);
-		int y = static_cast<int>((pos.y - Origin.y) / CellSize);
-		int z = static_cast<int>((pos.z - Origin.z) / CellSize);
-		SetVoxel(x, y, z, value);
+		int ix = (int)std::floor((pos.x - Origin.x) / CellSize);
+		int iy = (int)std::floor((pos.y - Origin.y) / CellSize);
+		int iz = (int)std::floor((pos.z - Origin.z) / CellSize);
+		SetVoxel(ix, iy, iz, value);
 	}
 
 	const uint8_t& GetVoxel(int x, int y, int z) const

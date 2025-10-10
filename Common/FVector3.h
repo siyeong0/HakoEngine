@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include "Common/Common.h"
 #include <cmath>
 #include <numeric>
@@ -64,7 +64,11 @@ struct FVector3
 	static inline FVector3 Abs(const FVector3& vec) { return FVector3{ std::fabs(vec.x), std::fabs(vec.y), std::fabs(vec.z) }; }
 	static inline FVector3 Min(const FVector3& a, const FVector3& b) { return FVector3{ std::fmin(a.x, b.x), std::fmin(a.y, b.y), std::fmin(a.z, b.z) }; }
 	static inline FVector3 Max(const FVector3& a, const FVector3& b) { return FVector3{ std::fmax(a.x, b.x), std::fmax(a.y, b.y), std::fmax(a.z, b.z) }; }
-
+	
+	static inline FVector3 Clamp(const FVector3& value, FLOAT min, FLOAT max)
+	{
+		return Clamp(value, FVector3{ min, min, min }, FVector3{ max, max, max });
+	}
 	static inline FVector3 Clamp(const FVector3& value, const FVector3& min, const FVector3& max)
 	{
 		return FVector3{

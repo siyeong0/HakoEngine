@@ -49,9 +49,4 @@
       <Filter>ConvexDecomposition</Filter>
     </ClCompile>
   </ItemGroup>
-  <ItemGroup>
-    <None Include="Voxelize.cu">
-      <Filter>ConvexDecomposition</Filter>
-    </None>
-  </ItemGroup>
 </Project>

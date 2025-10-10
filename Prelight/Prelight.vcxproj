@@ -156,9 +156,6 @@
     <ClCompile Include="Prelight.cpp" />
     <ClCompile Include="Voxelize.cpp" />
   </ItemGroup>
-  <ItemGroup>
-    <None Include="Voxelize.cu" />
-  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
