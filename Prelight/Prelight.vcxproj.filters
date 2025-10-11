@@ -31,9 +31,6 @@
     <ClInclude Include="ConvexDecomposition.h">
       <Filter>ConvexDecomposition</Filter>
     </ClInclude>
-    <ClInclude Include="SparseGrid.h">
-      <Filter>ConvexDecomposition</Filter>
-    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="dllmain.cpp">
@@ -49,6 +46,9 @@
       <Filter>AtmosphericSky</Filter>
     </ClCompile>
     <ClCompile Include="Voxelize.cpp">
+      <Filter>ConvexDecomposition</Filter>
+    </ClCompile>
+    <ClCompile Include="ExtractComponents.cpp">
       <Filter>ConvexDecomposition</Filter>
     </ClCompile>
   </ItemGroup>

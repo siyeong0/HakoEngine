@@ -11,7 +11,7 @@ class ConstantBufferManager;
 class D3D12ResourceManager;
 class DescriptorPool;
 class FontManager;
-class IRenderQueue;
+interface IRenderQueue;
 class PSOManager;
 class RayTracingManager;
 struct RenderThreadDesc;

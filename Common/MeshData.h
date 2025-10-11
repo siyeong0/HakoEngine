@@ -1,6 +1,8 @@
 ﻿#pragma once
 #include <cstdint>
 #include <vector>
+#include <string>
+
 
 struct Vertex;
 
@@ -19,3 +21,6 @@ inline Bounds CalculateBounds(const MeshData& mesh)
 	}
 	return bounds;
 }
+
+void ComputeMeshNormals(MeshData* outMesh);
+bool LoadMesh(const std::string& path, float scale, MeshData* outMesh);
