@@ -353,6 +353,7 @@ void ENGINECALL D3D12Renderer::Cleanup()
 		SAFE_DELETE(m_ppRenderQueueOpaque[i]);
 		SAFE_DELETE(m_ppRenderQueueTrasnparent[i]);
 	}
+	SAFE_DELETE(m_ppRenderQueueRayTracing[0]);
 	for (int i = 0; i < MAX_PENDING_FRAME_COUNT; i++)
 	{
 		for (int j = 0; j < m_NumRenderThreads; j++)
