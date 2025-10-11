@@ -31,6 +31,9 @@
     <ClInclude Include="ConvexDecomposition.h">
       <Filter>ConvexDecomposition</Filter>
     </ClInclude>
+    <ClInclude Include="SparseGrid.h">
+      <Filter>ConvexDecomposition</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="dllmain.cpp">

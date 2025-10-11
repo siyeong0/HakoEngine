@@ -108,7 +108,13 @@ int main()
 		// Decompose mesh to convex pieces
 		// RunConvexDecomposition();
 		MeshData sphereMesh = m_pGeometry->CreateSphereMesh(1.0f, 16, 16);
+		MeshData boxMesh = m_pGeometry->CreateBoxMesh(1.0f, 1.0f, 1.0f);
+		MeshData coneMesh = m_pGeometry->CreateConeMesh(1.0f, 2.0f, 16);
+		MeshData cylinderMesh = m_pGeometry->CreateCylinderMesh(1.0f, 2.0f, 16);
 		prl::DecomposeToConvex(sphereMesh);
+		//prl::DecomposeToConvex(boxMesh);
+		//prl::DecomposeToConvex(coneMesh);
+		//prl::DecomposeToConvex(cylinderMesh);
 	}
 
 	// Cleanup

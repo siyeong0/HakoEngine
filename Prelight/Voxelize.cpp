@@ -1,34 +1,258 @@
-﻿#include "pch.h"
+﻿// ============================================================================
+// Sparse-Grid (FULL/BITSET) 백엔드만 사용한 표면 복셀화 + Solid 채우기 (CPU)
+//  - 타일 32x32x32, 오픈어드레싱 해시(선형 프로빙) → CUDA 포팅 용이
+//  - GridSparse 래퍼 없이, GpuFriendlySparseGridFB 두 개(Surface, Solid)만 사용
+// ============================================================================
+
+#include "pch.h"
 #include "Common/MeshData.h"
 #include "ConvexDecomposition.h"
 #include <fstream>
 #include <algorithm>
+#include <queue>
+#include <array>
+#include <vector>
+#include <cmath>
+#include <cstdint>
+#include <cstring>
+#include <limits>
 
-// ------------------------ Math utils ------------------------
-static inline FLOAT3 Min3(const FLOAT3& a, const FLOAT3& b, const FLOAT3& c)
+// ------------------------ Key packing & 인덱싱 ------------------------
+static inline uint64_t pack3x21(int x, int y, int z)
 {
-	return { std::min({a.x,b.x,c.x}), std::min({a.y,b.y,c.y}), std::min({a.z,b.z,c.z}) };
+	const uint64_t B = 1ull << 20; // bias
+	return ((uint64_t)((int64_t)x + (int64_t)B)) |
+		((uint64_t)((int64_t)y + (int64_t)B) << 21) |
+		((uint64_t)((int64_t)z + (int64_t)B) << 42);
 }
-static inline FLOAT3 Max3(const FLOAT3& a, const FLOAT3& b, const FLOAT3& c)
+static inline int localIdx(int x, int y, int z)
 {
-	return { std::max({a.x,b.x,c.x}), std::max({a.y,b.y,c.y}), std::max({a.z,b.z,c.z}) };
+	return (x & 31) | ((y & 31) << 5) | ((z & 31) << 10);
+}
+static inline void indexToTile(int x, int y, int z, int& tx, int& ty, int& tz)
+{
+	tx = x >> 5; ty = y >> 5; tz = z >> 5;
 }
 
-// Tomas Akenine-Möller, "A Fast Triangle-Box Overlap Test", 2001.
-// robust double-precision 버전 (그리드 축 기준 SAT)
+// ------------------------ Tile (FULL / BITSET) ------------------------
+struct TileCPU
+{
+	enum Mode : uint8_t { BITSET = 1, FULL = 2 };
+	static constexpr int T = 32;
+	static constexpr int TILE_VOXELS = T * T * T;          // 32768
+	static constexpr int BITSET_WORDS = TILE_VOXELS / 64; // 512
+
+	Mode Mode = BITSET;
+	uint16_t Count = 0;                       // set된 복셀 수 (FULL이면 4096로 간주)
+	std::array<uint64_t, BITSET_WORDS> Bits{};          // BITSET일 때만 사용
+
+	bool Get(uint16_t localIndex) const
+	{
+		if (Mode == FULL) return true;
+		return (Bits[localIndex >> 6] >> (localIndex & 63)) & 1ull;
+	}
+	void SetBitset(uint16_t localIndex, bool bState)
+	{
+		uint64_t& w = Bits[localIndex >> 6];
+		uint64_t  m = (1ull << (localIndex & 63));
+		bool had = (w & m) != 0;
+		if (bState && !had) { w |= m; ++Count; }
+		if (!bState && had) { w &= ~m; --Count; }
+	}
+	void DemoteFullToBitsetAndClear(uint16_t localIndex)
+	{
+		Mode = BITSET;
+		Count = TILE_VOXELS;
+		for (int i = 0; i < BITSET_WORDS; ++i) Bits[i] = ~0ull; // all 1
+		SetBitset(localIndex, false); // count--
+	}
+};
+
+// ------------------------ GPU-친화 희소 그리드(해시) ------------------------
+class GpuFriendlySparseGridFB
+{
+public:
+	// 메타 (CUDA로 넘길 때 필요)
+	int T = 32;
+	float Cell = 1.0f;
+	FLOAT3 Origin{ 0,0,0 };
+
+	// 해시 테이블 (pow2, 선형 프로빙)
+	int Capacity = 0;
+	int Size = 0;
+	std::vector<uint64_t> KeyVector; // EMPTY = 0xFFFFFFFFFFFFFFFF
+	std::vector<int> ValVector; // EMPTY = -1
+	std::vector<TileCPU> TileVector;
+
+	explicit GpuFriendlySparseGridFB(float cell = 1.0f, FLOAT3 origin = { 0,0,0 }, int T_ = 32)
+		: T(T_)
+		, Cell(cell)
+		, Origin(origin)
+	{
+		reserveHash(256);
+	}
+
+	void Reconfigure(float cell, const FLOAT3& origin)
+	{
+		Cell = cell; Origin = origin;
+	}
+
+	void Clear()
+	{
+		Size = 0; TileVector.clear();
+		std::fill(KeyVector.begin(), KeyVector.end(), 0xFFFFFFFFFFFFFFFFull);
+		std::fill(ValVector.begin(), ValVector.end(), -1);
+	}
+
+	inline void SetVoxelIndex(int x, int y, int z, bool on = true)
+	{
+		int tx, ty, tz; indexToTile(x, y, z, tx, ty, tz);
+		int tileIdx = findOrInsertTile(tx, ty, tz);
+		uint16_t li = (uint16_t)localIdx(x, y, z);
+		TileCPU& tile = TileVector[(size_t)tileIdx];
+		if (tile.Mode == TileCPU::FULL)
+		{
+			if (on) return; // already 1
+			tile.DemoteFullToBitsetAndClear(li);
+			return;
+		}
+		bool before = tile.Get(li);
+		tile.SetBitset(li, on);
+		if (!before && on && tile.Count == TileCPU::TILE_VOXELS)
+		{
+			tile.Mode = TileCPU::FULL;
+			tile.Bits = {};
+		}
+	}
+
+	inline bool GetVoxelIndex(int x, int y, int z) const
+	{
+		int tx, ty, tz; indexToTile(x, y, z, tx, ty, tz);
+		int tileIdx = findTile(tx, ty, tz);
+		if (tileIdx < 0)
+		{
+			return false;
+		}
+		const TileCPU& tile = TileVector[(size_t)tileIdx];
+		if (tile.Mode == TileCPU::FULL)
+		{
+			return true;
+		}
+		uint16_t li = (uint16_t)localIdx(x, y, z);
+		return tile.Get(li);
+	}
+
+private:
+	static inline uint64_t hashKey(uint64_t key, uint64_t mask)
+	{
+		return (key * 11400714819323198485ull) & mask; // Fibonacci hashing
+	}
+
+	void reserveHash(int want)
+	{
+		if (Capacity >= want) return;
+
+		int newCap = 1;
+		while (newCap < want)
+		{
+			newCap <<= 1;
+		}
+
+		std::vector<uint64_t> nkeys((size_t)newCap, 0xFFFFFFFFFFFFFFFFull);
+		std::vector<int>      nvals((size_t)newCap, -1);
+		for (int i = 0; i < Capacity; ++i)
+		{
+			int v = ValVector[(size_t)i];
+			if (v < 0) continue;
+
+			uint64_t k = KeyVector[(size_t)i];
+			uint64_t mask = (uint64_t)(newCap - 1);
+			uint64_t h = hashKey(k, mask);
+			while (true)
+			{
+				if (nvals[(size_t)h] == -1)
+				{
+					nkeys[(size_t)h] = k; nvals[(size_t)h] = v;
+					break;
+				}
+				if (nkeys[(size_t)h] == k)
+				{
+					nvals[(size_t)h] = v;
+					break;
+				}
+				h = (h + 1) & mask;
+			}
+		}
+		KeyVector.swap(nkeys); ValVector.swap(nvals); Capacity = newCap;
+	}
+
+	int findTile(int tx, int ty, int tz) const
+	{
+		if (Capacity == 0) return -1;
+
+		uint64_t key = pack3x21(tx, ty, tz);
+		uint64_t mask = (uint64_t)(Capacity - 1);
+		uint64_t h = hashKey(key, mask);
+		for (int i = 0; i < Capacity; ++i)
+		{
+			if (ValVector[(size_t)h] == -1)
+			{
+				return -1;
+			}
+			if (KeyVector[(size_t)h] == key)
+			{
+				return ValVector[(size_t)h];
+			}
+			h = (h + 1) & mask;
+		}
+		return -1;
+	}
+
+	int findOrInsertTile(int tx, int ty, int tz)
+	{
+		if (Size * 2 >= Capacity)
+		{
+			reserveHash(std::max(256, Capacity << 1)); // load factor <= 0.5
+		}
+
+		uint64_t key = pack3x21(tx, ty, tz);
+		uint64_t mask = (uint64_t)(Capacity - 1);
+		uint64_t h = hashKey(key, mask);
+		while (true)
+		{
+			if (ValVector[(size_t)h] == -1)
+			{
+				int idx = Size;
+				TileVector.push_back(TileCPU{}); // NEW BITSET tile
+				++Size;
+				KeyVector[(size_t)h] = key; ValVector[(size_t)h] = idx;
+				return idx;
+			}
+			if (KeyVector[(size_t)h] == key)
+			{
+				return ValVector[(size_t)h];
+			}
+			h = (h + 1) & mask;
+		}
+	}
+};
+
+// --------------------- SAT: tri-box overlap (그리드공간) ---------------------
 static inline bool TriBoxOverlapGridF32(
-	const float center[3],
-	const float half[3],
-	const float v0[3],
-	const float v1[3],
-	const float v2[3],
-	const float eps)
+	const float center[3], // 박스 중심(복셀 center: i+0.5)
+	const float V0[3],
+	const float V1[3],
+	const float V2[3],
+	const float eps = 1e-4f)
 {
-	// 1) 삼각형을 박스 좌표계(박스 중심 원점)로 이동
-	float p0[3] = { v0[0] - center[0], v0[1] - center[1], v0[2] - center[2] };
-	float p1[3] = { v1[0] - center[0], v1[1] - center[1], v1[2] - center[2] };
-	float p2[3] = { v2[0] - center[0], v2[1] - center[1], v2[2] - center[2] };
-	// 2) 에지
+	// half는 고정 0.5 (그리드 공간 복셀 박스)
+	const float hx = 0.5f + eps;
+	const float hy = 0.5f + eps;
+	const float hz = 0.5f + eps;
+
+	float p0[3] = { V0[0] - center[0], V0[1] - center[1], V0[2] - center[2] };
+	float p1[3] = { V1[0] - center[0], V1[1] - center[1], V1[2] - center[2] };
+	float p2[3] = { V2[0] - center[0], V2[1] - center[1], V2[2] - center[2] };
 	float e0[3] = { p1[0] - p0[0], p1[1] - p0[1], p1[2] - p0[2] };
 	float e1[3] = { p2[0] - p1[0], p2[1] - p1[1], p2[2] - p1[2] };
 	float e2[3] = { p0[0] - p2[0], p0[1] - p2[1], p0[2] - p2[2] };
@@ -41,92 +265,83 @@ static inline bool TriBoxOverlapGridF32(
 		float v2a, float v2b,
 		float ha, float hb)->bool
 		{
-			float p0 = a * v0a - b * v0b;
-			float p1 = a * v1a - b * v1b;
-			float p2 = a * v2a - b * v2b;
-			float minp = fminf(p0, fminf(p1, p2));
-			float maxp = fmaxf(p0, fmaxf(p1, p2));
+			float q0 = a * v0a - b * v0b;
+			float q1 = a * v1a - b * v1b;
+			float q2 = a * v2a - b * v2b;
+			float mn = fminf(q0, fminf(q1, q2));
+			float mx = fmaxf(q0, fmaxf(q1, q2));
 			float rad = ha * fa + hb * fb + eps;
-			return !(minp > rad || maxp < -rad);
+			return !(mn > rad || mx < -rad);
 		};
 
-	// 3) 9개의 cross-product 축 테스트 (X×edges, Y×edges, Z×edges)
-	// X축과의 조합
 	float fe0x = fabsf(e0[0]), fe0y = fabsf(e0[1]), fe0z = fabsf(e0[2]);
 	float fe1x = fabsf(e1[0]), fe1y = fabsf(e1[1]), fe1z = fabsf(e1[2]);
 	float fe2x = fabsf(e2[0]), fe2y = fabsf(e2[1]), fe2z = fabsf(e2[2]);
 
-	// X×edges
-	if (!axisTest(e0[2], e0[1], fe0z, fe0y, p0[1], p0[2], p1[1], p1[2], p2[1], p2[2], half[1], half[2])) return false;
-	if (!axisTest(e1[2], e1[1], fe1z, fe1y, p0[1], p0[2], p1[1], p1[2], p2[1], p2[2], half[1], half[2])) return false;
-	if (!axisTest(e2[2], e2[1], fe2z, fe2y, p0[1], p0[2], p1[1], p1[2], p2[1], p2[2], half[1], half[2])) return false;
-	// Y×edges
-	if (!axisTest(e0[2], e0[0], fe0z, fe0x, p0[0], p0[2], p1[0], p1[2], p2[0], p2[2], half[0], half[2])) return false;
-	if (!axisTest(e1[2], e1[0], fe1z, fe1x, p0[0], p0[2], p1[0], p1[2], p2[0], p2[2], half[0], half[2])) return false;
-	if (!axisTest(e2[2], e2[0], fe2z, fe2x, p0[0], p0[2], p1[0], p1[2], p2[0], p2[2], half[0], half[2])) return false;
-	// Z×edges
-	if (!axisTest(e0[1], e0[0], fe0y, fe0x, p0[0], p0[1], p1[0], p1[1], p2[0], p2[1], half[0], half[1])) return false;
-	if (!axisTest(e1[1], e1[0], fe1y, fe1x, p0[0], p0[1], p1[0], p1[1], p2[0], p2[1], half[0], half[1])) return false;
-	if (!axisTest(e2[1], e2[0], fe2y, fe2x, p0[0], p0[1], p1[0], p1[1], p2[0], p2[1], half[0], half[1])) return false;
+	// 9 cross axes
+	if (!axisTest(e0[2], e0[1], fe0z, fe0y, p0[1], p0[2], p1[1], p1[2], p2[1], p2[2], hy, hz)) return false;
+	if (!axisTest(e1[2], e1[1], fe1z, fe1y, p0[1], p0[2], p1[1], p1[2], p2[1], p2[2], hy, hz)) return false;
+	if (!axisTest(e2[2], e2[1], fe2z, fe2y, p0[1], p0[2], p1[1], p1[2], p2[1], p2[2], hy, hz)) return false;
 
-	// 4) 박스 자체 축(X,Y,Z) 투영 간단 테스트
-	auto findMinMax = [](float x0, float x1, float x2, float& mn, float& mx) {mn = fminf(x0, fminf(x1, x2)); mx = fmaxf(x0, fmaxf(x1, x2)); };
+	if (!axisTest(e0[2], e0[0], fe0z, fe0x, p0[0], p0[2], p1[0], p1[2], p2[0], p2[2], hx, hz)) return false;
+	if (!axisTest(e1[2], e1[0], fe1z, fe1x, p0[0], p0[2], p1[0], p1[2], p2[0], p2[2], hx, hz)) return false;
+	if (!axisTest(e2[2], e2[0], fe2z, fe2x, p0[0], p0[2], p1[0], p1[2], p2[0], p2[2], hx, hz)) return false;
+
+	if (!axisTest(e0[1], e0[0], fe0y, fe0x, p0[0], p0[1], p1[0], p1[1], p2[0], p2[1], hx, hy)) return false;
+	if (!axisTest(e1[1], e1[0], fe1y, fe1x, p0[0], p0[1], p1[0], p1[1], p2[0], p2[1], hx, hy)) return false;
+	if (!axisTest(e2[1], e2[0], fe2y, fe2x, p0[0], p0[1], p1[0], p1[1], p2[0], p2[1], hx, hy)) return false;
+
+	// box axes
+	auto minmax3 = [](float a, float b, float c, float& mn, float& mx) { mn = fminf(a, fminf(b, c)); mx = fmaxf(a, fmaxf(b, c)); };
 	float mn, mx;
-	findMinMax(p0[0], p1[0], p2[0], mn, mx); if (mn > half[0] + eps || mx < -half[0] - eps) return false;
-	findMinMax(p0[1], p1[1], p2[1], mn, mx); if (mn > half[1] + eps || mx < -half[1] - eps) return false;
-	findMinMax(p0[2], p1[2], p2[2], mn, mx); if (mn > half[2] + eps || mx < -half[2] - eps) return false;
+	minmax3(p0[0], p1[0], p2[0], mn, mx); if (mn > hx + eps || mx < -hx - eps) return false;
+	minmax3(p0[1], p1[1], p2[1], mn, mx); if (mn > hy + eps || mx < -hy - eps) return false;
+	minmax3(p0[2], p1[2], p2[2], mn, mx); if (mn > hz + eps || mx < -hz - eps) return false;
 
-	// 5) 삼각형 평면과 박스의 교차 여부 (삼각형 노멀 축)
+	// triangle plane
 	float n[3] =
 	{
 		e0[1] * e1[2] - e0[2] * e1[1],
 		e0[2] * e1[0] - e0[0] * e1[2],
 		e0[0] * e1[1] - e0[1] * e1[0]
 	};
-	// 박스 반지름: |n| dot halfSize projected onto |n|-aligned axes (= |n|·halfSize on L1 norm of normalized n against axes)
-	// 더 간단하게는 박스 8코너를 평면에 투영한 min/max가 0의 양/음에 걸치면 교차.
-	// 여기서는 "plane-box overlap"의 빠른 근사:
 	float vmin[3], vmax[3];
 	for (int i = 0; i < 3; ++i)
 	{
 		if (n[i] >= 0.f)
 		{
-			vmin[i] = -half[i];
-			vmax[i] = half[i];
+			vmin[i] = -hx;
+			vmax[i] = hx;
 		}
 		else
 		{
-			vmin[i] = half[i];
-			vmax[i] = -half[i];
+			vmin[i] = hx;
+			vmax[i] = -hx;
 		}
 	}
-	// 삼각형 한 점(v0)에서 평면 거리
 	float d = -(n[0] * p0[0] + n[1] * p0[1] + n[2] * p0[2]);
 	float distMin = n[0] * vmin[0] + n[1] * vmin[1] + n[2] * vmin[2] + d;
 	float distMax = n[0] * vmax[0] + n[1] * vmax[1] + n[2] * vmax[2] + d;
-
 	if (distMin > eps && distMax > eps) return false;
 	if (distMin < -eps && distMax < -eps) return false;
 
 	return true;
 }
 
-// ------------------------------------------------------------
-// FP32 SAT 기반 표면 복셀화
-//  - 삼각형을 그리드 공간으로 변환 → tri AABB로 후보 복셀 범위 산출
-//  - 후보 복셀(center, half)과 SAT 교차 → SetVoxel(center)
-// ------------------------------------------------------------
-void voxelize(const FLOAT3* vertices, const uint16_t* indices, int numTriangles, Grid* outGrid)
+// ----------------------- 표면 복셀화 (Surface만 세팅) -----------------------
+static void VoxelizeSurface_SAT_ToSparse(
+	const FLOAT3* vertices,
+	const uint16_t* indices,
+	int numTriangles,
+	int nx, int ny, int nz,
+	float cell,
+	const FLOAT3& origin,
+	GpuFriendlySparseGridFB& surface)
 {
-	const float s = outGrid->CellSize;
-	const FLOAT3 origin = outGrid->Origin;
-
-	// 보수화: halfSize/비교용
-	const float eps = 1e-4f;              // 스케일 고정 ε (그리드 공간)
-	const float halfX = 0.5f + 5e-5f;       // half(0.5)에 소량 팽창
-	const float half[3] = { halfX, halfX, halfX };
-
-	auto toGrid = [&](const FLOAT3& p)->FLOAT3 {return FLOAT3{ (p.x - origin.x) / s, (p.y - origin.y) / s, (p.z - origin.z) / s }; };
+	auto toGrid = [&](const FLOAT3& p)->FLOAT3
+		{
+			return FLOAT3{ (p.x - origin.x) / cell, (p.y - origin.y) / cell, (p.z - origin.z) / cell };
+		};
 
 	for (int f = 0; f < numTriangles; ++f)
 	{
@@ -134,12 +349,10 @@ void voxelize(const FLOAT3* vertices, const uint16_t* indices, int numTriangles,
 		const uint16_t i1 = indices[3 * f + 1];
 		const uint16_t i2 = indices[3 * f + 2];
 
-		// 그리드 공간 좌표로 변환
 		const FLOAT3 a = toGrid(vertices[i0]);
 		const FLOAT3 b = toGrid(vertices[i1]);
 		const FLOAT3 c = toGrid(vertices[i2]);
 
-		// tri AABB (그리드 공간)
 		const float minx = fminf(a.x, fminf(b.x, c.x));
 		const float miny = fminf(a.y, fminf(b.y, c.y));
 		const float minz = fminf(a.z, fminf(b.z, c.z));
@@ -147,21 +360,23 @@ void voxelize(const FLOAT3* vertices, const uint16_t* indices, int numTriangles,
 		const float maxy = fmaxf(a.y, fmaxf(b.y, c.y));
 		const float maxz = fmaxf(a.z, fmaxf(b.z, c.z));
 
-		// 복셀 center 인덱스 범위 (center=i+0.5, 박스 half=0.5) ⇒ ±0.5 확장 + 여유 1셀
-		int gx0 = (int)floorf(minx - 0.5f) - 1;
-		int gy0 = (int)floorf(miny - 0.5f) - 1;
-		int gz0 = (int)floorf(minz - 0.5f) - 1;
-		int gx1 = (int)ceilf(maxx + 0.5f) + 1;
-		int gy1 = (int)ceilf(maxy + 0.5f) + 1;
-		int gz1 = (int)ceilf(maxz + 0.5f) + 1;
+		int gx0 = (int)std::floor(minx - 0.5f) - 1;
+		int gy0 = (int)std::floor(miny - 0.5f) - 1;
+		int gz0 = (int)std::floor(minz - 0.5f) - 1;
+		int gx1 = (int)std::ceil(maxx + 0.5f) + 1;
+		int gy1 = (int)std::ceil(maxy + 0.5f) + 1;
+		int gz1 = (int)std::ceil(maxz + 0.5f) + 1;
 
-		gx0 = std::max(gx0, 0);            gy0 = std::max(gy0, 0);            gz0 = std::max(gz0, 0);
-		gx1 = std::min(gx1, outGrid->nx - 1); gy1 = std::min(gy1, outGrid->ny - 1); gz1 = std::min(gz1, outGrid->nz - 1);
+		gx0 = std::max(gx0, 0);
+		gy0 = std::max(gy0, 0);
+		gz0 = std::max(gz0, 0);
+		gx1 = std::min(gx1, nx - 1);
+		gy1 = std::min(gy1, ny - 1);
+		gz1 = std::min(gz1, nz - 1);
 
-		// float 배열 뷰 (SAT 함수 시그니처 맞춤)
-		const float v0[3] = { a.x, a.y, a.z };
-		const float v1[3] = { b.x, b.y, b.z };
-		const float v2[3] = { c.x, c.y, c.z };
+		const float V0[3] = { a.x, a.y, a.z };
+		const float V1[3] = { b.x, b.y, b.z };
+		const float V2[3] = { c.x, c.y, c.z };
 
 		for (int z = gz0; z <= gz1; ++z)
 		{
@@ -170,16 +385,9 @@ void voxelize(const FLOAT3* vertices, const uint16_t* indices, int numTriangles,
 				for (int x = gx0; x <= gx1; ++x)
 				{
 					const float center[3] = { x + 0.5f, y + 0.5f, z + 0.5f };
-
-					if (TriBoxOverlapGridF32(center, half, v0, v1, v2, eps))
+					if (TriBoxOverlapGridF32(center, V0, V1, V2))
 					{
-						// 월드 좌표로 되돌린 '복셀 중심'을 넘겨 SetVoxel (경계 체크 필수)
-						const FLOAT3 wp{
-							origin.x + center[0] * s,
-							origin.y + center[1] * s,
-							origin.z + center[2] * s
-						};
-						outGrid->SetVoxel(wp, 1);
+						surface.SetVoxelIndex(x, y, z, true);
 					}
 				}
 			}
@@ -187,13 +395,79 @@ void voxelize(const FLOAT3* vertices, const uint16_t* indices, int numTriangles,
 	}
 }
 
-// ------------------------ Grid build + Dump (대칭 정렬 유지) ------------------------
-Grid Voxelize(const MeshData& mesh, float voxelSize)
+// ----------------------------- Solid 만들기 -----------------------------
+static void MakeSolidFromSurfaceSparse(
+	int nx, int ny, int nz,
+	const GpuFriendlySparseGridFB& surface,
+	GpuFriendlySparseGridFB& solid)
 {
-	Bounds bounds = CalculateBounds(mesh);
+	// outside 방문표시는 임시 dense 벡터 (결과 저장은 sparse)
+	std::vector<uint8_t> outside((size_t)nx * ny * nz, 0);
+	auto idOf = [&](int x, int y, int z)->size_t { return (size_t)(z * ny + y) * nx + x; };
+	auto push = [&](std::queue<int3>& q, int x, int y, int z)
+		{
+			if (x < 0 || y < 0 || z < 0 || x >= nx || y >= ny || z >= nz) return;
+			const size_t id = idOf(x, y, z);
+			if (outside[id]) return;
+			if (surface.GetVoxelIndex(x, y, z)) return; // 표면은 벽
+			outside[id] = 1; q.push({ x,y,z });
+		};
 
+	std::queue<int3> q;
+	// 경계 씨드
+	for (int x = 0; x < nx; x++) for (int y = 0; y < ny; y++) { push(q, x, y, 0); push(q, x, y, nz - 1); }
+	for (int z = 0; z < nz; z++) for (int x = 0; x < nx; x++) { push(q, x, 0, z); push(q, x, ny - 1, z); }
+	for (int z = 0; z < nz; z++) for (int y = 0; y < ny; y++) { push(q, 0, y, z); push(q, nx - 1, y, z); }
+
+	const int off[6][3] = { {1,0,0},{-1,0,0},{0,1,0},{0,-1,0},{0,0,1},{0,0,-1} };
+	while (!q.empty())
+	{
+		auto p = q.front(); q.pop();
+		for (auto& d : off)
+		{
+			push(q, p.x + d[0], p.y + d[1], p.z + d[2]);
+		}
+	}
+
+	// 내부 채움 + 표면 포함
+	for (int z = 0; z < nz; ++z)
+	{
+		for (int y = 0; y < ny; ++y)
+		{
+			for (int x = 0; x < nx; ++x)
+			{
+				size_t id = idOf(x, y, z);
+				if (!outside[id] || surface.GetVoxelIndex(x, y, z)) // 내부 or 표면
+				{
+					solid.SetVoxelIndex(x, y, z, true);
+				}
+			}
+		}
+	}
+}
+
+// ---------------------- 엔트리: Sparse로 직접 생성 ----------------------
+struct VoxelizeSparseResult
+{
+	// 메타만 반환 (저장소는 아래 Surface/Solid 참조)
+	int nx = 0, ny = 0, nz = 0;
+	float cell = 1.0f;
+	FLOAT3 origin{ 0,0,0 };
+};
+
+// 사용법:
+//   GpuFriendlySparseGridFB surface(voxelSize, originInit), solid(voxelSize, originInit);
+//   VoxelizeToSparse(mesh, voxelSize, surface, solid, result);
+//   (옵션) DumpSolidToUnityTxt(surface/solid, result);
+void VoxelizeToSparse(const MeshData& mesh, float voxelSize)
+{
+	GpuFriendlySparseGridFB surface;
+	GpuFriendlySparseGridFB solid;
+	VoxelizeSparseResult outInfo;
+	// Bounds & 그리드 배치(대칭 정렬)
+	Bounds bounds = CalculateBounds(mesh);
 	const float s = voxelSize;
-	// 반 셀 패딩 + 원점 스냅 + ceil 해상도 (대칭 정렬)
+
 	bounds.Min -= FLOAT3{ s * 0.5f, s * 0.5f, s * 0.5f };
 	bounds.Max += FLOAT3{ s * 0.5f, s * 0.5f, s * 0.5f };
 
@@ -206,38 +480,43 @@ Grid Voxelize(const MeshData& mesh, float voxelSize)
 	const int ny = (int)std::ceil((bounds.Max.y - snappedMin.y) / s);
 	const int nz = (int)std::ceil((bounds.Max.z - snappedMin.z) / s);
 
-	Grid grid;
-	grid.CellSize = s;
-	grid.nx = nx; grid.ny = ny; grid.nz = nz;
-	grid.Origin = snappedMin;
-	grid.Voxels.resize((size_t)nx * ny * nz, 0);
+	// 출력 메타
+	outInfo.nx = nx; outInfo.ny = ny; outInfo.nz = nz;
+	outInfo.cell = s; outInfo.origin = snappedMin;
+
+	// 그리드 재설정
+	surface.Clear(); solid.Clear();
+	surface.Reconfigure(s, snappedMin);
+	solid.Reconfigure(s, snappedMin);
 
 	// 입력 포지션 복사
 	std::vector<FLOAT3> vertices(mesh.Vertices.size());
-	for (size_t i = 0; i < mesh.Vertices.size(); ++i)
-		vertices[i] = mesh.Vertices[i].Position;
+	for (size_t i = 0; i < mesh.Vertices.size(); ++i) vertices[i] = mesh.Vertices[i].Position;
 
-	voxelize(vertices.data(), mesh.Indices.data(), (int)mesh.Indices.size() / 3, &grid);
+	// 표면 복셀화 → Surface
+	VoxelizeSurface_SAT_ToSparse(vertices.data(), mesh.Indices.data(), (int)mesh.Indices.size() / 3,
+		nx, ny, nz, s, snappedMin, surface);
 
-	// 디버그 덤프 (Unity 시각화용)
+	// Solid 만들기
+	MakeSolidFromSurfaceSparse(nx, ny, nz, surface, solid);
+
+	// 디버그 덤프(옵션): 유니티 시각화용
 	{
 		std::ofstream ofs("C:\\Dev\\VoxVis\\Assets\\voxels.txt");
-		ofs << "Voxel Grid (" << grid.nx << " x " << grid.ny << " x " << grid.nz << "), Cell Size: " << grid.CellSize << "\n";
+		ofs << "Voxel Grid (" << nx << " x " << ny << " x " << nz << "), Cell Size: " << s << "\n";
 		ofs << "Bounds"
 			<< " Min(" << bounds.Min.x << ", " << bounds.Min.y << ", " << bounds.Min.z << ")"
 			<< " Max(" << bounds.Max.x << ", " << bounds.Max.y << ", " << bounds.Max.z << ")\n";
-		for (int z = 0; z < grid.nz; ++z)
+		for (int z = 0; z < nz; ++z)
 		{
 			ofs << "Layer " << z << ":\n";
-			for (int y = 0; y < grid.ny; ++y)
+			for (int y = 0; y < ny; ++y)
 			{
-				for (int x = 0; x < grid.nx; ++x)
-					ofs << (grid.GetVoxel(x, y, z) ? '#' : ' ') << " ";
+				for (int x = 0; x < nx; ++x)
+					ofs << (surface.GetVoxelIndex(x, y, z) ? '#' : ' ') << " ";
 				ofs << "\n";
 			}
 			ofs << "\n";
 		}
 	}
-
-	return grid;
 }

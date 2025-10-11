@@ -11,9 +11,22 @@
 
 // Typedef
 using uint = unsigned int;
+
+struct int2
+{
+    int x;
+    int y;
+};
+
+struct int3
+{
+    int x;
+    int y;
+    int z;
+};
+
 using Matrix4x4 = DirectX::XMMATRIX;
 
-// Math
 #include "FVector2.h"
 using FLOAT2 = FVector2;
 static_assert(sizeof(FLOAT2) == 8, "FLOAT2 size mismatch");
