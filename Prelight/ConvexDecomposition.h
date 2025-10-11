@@ -252,7 +252,12 @@ struct VoxelComponent
     int maxX = -INT32_MAX, maxY = -INT32_MAX, maxZ = -INT32_MAX;
 };
 
-void VoxelizeToSparse(const MeshData& mesh, float voxelSize, GpuFriendlySparseGridFB* outSolidVoxelGrid);
+void VoxelizeToSparse(
+	const std::vector<FLOAT3> vertices,
+	const std::vector<uint16_t> indices,
+	const Bounds& meshBounds,
+	float voxelSize,
+	GpuFriendlySparseGridFB* outSolidVoxelGrid);
 void ExtractConnectedComponents6(
 	const GpuFriendlySparseGridFB& solid,
 	std::vector<VoxelComponent>& outComponents);

@@ -266,13 +266,13 @@ bool D3D12ResourceManager::CreateTexture(ID3D12Resource** ppOutResource, uint wi
 
 	if (pInitImage)
 	{
-		D3D12_RESOURCE_DESC Desc = pTexResource->GetDesc();
-		D3D12_PLACED_SUBRESOURCE_FOOTPRINT Footprint;
+		D3D12_RESOURCE_DESC desc = pTexResource->GetDesc();
+		D3D12_PLACED_SUBRESOURCE_FOOTPRINT footprint;
 		uint rows = 0;
 		uint64_t rowSize = 0;
 		uint64_t totalBytes = 0;
 
-		m_pD3DDevice->GetCopyableFootprints(&Desc, 0, 1, 0, &Footprint, &rows, &rowSize, &totalBytes);
+		m_pD3DDevice->GetCopyableFootprints(&desc, 0, 1, 0, &footprint, &rows, &rowSize, &totalBytes);
 
 		uint8_t* pMappedPtr = nullptr;
 		CD3DX12_RANGE readRange(0, 0);
@@ -297,7 +297,7 @@ bool D3D12ResourceManager::CreateTexture(ID3D12Resource** ppOutResource, uint wi
 		{
 			memcpy(pDest, pSrc, static_cast<size_t>(width) * 4);
 			pSrc += (width * 4);
-			pDest += Footprint.Footprint.RowPitch;			
+			pDest += footprint.Footprint.RowPitch;			
 		}
 		// Unmap
 		pUploadBuffer->Unmap(0, nullptr);

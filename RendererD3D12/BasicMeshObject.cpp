@@ -80,6 +80,34 @@ bool ENGINECALL BasicMeshObject::InsertTriGroup(const uint16_t* indices, uint nu
 	return true;
 }
 
+bool ENGINECALL BasicMeshObject::InsertTriGroup(const uint16_t* indices, uint numTriangles, const Material& material)
+{
+	ID3D12Device5* pD3DDeivce = m_pRenderer->GetD3DDevice();
+	size_t srvDescriptorSize = m_pRenderer->GetSrvDescriptorSize();
+	D3D12ResourceManager* pResourceManager = m_pRenderer->GetResourceManager();
+	SingleDescriptorAllocator* pSingleDescriptorAllocator = m_pRenderer->GetSingleDescriptorAllocator();
+	bool bUseGpuUploadHeaps = m_pRenderer->IsGpuUploadHeapsEnabledInl();
+
+	ID3D12Resource* pIndexBuffer = nullptr;
+	D3D12_INDEX_BUFFER_VIEW indexBufferView = {};
+
+	ASSERT(m_NumTriGroups < m_MaxNumTriGroups, "Too many tri-groups.");
+
+	if (FAILED(pResourceManager->CreateIndexBuffer(numTriangles * 3, &indexBufferView, &pIndexBuffer, (void*)indices, bUseGpuUploadHeaps)))
+	{
+		ASSERT(false, "Failed to create index buffer.");
+		return false;
+	}
+	IndexedTriGroup* pTriGroup = m_pTriGroupList + m_NumTriGroups;
+	pTriGroup->IndexBuffer = pIndexBuffer;
+	pTriGroup->IndexBufferView = indexBufferView;
+	pTriGroup->NumTriangles = static_cast<uint>(numTriangles);
+	pTriGroup->pTexHandle = (TextureHandle*)m_pRenderer->CreateImmutableTexture(material.Diffuse);
+	pTriGroup->bOpaque = true;
+	m_NumTriGroups++;
+	return true;
+}
+
 void ENGINECALL BasicMeshObject::EndCreateMesh(bool bOpaque, bool bUseRayTracingIfSupported)
 {
 	bool bUseRayTracing = bUseRayTracingIfSupported && m_pRenderer->IsRayTracingEnabledInl();

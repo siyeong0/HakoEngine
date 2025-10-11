@@ -1,17 +1,14 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <Filter Include="Graphics">
-      <UniqueIdentifier>{64cfafbd-ada4-4fd7-a37d-955cca98abbe}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Geometry">
       <UniqueIdentifier>{d5a9ff51-b30a-4660-b8e8-293fa694bf07}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Graphics\Renderer">
-      <UniqueIdentifier>{fc2fe898-ed21-4e1e-8317-9b2db4dbd095}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Graphics\Prelight">
+    <Filter Include="Prelight">
       <UniqueIdentifier>{26a6794a-3ef9-4483-b2c2-8a909dd29cb8}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Renderer">
+      <UniqueIdentifier>{fc2fe898-ed21-4e1e-8317-9b2db4dbd095}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -19,19 +16,19 @@
       <Filter>Geometry</Filter>
     </ClInclude>
     <ClInclude Include="$(MSBuildThisFileDirectory)IMeshObject.h">
-      <Filter>Graphics\Renderer</Filter>
+      <Filter>Renderer</Filter>
     </ClInclude>
     <ClInclude Include="$(MSBuildThisFileDirectory)IRenderer.h">
-      <Filter>Graphics\Renderer</Filter>
+      <Filter>Renderer</Filter>
     </ClInclude>
     <ClInclude Include="$(MSBuildThisFileDirectory)ISpriteObject.h">
-      <Filter>Graphics\Renderer</Filter>
+      <Filter>Renderer</Filter>
     </ClInclude>
     <ClInclude Include="$(MSBuildThisFileDirectory)IPrelight.h">
-      <Filter>Graphics\Prelight</Filter>
+      <Filter>Prelight</Filter>
     </ClInclude>
     <ClInclude Include="$(MSBuildThisFileDirectory)AtmosStruct.h">
-      <Filter>Graphics\Prelight</Filter>
+      <Filter>Prelight</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

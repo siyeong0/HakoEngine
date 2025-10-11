@@ -2,6 +2,7 @@
 #include <Windows.h>
 #include <combaseapi.h>
 #include "Common/Common.h"
+#include "Common/StaticMesh.h"
 
 #include "IMeshObject.h"
 #include "ISpriteObject.h"
@@ -20,12 +21,14 @@ interface IRenderer : public IUnknown
 	virtual void ENGINECALL RenderSpriteWithTex(void* pSprObjHandle, int posX, int posY, float scaleX, float scaleY, const RECT* pRect, float z, void* pTexHandle) = 0;
 	virtual void ENGINECALL RenderSprite(void* pSprObjHandle, int posX, int posY, float scaleX, float scaleY, float z) = 0;
 
-	virtual IMeshObject* ENGINECALL CreateBasicMeshObject() = 0;
+	virtual IMeshObject* ENGINECALL CreateBasicMeshObject(bool bOpaque = true, bool bUseRayTracingIfSupported = true) = 0;
+	virtual IMeshObject* ENGINECALL CreateBasicMeshObject(const StaticMesh& staticMesh, bool bOpaque = true, bool bUseRayTracingIfSupported = true) = 0;
 	virtual ISprite* ENGINECALL CreateSpriteObject() = 0;
 	virtual ISprite* ENGINECALL CreateSpriteObject(const WCHAR* wchTexFileName) = 0;
 	virtual ISprite* ENGINECALL CreateSpriteObject(const WCHAR* wchTexFileName, int posX, int posY, int width, int height) = 0;
 
 	virtual void* ENGINECALL CreateTiledTexture(uint texWidth, uint texHeight, uint8_t r, uint8_t g, uint8_t b) = 0;
+	virtual void* ENGINECALL CreateImmutableTexture(const Image& image) = 0;
 	virtual void* ENGINECALL CreateDynamicTexture(uint texWidth, uint texHeight) = 0;
 	virtual void* ENGINECALL CreateTextureFromFile(const WCHAR* wchFileName) = 0;
 	virtual void ENGINECALL UpdateTextureWithImage(void* pTexHandle, const uint8_t* pSrcBits, uint srcWidth, uint srcHeight) = 0;

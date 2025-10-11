@@ -8,6 +8,7 @@
 #endif
 
 #include "Common/Common.h"
+#include "Common/StaticMesh.h"
 #include "Interface/IPrelight.h"
 #include "Interface/IGeometry.h"
 
@@ -105,18 +106,12 @@ int main()
 
 	if (true)
 	{
-		// Decompose mesh to convex pieces
-		// RunConvexDecomposition();
-		//MeshData sphereMesh = m_pGeometry->CreateSphereMesh(1.0f, 16, 16);
-		//MeshData boxMesh = m_pGeometry->CreateBoxMesh(1.0f, 1.0f, 1.0f);
-		//MeshData coneMesh = m_pGeometry->CreateConeMesh(1.0f, 2.0f, 16);
-		//MeshData cylinderMesh = m_pGeometry->CreateCylinderMesh(1.0f, 2.0f, 16);
-		
-		MeshData mesh;
-		std::string path = "../../Resources/Decomp/bunny.off";
-		if (!LoadMesh(path, 10.0f, &mesh))
+		StaticMesh mesh;
+		bool bLoaded = mesh.LoadFromFile("../../Resources/Decomp/bunny.off", 10.0f);
+		if (bLoaded == false)
 		{
-			ASSERT(false, "Failed to load file");
+			ASSERT(false, "Fail to load mesh file");
+			return -1;
 		}
 
 		prl::DecomposeToConvex(mesh);

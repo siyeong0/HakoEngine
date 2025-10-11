@@ -27,9 +27,10 @@ public:
 	STDMETHODIMP_(ULONG)	Release();
 
 	// Derived from IMeshObject
-	bool ENGINECALL BeginCreateMesh(const Vertex* vertices, uint numVertices, uint numTriGroups);
-	bool ENGINECALL InsertTriGroup(const uint16_t* indices, uint numTriangles, const WCHAR* wchTexFileName);
-	void ENGINECALL EndCreateMesh(bool bOpaque, bool bUseRayTracingIfSupported);
+	bool ENGINECALL BeginCreateMesh(const Vertex* vertices, uint numVertices, uint numTriGroups) override;
+	bool ENGINECALL InsertTriGroup(const uint16_t* indices, uint numTriangles, const WCHAR* wchTexFileName) override;
+	bool ENGINECALL InsertTriGroup(const uint16_t* indices, uint numTriangles, const Material& material) override;
+	void ENGINECALL EndCreateMesh(bool bOpaque, bool bUseRayTracingIfSupported) override;
 
 	uint ENGINECALL GetRenderPass() override;
 

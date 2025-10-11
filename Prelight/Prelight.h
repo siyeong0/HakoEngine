@@ -10,7 +10,7 @@ public:
 	void ENGINECALL Cleanup() override;
 
 	bool ENGINECALL PrecomputeAtmos(const AtmosParams& in, AtmosResult* out) const override;
-	bool ENGINECALL DecomposeToConvex(const MeshData& meshData) const override;
+	bool ENGINECALL DecomposeToConvex(const StaticMesh& m) const override;
 
 	// Internal methods
 	Prelight() = default;

@@ -43,12 +43,14 @@ public:
 	void ENGINECALL RenderSpriteWithTex(void* pSprObjHandle, int posX, int posY, float scaleX, float scaleY, const RECT* pRect, float z, void* pTexHandle) override;
 	void ENGINECALL RenderSprite(void* pSprObjHandle, int posX, int posY, float scaleX, float scaleY, float z) override;
 
-	IMeshObject* ENGINECALL CreateBasicMeshObject() override;
+	IMeshObject* ENGINECALL CreateBasicMeshObject(bool bOpaque, bool bUseRayTracingIfSupported) override;
+	IMeshObject* ENGINECALL CreateBasicMeshObject(const StaticMesh& staticMesh, bool bOpaque, bool bUseRayTracingIfSupported) override;
 	ISprite* ENGINECALL CreateSpriteObject() override;
 	ISprite* ENGINECALL CreateSpriteObject(const WCHAR* wchTexFileName) override;
 	ISprite* ENGINECALL CreateSpriteObject(const WCHAR* wchTexFileName, int posX, int posY, int width, int height) override;
 
 	void* ENGINECALL CreateTiledTexture(uint texWidth, uint texHeight, uint8_t r, uint8_t g, uint8_t b) override;
+	void* ENGINECALL CreateImmutableTexture(const Image& image) override;
 	void* ENGINECALL CreateDynamicTexture(uint texWidth, uint texHeight) override;
 	void* ENGINECALL CreateTextureFromFile(const WCHAR* wchFileName) override;
 	void ENGINECALL UpdateTextureWithImage(void* pTexHandle, const uint8_t* pSrcBits, uint srcWidth, uint srcHeight) override;

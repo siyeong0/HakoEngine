@@ -9,7 +9,12 @@
 // Calling convention
 #define ENGINECALL __stdcall
 
-// Typedef
+// Math and Type definitions
+constexpr float PI = 3.14159265358979323846f;
+constexpr float TWO_PI = 6.2831853071795864769f;
+constexpr float HALF_PI = 1.57079632679489661923f;
+constexpr float INV_PI = 0.31830988618379067154f;
+
 using uint = unsigned int;
 
 struct int2

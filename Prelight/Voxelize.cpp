@@ -5,7 +5,7 @@
 // ============================================================================
 
 #include "pch.h"
-#include "Common/MeshData.h"
+#include "Common/StaticMesh.h"
 #include "ConvexDecomposition.h"
 #include <fstream>
 #include <algorithm>
@@ -235,15 +235,20 @@ static void MakeSolidFromSurfaceSparse(
 //   GpuFriendlySparseGridFB surface(voxelSize, originInit), solid(voxelSize, originInit);
 //   VoxelizeToSparse(mesh, voxelSize, surface, solid, result);
 //   (옵션) DumpSolidToUnityTxt(surface/solid, result);
-void VoxelizeToSparse(const MeshData& mesh, float voxelSize, GpuFriendlySparseGridFB* outSolidVoxelGrid)
+void VoxelizeToSparse(
+	const std::vector<FLOAT3> vertices,
+	const std::vector<uint16_t> indices,
+	const Bounds& meshBounds,
+	float voxelSize,
+	GpuFriendlySparseGridFB* outSolidVoxelGrid)
 {
 	GpuFriendlySparseGridFB surface;
 	// Bounds & 그리드 배치(대칭 정렬)
-	Bounds bounds = CalculateBounds(mesh);
+	Bounds bounds = meshBounds;
 	const float s = voxelSize;
 
 	bounds.Min -= FLOAT3{ s * 0.5f, s * 0.5f, s * 0.5f };
-	bounds.Max += FLOAT3{ s * 0.5f, s * 0.5f, s * 0.5f };
+	// bounds.Max += FLOAT3{ s * 0.5f, s * 0.5f, s * 0.5f };
 
 	FLOAT3 snappedMin = bounds.Min;
 	snappedMin.x = std::floor(bounds.Min.x / s) * s;
@@ -261,13 +266,15 @@ void VoxelizeToSparse(const MeshData& mesh, float voxelSize, GpuFriendlySparseGr
 	surface.Reconfigure(s, snappedMin);
 	outSolidVoxelGrid->Reconfigure(s, snappedMin);
 
-	// 입력 포지션 복사
-	std::vector<FLOAT3> vertices(mesh.Vertices.size());
-	for (size_t i = 0; i < mesh.Vertices.size(); ++i) vertices[i] = mesh.Vertices[i].Position;
-
 	// 표면 복셀화 → Surface
-	VoxelizeSurface_SAT_ToSparse(vertices.data(), mesh.Indices.data(), (int)mesh.Indices.size() / 3,
-		nx, ny, nz, s, snappedMin, surface);
+	VoxelizeSurface_SAT_ToSparse(
+		vertices.data(),
+		indices.data(),
+		indices.size() / 3,
+		nx, ny, nz, 
+		s,
+		snappedMin, 
+		surface);
 
 	// Solid 만들기
 	MakeSolidFromSurfaceSparse(nx, ny, nz, surface, outSolidVoxelGrid);

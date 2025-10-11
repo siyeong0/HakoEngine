@@ -3,7 +3,7 @@
 #include "Common/Common.h"
 #include "AtmosStruct.h"
 
-struct MeshData;
+struct StaticMesh;
 
 struct IPrelight
 {
@@ -11,7 +11,7 @@ struct IPrelight
 	virtual void ENGINECALL Cleanup() = 0;
 
 	virtual bool ENGINECALL PrecomputeAtmos(const AtmosParams& in, AtmosResult* out) const = 0;
-	virtual bool ENGINECALL DecomposeToConvex(const MeshData& meshData) const = 0;
+	virtual bool ENGINECALL DecomposeToConvex(const StaticMesh& m) const = 0;
 };
 
 namespace prl
@@ -34,7 +34,7 @@ namespace prl
 		return g_pBackend->PrecomputeAtmos(in, out);
 	}
 
-	inline bool DecomposeToConvex(const MeshData& meshData)
+	inline bool DecomposeToConvex(const StaticMesh& meshData)
 	{
 		ASSERT(g_pBackend, "Prelight backend is not set.");
 		return g_pBackend->DecomposeToConvex(meshData);

@@ -1,4 +1,5 @@
 ﻿#include "pch.h"
+#include "Common/StaticMesh.h"
 #include "Prelight.h"
 
 bool ENGINECALL Prelight::Initialize()
@@ -55,87 +56,129 @@ bool ENGINECALL Prelight::PrecomputeAtmos(const AtmosParams& in, AtmosResult* ou
 
 #include "ConvexDecomposition.h"
 #include <fstream>
-bool ENGINECALL Prelight::DecomposeToConvex(const MeshData& meshData) const
+
+bool ENGINECALL Prelight::DecomposeToConvex(const StaticMesh& m) const
 {
-	GpuFriendlySparseGridFB solidVoxelGrid;
-	VoxelizeToSparse(meshData, 0.05f, &solidVoxelGrid);
-	std::vector<VoxelComponent> components;
-	ExtractConnectedComponents6(solidVoxelGrid, components);
-
-
+	std::vector<GpuFriendlySparseGridFB> solidVoxelGrid(m.Sections.size());
+	for (int sectionIndex = 0; sectionIndex < (int)m.Sections.size(); ++sectionIndex)
     {
-        // 메타
-        const float cell = solidVoxelGrid.Cell;
-        const FLOAT3 origin = solidVoxelGrid.Origin;
+        VoxelizeToSparse(
+            m.Positions,
+            m.Sections[sectionIndex].Indices,
+            m.MeshBounds,
+            0.05f,
+            &solidVoxelGrid[sectionIndex]);
+	}
 
+    // 섹션별 연결 성분 추출
+    std::vector<std::vector<VoxelComponent>> componentsPerSection;
+    componentsPerSection.resize(solidVoxelGrid.size());
+    size_t totalComponents = 0;
+    for (size_t si = 0; si < solidVoxelGrid.size(); ++si)
+    {
+        ExtractConnectedComponents6(solidVoxelGrid[si], componentsPerSection[si]);
+        totalComponents += componentsPerSection[si].size();
+    }
+
+    // 저장
+    {
         std::ofstream ofs("C:\\Dev\\VoxVis\\Assets\\voxels.txt");
-        ofs << "Components: " << components.size()
-            << ", Cell Size: " << cell << "\n\n";
 
-        for (size_t ci = 0; ci < components.size(); ++ci)
+        // 전체 메타
+        ofs << "Sections: " << solidVoxelGrid.size()
+            << ", Total Components: " << totalComponents << "\n";
+        for (size_t si = 0; si < solidVoxelGrid.size(); ++si)
         {
-            const VoxelComponent& comp = components[ci];
+            const float cell = solidVoxelGrid[si].Cell;
+            const FLOAT3 origin = solidVoxelGrid[si].Origin;
+            ofs << " - Section " << si
+                << " | Cell Size: " << cell
+                << " | Origin: (" << origin.x << ", " << origin.y << ", " << origin.z << ")\n";
+        }
+        ofs << "\n";
 
-            // 컴포넌트 타일 집합(빠른 포함 판정)
-            std::unordered_set<uint64_t> tileSet;
-            tileSet.reserve(comp.tiles.size() * 2);
-            for (const auto& t : comp.tiles)
-                tileSet.insert(pack3x21(t.tx, t.ty, t.tz));
+        // 섹션별 덤프
+        for (size_t si = 0; si < solidVoxelGrid.size(); ++si)
+        {
+            const auto& grid = solidVoxelGrid[si];
+            const float cell = grid.Cell;
+            const FLOAT3 origin = grid.Origin;
+            const auto& components = componentsPerSection[si];
 
-            // 컴포넌트 AABB(복셀 인덱스) → 월드 AABB(참고용 출력)
-            const int ix0 = comp.minX, iy0 = comp.minY, iz0 = comp.minZ;
-            const int ix1 = comp.maxX, iy1 = comp.maxY, iz1 = comp.maxZ;
+            ofs << "==== Section " << si
+                << " | Components: " << components.size()
+                << " | Cell Size: " << cell
+                << " | Origin: (" << origin.x << ", " << origin.y << ", " << origin.z << ")"
+                << "\n\n";
 
-            // 복셀은 [i, i+1) 공간을 차지하므로, 월드 최대는 (max+1)*cell로 잡는 게 자연스러움
-            const FLOAT3 wmin{
-                origin.x + ix0 * cell,
-                origin.y + iy0 * cell,
-                origin.z + iz0 * cell
-            };
-            const FLOAT3 wmax{
-                origin.x + (ix1 + 1) * cell,
-                origin.y + (iy1 + 1) * cell,
-                origin.z + (iz1 + 1) * cell
-            };
-
-            ofs << "==== Component " << ci
-                << " | voxels=" << comp.voxelCount
-                << " | surface=" << comp.surfaceCount
-                << " | AABB(idx)=[" << ix0 << ".." << ix1 << ", "
-                << iy0 << ".." << iy1 << ", "
-                << iz0 << ".." << iz1 << "]"
-                << " | AABB(world)=Min(" << wmin.x << ", " << wmin.y << ", " << wmin.z
-                << ") Max(" << wmax.x << ", " << wmax.y << ", " << wmax.z << ")"
-                << "\n";
-
-            // Z 슬라이스별로 출력 (컴포넌트 AABB만 순회)
-            for (int z = iz0; z <= iz1; ++z)
+            for (size_t ci = 0; ci < components.size(); ++ci)
             {
-                ofs << "Layer z=" << z << " (local " << (z - iz0) << "):\n";
-                for (int y = iy0; y <= iy1; ++y)
+                const VoxelComponent& comp = components[ci];
+
+                // 컴포넌트 타일 집합(빠른 포함 판정)
+                std::unordered_set<uint64_t> tileSet;
+                tileSet.reserve(comp.tiles.size() * 2);
+                for (const auto& t : comp.tiles)
+                    tileSet.insert(pack3x21(t.tx, t.ty, t.tz));
+
+                // 컴포넌트 AABB (voxel index space) 및 world 변환
+                const int ix0 = comp.minX, iy0 = comp.minY, iz0 = comp.minZ;
+                const int ix1 = comp.maxX, iy1 = comp.maxY, iz1 = comp.maxZ;
+
+                const FLOAT3 wmin{
+                    origin.x + ix0 * cell,
+                    origin.y + iy0 * cell,
+                    origin.z + iz0 * cell
+                };
+                const FLOAT3 wmax{
+                    origin.x + (ix1 + 1) * cell,
+                    origin.y + (iy1 + 1) * cell,
+                    origin.z + (iz1 + 1) * cell
+                };
+
+                ofs << "==== Component " << ci
+                    << " | voxels=" << comp.voxelCount
+                    << " | surface=" << comp.surfaceCount
+                    << " | AABB(idx)=[" << ix0 << ".." << ix1 << ", "
+                    << iy0 << ".." << iy1 << ", "
+                    << iz0 << ".." << iz1 << "]"
+                    << " | AABB(world)=Min(" << wmin.x << ", " << wmin.y << ", " << wmin.z
+                    << ") Max(" << wmax.x << ", " << wmax.y << ", " << wmax.z << ")"
+                    << "\n";
+
+                // Z 슬라이스별 출력 (컴포넌트 AABB만 순회)
+                for (int z = iz0; z <= iz1; ++z)
                 {
-                    for (int x = ix0; x <= ix1; ++x)
+                    ofs << "Layer z=" << z << " (local " << (z - iz0) << "):\n";
+                    for (int y = iy0; y <= iy1; ++y)
                     {
-                        // 이 복셀이 속한 타일이 컴포넌트 타일 집합에 들어있는지 먼저 확인
-                        const int tx = x >> 5, ty = y >> 5, tz = z >> 5;
-                        const bool inThisComponent = (tileSet.find(pack3x21(tx, ty, tz)) != tileSet.end());
+                        for (int x = ix0; x <= ix1; ++x)
+                        {
+                            // 타일 빠른 필터
+                            const int tx = x >> 5, ty = y >> 5, tz = z >> 5;
+                            const bool inThisComponent =
+                                (tileSet.find(pack3x21(tx, ty, tz)) != tileSet.end());
 
-                        if (!inThisComponent) {
-                            ofs << ' ' << ' ';   // 공백1 문자 + 구분 공백
-                            continue;
+                            if (!inThisComponent)
+                            {
+                                ofs << ' ' << ' '; // 빈칸 + 구분 공백
+                                continue;
+                            }
+
+                            // 실제 복셀 존재 여부 조회 (섹션별 grid!)
+                            const bool on = grid.GetVoxelIndex(x, y, z);
+                            ofs << (on ? '#' : ' ') << ' ';
                         }
-
-                        // 같은 타일 소속이면 실제 복셀 존재 여부를 조회해서 출력
-                        const bool on = solidVoxelGrid.GetVoxelIndex(x, y, z);
-                        ofs << (on ? '#' : ' ') << ' ';
+                        ofs << "\n";
                     }
                     ofs << "\n";
                 }
-                ofs << "\n";
+                ofs << "\n"; // 컴포넌트 구분 빈 줄
             }
-            ofs << "\n"; // 컴포넌트 구분 빈 줄
+
+            ofs << "\n"; // 섹션 구분 빈 줄
         }
     }
 
-	return true;
+    return true;
 }

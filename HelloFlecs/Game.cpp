@@ -27,88 +27,124 @@ static IMeshObject* createBoxMeshObject(IRenderer* pRenderer, IGeometry* pGeomet
 		L"./Resources/KittyCraft_05.dds",
 		L"./Resources/KittyCraft_06.dds"
 	};
-	// Create box mesh
-	MeshData meshData = pGeometry->CreateUnitCubeMesh();
 
-	// create BasicMeshObject from Renderer
+	StaticMesh meshData = StaticMesh::CreateUnitCubeMesh();
+
+	std::vector<Vertex> vertices = meshData.GetVertexArray();
+
 	pMeshObj = pRenderer->CreateBasicMeshObject();
-	pMeshObj->BeginCreateMesh(meshData.Vertices.data(), (uint)meshData.Vertices.size(), 6);	// 박스의 6면-1면당 삼각형 2개-인덱스 6개
+	pMeshObj->BeginCreateMesh(vertices.data(), (uint)vertices.size(), 6);	// 박스의 6면-1면당 삼각형 2개-인덱스 6개
 	for (int i = 0; i < 6; i++)
 	{
-		pMeshObj->InsertTriGroup(meshData.Indices.data() + i * 6, 2, wchTexFileNameList[i]);
+		pMeshObj->InsertTriGroup(meshData.Sections[0].Indices.data() + i * 6, 2, wchTexFileNameList[i]);
 	}
 	pMeshObj->EndCreateMesh();
 
 	return pMeshObj;
 }
 
-static IMeshObject* createSphereMeshObject(IRenderer* pRenderer, IGeometry* pGeometry)
+static IMeshObject* createSphereMeshObject(IRenderer* pRenderer, IGeometry* /*pGeometry*/)
 {
 	IMeshObject* pMeshObj = nullptr;
 	const WCHAR* wchTexFileName = L"./Resources/Kanna.dds";
-	// Create sphere mesh
-	MeshData meshData = pGeometry->CreateSphereMesh(1.0f, 20, 20);
-	// create BasicMeshObject from Renderer
-	pMeshObj = pRenderer->CreateBasicMeshObject();
-	pMeshObj->BeginCreateMesh(meshData.Vertices.data(), (uint)meshData.Vertices.size(), 1);
-	pMeshObj->InsertTriGroup(meshData.Indices.data(), (uint)meshData.Indices.size() / 3, wchTexFileName);
-	pMeshObj->EndCreateMesh();
 
+	StaticMesh meshData = StaticMesh::CreateSphereMesh(1.0f, 20, 20);
+
+	std::vector<Vertex> vertices = meshData.GetVertexArray();
+
+	pMeshObj = pRenderer->CreateBasicMeshObject();
+	pMeshObj->BeginCreateMesh(vertices.data(), (uint)vertices.size(), (uint)meshData.Sections.size());
+
+	for (size_t si = 0; si < meshData.Sections.size(); ++si)
+	{
+		const MeshSection& sec = meshData.Sections[si];
+		pMeshObj->InsertTriGroup(sec.Indices.data(), (uint)(sec.Indices.size() / 3), wchTexFileName);
+	}
+
+	pMeshObj->EndCreateMesh();
 	return pMeshObj;
 }
 
-static IMeshObject* createPlaneMeshObject(IRenderer* pRenderer, IGeometry* pGeometry)
+static IMeshObject* createPlaneMeshObject(IRenderer* pRenderer, IGeometry* /*pGeometry*/)
 {
 	IMeshObject* pMeshObj = nullptr;
 	const WCHAR* wchTexFileName = L"./Resources/Floor.dds";
-	// Create plane mesh
-	MeshData meshData = pGeometry->CreatePlaneMesh(20.0f, 20.0f);
-	// create BasicMeshObject from Renderer
+
+	StaticMesh meshData = StaticMesh::CreatePlaneMesh(20.0f, 20.0f);
+	std::vector<Vertex> vertices = meshData.GetVertexArray();
+
 	pMeshObj = pRenderer->CreateBasicMeshObject();
-	pMeshObj->BeginCreateMesh(meshData.Vertices.data(), (uint)meshData.Vertices.size(), 1);
-	pMeshObj->InsertTriGroup(meshData.Indices.data(), (uint)meshData.Indices.size() / 3, wchTexFileName);
+	pMeshObj->BeginCreateMesh(vertices.data(), (uint)vertices.size(), (uint)meshData.Sections.size());
+
+	for (size_t si = 0; si < meshData.Sections.size(); ++si)
+	{
+		const MeshSection& sec = meshData.Sections[si];
+		pMeshObj->InsertTriGroup(sec.Indices.data(), (uint)(sec.Indices.size() / 3), wchTexFileName);
+	}
+
 	pMeshObj->EndCreateMesh();
 	return pMeshObj;
 }
 
-static IMeshObject* createCylinderMeshObject(IRenderer* pRenderer, IGeometry* pGeometry)
+static IMeshObject* createCylinderMeshObject(IRenderer* pRenderer, IGeometry* /*pGeometry*/)
 {
 	IMeshObject* pMeshObj = nullptr;
 	const WCHAR* wchTexFileName = L"./Resources/Stone.dds";
-	// Create cylinder mesh
-	MeshData meshData = pGeometry->CreateCylinderMesh(0.5f, 2.0f, 20);
-	// create BasicMeshObject from Renderer
+
+	StaticMesh meshData = StaticMesh::CreateCylinderMesh(0.5f, 2.0f, 20);
+	std::vector<Vertex> vertices = meshData.GetVertexArray();
+
 	pMeshObj = pRenderer->CreateBasicMeshObject();
-	pMeshObj->BeginCreateMesh(meshData.Vertices.data(), (uint)meshData.Vertices.size(), 1);
-	pMeshObj->InsertTriGroup(meshData.Indices.data(), (uint)meshData.Indices.size() / 3, wchTexFileName);
+	pMeshObj->BeginCreateMesh(vertices.data(), (uint)vertices.size(), (uint)meshData.Sections.size());
+
+	for (size_t si = 0; si < meshData.Sections.size(); ++si)
+	{
+		const MeshSection& sec = meshData.Sections[si];
+		pMeshObj->InsertTriGroup(sec.Indices.data(), (uint)(sec.Indices.size() / 3), wchTexFileName);
+	}
+
 	pMeshObj->EndCreateMesh();
 	return pMeshObj;
 }
 
-static IMeshObject* createConeMeshObject(IRenderer* pRenderer, IGeometry* pGeometry)
+static IMeshObject* createConeMeshObject(IRenderer* pRenderer, IGeometry* /*pGeometry*/)
 {
 	IMeshObject* pMeshObj = nullptr;
 	const WCHAR* wchTexFileName = L"./Resources/Stone.dds";
-	// Create torus mesh
-	MeshData meshData = pGeometry->CreateConeMesh(1.0f, 2.0f, 20);
-	// create BasicMeshObject from Renderer
+
+	StaticMesh meshData = StaticMesh::CreateConeMesh(1.0f, 2.0f, 20);
+	std::vector<Vertex> vertices = meshData.GetVertexArray();
+
 	pMeshObj = pRenderer->CreateBasicMeshObject();
-	pMeshObj->BeginCreateMesh(meshData.Vertices.data(), (uint)meshData.Vertices.size(), 1);
-	pMeshObj->InsertTriGroup(meshData.Indices.data(), (uint)meshData.Indices.size() / 3, wchTexFileName);
+	pMeshObj->BeginCreateMesh(vertices.data(), (uint)vertices.size(), (uint)meshData.Sections.size());
+
+	for (size_t si = 0; si < meshData.Sections.size(); ++si)
+	{
+		const MeshSection& sec = meshData.Sections[si];
+		pMeshObj->InsertTriGroup(sec.Indices.data(), (uint)(sec.Indices.size() / 3), wchTexFileName);
+	}
+
 	pMeshObj->EndCreateMesh();
 	return pMeshObj;
 }
 
-static IMeshObject* createGridMeshObject(IRenderer* pRenderer, IGeometry* pGeometry)
+static IMeshObject* createGridMeshObject(IRenderer* pRenderer, IGeometry* /*pGeometry*/)
 {
 	IMeshObject* pMeshObj = nullptr;
 	const WCHAR* wchTexFileName = L"./Resources/Kanna.dds";
-	// Create grid mesh
-	MeshData meshData = pGeometry->CreateGridMesh(20.0f, 20.0f, 3, 3);
-	// create BasicMeshObject from Renderer
+
+	StaticMesh meshData = StaticMesh::CreateGridMesh(20.0f, 20.0f, 3, 3);
+	std::vector<Vertex> vertices = meshData.GetVertexArray();
+
 	pMeshObj = pRenderer->CreateBasicMeshObject();
-	pMeshObj->BeginCreateMesh(meshData.Vertices.data(), (uint)meshData.Vertices.size(), 1);
-	pMeshObj->InsertTriGroup(meshData.Indices.data(), (uint)meshData.Indices.size() / 3, wchTexFileName);
+	pMeshObj->BeginCreateMesh(vertices.data(), (uint)vertices.size(), (uint)meshData.Sections.size());
+
+	for (size_t si = 0; si < meshData.Sections.size(); ++si)
+	{
+		const MeshSection& sec = meshData.Sections[si];
+		pMeshObj->InsertTriGroup(sec.Indices.data(), (uint)(sec.Indices.size() / 3), wchTexFileName);
+	}
+
 	pMeshObj->EndCreateMesh();
 	return pMeshObj;
 }

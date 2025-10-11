@@ -684,10 +684,29 @@ void ENGINECALL D3D12Renderer::RenderSprite(
 	RenderSpriteWithTex(pSprObjHandle, posX, posY, scaleX, scaleY, nullptr, z, nullptr);
 }
 
-IMeshObject* ENGINECALL D3D12Renderer::CreateBasicMeshObject()
+IMeshObject* ENGINECALL D3D12Renderer::CreateBasicMeshObject(bool bOpaque, bool bUseRayTracingIfSupported)
 {
 	BasicMeshObject* pMeshObj = new BasicMeshObject;
 	pMeshObj->Initialize(this);
+
+	return pMeshObj;
+}
+
+IMeshObject* ENGINECALL D3D12Renderer::CreateBasicMeshObject(const StaticMesh& staticMesh, bool bOpaque, bool bUseRayTracingIfSupported)
+{
+	BasicMeshObject* pMeshObj = new BasicMeshObject;
+	pMeshObj->Initialize(this);
+
+	std::vector<Vertex> vertices = staticMesh.GetVertexArray();
+	size_t numSections = staticMesh.Sections.size();
+	pMeshObj->BeginCreateMesh(vertices.data(), vertices.size(), numSections);
+	for (size_t i = 0; i < numSections; i++)
+	{
+		const MeshSection& section = staticMesh.Sections[i];
+		pMeshObj->InsertTriGroup(section.Indices.data(), section.Indices.size(), section.Material);
+	}
+	pMeshObj->EndCreateMesh(bOpaque, bUseRayTracingIfSupported);
+
 	return pMeshObj;
 }
 
@@ -752,6 +771,30 @@ void* ENGINECALL D3D12Renderer::CreateTiledTexture(uint texWidth, uint texHeight
 void* ENGINECALL D3D12Renderer::CreateDynamicTexture(uint texWidth, uint texHeight)
 {
 	TextureHandle* pTexHandle = m_pTextureManager->CreateDynamicTexture(texWidth, texHeight);
+	return pTexHandle;
+}
+
+void* ENGINECALL D3D12Renderer::CreateImmutableTexture(const Image& image)
+{
+	std::vector<uint8_t> tempImageData(image.Width * image.Height * 4);
+	for (uint y = 0; y < image.Height; y++)
+	{
+		for (uint x = 0; x < image.Width; x++)
+		{
+			RGBA src;
+			src.r = image.Data[(x + y * image.Width) * 4 + 0].r * 255;
+			src.g = image.Data[(x + y * image.Width) * 4 + 0].g * 255;
+			src.b = image.Data[(x + y * image.Width) * 4 + 0].b * 255;
+			src.a = image.Data[(x + y * image.Width) * 4 + 0].a * 255;
+			RGBA* pDest = reinterpret_cast<RGBA*>(tempImageData.data() + (x + y * image.Width) * 4);
+			*pDest = src;
+		}
+	}
+
+	TextureHandle* pTexHandle = m_pTextureManager->CreateImmutableTexture(
+		image.Width, image.Height,
+		DXGI_FORMAT_R8G8B8A8_UNORM,
+		tempImageData.data());
 	return pTexHandle;
 }
 
