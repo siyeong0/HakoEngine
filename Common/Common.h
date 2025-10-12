@@ -30,6 +30,19 @@ struct int3
     int z;
 };
 
+struct uint2
+{
+    uint x;
+    uint y;
+};
+
+struct uint3
+{
+    uint x;
+    uint y;
+    uint z;
+};
+
 using Matrix4x4 = DirectX::XMMATRIX;
 
 #include "FVector2.h"

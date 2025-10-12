@@ -15,7 +15,7 @@
 // #define USE_GPU_UPLOAD_HEAPS
 
 // TODO: Separate to another file or project
-static IMeshObject* createBoxMeshObject(IRenderer* pRenderer, IGeometry* pGeometry)
+static IMeshObject* createBoxMeshObject(IRenderer* pRenderer)
 {
 	IMeshObject* pMeshObj = nullptr;
 	const WCHAR* wchTexFileNameList[6] =
@@ -43,7 +43,7 @@ static IMeshObject* createBoxMeshObject(IRenderer* pRenderer, IGeometry* pGeomet
 	return pMeshObj;
 }
 
-static IMeshObject* createSphereMeshObject(IRenderer* pRenderer, IGeometry* /*pGeometry*/)
+static IMeshObject* createSphereMeshObject(IRenderer* pRenderer)
 {
 	IMeshObject* pMeshObj = nullptr;
 	const WCHAR* wchTexFileName = L"./Resources/Kanna.dds";
@@ -65,7 +65,7 @@ static IMeshObject* createSphereMeshObject(IRenderer* pRenderer, IGeometry* /*pG
 	return pMeshObj;
 }
 
-static IMeshObject* createPlaneMeshObject(IRenderer* pRenderer, IGeometry* /*pGeometry*/)
+static IMeshObject* createPlaneMeshObject(IRenderer* pRenderer)
 {
 	IMeshObject* pMeshObj = nullptr;
 	const WCHAR* wchTexFileName = L"./Resources/Floor.dds";
@@ -86,7 +86,7 @@ static IMeshObject* createPlaneMeshObject(IRenderer* pRenderer, IGeometry* /*pGe
 	return pMeshObj;
 }
 
-static IMeshObject* createCylinderMeshObject(IRenderer* pRenderer, IGeometry* /*pGeometry*/)
+static IMeshObject* createCylinderMeshObject(IRenderer* pRenderer)
 {
 	IMeshObject* pMeshObj = nullptr;
 	const WCHAR* wchTexFileName = L"./Resources/Stone.dds";
@@ -107,7 +107,7 @@ static IMeshObject* createCylinderMeshObject(IRenderer* pRenderer, IGeometry* /*
 	return pMeshObj;
 }
 
-static IMeshObject* createConeMeshObject(IRenderer* pRenderer, IGeometry* /*pGeometry*/)
+static IMeshObject* createConeMeshObject(IRenderer* pRenderer)
 {
 	IMeshObject* pMeshObj = nullptr;
 	const WCHAR* wchTexFileName = L"./Resources/Stone.dds";
@@ -128,7 +128,7 @@ static IMeshObject* createConeMeshObject(IRenderer* pRenderer, IGeometry* /*pGeo
 	return pMeshObj;
 }
 
-static IMeshObject* createGridMeshObject(IRenderer* pRenderer, IGeometry* /*pGeometry*/)
+static IMeshObject* createGridMeshObject(IRenderer* pRenderer)
 {
 	IMeshObject* pMeshObj = nullptr;
 	const WCHAR* wchTexFileName = L"./Resources/Kanna.dds";
@@ -145,6 +145,30 @@ static IMeshObject* createGridMeshObject(IRenderer* pRenderer, IGeometry* /*pGeo
 		pMeshObj->InsertTriGroup(sec.Indices.data(), (uint)(sec.Indices.size() / 3), wchTexFileName);
 	}
 
+	pMeshObj->EndCreateMesh();
+	return pMeshObj;
+}
+
+static IMeshObject* createMeshFromFile(IRenderer* pRenderer, const char* filename)
+{
+	IMeshObject* pMeshObj = nullptr;
+	const WCHAR* wchTexFileName = L"./Resources/White.dds";
+
+	StaticMesh meshData;
+	if (!meshData.LoadFromFile(filename, 10.0f, true))
+	{
+		std::cout << std::format("Failed to load model from file: {}\n", filename);
+		return nullptr;
+	}
+
+	std::vector<Vertex> vertices = meshData.GetVertexArray();
+	pMeshObj = pRenderer->CreateBasicMeshObject();
+	pMeshObj->BeginCreateMesh(vertices.data(), (uint)vertices.size(), (uint)meshData.Sections.size());
+	for (size_t si = 0; si < meshData.Sections.size(); ++si)
+	{
+		const MeshSection& sec = meshData.Sections[si];
+		pMeshObj->InsertTriGroup(sec.Indices.data(), (uint)(sec.Indices.size() / 3), wchTexFileName);
+	}
 	pMeshObj->EndCreateMesh();
 	return pMeshObj;
 }
@@ -449,7 +473,7 @@ bool Game::Initialize(
 		//		.set<Position>({ 0.0f, -5.0f, 0.0f })
 		//		.set<Rotation>({ 0.0f, 0.0f, 0.0f })
 		//		.set<Scale>({ 10.0f, 10.0f, 10.0f })
-		//		.set<MeshRenderer>({ createPlaneMeshObject(m_pRenderer, m_pGeometry) });
+		//		.set<MeshRenderer>({ createPlaneMeshObject(m_pRenderer) });
 		//	m_Entities.emplace_back(e.id());
 		//}		
 		// Create grid
@@ -458,7 +482,7 @@ bool Game::Initialize(
 				.set<Position>({ 0.0f, -5.0f, 0.0f })
 				.set<Rotation>({ 0.0f, 0.0f, 0.0f })
 				.set<Scale>({ 10.0f, 10.0f, 10.0f })
-				.set<MeshRenderer>({ createGridMeshObject(m_pRenderer, m_pGeometry) });
+				.set<MeshRenderer>({ createGridMeshObject(m_pRenderer) });
 			m_Entities.emplace_back(e.id());
 		}
 		// Create cylinder
@@ -467,7 +491,7 @@ bool Game::Initialize(
 				.set<Position>({ -15.0f, 0.0f, 0.0f })
 				.set<Rotation>({ 0.0f, 0.0f, 0.0f })
 				.set<Scale>({ 3.0f, 3.0f, 3.0f })
-				.set<MeshRenderer>({ createCylinderMeshObject(m_pRenderer, m_pGeometry) });
+				.set<MeshRenderer>({ createCylinderMeshObject(m_pRenderer) });
 			m_Entities.emplace_back(e.id());
 		}
 		// Create cone
@@ -476,7 +500,7 @@ bool Game::Initialize(
 				.set<Position>({ 15.0f, 0.0f, 0.0f })
 				.set<Rotation>({ 0.0f, 0.0f, 0.0f })
 				.set<Scale>({ 3.0f, 3.0f, 3.0f })
-				.set<MeshRenderer>({ createConeMeshObject(m_pRenderer, m_pGeometry) });
+				.set<MeshRenderer>({ createConeMeshObject(m_pRenderer) });
 			m_Entities.emplace_back(e.id());
 		}
 		// Create box entities
@@ -499,7 +523,7 @@ bool Game::Initialize(
 				.set<Force>({ 0.0f, 0.0f, 0.0f })
 				.set<Rotation>({ rx, ry, rz })
 				.set<Scale>({ s, s, s })
-				.set<MeshRenderer>({ createBoxMeshObject(m_pRenderer, m_pGeometry) });
+				.set<MeshRenderer>({ createBoxMeshObject(m_pRenderer) });
 			m_Entities.emplace_back(e.id());
 		}
 		// Create sphere entities
@@ -522,7 +546,17 @@ bool Game::Initialize(
 				.set<Force>({ 0.0f, 0.0f, 0.0f })
 				.set<Rotation>({ rx, ry, rz })
 				.set<Scale>({ s, s, s })
-				.set<MeshRenderer>({ createSphereMeshObject(m_pRenderer, m_pGeometry) });
+				.set<MeshRenderer>({ createSphereMeshObject(m_pRenderer) });
+			m_Entities.emplace_back(e.id());
+		}
+
+		// Create from file (bunny)
+		{
+			flecs::entity e = m_ECSWorld.entity()
+				.set<Position>({ 15.0f, 10.0f, 0.0f })
+				.set<Rotation>({ 0.0f, 0.0f, 0.0f })
+				.set<Scale>({ 3.0f, 3.0f, 3.0f })
+				.set<MeshRenderer>({ createMeshFromFile(m_pRenderer, "./Resources/Decomp/bunny.off") });
 			m_Entities.emplace_back(e.id());
 		}
 

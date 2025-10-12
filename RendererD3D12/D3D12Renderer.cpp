@@ -698,12 +698,12 @@ IMeshObject* ENGINECALL D3D12Renderer::CreateBasicMeshObject(const StaticMesh& s
 	pMeshObj->Initialize(this);
 
 	std::vector<Vertex> vertices = staticMesh.GetVertexArray();
-	size_t numSections = staticMesh.Sections.size();
-	pMeshObj->BeginCreateMesh(vertices.data(), vertices.size(), numSections);
-	for (size_t i = 0; i < numSections; i++)
+	uint numSections = static_cast<uint>(staticMesh.Sections.size());
+	pMeshObj->BeginCreateMesh(vertices.data(), static_cast<uint>(vertices.size()), numSections);
+	for (uint i = 0; i < numSections; i++)
 	{
 		const MeshSection& section = staticMesh.Sections[i];
-		pMeshObj->InsertTriGroup(section.Indices.data(), section.Indices.size(), section.Material);
+		pMeshObj->InsertTriGroup(section.Indices.data(), static_cast<uint>(section.Indices.size()), section.Material);
 	}
 	pMeshObj->EndCreateMesh(bOpaque, bUseRayTracingIfSupported);
 
@@ -782,10 +782,10 @@ void* ENGINECALL D3D12Renderer::CreateImmutableTexture(const Image& image)
 		for (uint x = 0; x < image.Width; x++)
 		{
 			RGBA src;
-			src.r = image.Data[(x + y * image.Width) * 4 + 0].r * 255;
-			src.g = image.Data[(x + y * image.Width) * 4 + 0].g * 255;
-			src.b = image.Data[(x + y * image.Width) * 4 + 0].b * 255;
-			src.a = image.Data[(x + y * image.Width) * 4 + 0].a * 255;
+			src.r = static_cast<uint8_t>(image.Data[(x + y * image.Width) * 4 + 0].r * 255.0f);
+			src.g = static_cast<uint8_t>(image.Data[(x + y * image.Width) * 4 + 0].g * 255.0f);
+			src.b = static_cast<uint8_t>(image.Data[(x + y * image.Width) * 4 + 0].b * 255.0f);
+			src.a = static_cast<uint8_t>(image.Data[(x + y * image.Width) * 4 + 0].a * 255.0f);
 			RGBA* pDest = reinterpret_cast<RGBA*>(tempImageData.data() + (x + y * image.Width) * 4);
 			*pDest = src;
 		}

@@ -12,9 +12,9 @@ struct Color
 
 struct Image
 {
-	int Width = 0;
-	int Height = 0;
-	int Channels = 0;
+	uint Width = 0;
+	uint Height = 0;
+	uint Channels = 0;
 	std::vector<Color> Data; // RGBA format
 };
 
@@ -56,7 +56,7 @@ struct StaticMesh
 	void InsertSection(const std::vector<uint16_t> indices, const Material&& material = {});
 	void EndCreate();
 
-	bool LoadFromFile(const char* filename, float scale = 1.0f);
+	bool LoadFromFile(const char* filename, float scale = 1.0f, bool flipY = false);
 
 	std::vector<Vertex> GetVertexArray() const;
 
