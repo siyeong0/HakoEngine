@@ -258,6 +258,7 @@ void VoxelizeToSparse(
 	const Bounds& meshBounds,
 	float voxelSize,
 	GpuFriendlySparseGridFB* outSolidVoxelGrid);
+
 void ExtractConnectedComponents6(
 	const GpuFriendlySparseGridFB& solid,
 	std::vector<VoxelComponent>& outComponents);

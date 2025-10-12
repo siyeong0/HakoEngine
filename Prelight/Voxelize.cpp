@@ -175,6 +175,102 @@ static void VoxelizeSurface_SAT_ToSparse(
 	}
 }
 
+// ==========================
+// Convex Hull input builder
+// from GpuFriendlySparseGridFB surface mask
+// ==========================
+#include <unordered_set>
+#include <vector>
+#include <cstdint>
+#include <cmath>
+
+// ---- Corner integer key (dedup용) ----
+struct CornerKey {
+	int kx, ky, kz; // 격자 코너 정수좌표 (origin 기준, 칸 크기 = Cell)
+	bool operator==(const CornerKey& o) const noexcept {
+		return kx == o.kx && ky == o.ky && kz == o.kz;
+	}
+};
+struct CornerKeyHash {
+	size_t operator()(const CornerKey& k) const noexcept {
+		// 간단 해시 (large primes)
+		uint64_t h = (uint64_t)(k.kx * 73856093) ^ (uint64_t)(k.ky * 19349663) ^ (uint64_t)(k.kz * 83492791);
+		return (size_t)h;
+	}
+};
+
+// ---- 경계 판정: 채워져 있고, 6-이웃 중 하나라도 비어 있으면 boundary ----
+static inline bool IsBoundaryVoxel(const GpuFriendlySparseGridFB& g, int x, int y, int z)
+{
+	if (!g.GetVoxelIndex(x, y, z)) return false;
+	static const int d6[6][3] = { {+1,0,0},{-1,0,0},{0,+1,0},{0,-1,0},{0,0,+1},{0,0,-1} };
+	for (auto& d : d6) {
+		if (!g.GetVoxelIndex(x + d[0], y + d[1], z + d[2])) return true;
+	}
+	return false;
+}
+
+// ---- 메인: 경계 복셀들의 8 코너를 수집해 월드 좌표 반환 ----
+std::vector<FLOAT3> CollectHullCornersFromSurface(const GpuFriendlySparseGridFB& grid)
+{
+	const int T = grid.T;               // 타일 한 변(예: 32)
+	const float h = grid.Cell;          // 복셀 크기
+	const FLOAT3 O = grid.Origin;       // 그리드 원점
+
+	std::unordered_set<CornerKey, CornerKeyHash> cornerSet;
+	cornerSet.reserve((size_t)grid.Size * 64); // 대충 여유 잡기
+
+	// 타일 단위 순회
+	grid.forEachTile([&](uint64_t /*key*/, int tileIdx, int tx, int ty, int tz)
+		{
+			const TileCPU& tile = grid.TileVector[(size_t)tileIdx];
+			const int baseX = tx * T;
+			const int baseY = ty * T;
+			const int baseZ = tz * T;
+
+			// 간단/안전: 타일 내부 전수 검사 (T^3 = 32768) + tile.Get(li)
+			// (TileCPU::FULL일 땐 모두 true)
+			for (int lz = 0; lz < T; ++lz)
+				for (int ly = 0; ly < T; ++ly)
+					for (int lx = 0; lx < T; ++lx)
+					{
+						const int li = (lz * T + ly) * T + lx; // local linear index (z-major)
+						bool filled = (tile.Mode == TileCPU::FULL) ? true : tile.Get((uint16_t)li);
+						if (!filled) continue;
+
+						const int gx = baseX + lx;
+						const int gy = baseY + ly;
+						const int gz = baseZ + lz;
+
+						if (!IsBoundaryVoxel(grid, gx, gy, gz)) continue;
+
+						// 경계 복셀의 8 코너 정수 좌표 (격자 코너 키: 복셀 [ix,ix+1] × [iy,iy+1] × [iz,iz+1])
+						// sx,sy,sz = 0 or 1
+						for (int sx = 0; sx <= 1; ++sx)
+							for (int sy = 0; sy <= 1; ++sy)
+								for (int sz = 0; sz <= 1; ++sz)
+								{
+									CornerKey ck{ gx + sx, gy + sy, gz + sz };
+									cornerSet.insert(ck);
+								}
+					}
+		});
+
+	// 키 → 월드 좌표로 변환
+	std::vector<FLOAT3> pts;
+	pts.reserve(cornerSet.size());
+	for (const CornerKey& k : cornerSet)
+	{
+		// world = Origin + Cell * (k)
+		const float wx = O.x + h * (float)k.kx;
+		const float wy = O.y + h * (float)k.ky;
+		const float wz = O.z + h * (float)k.kz;
+		pts.push_back({ wx, wy, wz });
+	}
+	return pts;
+}
+
+
 // ----------------------------- Solid 만들기 -----------------------------
 static void MakeSolidFromSurfaceSparse(
 	int nx, int ny, int nz,
@@ -229,6 +325,40 @@ static void MakeSolidFromSurfaceSparse(
 		}
 	}
 }
+#include "QuickHull.h"
+
+
+bool SaveHullAsOBJ(const QHHull& hull, const std::string& path)
+{
+	FILE* f = nullptr;
+#if defined(_MSC_VER)
+	fopen_s(&f, path.c_str(), "wb");
+#else
+	f = std::fopen(path.c_str(), "wb");
+#endif
+	if (!f) return false;
+
+	// 헤더
+	std::fprintf(f, "# QHHull OBJ export\n");
+
+	// v: 1-based X Y Z
+	for (const auto& v : hull.verts) {
+		std::fprintf(f, "v %.9f %.9f %.9f\n", v.x, v.y, v.z);
+	}
+
+	// f: 1-based index
+	// Unity가 면 방향이 뒤집혀 보이면 아래 줄에서 (i0,i2,i1)로 바꿔 CW/CCW 뒤집기
+	const size_t T = hull.indices.size() / 3;
+	for (size_t t = 0; t < T; ++t) {
+		int i0 = hull.indices[3 * t + 0] + 1;
+		int i1 = hull.indices[3 * t + 1] + 1;
+		int i2 = hull.indices[3 * t + 2] + 1;
+		std::fprintf(f, "f %d %d %d\n", i0, i1, i2);
+	}
+
+	std::fclose(f);
+	return true;
+}
 
 // ---------------------- 엔트리: Sparse로 직접 생성 ----------------------
 // 사용법:
@@ -275,6 +405,17 @@ void VoxelizeToSparse(
 		s,
 		snappedMin, 
 		surface);
+
+	// Convex Hull 만들기
+	std::vector<FLOAT3> hullInput = CollectHullCornersFromSurface(surface);
+
+	std::vector<QHVec3> pts; pts.reserve(hullInput.size());
+	for (auto& p : hullInput) pts.push_back(QHVec3{ (double)p.x, (double)p.y, (double)p.z });
+
+	QuickHull3D qh;
+	QHHull hull = qh.run(pts);
+
+	SaveHullAsOBJ(hull, "C:/Dev/VoxVis/Assets/hull.obj");
 
 	// Solid 만들기
 	MakeSolidFromSurfaceSparse(nx, ny, nz, surface, outSolidVoxelGrid);

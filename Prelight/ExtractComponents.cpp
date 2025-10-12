@@ -17,7 +17,8 @@ static inline uint32_t POPCOUNT64(uint64_t x) { return (uint32_t)__builtin_popco
 #endif
 
 // ========================= Face layer (32x32 = 1024bit) =========================
-struct FaceLayer1024 {
+struct FaceLayer1024 
+{
     static constexpr int WORDS = 1024 / 64; // 16
     uint64_t w[WORDS];
     void clear() { for (int i = 0; i < WORDS; ++i) w[i] = 0ull; }
