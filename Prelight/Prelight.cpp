@@ -78,12 +78,14 @@ bool ENGINECALL Prelight::DecomposeToConvex(const StaticMesh& m) const
 			0.05f,
 			&surfaceVoxelGrid[section]);
 
-		convexHulls[section] = QuickHull::Create(surfaceVoxelGrid[section]);
+		// convexHulls[section] = QuickHull::Create(surfaceVoxelGrid[section]);
 
 		MakeSolidFromSurfaceSparse(
 			gridDim,
 			surfaceVoxelGrid[section],
 			&solidVoxelGrid[section]);
+
+		convexHulls[section] = QuickHull::Create(solidVoxelGrid[section]);
 
 		ExtractConnectedComponents6(solidVoxelGrid[section], componentsPerSection[section]);
 		numTotalComponents += componentsPerSection[section].size();

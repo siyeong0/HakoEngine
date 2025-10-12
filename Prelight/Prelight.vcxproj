@@ -144,6 +144,7 @@
     <ClInclude Include="pch.h" />
     <ClInclude Include="Prelight.h" />
     <ClInclude Include="QuickHull.h" />
+    <ClInclude Include="QuickHullBuilder.h" />
     <ClInclude Include="SparseBinaryGrid.h" />
     <ClInclude Include="Voxelize.h" />
   </ItemGroup>
@@ -159,6 +160,7 @@
     </ClCompile>
     <ClCompile Include="Prelight.cpp" />
     <ClCompile Include="QuickHull.cpp" />
+    <ClCompile Include="QuickHullBuilder.cpp" />
     <ClCompile Include="SparseBinaryGrid.cpp" />
     <ClCompile Include="Voxelize.cpp" />
   </ItemGroup>

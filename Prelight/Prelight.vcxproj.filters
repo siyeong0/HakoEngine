@@ -49,6 +49,9 @@
     <ClInclude Include="Voxelize.h">
       <Filter>Voxelize</Filter>
     </ClInclude>
+    <ClInclude Include="QuickHullBuilder.h">
+      <Filter>QuickHull</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="dllmain.cpp">
@@ -73,6 +76,9 @@
       <Filter>Voxelize</Filter>
     </ClCompile>
     <ClCompile Include="QuickHull.cpp">
+      <Filter>QuickHull</Filter>
+    </ClCompile>
+    <ClCompile Include="QuickHullBuilder.cpp">
       <Filter>QuickHull</Filter>
     </ClCompile>
   </ItemGroup>
