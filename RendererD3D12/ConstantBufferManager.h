@@ -1,5 +1,4 @@
 ﻿#pragma once
-#include "Common/Common.h"
 
 class SimpleConstantBufferPool;
 

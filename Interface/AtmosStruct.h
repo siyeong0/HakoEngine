@@ -1,5 +1,4 @@
 ﻿#pragma once
-#include "Common/Common.h"
 
 /**
  * Density layer used to describe how a gas concentration varies with altitude.

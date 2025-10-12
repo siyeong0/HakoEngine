@@ -611,7 +611,7 @@ std::vector<FLOAT3> collectHullCornersFromSurface(const SparseBinaryGrid& grid)
 				{
 					for (int lx = 0; lx < T; ++lx)
 					{
-						const int li = localIdx(lx, ly, lz);
+						const int li = SparseBinaryGrid::GetLocalIndex(lx, ly, lz);
 						bool filled = (tile.Mode == Brick::FULL) ? true : tile.GetBit((uint16_t)li);
 						if (!filled) continue;
 

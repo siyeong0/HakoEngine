@@ -58,7 +58,6 @@ bool ENGINECALL Prelight::PrecomputeAtmos(const AtmosParams& in, AtmosResult* ou
 #include "SparseBinaryGrid.h"
 #include "Voxelize.h"
 #include "QuickHull.h"
-#include <fstream>
 
 
 bool ENGINECALL Prelight::DecomposeToConvex(const StaticMesh& m) const
@@ -90,7 +89,7 @@ bool ENGINECALL Prelight::DecomposeToConvex(const StaticMesh& m) const
 		numTotalComponents += componentsPerSection[section].size();
 	}
 
-	// 저장
+	// 임시 저장
 
 	for (const auto& surfaceGrid : surfaceVoxelGrid)
 	{

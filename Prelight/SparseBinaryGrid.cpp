@@ -1,15 +1,64 @@
 ﻿#include "pch.h"
 #include "SparseBinaryGrid.h"
 
-// 복셀 로컬 인덱스(32^3)
+// ============================================================================
+// Clear
+// ----------------------------------------------------------------------------
+// Resets the hash table to an empty state without freeing its capacity:
+// - m_Size becomes 0
+// - m_Bricks storage is released (vector cleared)
+// - Hash slots are marked as EMPTY (key=0xFFFFFFFFFFFFFFFF, value=-1)
+// ============================================================================
+void SparseBinaryGrid::Clear()
+{
+    m_Size = 0;
+    m_Bricks.clear();
+    std::fill(m_Keys.begin(), m_Keys.end(), 0xFFFFFFFFFFFFFFFFull);
+    std::fill(m_Values.begin(), m_Values.end(), -1);
+}
+
+// ============================================================================
+// LocalIndex3D
+// ----------------------------------------------------------------------------
+/*
+Returns the 1D local index inside a 32×32×32 brick for (lx, ly, lz),
+row-major with X fastest:
+    li = (lz * 32 + ly) * 32 + lx
+This helper expresses the same layout as GetLocalIndex(x,y,z) but without
+bit tricks; useful for readability/tests.
+*/
+// ============================================================================
 static inline uint16_t LocalIndex3D(int lx, int ly, int lz)
 {
     return static_cast<uint16_t>((lz * Brick::NUM_VOXELS_EDGE + ly) * Brick::NUM_VOXELS_EDGE + lx);
 }
 
+// ============================================================================
+// SaveAsObj
+// ----------------------------------------------------------------------------
+/*
+Dumps the voxel grid to a Wavefront OBJ file with explicit cube geometry
+for each set voxel (no instancing). Format details:
+
+- Header includes cell size and origin for reference.
+- Each voxel is emitted as:
+    * 8 "v" positions (cube corners centered at voxel center, edge = cell)
+    * 12 "f" triangles (CCW, outward)
+- OBJ indices are 1-based; we keep a running vertex count (vcount).
+- Coordinate system: cube template is CCW assuming right-handed coordinates.
+- World position of voxel center:
+      center = origin + ( (gx+0.5), (gy+0.5), (gz+0.5) ) * cell
+- FULL bricks emit all voxels; BITSET bricks only emit set bits.
+
+Note:
+- This is a straightforward, verbose representation (potentially huge).
+  For large scenes, consider surface extraction (e.g., greedy meshing or
+  dual contouring) instead of per-voxel cubes.
+*/
+// ============================================================================
 bool SparseBinaryGrid::SaveAsObj(const std::string& path) const
 {
-    // 파일 오픈
+    // Open file for binary write ("wb") for portability of newlines on Windows.
     FILE* f = nullptr;
 #if defined(_MSC_VER)
     fopen_s(&f, path.c_str(), "wb");
@@ -25,8 +74,8 @@ bool SparseBinaryGrid::SaveAsObj(const std::string& path) const
     const float  cell = m_CellSize;
     const FLOAT3 org = m_Origin;
 
-    // 큐브 8정점(센터 기준, 유니티/우핸드 기준 CCW)
-    // (x,y,z) = (-1,+1) * 0.5
+    // Cube template (8 vertices around the center; unit cube scaled by 'cell')
+    // Vertex order:
     //  0: (-,-,-)  1: (+,-,-)  2: (+,+,-)  3: (-,+,-)
     //  4: (-,-,+)  5: (+,-,+)  6: (+,+,+)  7: (-,+,+)
     const float v8[8][3] = {
@@ -40,7 +89,8 @@ bool SparseBinaryGrid::SaveAsObj(const std::string& path) const
         {-0.5f,  0.5f,  0.5f},
     };
 
-    // 12개 삼각형(각 3인덱스), CCW 바깥향
+    // 12 triangles (3 indices each), CCW winding, outward-facing
+    // Face groups: +Z (front), -Z (back), -X (left), +X (right), +Y (top), -Y (bottom)
     const int tri[12][3] = {
         {4,5,6}, {4,6,7},    // Front  (+Z)
         {1,0,3}, {1,3,2},    // Back   (-Z)
@@ -50,28 +100,29 @@ bool SparseBinaryGrid::SaveAsObj(const std::string& path) const
         {0,1,5}, {0,5,4}     // Bottom (-Y)
     };
 
-    // OBJ는 1-based 정점 인덱스
+    // OBJ uses 1-based vertex indices. vcount tracks the total vertices written.
     size_t vcount = 0;
 
-    // 타일(브릭) 순회: func(key, brickIndex, tx, ty, tz)
+    // Iterate over all bricks: func(key, brickIndex, tx, ty, tz)
     this->ForEachTile([&](uint64_t /*key*/, int brickIndex, int tx, int ty, int tz)
         {
             const Brick& B = this->GetBrick((uint)brickIndex);
             constexpr int T = (int)Brick::NUM_VOXELS_EDGE;
 
-            // 브릭의 복셀 인덱스 기준 원점
+            // Brick origin in voxel indices (global voxel coords)
             const int baseX = tx * T;
             const int baseY = ty * T;
             const int baseZ = tz * T;
 
+            // Emits one voxel as a scaled/translated cube (8 'v' and 12 'f' records).
             auto EmitVoxel = [&](int gx, int gy, int gz)
                 {
-                    // 복셀 중심 월드 좌표
+                    // Voxel center in world coordinates
                     const double cx = org.x + (double(gx) + 0.5) * double(cell);
                     const double cy = org.y + (double(gy) + 0.5) * double(cell);
                     const double cz = org.z + (double(gz) + 0.5) * double(cell);
 
-                    // 8 정점
+                    // 8 vertices
                     for (int i = 0; i < 8; ++i) {
                         const double px = cx + double(v8[i][0]) * double(cell);
                         const double py = cy + double(v8[i][1]) * double(cell);
@@ -79,7 +130,7 @@ bool SparseBinaryGrid::SaveAsObj(const std::string& path) const
                         std::fprintf(f, "v %.9f %.9f %.9f\n", px, py, pz);
                     }
 
-                    // 12 삼각형 (OBJ 1-based)
+                    // 12 triangles (OBJ 1-based indexing)
                     const size_t base = vcount + 1;
                     for (int t = 0; t < 12; ++t) {
                         std::fprintf(f, "f %zu %zu %zu\n",
@@ -91,7 +142,7 @@ bool SparseBinaryGrid::SaveAsObj(const std::string& path) const
                 };
 
             if (B.Mode == Brick::FULL) {
-                // 꽉찬 브릭: 전 복셀 emit
+                // Solid brick: emit all voxels
                 for (int lz = 0; lz < T; ++lz)
                     for (int ly = 0; ly < T; ++ly)
                         for (int lx = 0; lx < T; ++lx) {
@@ -99,12 +150,14 @@ bool SparseBinaryGrid::SaveAsObj(const std::string& path) const
                         }
             }
             else {
-                // 비트셋 브릭: 켜진 복셀만 emit
+                // Bitset brick: emit only set voxels
                 for (int lz = 0; lz < T; ++lz)
                     for (int ly = 0; ly < T; ++ly)
                         for (int lx = 0; lx < T; ++lx) {
+                            // Either LocalIndex3D(lx,ly,lz) or GetLocalIndex(lx,ly,lz) work;
+                            // use the grid's canonical x-major helper for consistency.
                             // const uint16_t li = LocalIndex3D(lx, ly, lz);
-                            const uint16_t li = localIdx(lx, ly, lz);
+                            const uint16_t li = GetLocalIndex(lx, ly, lz);
                             if (!B.GetBit(li)) continue;
                             EmitVoxel(baseX + lx, baseY + ly, baseZ + lz);
                         }
@@ -113,4 +166,46 @@ bool SparseBinaryGrid::SaveAsObj(const std::string& path) const
 
     std::fclose(f);
     return true;
+}
+
+// ============================================================================
+// reserveHash
+// ----------------------------------------------------------------------------
+/*
+Ensures the hash table has at least 'want' slots; grows to the next power of two,
+re-hashes all existing entries with Fibonacci hashing, and preserves brick indices.
+
+Notes:
+- Load factor is kept <= 0.5 by callers (see findOrInsertTile).
+- EMPTY sentinels: key=0xFFFFFFFFFFFFFFFF, value=-1.
+- Rehash uses the same hashKey() and linear probing strategy.
+*/
+// ============================================================================
+void SparseBinaryGrid::reserveHash(size_t want)
+{
+    if (m_Capacity >= want) return;
+
+    size_t newCap = 1;
+    while (newCap < want) newCap <<= 1;
+
+    std::vector<uint64_t> nkeys(newCap, 0xFFFFFFFFFFFFFFFFull);
+    std::vector<int>      nvals(newCap, -1);
+    for (size_t i = 0; i < m_Capacity; ++i)
+    {
+        int v = m_Values[i];
+        if (v < 0) continue; // skip EMPTY
+
+        uint64_t k = m_Keys[i];
+        uint64_t mask = (uint64_t)(newCap - 1);
+        uint64_t h = hashKey(k, mask);
+        while (true)
+        {
+            if (nvals[(size_t)h] == -1) { nkeys[(size_t)h] = k; nvals[(size_t)h] = v; break; }
+            if (nkeys[(size_t)h] == k) { nvals[(size_t)h] = v; break; } // same key case
+            h = (h + 1) & mask; // linear probe
+        }
+    }
+    m_Keys.swap(nkeys);
+    m_Values.swap(nvals);
+    m_Capacity = newCap;
 }
