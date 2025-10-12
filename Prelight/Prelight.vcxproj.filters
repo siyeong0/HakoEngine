@@ -17,6 +17,15 @@
     <Filter Include="ConvexDecomposition">
       <UniqueIdentifier>{c29f9411-ce98-4b19-b4a7-6b848bdd93db}</UniqueIdentifier>
     </Filter>
+    <Filter Include="SparseBinaryGrid">
+      <UniqueIdentifier>{08cbac87-0419-4039-a471-ef60c57cfe18}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="QuickHull">
+      <UniqueIdentifier>{5ae96c24-f4b0-4852-9ecf-a784e6e0ec37}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Voxelize">
+      <UniqueIdentifier>{85b7f465-e67c-44c4-98f6-14ed946d346f}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Prelight.h">
@@ -31,8 +40,14 @@
     <ClInclude Include="ConvexDecomposition.h">
       <Filter>ConvexDecomposition</Filter>
     </ClInclude>
+    <ClInclude Include="SparseBinaryGrid.h">
+      <Filter>SparseBinaryGrid</Filter>
+    </ClInclude>
     <ClInclude Include="QuickHull.h">
-      <Filter>ConvexDecomposition</Filter>
+      <Filter>QuickHull</Filter>
+    </ClInclude>
+    <ClInclude Include="Voxelize.h">
+      <Filter>Voxelize</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -48,11 +63,17 @@
     <ClCompile Include="ComputeAtmos.cpp">
       <Filter>AtmosphericSky</Filter>
     </ClCompile>
-    <ClCompile Include="Voxelize.cpp">
-      <Filter>ConvexDecomposition</Filter>
-    </ClCompile>
     <ClCompile Include="ExtractComponents.cpp">
       <Filter>ConvexDecomposition</Filter>
+    </ClCompile>
+    <ClCompile Include="SparseBinaryGrid.cpp">
+      <Filter>SparseBinaryGrid</Filter>
+    </ClCompile>
+    <ClCompile Include="Voxelize.cpp">
+      <Filter>Voxelize</Filter>
+    </ClCompile>
+    <ClCompile Include="QuickHull.cpp">
+      <Filter>QuickHull</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

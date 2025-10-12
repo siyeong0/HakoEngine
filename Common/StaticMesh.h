@@ -56,7 +56,7 @@ struct StaticMesh
 	void InsertSection(const std::vector<uint16_t> indices, const Material&& material = {});
 	void EndCreate();
 
-	bool LoadFromFile(const char* filename, float scale = 1.0f, bool flipY = false);
+	bool LoadFromFile(const char* filename, float scale = 1.0f);
 
 	std::vector<Vertex> GetVertexArray() const;
 

@@ -305,7 +305,7 @@ static bool TryLoadRoughness(
 // -----------------------------
 // StaticMesh::LoadFromFile
 // -----------------------------
-bool StaticMesh::LoadFromFile(const char* filename, float scale, bool flipY)
+bool StaticMesh::LoadFromFile(const char* filename, float scale)
 {
 	if (!filename || !*filename)
 	{
@@ -379,14 +379,7 @@ bool StaticMesh::LoadFromFile(const char* filename, float scale, bool flipY)
 		for (uint32_t i = 0; i < nv; ++i)
 		{
 			const aiVector3D& p = m->mVertices[i];
-			if (flipY)
-			{
-				Positions[base + i] = FVector3(p.x * scale, -p.y * scale, p.z * scale);
-			}
-			else
-			{
-				Positions[base + i] = FVector3(p.x * scale, p.y * scale, p.z * scale);
-			}
+			Positions[base + i] = FVector3(p.x * scale, p.y * scale, p.z * scale);
 			totalBounds.Encapsulate(Positions[base + i]);
 		}
 
@@ -447,7 +440,6 @@ bool StaticMesh::LoadFromFile(const char* filename, float scale, bool flipY)
 			uint16_t i1 = static_cast<uint16_t>(base + f.mIndices[1]);
 			uint16_t i2 = static_cast<uint16_t>(base + f.mIndices[2]);
 
-			if (flipY) std::swap(i1, i2);
 			sec.Indices[w + 0] = i0;
 			sec.Indices[w + 1] = i1;
 			sec.Indices[w + 2] = i2;

@@ -144,6 +144,8 @@
     <ClInclude Include="pch.h" />
     <ClInclude Include="Prelight.h" />
     <ClInclude Include="QuickHull.h" />
+    <ClInclude Include="SparseBinaryGrid.h" />
+    <ClInclude Include="Voxelize.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="ComputeAtmos.cpp" />
@@ -156,6 +158,8 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="Prelight.cpp" />
+    <ClCompile Include="QuickHull.cpp" />
+    <ClCompile Include="SparseBinaryGrid.cpp" />
     <ClCompile Include="Voxelize.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

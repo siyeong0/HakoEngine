@@ -55,130 +55,152 @@ bool ENGINECALL Prelight::PrecomputeAtmos(const AtmosParams& in, AtmosResult* ou
 }
 
 #include "ConvexDecomposition.h"
+#include "SparseBinaryGrid.h"
+#include "Voxelize.h"
+#include "QuickHull.h"
 #include <fstream>
+
+// ---- Corner integer key (dedup용) ----
+struct CornerKey {
+	int kx, ky, kz; // 격자 코너 정수좌표 (origin 기준, 칸 크기 = Cell)
+	bool operator==(const CornerKey& o) const noexcept {
+		return kx == o.kx && ky == o.ky && kz == o.kz;
+	}
+};
+struct CornerKeyHash {
+	size_t operator()(const CornerKey& k) const noexcept {
+		// 간단 해시 (large primes)
+		uint64_t h = (uint64_t)(k.kx * 73856093) ^ (uint64_t)(k.ky * 19349663) ^ (uint64_t)(k.kz * 83492791);
+		return (size_t)h;
+	}
+};
+
+// ---- 경계 판정: 채워져 있고, 6-이웃 중 하나라도 비어 있으면 boundary ----
+static inline bool IsBoundaryVoxel(const SparseBinaryGrid& g, int x, int y, int z)
+{
+	ASSERT(x >= 0 && y >= 0 && z >= 0);
+	if (!g.GetVoxel(x, y, z)) return false;
+	static const int d6[6][3] = { {+1,0,0},{-1,0,0},{0,+1,0},{0,-1,0},{0,0,+1},{0,0,-1} };
+	for (auto& d : d6) {
+		if (!g.GetVoxel(x + d[0], y + d[1], z + d[2])) return true;
+	}
+	return false;
+}
+
+// ---- 메인: 경계 복셀들의 8 코너를 수집해 월드 좌표 반환 ----
+std::vector<FLOAT3> CollectHullCornersFromSurface(const SparseBinaryGrid& grid)
+{
+	const int T = Brick::NUM_VOXELS_EDGE; // 타일 한 변(예: 32)
+	const float h = grid.GetCellSize();          // 복셀 크기
+	const FLOAT3 O = grid.GetOrigin();       // 그리드 원점
+
+	std::unordered_set<CornerKey, CornerKeyHash> cornerSet;
+	cornerSet.reserve((size_t)grid.Size() * 64); // 대충 여유 잡기
+
+	// 타일 단위 순회
+	grid.ForEachTile([&](uint64_t /*key*/, int tileIdx, int tx, int ty, int tz)
+		{
+			const Brick& tile = grid.GetBrick(tileIdx);
+			const int baseX = tx * T;
+			const int baseY = ty * T;
+			const int baseZ = tz * T;
+
+			// 간단/안전: 타일 내부 전수 검사 (T^3 = 32768) + tile.Get(li)
+			// (TileCPU::FULL일 땐 모두 true)
+			for (int lz = 0; lz < T; ++lz)
+			{
+				for (int ly = 0; ly < T; ++ly)
+				{
+					for (int lx = 0; lx < T; ++lx)
+					{
+						const int li = localIdx(lx, ly, lz);
+						bool filled = (tile.Mode == Brick::FULL) ? true : tile.GetBit((uint16_t)li);
+						if (!filled) continue;
+
+						const int gx = baseX + lx;
+						const int gy = baseY + ly;
+						const int gz = baseZ + lz;
+
+						// if (!IsBoundaryVoxel(grid, gx, gy, gz)) continue;
+
+						// 경계 복셀의 8 코너 정수 좌표 (격자 코너 키: 복셀 [ix,ix+1] × [iy,iy+1] × [iz,iz+1])
+						// sx,sy,sz = 0 or 1
+						for (int sx = 0; sx <= 1; ++sx)
+						{
+							for (int sy = 0; sy <= 1; ++sy)
+							{
+								for (int sz = 0; sz <= 1; ++sz)
+								{
+									CornerKey ck{ gx + sx, gy + sy, gz + sz };
+									cornerSet.insert(ck);
+								}
+							}
+						}
+					}
+				}
+			}
+		});
+
+	// 키 → 월드 좌표로 변환
+	std::vector<FLOAT3> pts;
+	pts.reserve(cornerSet.size());
+	for (const CornerKey& k : cornerSet)
+	{
+		// world = Origin + Cell * (k)
+		const float wx = O.x + h * (float)k.kx;
+		const float wy = O.y + h * (float)k.ky;
+		const float wz = O.z + h * (float)k.kz;
+		pts.push_back({ wx, wy, wz });
+	}
+	return pts;
+}
+
 
 bool ENGINECALL Prelight::DecomposeToConvex(const StaticMesh& m) const
 {
-	std::vector<GpuFriendlySparseGridFB> solidVoxelGrid(m.Sections.size());
-	for (int sectionIndex = 0; sectionIndex < (int)m.Sections.size(); ++sectionIndex)
-    {
-        VoxelizeToSparse(
-            m.Positions,
-            m.Sections[sectionIndex].Indices,
-            m.MeshBounds,
-            0.05f,
-            &solidVoxelGrid[sectionIndex]);
+	uint numSections = (uint)m.Sections.size();
+	std::vector<SparseBinaryGrid> surfaceVoxelGrid(numSections);
+	std::vector<SparseBinaryGrid> solidVoxelGrid(numSections);
+	std::vector<QuickHull> convexHulls(numSections);
+	std::vector<std::vector<VoxelComponent>> componentsPerSection(numSections);
+	size_t numTotalComponents = 0;
+
+	for (uint section = 0; section < numSections; ++section)
+	{
+		uint3 gridDim = VoxelizeToSparse(
+			m.Positions,
+			m.Sections[section].Indices,
+			m.MeshBounds,
+			0.05f,
+			&surfaceVoxelGrid[section]);
+
+		std::vector<FLOAT3> hullPoints = CollectHullCornersFromSurface(surfaceVoxelGrid[section]);
+		convexHulls[section] = QuickHull::Create(hullPoints);
+
+		MakeSolidFromSurfaceSparse(
+			gridDim,
+			surfaceVoxelGrid[section],
+			&solidVoxelGrid[section]);
+
+		ExtractConnectedComponents6(solidVoxelGrid[section], componentsPerSection[section]);
+		numTotalComponents += componentsPerSection[section].size();
 	}
 
-    // 섹션별 연결 성분 추출
-    std::vector<std::vector<VoxelComponent>> componentsPerSection;
-    componentsPerSection.resize(solidVoxelGrid.size());
-    size_t totalComponents = 0;
-    for (size_t si = 0; si < solidVoxelGrid.size(); ++si)
-    {
-        ExtractConnectedComponents6(solidVoxelGrid[si], componentsPerSection[si]);
-        totalComponents += componentsPerSection[si].size();
-    }
+	// 저장
 
-    // 저장
-    {
-        std::ofstream ofs("C:\\Dev\\VoxVis\\Assets\\voxels.txt");
+	for (const auto& surfaceGrid : surfaceVoxelGrid)
+	{
+		static int surfCount = 0;
+		surfaceGrid.SaveAsObj(std::format("C:\\Dev\\VoxVis\\Assets\\surface_{}.obj", surfCount));
+		surfCount++;
+	}
 
-        // 전체 메타
-        ofs << "Sections: " << solidVoxelGrid.size()
-            << ", Total Components: " << totalComponents << "\n";
-        for (size_t si = 0; si < solidVoxelGrid.size(); ++si)
-        {
-            const float cell = solidVoxelGrid[si].Cell;
-            const FLOAT3 origin = solidVoxelGrid[si].Origin;
-            ofs << " - Section " << si
-                << " | Cell Size: " << cell
-                << " | Origin: (" << origin.x << ", " << origin.y << ", " << origin.z << ")\n";
-        }
-        ofs << "\n";
+	int hullCount = 0;
+	for (const auto& hull : convexHulls)
+	{
+		hull.SaveAsOBJ(std::format("C:\\Dev\\VoxVis\\Assets\\hull_{}.obj", hullCount));
+		hullCount++;
+	}
 
-        // 섹션별 덤프
-        for (size_t si = 0; si < solidVoxelGrid.size(); ++si)
-        {
-            const auto& grid = solidVoxelGrid[si];
-            const float cell = grid.Cell;
-            const FLOAT3 origin = grid.Origin;
-            const auto& components = componentsPerSection[si];
-
-            ofs << "==== Section " << si
-                << " | Components: " << components.size()
-                << " | Cell Size: " << cell
-                << " | Origin: (" << origin.x << ", " << origin.y << ", " << origin.z << ")"
-                << "\n\n";
-
-            for (size_t ci = 0; ci < components.size(); ++ci)
-            {
-                const VoxelComponent& comp = components[ci];
-
-                // 컴포넌트 타일 집합(빠른 포함 판정)
-                std::unordered_set<uint64_t> tileSet;
-                tileSet.reserve(comp.tiles.size() * 2);
-                for (const auto& t : comp.tiles)
-                    tileSet.insert(pack3x21(t.tx, t.ty, t.tz));
-
-                // 컴포넌트 AABB (voxel index space) 및 world 변환
-                const int ix0 = comp.minX, iy0 = comp.minY, iz0 = comp.minZ;
-                const int ix1 = comp.maxX, iy1 = comp.maxY, iz1 = comp.maxZ;
-
-                const FLOAT3 wmin{
-                    origin.x + ix0 * cell,
-                    origin.y + iy0 * cell,
-                    origin.z + iz0 * cell
-                };
-                const FLOAT3 wmax{
-                    origin.x + (ix1 + 1) * cell,
-                    origin.y + (iy1 + 1) * cell,
-                    origin.z + (iz1 + 1) * cell
-                };
-
-                ofs << "==== Component " << ci
-                    << " | voxels=" << comp.voxelCount
-                    << " | surface=" << comp.surfaceCount
-                    << " | AABB(idx)=[" << ix0 << ".." << ix1 << ", "
-                    << iy0 << ".." << iy1 << ", "
-                    << iz0 << ".." << iz1 << "]"
-                    << " | AABB(world)=Min(" << wmin.x << ", " << wmin.y << ", " << wmin.z
-                    << ") Max(" << wmax.x << ", " << wmax.y << ", " << wmax.z << ")"
-                    << "\n";
-
-                // Z 슬라이스별 출력 (컴포넌트 AABB만 순회)
-                for (int z = iz0; z <= iz1; ++z)
-                {
-                    ofs << "Layer z=" << z << " (local " << (z - iz0) << "):\n";
-                    for (int y = iy0; y <= iy1; ++y)
-                    {
-                        for (int x = ix0; x <= ix1; ++x)
-                        {
-                            // 타일 빠른 필터
-                            const int tx = x >> 5, ty = y >> 5, tz = z >> 5;
-                            const bool inThisComponent =
-                                (tileSet.find(pack3x21(tx, ty, tz)) != tileSet.end());
-
-                            if (!inThisComponent)
-                            {
-                                ofs << ' ' << ' '; // 빈칸 + 구분 공백
-                                continue;
-                            }
-
-                            // 실제 복셀 존재 여부 조회 (섹션별 grid!)
-                            const bool on = grid.GetVoxelIndex(x, y, z);
-                            ofs << (on ? '#' : ' ') << ' ';
-                        }
-                        ofs << "\n";
-                    }
-                    ofs << "\n";
-                }
-                ofs << "\n"; // 컴포넌트 구분 빈 줄
-            }
-
-            ofs << "\n"; // 섹션 구분 빈 줄
-        }
-    }
-
-    return true;
+	return true;
 }

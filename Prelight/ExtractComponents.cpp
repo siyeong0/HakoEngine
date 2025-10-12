@@ -1,4 +1,5 @@
 ﻿#include "pch.h"
+#include "SparseBinaryGrid.h"
 #include "ConvexDecomposition.h"
 // ===============================================================
 // Connected Components over GpuFriendlySparseGridFB (6-neighbor)
@@ -17,7 +18,7 @@ static inline uint32_t POPCOUNT64(uint64_t x) { return (uint32_t)__builtin_popco
 #endif
 
 // ========================= Face layer (32x32 = 1024bit) =========================
-struct FaceLayer1024 
+struct FaceLayer1024
 {
     static constexpr int WORDS = 1024 / 64; // 16
     uint64_t w[WORDS];
@@ -35,10 +36,10 @@ enum FaceDir { XMIN = 0, XMAX = 1, YMIN = 2, YMAX = 3, ZMIN = 4, ZMAX = 5 };
 
 // ========================= 타일의 face 레이어 추출 =========================
 // TileCPU::Bits 인덱스: li = x | (y<<5) | (z<<10), x,y,z ∈ [0..31]
-static inline void ExtractFaceLayer(const TileCPU& t, FaceDir f, FaceLayer1024& out)
+static inline void ExtractFaceLayer(const Brick& t, FaceDir f, FaceLayer1024& out)
 {
     out.clear();
-    if (t.Mode == TileCPU::FULL) { out.setAll(); return; }
+    if (t.Mode == Brick::FULL) { out.setAll(); return; }
 
     if (f == XMIN || f == XMAX) {
         const int x = (f == XMIN) ? 0 : 31;
@@ -79,19 +80,19 @@ static inline void ExtractFaceLayer(const TileCPU& t, FaceDir f, FaceLayer1024& 
 }
 
 // 두 타일의 맞은편 face가 1비트라도 겹치면 연결
-static inline bool TilesFaceConnected(const TileCPU& A, FaceDir fA, const TileCPU& B, FaceDir fB)
+static inline bool TilesFaceConnected(const Brick& A, FaceDir fA, const Brick& B, FaceDir fB)
 {
-    if (A.Mode == TileCPU::FULL && B.Mode == TileCPU::FULL) return true;
+    if (A.Mode == Brick::FULL && B.Mode == Brick::FULL) return true;
     FaceLayer1024 LA, LB; ExtractFaceLayer(A, fA, LA); ExtractFaceLayer(B, fB, LB);
     return FaceLayer1024::popcntAND(LA, LB) > 0;
 }
 
 // ========================= 타일 로컬 AABB (정밀, 반-열린 [min,max)) =========================
-static inline bool GetTileLocalAABB(const TileCPU& t,
+static inline bool GetTileLocalAABB(const Brick& t,
     int& lx0, int& ly0, int& lz0,
     int& lx1, int& ly1, int& lz1) // [min, max) in [0,32]
 {
-    if (t.Mode == TileCPU::FULL) {
+    if (t.Mode == Brick::FULL) {
         lx0 = ly0 = lz0 = 0;
         lx1 = ly1 = lz1 = 32;
         return true;
@@ -102,7 +103,7 @@ static inline bool GetTileLocalAABB(const TileCPU& t,
     int maxx = -1, maxy = -1, maxz = -1;
 
     // Bits는 512 words(=32768 bits). 세트 비트만 스캔.
-    for (int wi = 0; wi < TileCPU::BITSET_WORDS; ++wi) {
+    for (int wi = 0; wi < Brick::NUM_WORDS_U64; ++wi) {
         uint64_t w = t.Bits[(size_t)wi];
         while (w) {
 #if defined(_MSC_VER)
@@ -133,19 +134,18 @@ static inline bool GetTileLocalAABB(const TileCPU& t,
 
 // ========================= 연결 성분 추출 (6-이웃) =========================
 void ExtractConnectedComponents6(
-    const GpuFriendlySparseGridFB& solid,
+    const SparseBinaryGrid& solid,
     std::vector<VoxelComponent>& outComponents)
 {
     // 0) 타일이 없으면 종료
-    const size_t numTiles = solid.TileVector.size();
+    const size_t numTiles = solid.GetNumBricks();
     if (numTiles == 0) { outComponents.clear(); return; }
 
     // 1) 타일 인덱스 -> (tx,ty,tz) 좌표 맵 구성 (인덱스 접근 O(1)용)
-    struct TileCoord { int tx, ty, tz; };
-    std::vector<TileCoord> coordLUT(numTiles, { INT32_MAX, INT32_MAX, INT32_MAX });
+    std::vector<uint3> coordLUT(numTiles, { INT32_MAX, INT32_MAX, INT32_MAX });
 
     // forEachTile은 해시 슬롯 순회지만, 내부 val(=tileIdx)와 (tx,ty,tz)를 준다.
-    solid.forEachTile([&](uint64_t /*key*/, int v, int tx, int ty, int tz) {
+    solid.ForEachTile([&](uint64_t /*key*/, uint v, uint tx, uint ty, uint tz) {
         if ((size_t)v < numTiles) coordLUT[(size_t)v] = { tx, ty, tz };
         });
 
@@ -166,8 +166,8 @@ void ExtractConnectedComponents6(
         if (visited[startIdx]) continue;
 
         // coordLUT가 채워지지 않은 빈 슬롯은 스킵
-        const TileCoord c0 = coordLUT[startIdx];
-        if (c0.tx == INT32_MAX) { visited[startIdx] = 1; continue; }
+        const uint3 c0 = coordLUT[startIdx];
+        if (c0.x == INT32_MAX) { visited[startIdx] = 1; continue; }
 
         // 새 컴포넌트
         VoxelComponent comp;
@@ -185,21 +185,21 @@ void ExtractConnectedComponents6(
         while (!q.empty()) {
             const int curIdx = q.back(); q.pop_back();
 
-            const TileCPU& Tcur = solid.TileVector[(size_t)curIdx];
-            const TileCoord tc = coordLUT[(size_t)curIdx];
+            const Brick& Tcur = solid.GetBrick(curIdx);
+            const uint3 tc = coordLUT[(size_t)curIdx];
 
             // 통계: 타일 목록, 복셀 수
-            comp.tiles.push_back({ tc.tx, tc.ty, tc.tz });
-            comp.voxelCount += (Tcur.Mode == TileCPU::FULL) ? (uint64_t)TileCPU::TILE_VOXELS
+            comp.tiles.push_back(tc);
+            comp.voxelCount += (Tcur.Mode == Brick::FULL) ? (uint64_t)Brick::NUM_VOXELS
                 : (uint64_t)Tcur.Count;
 
             // 정밀 AABB 누적 (반-열린)
             {
                 int lx0, ly0, lz0, lx1, ly1, lz1;
                 if (GetTileLocalAABB(Tcur, lx0, ly0, lz0, lx1, ly1, lz1)) {
-                    const int baseX = tc.tx << 5;
-                    const int baseY = tc.ty << 5;
-                    const int baseZ = tc.tz << 5;
+                    const int baseX = tc.x << 5;
+                    const int baseY = tc.y << 5;
+                    const int baseZ = tc.z << 5;
 
                     const int gx0 = baseX + lx0;
                     const int gy0 = baseY + ly0;
@@ -220,15 +220,15 @@ void ExtractConnectedComponents6(
 
             // 6방향 이웃 확장
             for (int k = 0; k < 6; ++k) {
-                const int ntx = tc.tx + d6[k][0];
-                const int nty = tc.ty + d6[k][1];
-                const int ntz = tc.tz + d6[k][2];
+                const uint ntx = tc.x + d6[k][0];
+                const uint nty = tc.y + d6[k][1];
+                const uint ntz = tc.z + d6[k][2];
 
-                const int neiIdx = solid.findTileIndex(ntx, nty, ntz);
+                const int neiIdx = solid.FindTileIndex(ntx, nty, ntz);
                 if (neiIdx < 0) continue;
                 if (visited[(size_t)neiIdx]) continue;
 
-                const TileCPU& Tnei = solid.TileVector[(size_t)neiIdx];
+                const Brick& Tnei = solid.GetBrick(neiIdx);
 
                 // face-overlap 체크 (A: cur의 +dir face, B: nei의 -dir face)
                 if (TilesFaceConnected(Tcur, facePos[k], Tnei, faceNeg[k])) {
@@ -243,23 +243,23 @@ void ExtractConnectedComponents6(
         uint64_t surf = 0;
         for (const auto& tc : comp.tiles) {
             uint64_t faceOut[6] = { 0,0,0,0,0,0 };
-            const int selfIdx = solid.findTileIndex(tc.tx, tc.ty, tc.tz);
+            const int selfIdx = solid.FindTileIndex(tc.x, tc.y, tc.z);
             if (selfIdx < 0) continue; // 안전장치
-            const TileCPU& Tcur = solid.TileVector[(size_t)selfIdx];
+            const Brick& Tcur = solid.GetBrick(selfIdx);
 
             for (int k = 0; k < 6; ++k) {
-                const int ntx = tc.tx + d6[k][0];
-                const int nty = tc.ty + d6[k][1];
-                const int ntz = tc.tz + d6[k][2];
-                const int nidx = solid.findTileIndex(ntx, nty, ntz);
+                const uint ntx = tc.x + d6[k][0];
+                const uint nty = tc.y + d6[k][1];
+                const uint ntz = tc.z + d6[k][2];
+                const int nidx = solid.FindTileIndex(ntx, nty, ntz);
 
-                if (Tcur.Mode == TileCPU::FULL) {
+                if (Tcur.Mode == Brick::FULL) {
                     if (nidx < 0) {
                         faceOut[k] = 32u * 32u; // 전부 외부
                     }
                     else {
-                        const TileCPU& Tnei = solid.TileVector[(size_t)nidx];
-                        if (Tnei.Mode == TileCPU::FULL) {
+                        const Brick& Tnei = solid.GetBrick(nidx);
+                        if (Tnei.Mode == Brick::FULL) {
                             faceOut[k] = 0; // 전부 내부
                         }
                         else {
@@ -275,8 +275,8 @@ void ExtractConnectedComponents6(
                         faceOut[k] = Cf.popcnt();
                     }
                     else {
-                        const TileCPU& Tnei = solid.TileVector[(size_t)nidx];
-                        if (Tnei.Mode == TileCPU::FULL) {
+                        const Brick& Tnei = solid.GetBrick(nidx);
+                        if (Tnei.Mode == Brick::FULL) {
                             faceOut[k] = 0; // 전부 내부
                         }
                         else {
