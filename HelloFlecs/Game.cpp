@@ -155,7 +155,7 @@ static IMeshObject* createMeshFromFile(IRenderer* pRenderer, const char* filenam
 	const WCHAR* wchTexFileName = L"./Resources/White.dds";
 
 	StaticMesh meshData;
-	if (!meshData.LoadFromFile(filename, 10.0f, true))
+	if (!meshData.LoadFromFile(filename, 10.0f))
 	{
 		std::cout << std::format("Failed to load model from file: {}\n", filename);
 		return nullptr;
