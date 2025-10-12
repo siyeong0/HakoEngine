@@ -1,17 +1,8 @@
 ﻿#pragma once
 
-class SparseBinaryGrid;
+struct SparseBinaryGrid;
 
-struct QuickHull
-{
-	std::vector<FLOAT3> Vertices;
-	std::vector<uint32_t> Indices;
+void QuickHull(const SparseBinaryGrid& voxelGrid, std::vector<FLOAT3>* outVertices, std::vector<uint32_t>* outIndices);
+void QuickHull(const std::vector<FLOAT3>& points, std::vector<FLOAT3>* outVertices, std::vector<uint32_t>* outIndices);
 
-	QuickHull() = default;
-	~QuickHull() = default;
-
-	static QuickHull Create(const std::vector<FLOAT3>& points);
-	static QuickHull Create(const SparseBinaryGrid& grid);
-
-	bool SaveAsOBJ(const std::string& path) const;
-};
+bool SaveHullAsObj(const std::string& path, const std::vector<FLOAT3>& vertices, const std::vector<uint32_t>& indices);
