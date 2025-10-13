@@ -63,6 +63,7 @@ public:
 	size_t NumVoxels() const; // total number of set voxels in all bricks
 	void Clear();
 	bool SaveAsObj(const std::string& path) const;
+	bool SaveAsCasper(const std::string& path) const; // CAPSER .cpr format
 
 private:
 	// Fibonacci hashing (multiplicative hashing); mask assumes power-of-two capacity.

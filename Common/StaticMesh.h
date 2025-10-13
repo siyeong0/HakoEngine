@@ -1,23 +1,7 @@
 ﻿#pragma once
 #include <vector>
+#include "Image.h"
 #include "Common/Common.h"
-
-struct Color
-{
-	float r = 1.0f;
-	float g = 1.0f;
-	float b = 1.0f;
-	float a = 1.0f;
-};
-
-struct Image
-{
-	uint Width = 0;
-	uint Height = 0;
-	uint Channels = 0;
-	std::vector<Color> Data; // RGBA format
-};
-
 
 struct Material
 {
