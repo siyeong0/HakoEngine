@@ -460,9 +460,9 @@ std::vector<FLOAT3> collectHullCornersFromSurface(const SparseBinaryGrid& grid)
 	cornerSet.reserve((size_t)grid.Size() * 64); // rough guess to reduce rehashing
 
 	// Iterate tiles; within each tile, iterate all local voxels.
-	grid.ForEachTile([&](uint64_t /*key*/, int tileIdx, int tx, int ty, int tz)
+	grid.ForEachTile([&](uint64_t /*key*/, int brickIdx, int tx, int ty, int tz)
 		{
-			const Brick& tile = grid.GetBrick(tileIdx);
+			const Brick& tile = grid.GetBrick(brickIdx);
 			const int baseX = tx * T;
 			const int baseY = ty * T;
 			const int baseZ = tz * T;

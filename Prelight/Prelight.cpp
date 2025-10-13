@@ -62,39 +62,74 @@ bool ENGINECALL Prelight::PrecomputeAtmos(const AtmosParams& in, AtmosResult* ou
 
 bool ENGINECALL Prelight::DecomposeToConvex(const StaticMesh& m) const
 {
-	uint numSections = (uint)m.Sections.size();
-	std::vector<SparseBinaryGrid> surfaceVoxelGrid(numSections);
-	std::vector<SparseBinaryGrid> solidVoxelGrid(numSections);
-	std::vector<std::pair<std::vector<FLOAT3>, std::vector<uint32_t>>> convexHulls(numSections);
-	std::vector<std::vector<VoxelComponent>> componentsPerSection(numSections);
-	size_t numTotalComponents = 0;
+	constexpr float kVoxelSize = 0.05f;
+
+	const uint numSections = (uint)m.Sections.size();
+	std::vector<SparseBinaryGrid> surfaceGrids; 
+	std::vector<std::pair<std::vector<FLOAT3>, std::vector<uint32_t>>> hulls; 
+	surfaceGrids.reserve(numSections * 8);
+	hulls.reserve(numSections * 8);
 
 	for (uint section = 0; section < numSections; ++section)
 	{
-		uint3 gridDim = VoxelizeToSparse(
+		// 1. Voxelize surface to sparse grid
+		SparseBinaryGrid surfaceGrid;
+
+		VoxelizeToSparse(
 			m.Positions,
 			m.Sections[section].Indices,
 			m.MeshBounds,
-			0.05f,
-			&surfaceVoxelGrid[section]);
+			kVoxelSize,
+			&surfaceGrid);
 
-		std::pair<std::vector<FLOAT3>, std::vector<uint32_t>>& hull = convexHulls[section];
-		QuickHull(surfaceVoxelGrid[section], &hull.first, &hull.second);
+		SparseBinaryGrid solidGrid;
+		MakeSolidFromSurfaceSparse(surfaceGrid, &solidGrid);
 
-		MakeSolidFromSurfaceSparse(
-			gridDim,
-			surfaceVoxelGrid[section],
-			&solidVoxelGrid[section]);
+		// 2. Extract connected components
+		std::vector<SparseBinaryGrid> components;
+		ExtractConnectedComponents6(solidGrid, &components);
+		if (components.empty())
+		{
+			std::cout << std::format("[Section {}] no connected components.\n", section);
+			continue;
+		}
 
-		//QuickHull(solidVoxelGrid[section], &hull.first, &hull.second);
+		// 3. Compute convex hull over surface corners
+		for (uint compIdx = 0; compIdx < components.size(); ++compIdx)
+		{
+			const SparseBinaryGrid& compSolid = components[compIdx];
 
-		ExtractConnectedComponents6(solidVoxelGrid[section], componentsPerSection[section]);
-		numTotalComponents += componentsPerSection[section].size();
+			std::pair<std::vector<FLOAT3>, std::vector<uint32_t>> compHull;
+			QuickHull(compSolid, &compHull.first, &compHull.second);
+
+			SparseBinaryGrid compHullSurface;
+			VoxelizeToSparse(
+				compHull.first,
+				compHull.second,
+				m.MeshBounds,
+				kVoxelSize,
+				&compHullSurface);
+
+			SparseBinaryGrid compHullSolid;
+			MakeSolidFromSurfaceSparse(compHullSurface, &compHullSolid);
+
+			const double concavity = ComputeConcavity(compSolid, compHullSolid);
+
+			std::cout << std::format("Section {}: grid dim={}x{}x{}, hull dim = {}x{}x{}, concavity={}\n",
+				section,
+				surfaceGrid.GetDim().x, surfaceGrid.GetDim().y, surfaceGrid.GetDim().z,
+				compHullSolid.GetDim().x, compHullSolid.GetDim().y, compHullSolid.GetDim().z,
+				concavity);
+
+			surfaceGrids.emplace_back(std::move(surfaceGrid));
+			hulls.emplace_back(std::move(compHull));
+		}
+		
 	}
 
 	// 임시 저장
 
-	for (const auto& surfaceGrid : surfaceVoxelGrid)
+	for (const auto& surfaceGrid : surfaceGrids)
 	{
 		static int surfCount = 0;
 		surfaceGrid.SaveAsObj(std::format("C:\\Dev\\VoxVis\\Assets\\surface_{}.obj", surfCount));
@@ -102,7 +137,7 @@ bool ENGINECALL Prelight::DecomposeToConvex(const StaticMesh& m) const
 	}
 
 	int hullCount = 0;
-	for (const auto& hull : convexHulls)
+	for (const auto& hull : hulls)
 	{
 		SaveHullAsObj(
 			std::format("C:\\Dev\\VoxVis\\Assets\\hull_{}.obj", hullCount),

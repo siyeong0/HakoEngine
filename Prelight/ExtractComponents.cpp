@@ -234,210 +234,100 @@ static inline bool getTileLocalAABB(
 
 void ExtractConnectedComponents6(
 	const SparseBinaryGrid& solid,
-	std::vector<VoxelComponent>& outComponents)
+	std::vector<SparseBinaryGrid>* outComponents)
 {
-	// (0) If there are no tiles, abort (defensive, also documents assumption).
+	// (0) Early out for empty grids.
 	const size_t numBricks = solid.GetNumBricks();
-	ASSERT(numBricks > 0, "ExtractConnectedComponents6: solid has no tiles.");
+	ASSERT(numBricks > 0, "Empty input grid");
 
-	// (1) Build tile-index -> (tx,ty,tz) lookup for O(1) coordinate fetch in BFS.
-	// The container may iterate hash buckets; ForEachTile provides both tile index
-	// and coordinates; fill gaps with INT32_MAX as "invalid".
-	std::vector<uint3> coordLUT(numBricks, { INT32_MAX, INT32_MAX, INT32_MAX });
-
-	// forEachTile iterates the hash slots internally, but gives (val=tileIdx) and (tx,ty,tz).
-	solid.ForEachTile([&](uint64_t /*key*/, uint v, uint tx, uint ty, uint tz)
+	// (1) Build an index → (tx,ty,tz) lookup so we can fetch tile coords in O(1).
+	//     ForEachTile may iterate internal hash buckets; we fill a dense LUT.
+	std::vector<uint3> coordLUT(numBricks, { (uint)INT32_MAX,(uint)INT32_MAX,(uint)INT32_MAX });
+	solid.ForEachTile([&](uint64_t /*key*/, uint idx, uint tx, uint ty, uint tz) 
 		{
-			if ((size_t)v < numBricks)
+			if ((size_t)idx < numBricks)
 			{
-				coordLUT[(size_t)v] = { tx, ty, tz };
+				coordLUT[(size_t)idx] = { tx, ty, tz };
 			}
 		});
 
-	// (2) Visit flags per tile index.
+	// (2) Visited flags per brick index.
 	std::vector<bool> bVisited(numBricks, false);
 
-	// (3) Prepare output container.
-	outComponents.clear();
-	outComponents.reserve(numBricks);
-
-	// 6-neighborhood vectors and matching face directions for overlap test:
-	// facePos[k] is the face of the "current" brick toward the neighbor,
-	// faceNeg[k] is the face of the neighbor toward the current brick.
+	// (3) 6-neighborhood offsets and matching face directions for the overlap test.
 	const int d6[6][3] = { {+1,0,0},{-1,0,0},{0,+1,0},{0,-1,0},{0,0,+1},{0,0,-1} };
 	const FACE_DIR facePos[6] = { POSX, NEGX, POSY, NEGY, POSZ, NEGZ };
 	const FACE_DIR faceNeg[6] = { NEGX, POSX, NEGY, POSY, NEGZ, POSZ };
 
-	// (4) BFS from every unvisited tile (each BFS yields one connected component).
+	// (4) Prepare output container.
+	outComponents->clear();
+	outComponents->reserve(numBricks); // worst case: each brick becomes its own component
+
+	// (5) Run BFS from every unvisited brick; each BFS yields one component.
 	for (size_t startIdx = 0; startIdx < numBricks; ++startIdx)
 	{
 		if (bVisited[startIdx]) continue;
 
 		const uint3 c0 = coordLUT[startIdx];
-		if (c0.x == INT32_MAX)
+		if (c0.x == (uint)INT32_MAX) 
 		{
-			// Not an actual tile index (hole in LUT caused by hash structure). Skip.
+			// Hole in the LUT (due to hashing). Mark and skip.
 			bVisited[startIdx] = true;
 			continue;
 		}
 
-		VoxelComponent component;
-		component.Id = (int)outComponents.size();
+		// Collect brick coordinates for the current component.
+		std::vector<uint3> compBricks;
+		compBricks.reserve(64);
 
-		// BFS worklist: store tile indices.
-		std::vector<int> q; q.reserve(64);
-		q.emplace_back((int)startIdx);
+		// BFS worklist (LIFO/stack is fine for flood fill).
+		std::vector<int> stack; stack.reserve(64);
+		stack.emplace_back((int)startIdx);
 		bVisited[startIdx] = true;
 
-		while (!q.empty())
+		while (!stack.empty())
 		{
-			const int currIdx = q.back(); q.pop_back();
+			const int curr = stack.back(); stack.pop_back();
 
-			const Brick& currBrick = solid.GetBrick(currIdx);
-			const uint3 tc = coordLUT[(size_t)currIdx];
+			const uint3 tc = coordLUT[(size_t)curr];
+			compBricks.emplace_back(tc);
 
-			// Record brick coordinate in this component.
-			component.BrickIndices.emplace_back(tc);
+			const Brick& Bcur = solid.GetBrick(curr);
 
-			// Accumulate voxel count:
-			// - FULL  brick contributes 32^3
-			// - BITSET brick contributes its precise Count
-			component.NumVoxels += (currBrick.Mode == Brick::FULL) ? (uint64_t)Brick::NUM_VOXELS : (uint64_t)currBrick.Count;
-
-			// Merge global AABB using local AABB translated by brick base.
-			{
-				int lx0, ly0, lz0, lx1, ly1, lz1;
-				if (getTileLocalAABB(currBrick, lx0, ly0, lz0, lx1, ly1, lz1))
-				{
-					const int baseX = tc.x << 5; // brick size = 32 => <<5
-					const int baseY = tc.y << 5;
-					const int baseZ = tc.z << 5;
-
-					const int gx0 = baseX + lx0;
-					const int gy0 = baseY + ly0;
-					const int gz0 = baseZ + lz0;
-
-					const int gx1 = baseX + lx1;
-					const int gy1 = baseY + ly1;
-					const int gz1 = baseZ + lz1;
-
-					component.MinIdx.x = std::min(component.MinIdx.x, gx0);
-					component.MinIdx.y = std::min(component.MinIdx.y, gy0);
-					component.MinIdx.z = std::min(component.MinIdx.z, gz0);
-					component.MaxIdx.x = std::max(component.MaxIdx.x, gx1);
-					component.MaxIdx.y = std::max(component.MaxIdx.y, gy1);
-					component.MaxIdx.z = std::max(component.MaxIdx.z, gz1);
-				}
-			}
-
-			// Explore 6 neighbors; enqueue if face-connected and not visited.
+			// Explore 6 neighbors.
 			for (int k = 0; k < 6; ++k)
 			{
 				const uint ntx = tc.x + d6[k][0];
 				const uint nty = tc.y + d6[k][1];
 				const uint ntz = tc.z + d6[k][2];
 
-				const int neiIdx = solid.FindTileIndex(ntx, nty, ntz);
-				if (neiIdx < 0) continue;
-				if (bVisited[(size_t)neiIdx]) continue;
-
-				const Brick& Tnei = solid.GetBrick(neiIdx);
-
-				// Face-overlap check:
-				// A: current brick's "positive-direction face"
-				// B: neighbor brick's "negative-direction face"
-				if (isTileFaceConnected(currBrick, facePos[k], Tnei, faceNeg[k]))
-				{
-					bVisited[(size_t)neiIdx] = true;
-					q.emplace_back(neiIdx);
-				}
-			}
-		}
-
-		// --------------------------------------------------------------------
-		// Surface voxel counting (post-BFS for this component)
-		// --------------------------------------------------------------------
-		// For each brick in the component and each of its six faces:
-		// - Compute the number of face bits that are exposed (i.e., not overlapped
-		//   by the opposite face of an adjacent brick).
-		// - If neighbor doesn't exist => all current face bits are exposed.
-		// - If neighbor is FULL      => no exposed bits on that side.
-		// - If current is FULL:
-		//     exposed = 32*32 - popcnt(neighbor opposite face)
-		//
-		// This yields an integer count of unit-area face cells exposed to "outside".
-		// --------------------------------------------------------------------
-		uint64_t surf = 0;
-		for (const auto& tc : component.BrickIndices)
-		{
-			uint64_t faceOut[6] = { 0,0,0,0,0,0 };
-			const int selfIdx = solid.FindTileIndex(tc.x, tc.y, tc.z);
-			ASSERT(selfIdx >= 0);
-			const Brick& Tcur = solid.GetBrick(selfIdx);
-
-			for (int k = 0; k < 6; ++k)
-			{
-				const uint ntx = tc.x + d6[k][0];
-				const uint nty = tc.y + d6[k][1];
-				const uint ntz = tc.z + d6[k][2];
 				const int nidx = solid.FindTileIndex(ntx, nty, ntz);
+				if (nidx < 0) continue;
+				if (bVisited[(size_t)nidx]) continue;
 
-				if (Tcur.Mode == Brick::FULL)
+				const Brick& Bnei = solid.GetBrick(nidx);
+
+				// Face-overlap test on the touching faces.
+				if (isTileFaceConnected(Bcur, facePos[k], Bnei, faceNeg[k]))
 				{
-					if (nidx < 0)
-					{
-						// No neighbor => entire 32x32 face is exposed.
-						faceOut[k] = 32u * 32u;
-					}
-					else
-					{
-						const Brick& Tnei = solid.GetBrick(nidx);
-						if (Tnei.Mode == Brick::FULL)
-						{
-							// Neighbor FULL => fully occluded on this face.
-							faceOut[k] = 0;
-						}
-						else
-						{
-							// FULL (current) vs BITSET (neighbor):
-							// Exposed = total cells - neighbor face occupancy.
-							FaceLayer1024 Nf; extractFaceLayer(Tnei, faceNeg[k], Nf);
-							const uint32_t nOn = Nf.popcnt();
-							faceOut[k] = (uint64_t)(32u * 32u - nOn);
-						}
-					}
-				}
-				else // current is BITSET
-				{
-					FaceLayer1024 Cf; extractFaceLayer(Tcur, facePos[k], Cf);
-					if (nidx < 0)
-					{
-						// No neighbor => all current face bits are exposed.
-						faceOut[k] = Cf.popcnt();
-					}
-					else
-					{
-						const Brick& Tnei = solid.GetBrick(nidx);
-						if (Tnei.Mode == Brick::FULL)
-						{
-							// Neighbor FULL => fully occluded on this face.
-							faceOut[k] = 0;
-						}
-						else
-						{
-							// BITSET vs BITSET:
-							// Exposed = current face bits - overlapped bits.
-							FaceLayer1024 Nf; extractFaceLayer(Tnei, faceNeg[k], Nf);
-							const uint32_t overlap = FaceLayer1024::popcntAND(Cf, Nf);
-							faceOut[k] = (uint64_t)Cf.popcnt() - (uint64_t)overlap;
-						}
-					}
+					bVisited[(size_t)nidx] = true;
+					stack.emplace_back(nidx);
 				}
 			}
-			surf += faceOut[0] + faceOut[1] + faceOut[2] + faceOut[3] + faceOut[4] + faceOut[5];
 		}
-		component.NumSurfaceVoxels = surf;
 
-		outComponents.emplace_back(std::move(component));
+		// --- Construct an output grid for this component and copy its bricks ---
+		// Clone meta only (cell size & origin). Hash/tiling will be rebuilt as voxels/bricks are inserted.
+		SparseBinaryGrid compGrid;
+		compGrid.Reconfigure(solid.GetCellSize(), solid.GetOrigin(), solid.GetDim());
+
+		for (const uint3& tc : compBricks)
+		{
+			const Brick& src = solid.GetBrick(tc);
+			// Insert/replace the brick at the same tile coordinates
+			compGrid.SetBrick(tc, src);
+		}
+
+		outComponents->emplace_back(std::move(compGrid));
 	}
 }

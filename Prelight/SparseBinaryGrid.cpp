@@ -2,6 +2,40 @@
 #include "SparseBinaryGrid.h"
 
 // ============================================================================
+// Reconfigure
+// ----------------------------------------------------------------------------
+// Sets cell size, origin, and dimensions of the voxel grid.
+// ===========================================================================
+void SparseBinaryGrid::Reconfigure(float cellSize, const FLOAT3& origin, const uint3& dim)
+{ 
+    m_CellSize = cellSize;
+    m_Origin = origin;
+    m_Dim = dim; 
+}
+
+// ============================================================================
+// NumVoxels
+// ----------------------------------------------------------------------------
+// Counts the total number of set voxels across all bricks.
+// ============================================================================
+size_t SparseBinaryGrid::NumVoxels() const
+{
+	size_t total = 0;
+    for (const Brick& br : m_Bricks)
+    {
+        if (br.Mode == Brick::FULL)
+        {
+            total += Brick::NUM_VOXELS;
+        }
+        else
+        {
+            total += br.Count;
+        }
+    }
+    return total;
+}
+
+// ============================================================================
 // Clear
 // ----------------------------------------------------------------------------
 // Resets the hash table to an empty state without freeing its capacity:
@@ -123,7 +157,8 @@ bool SparseBinaryGrid::SaveAsObj(const std::string& path) const
                     const double cz = org.z + (double(gz) + 0.5) * double(cell);
 
                     // 8 vertices
-                    for (int i = 0; i < 8; ++i) {
+                    for (int i = 0; i < 8; ++i)
+                    {
                         const double px = cx + double(v8[i][0]) * double(cell);
                         const double py = cy + double(v8[i][1]) * double(cell);
                         const double pz = cz + double(v8[i][2]) * double(cell);
@@ -132,7 +167,8 @@ bool SparseBinaryGrid::SaveAsObj(const std::string& path) const
 
                     // 12 triangles (OBJ 1-based indexing)
                     const size_t base = vcount + 1;
-                    for (int t = 0; t < 12; ++t) {
+                    for (int t = 0; t < 12; ++t) 
+                    {
                         std::fprintf(f, "f %zu %zu %zu\n",
                             base + (size_t)tri[t][0],
                             base + (size_t)tri[t][1],
@@ -141,19 +177,29 @@ bool SparseBinaryGrid::SaveAsObj(const std::string& path) const
                     vcount += 8;
                 };
 
-            if (B.Mode == Brick::FULL) {
+            if (B.Mode == Brick::FULL) 
+            {
                 // Solid brick: emit all voxels
                 for (int lz = 0; lz < T; ++lz)
+                {
                     for (int ly = 0; ly < T; ++ly)
-                        for (int lx = 0; lx < T; ++lx) {
+                    {
+                        for (int lx = 0; lx < T; ++lx)
+                        {
                             EmitVoxel(baseX + lx, baseY + ly, baseZ + lz);
                         }
+                    }
+                }
             }
-            else {
+            else 
+            {
                 // Bitset brick: emit only set voxels
                 for (int lz = 0; lz < T; ++lz)
+                {
                     for (int ly = 0; ly < T; ++ly)
-                        for (int lx = 0; lx < T; ++lx) {
+                    {
+                        for (int lx = 0; lx < T; ++lx)
+                        {
                             // Either LocalIndex3D(lx,ly,lz) or GetLocalIndex(lx,ly,lz) work;
                             // use the grid's canonical x-major helper for consistency.
                             // const uint16_t li = LocalIndex3D(lx, ly, lz);
@@ -161,6 +207,8 @@ bool SparseBinaryGrid::SaveAsObj(const std::string& path) const
                             if (!B.GetBit(li)) continue;
                             EmitVoxel(baseX + lx, baseY + ly, baseZ + lz);
                         }
+                    }
+                }
             }
         });
 

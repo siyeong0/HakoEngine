@@ -96,7 +96,7 @@ static inline bool triBoxOverlapGridF32(
 
 static void voxelizeSAT(
 	const FLOAT3* vertices,
-	const uint16_t* indices,
+	const uint32_t* indices,
 	uint numFaces,
 	uint3 dim,
 	float cell,
@@ -110,9 +110,9 @@ static void voxelizeSAT(
 
 	for (uint f = 0; f < numFaces; ++f)
 	{
-		const uint16_t i0 = indices[3 * f + 0];
-		const uint16_t i1 = indices[3 * f + 1];
-		const uint16_t i2 = indices[3 * f + 2];
+		const uint32_t i0 = indices[3 * f + 0];
+		const uint32_t i1 = indices[3 * f + 1];
+		const uint32_t i2 = indices[3 * f + 2];
 
 		const FLOAT3 a = toGrid(vertices[i0]);
 		const FLOAT3 b = toGrid(vertices[i1]);
@@ -160,9 +160,24 @@ static void voxelizeSAT(
 	}
 }
 
-uint3 VoxelizeToSparse(
+void VoxelizeToSparse(
 	const std::vector<FLOAT3> vertices,
 	const std::vector<uint16_t> indices,
+	const Bounds& meshBounds,
+	float voxelSize,
+	SparseBinaryGrid* outSurfaceGrid)
+{
+	VoxelizeToSparse(
+		vertices,
+		std::vector<uint32_t>(indices.begin(), indices.end()),
+		meshBounds,
+		voxelSize,
+		outSurfaceGrid);
+}
+
+void VoxelizeToSparse(
+	const std::vector<FLOAT3> vertices,
+	const std::vector<uint32_t> indices,
 	const Bounds& meshBounds,
 	float voxelSize,
 	SparseBinaryGrid* outSurfaceGrid)
@@ -185,7 +200,7 @@ uint3 VoxelizeToSparse(
 	};
 
 	outSurfaceGrid->Clear();
-	outSurfaceGrid->Reconfigure(s, snappedMin);
+	outSurfaceGrid->Reconfigure(s, snappedMin, gridDim);
 
 	voxelizeSAT(
 		vertices.data(),
@@ -195,15 +210,13 @@ uint3 VoxelizeToSparse(
 		s,
 		snappedMin,
 		outSurfaceGrid);
-
-	return gridDim;
 }
 
 void MakeSolidFromSurfaceSparse(
-	uint3 dim,
 	const SparseBinaryGrid& surface,
 	SparseBinaryGrid* outSolid)
 {
+	const uint3& dim = surface.GetDim();
 	std::vector<uint8_t> outside((size_t)dim.x * dim.y * dim.z, 0);
 	auto idOf = [&](uint x, uint y, uint z)->size_t { return (size_t)(z * dim.y + y) * dim.x + x; };
 	auto push = [&](std::queue<uint3>& q, uint x, uint y, uint z)
@@ -233,7 +246,7 @@ void MakeSolidFromSurfaceSparse(
 
 	// Inside = !outside
 	outSolid->Clear();
-	outSolid->Reconfigure(surface.GetCellSize(), surface.GetOrigin());
+	outSolid->Reconfigure(surface.GetCellSize(), surface.GetOrigin(), dim);
 	for (uint z = 0; z < dim.z; ++z)
 	{
 		for (uint y = 0; y < dim.y; ++y)

@@ -75,5 +75,8 @@
     <ClCompile Include="QuickHull.cpp">
       <Filter>QuickHull</Filter>
     </ClCompile>
+    <ClCompile Include="GridConcavity.cpp">
+      <Filter>ConvexDecomposition</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>

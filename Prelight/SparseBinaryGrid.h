@@ -70,12 +70,23 @@ public:
 
 	inline float  GetCellSize() const { return m_CellSize; }
 	inline FLOAT3 GetOrigin()   const { return m_Origin; }
-	inline void   Reconfigure(float cellSize, const FLOAT3& origin) { m_CellSize = cellSize; m_Origin = origin; }
 
 	inline size_t Size() const { return m_Size; }          // number of occupied hash entries
 	inline size_t Capacity() const { return m_Capacity; }  // hash table slots
 	inline size_t GetNumBricks() const { return m_Bricks.size(); }
+	inline uint3 GetDim() const { return m_Dim; }
+
 	inline const Brick& GetBrick(size_t index) const { return m_Bricks[index]; }
+	inline const Brick& GetBrick(int tx, int ty, int tz) const { return m_Bricks[findTile(tx, ty, tz)]; }
+	inline const Brick& GetBrick(uint tx, uint ty, uint tz) const { return GetBrick((int)tx, (int)ty, (int)tz); }
+	inline const Brick& GetBrick(int3 t)  const { return GetBrick(t.x, t.y, t.z); }
+	inline const Brick& GetBrick(uint3 t) const { return GetBrick((int)t.x, (int)t.y, (int)t.z); }
+
+	inline void SetBrick(size_t index, const Brick& src) { m_Bricks[index] = src; }
+	inline void SetBrick(int tx, int ty, int tz, const Brick& src) { m_Bricks[findOrInsertTile(tx, ty, tz)] = src; }
+	inline void SetBrick(uint tx, uint ty, uint tz, const Brick& src) { SetBrick((int)tx, (int)ty, (int)tz, src); }
+	inline void SetBrick(int3 t, const Brick& src) { SetBrick(t.x, t.y, t.z, src); }
+	inline void SetBrick(uint3 t, const Brick& src) { SetBrick((int)t.x, (int)t.y, (int)t.z, src); }
 
 	// Local linear index inside a brick (x-major: x | (y<<5) | (z<<10))
 	static inline int GetLocalIndex(int x, int y, int z); // x-major
@@ -101,6 +112,8 @@ public:
 	template<class F>
 	void ForEachTile(F&& func) const;
 
+	void Reconfigure(float cellSize, const FLOAT3& origin, const uint3& dim);
+	size_t NumVoxels() const; // total number of set voxels in all bricks
 	void Clear();
 	bool SaveAsObj(const std::string& path) const;
 
@@ -126,6 +139,7 @@ private:
 private:
 	float m_CellSize = 1.0f; // world units per voxel cell
 	FLOAT3 m_Origin = { 0,0,0 }; // world-space origin (min corner) for index->position mapping
+	uint3 m_Dim = { 0,0,0 }; // optional dimension
 
 	size_t m_Capacity = 0; // number of hash slots (power of two)
 	size_t m_Size = 0;     // number of occupied slots (<= m_Capacity)
