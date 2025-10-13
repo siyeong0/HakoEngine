@@ -29,6 +29,9 @@
     <ClInclude Include="$(MSBuildThisFileDirectory)StaticMesh.h">
       <Filter>Geometry\StaticMesh</Filter>
     </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)Plane.h">
+      <Filter>Math</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Util">

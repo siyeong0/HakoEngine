@@ -107,7 +107,7 @@ int main()
 	if (true)
 	{
 		StaticMesh mesh;
-		bool bLoaded = mesh.LoadFromFile("../../Resources/Decomp/venus.off", 1.5f);
+		bool bLoaded = mesh.LoadFromFile("../../Resources/Decomp/camel.off", 3.0f);
 		if (bLoaded == false)
 		{
 			ASSERT(false, "Fail to load mesh file");

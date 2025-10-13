@@ -63,6 +63,7 @@ struct FLOAT4
 static_assert(sizeof(FLOAT4) == 16, "FLOAT4 size mismatch");
 
 #include "Bounds.h"
+#include "Plane.h"
 
 union RGBA
 {
@@ -75,6 +76,25 @@ union RGBA
     };
     uint8_t ColorData[4];
 };
+
+static inline void HSVtoRGB(float h, float s, float v, float& r, float& g, float& b)
+{
+    h = std::fmodf(std::fmax(h, 0.f), 1.f) * 6.f;
+    const int   i = (int)std::floor(h);
+    const float f = h - i;
+    const float p = v * (1.f - s);
+    const float q = v * (1.f - s * f);
+    const float t = v * (1.f - s * (1.f - f));
+    switch (i) {
+    default:
+    case 0: r = v; g = t; b = p; break;
+    case 1: r = q; g = v; b = p; break;
+    case 2: r = p; g = v; b = t; break;
+    case 3: r = p; g = q; b = v; break;
+    case 4: r = t; g = p; b = v; break;
+    case 5: r = v; g = p; b = q; break;
+    }
+}
 
 #include "Vertex.h"
 

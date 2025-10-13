@@ -93,5 +93,8 @@
     <ClCompile Include="FaceLayer1024.cpp">
       <Filter>SparseBinaryGrid\Internal</Filter>
     </ClCompile>
+    <ClCompile Include="PickBestSplitPlane.cpp">
+      <Filter>ConvexDecomposition</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>
