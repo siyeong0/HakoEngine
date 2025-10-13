@@ -1,4 +1,5 @@
 ﻿#include "pch.h"
+#include "FaceLayer1024.h"
 #include "SparseBinaryGrid.h"
 #include "QuickHull.h"
 
@@ -88,7 +89,7 @@ static ScaleEps makeScaleEps(const std::vector<DOUBLE3>& P)
 // 2) Pick the point farthest from that segment to form a wide triangle.
 // 3) Pick the point farthest from that triangle plane to form a full tetra.
 // If any step degenerates, return invalid indices (~0u).
-static std::array<uint32_t, 4> BuildInitialTetra(const std::vector<DOUBLE3>& P, const ScaleEps& eps)
+static std::array<uint32_t, 4> buildInitialTetra(const std::vector<DOUBLE3>& P, const ScaleEps& eps)
 {
 	const uint32_t N = (uint32_t)P.size();
 	if (N < 4)
@@ -159,7 +160,7 @@ static std::array<uint32_t, 4> BuildInitialTetra(const std::vector<DOUBLE3>& P, 
 
 // Compute the centroid of the initial tetrahedron; used as a stable interior reference point
 // (we enforce all faces to see this point on their negative side → outward normals).
-static DOUBLE3 TetraCenter(const std::array<uint32_t, 4>& T, const std::vector<DOUBLE3>& P)
+static DOUBLE3 tetraCenter(const std::array<uint32_t, 4>& T, const std::vector<DOUBLE3>& P)
 {
 	DOUBLE3 c{};
 	for (int k = 0; k < 4; ++k)
@@ -171,7 +172,7 @@ static DOUBLE3 TetraCenter(const std::array<uint32_t, 4>& T, const std::vector<D
 
 // Build the initial 4 faces and enforce outward orientation
 // by checking the signed distance to insideRef (interior point).
-static std::vector<Face> MakeInitialHull(
+static std::vector<Face> makeInitialHull(
 	const std::array<uint32_t, 4>& T,
 	const std::vector<DOUBLE3>& P,
 	const DOUBLE3& insideRef)
@@ -244,7 +245,7 @@ static EdgeAdj buildAdj(const std::vector<Face>& faces)
 
 // BFS from a seed face to collect the entire set of faces visible from 'apex'.
 // A face is "visible" if its signed distance to 'apex' is > PlaneEpsilon.
-static std::vector<int> CollectVisibleFacesBFS(
+static std::vector<int> collectVisibleFacesBFS(
 	const std::vector<Face>& faces,
 	const EdgeAdj& adj,
 	int seedFace, uint32_t apex,
@@ -256,7 +257,11 @@ static std::vector<int> CollectVisibleFacesBFS(
 	std::queue<int> q;
 	auto isVisible = [&](int fi) { return faceDist(faces[fi], P[apex]) > eps.PlaneEpsilon; };
 
-	if (seedFace >= 0 && isVisible(seedFace)) { q.push(seedFace); seen[seedFace] = 1; }
+	if (seedFace >= 0 && isVisible(seedFace))
+	{
+		q.push(seedFace);
+		seen[seedFace] = 1;
+	}
 
 	while (!q.empty())
 	{
@@ -282,7 +287,7 @@ static std::vector<int> CollectVisibleFacesBFS(
 // Build the "horizon" loop, i.e., the set of directed edges that separate
 // visible faces from non-visible faces as seen from the current apex.
 // Direction convention: keep the orientation as it appears in the visible face (u->v).
-static std::vector<std::pair<uint32_t, uint32_t>> BuildHorizon(
+static std::vector<std::pair<uint32_t, uint32_t>> buildHorizon(
 	const std::vector<Face>& faces,
 	const EdgeAdj& adj,
 	const std::vector<int>& visible)
@@ -376,7 +381,7 @@ static std::vector<std::pair<uint32_t, uint32_t>> BuildHorizon(
 // that lies outside the hull (> PlaneEpsilon).
 // Returns face index that "sees" the point, and point index.
 struct MaxOutInfo { double dist = 0; int face = -1; uint32_t pid = 0; };
-static MaxOutInfo FindFarthest(
+static MaxOutInfo findFarthest(
 	const std::vector<Face>& faces,
 	const std::vector<DOUBLE3>& P,
 	const ScaleEps& eps)
@@ -405,95 +410,229 @@ static MaxOutInfo FindFarthest(
 	return info;
 }
 
-// ---------- Voxel grid helpers ----------
-// CornerKey uniquely identifies a voxel corner (integer grid corner).
-// We collect unique surface voxel corners to build a point set for hull.
-struct CornerKey
+// Pack 3×21-bit signed ints with +2^20 bias (same scheme as your grid keys).
+static inline uint64_t packCornerKey(int x, int y, int z)
 {
-	int kx, ky, kz; // integer coordinates of a voxel corner (origin-based, cell size = Cell)
-	bool operator==(const CornerKey& o) const noexcept
-	{
-		return kx == o.kx && ky == o.ky && kz == o.kz;
-	}
-};
-struct CornerKeyHash
-{
-	size_t operator()(const CornerKey& k) const noexcept
-	{
-		// Spatial hashing with 3 different large primes.
-		uint64_t h = (uint64_t)(k.kx * 73856093) ^ (uint64_t)(k.ky * 19349663) ^ (uint64_t)(k.kz * 83492791);
-		return (size_t)h;
-	}
-};
-
-// A voxel is a boundary voxel if it is filled and at least one of its 6-neighbors is empty.
-// This is used to extract only the surface corners for the hull point set.
-static inline bool isBoundaryVoxel(const SparseBinaryGrid& g, int x, int y, int z)
-{
-	ASSERT(x >= 0 && y >= 0 && z >= 0);
-	if (!g.GetVoxel(x, y, z))
-	{
-		return false;
-	}
-	static const int d6[6][3] = { {+1,0,0},{-1,0,0},{0,+1,0},{0,-1,0},{0,0,+1},{0,0,-1} };
-	for (auto& d : d6)
-	{
-		if (!g.GetVoxel(x + d[0], y + d[1], z + d[2]))
-		{
-			return true;
-		}
-	}
-	return false;
+	auto pack = [](int v)->uint64_t { return (uint64_t)(v + (1 << 20)) & ((1ull << 21) - 1ull); };
+	return (pack(x) << 42) | (pack(y) << 21) | pack(z);
 }
 
-// Collect unique corner positions (world space) of boundary voxels.
-// - Iterates each tile (Brick) and tests all voxels in the tile.
-// - For each boundary voxel, inserts its 8 corners into a hash set.
-// - Finally converts corner keys to FLOAT3 positions using origin + cell size.
-std::vector<FLOAT3> collectHullCornersFromSurface(const SparseBinaryGrid& grid)
+// Returns a 6-bit mask of exposed faces for a set voxel at local (lx,ly,lz).
+// Bit order: 0:+X, 1:-X, 2:+Y, 3:-Y, 4:+Z, 5:-Z (1 = face open to exterior).
+static inline uint8_t computeExposureMask6(
+	const Brick* self,
+	const Brick* nb[6],
+	int lx, int ly, int lz) // local [0,32)
 {
-	const int T = Brick::NUM_VOXELS_EDGE; // tile edge length (e.g., 32)
-	const float h = grid.GetCellSize();          // voxel edge length (world units)
-	const FLOAT3 O = grid.GetOrigin();       // world origin of the grid
+	const int T = Brick::NUM_VOXELS_EDGE;
+	uint8_t m = 0;
 
-	std::unordered_set<CornerKey, CornerKeyHash> cornerSet;
-	cornerSet.reserve((size_t)grid.Size() * 64); // rough guess to reduce rehashing
+	// +X
+	if (lx + 1 >= T)
+	{
+		if (!nb[0]) m |= 1 << 0;
+		else if (!nb[0]->GetBit(SparseBinaryGrid::GetLocalIndex(0, ly, lz))) m |= 1 << 0;
+	}
+	else
+	{
+		if (!self->GetBit(SparseBinaryGrid::GetLocalIndex(lx + 1, ly, lz))) m |= 1 << 0;
+	}
+	// -X
+	if (lx - 1 < 0)
+	{
+		if (!nb[1]) m |= 1 << 1;
+		else if (!nb[1]->GetBit(SparseBinaryGrid::GetLocalIndex(T - 1, ly, lz))) m |= 1 << 1;
+	}
+	else
+	{
+		if (!self->GetBit(SparseBinaryGrid::GetLocalIndex(lx - 1, ly, lz))) m |= 1 << 1;
+	}
+	// +Y
+	if (ly + 1 >= T)
+	{
+		if (!nb[2]) m |= 1 << 2;
+		else if (!nb[2]->GetBit(SparseBinaryGrid::GetLocalIndex(lx, 0, lz))) m |= 1 << 2;
+	}
+	else
+	{
+		if (!self->GetBit(SparseBinaryGrid::GetLocalIndex(lx, ly + 1, lz))) m |= 1 << 2;
+	}
+	// -Y
+	if (ly - 1 < 0)
+	{
+		if (!nb[3]) m |= 1 << 3;
+		else if (!nb[3]->GetBit(SparseBinaryGrid::GetLocalIndex(lx, T - 1, lz))) m |= 1 << 3;
+	}
+	else
+	{
+		if (!self->GetBit(SparseBinaryGrid::GetLocalIndex(lx, ly - 1, lz))) m |= 1 << 3;
+	}
+	// +Z
+	if (lz + 1 >= T)
+	{
+		if (!nb[4]) m |= 1 << 4;
+		else if (!nb[4]->GetBit(SparseBinaryGrid::GetLocalIndex(lx, ly, 0))) m |= 1 << 4;
+	}
+	else
+	{
+		if (!self->GetBit(SparseBinaryGrid::GetLocalIndex(lx, ly, lz + 1))) m |= 1 << 4;
+	}
+	// -Z
+	if (lz - 1 < 0)
+	{
+		if (!nb[5]) m |= 1 << 5;
+		else if (!nb[5]->GetBit(SparseBinaryGrid::GetLocalIndex(lx, ly, T - 1))) m |= 1 << 5;
+	}
+	else
+	{
+		const uint16_t li = SparseBinaryGrid::GetLocalIndex(lx, ly, lz - 1);
+		if (!self->GetBit(li)) m |= 1 << 5;
+	}
+	return m;
+}
 
-	// Iterate tiles; within each tile, iterate all local voxels.
+// Gathers a deduplicated set of world-space corners from boundary voxels in a sparse grid.
+// Intended for convex hull input; corners are derived from exposed faces only.
+std::vector<FLOAT3> collectHullCornersFromSparseGrid(const SparseBinaryGrid& grid)
+{
+	const int T = Brick::NUM_VOXELS_EDGE;
+	const float h = grid.GetCellSize();
+	const FLOAT3& O = grid.GetOrigin();
+
+	std::unordered_set<uint64_t> cornerSet;
+	cornerSet.reserve(grid.Size() * 64); // heuristic
+
+	// Reusable helpers for face work
+	const int d6[6][3] = { {+1,0,0},{-1,0,0},{0,+1,0},{0,-1,0},{0,0,+1},{0,0,-1} };
+	const FACE_DIR facePos[6] = { POSX, NEGX, POSY, NEGY, POSZ, NEGZ };
+	const FACE_DIR faceNeg[6] = { NEGX, POSX, NEGY, POSY, NEGZ, POSZ };
+
 	grid.ForEachTile([&](uint64_t /*key*/, int brickIdx, int tx, int ty, int tz)
 		{
-			const Brick& tile = grid.GetBrick(brickIdx);
-			const int baseX = tx * T;
-			const int baseY = ty * T;
-			const int baseZ = tz * T;
+			const Brick& B = grid.GetBrick((size_t)brickIdx);
+			const int baseX = tx * T, baseY = ty * T, baseZ = tz * T;
 
-			// Simple and safe: brute-force all voxels in the tile.
-			// - For FULL tiles, every voxel is considered filled.
+			// Cache neighbor bricks per face (for boundary tests / exposure)
+			const Brick* NB[6] = { nullptr,nullptr,nullptr,nullptr,nullptr,nullptr };
+			for (int k = 0; k < 6; ++k)
+			{
+				const int ntx = tx + d6[k][0], nty = ty + d6[k][1], ntz = tz + d6[k][2];
+				const int ni = grid.FindTileIndex(ntx, nty, ntz);
+				if (ni >= 0)
+				{
+					NB[k] = &grid.GetBrick((size_t)ni);
+				}
+			}
+
+			if (B.Mode == Brick::FULL)
+			{
+				// Only faces can be boundary. Build exposed 32x32 masks per face.
+				// exposed = currentface(=all 1s) minus neighborFaceOpp
+				for (int k = 0; k < 6; ++k)
+				{
+					// current face layer: all ones for FULL (32x32)
+					// neighbor face layer: extract from NB[k] if BITSET, else:
+					//   - if NB[k]==nullptr => exposed = all ones
+					//   - if NB[k] FULL     => exposed = zeros
+					FaceLayer1024 exposed;
+					if (!NB[k])
+					{
+						exposed.SetAll();
+					}
+					else if (NB[k]->Mode == Brick::FULL)
+					{
+						exposed.Clear();
+					}
+					else
+					{
+						FaceLayer1024 nlayer; extractFaceLayer(*NB[k], faceNeg[k], nlayer);
+						// FULL face minus neighbor occupancy → bitwise NOT(nei) masked to 1024 bits
+						exposed = FaceLayer1024::BitwiseNOT(nlayer);
+					}
+
+					if (exposed.IsZero()) continue;
+
+					// For every exposed face cell, emit its 4 corners.
+					// Map face-cell (u,v) to global (gx,gy,gyz) depending on face k.
+					for (int v = 0; v < T; ++v)
+					{
+						for (int u = 0; u < T; ++u)
+						{
+							if (!exposed.Get(u, v)) continue;
+
+							// Determine the voxel on this face (lx,ly,lz) and then emit its corners.
+							int lx = 0, ly = 0, lz = 0;
+							switch (k)
+							{
+							case 0: lx = T - 1; ly = v; lz = u; break; // +X face
+							case 1: lx = 0;   ly = v; lz = u; break; // -X face
+							case 2: lx = u;   ly = T - 1; lz = v; break; // +Y
+							case 3: lx = u;   ly = 0;   lz = v; break; // -Y
+							case 4: lx = u;   ly = v;   lz = T - 1; break; // +Z
+							default:lx = u;   ly = v;   lz = 0; break;   // -Z
+							}
+							const int gx = baseX + lx;
+							const int gy = baseY + ly;
+							const int gz = baseZ + lz;
+
+							// Insert 4 corners on the face (8 corners would duplicate the interior deeply).
+							// It’s fine to emit 8 as well; the set will deduplicate. 4 is a bit cheaper.
+							for (int sx = 0; sx <= 1; ++sx)
+							{
+								for (int sy = 0; sy <= 1; ++sy)
+								{
+									// Choose the two varying axes on this face:
+									// For +X/-X, vary (y,z). For +Y/-Y, vary (x,z). For +Z/-Z, vary (x,y).
+									int cx = gx + (k == 0 ? 1 : (k == 1 ? 0 : sx));
+									int cy = gy + (k == 2 ? 1 : (k == 3 ? 0 : (k >= 4 ? sy : sy)));
+									int cz;
+									if (k == 4)			cz = gz + 1;
+									else if (k == 5)	cz = gz + 0;
+									else				cz = gz + (k <= 1 ? sy : sx);
+
+									cornerSet.insert(packCornerKey(cx, cy, cz));
+								}
+							}
+						}
+					}
+				}
+				return; // FULL brick done
+			}
+
+			// BITSET brick: iterate only set voxels (word-scan). You need a small
+			// iterator; below is schematic—adapt to your Brick bit layout.
 			for (int lz = 0; lz < T; ++lz)
 			{
 				for (int ly = 0; ly < T; ++ly)
 				{
+					// Assume Brick exposes row-wise 32-bit/64-bit words; otherwise fall back to lx loop
 					for (int lx = 0; lx < T; ++lx)
 					{
-						const int li = SparseBinaryGrid::GetLocalIndex(lx, ly, lz);
-						bool filled = (tile.Mode == Brick::FULL) ? true : tile.GetBit((uint16_t)li);
-						if (!filled) continue;
+						const uint16_t li = SparseBinaryGrid::GetLocalIndex(lx, ly, lz);
+						if (!B.GetBit(li)) continue;
 
-						const int gx = baseX + lx;
-						const int gy = baseY + ly;
-						const int gz = baseZ + lz;
+						// exposure mask for this boundary voxel; skip if fully internal
+						const uint8_t mask = computeExposureMask6(&B, NB, lx, ly, lz);
+						if (!mask) continue;
 
-						if (!isBoundaryVoxel(grid, gx, gy, gz)) continue;
+						const int gx = baseX + lx, gy = baseY + ly, gz = baseZ + lz;
 
-						// Insert the 8 corners of this boundary voxel (integer corner coords).
+						// required side per axis: -1 = free, 0 = negative side, 1 = positive side
+						const int reqX = (mask & (1 << 0)) ? 1 : ((mask & (1 << 1)) ? 0 : -1);
+						const int reqY = (mask & (1 << 2)) ? 1 : ((mask & (1 << 3)) ? 0 : -1);
+						const int reqZ = (mask & (1 << 4)) ? 1 : ((mask & (1 << 5)) ? 0 : -1);
+
+						// Emit only outward corners that satisfy all required sides.
 						for (int sx = 0; sx <= 1; ++sx)
 						{
+							if (reqX != -1 && sx != reqX) continue;
 							for (int sy = 0; sy <= 1; ++sy)
 							{
+								if (reqY != -1 && sy != reqY) continue;
 								for (int sz = 0; sz <= 1; ++sz)
 								{
-									CornerKey ck{ gx + sx, gy + sy, gz + sz };
-									cornerSet.insert(ck);
+									if (reqZ != -1 && sz != reqZ) continue;
+									cornerSet.insert(packCornerKey(gx + sx, gy + sy, gz + sz));
 								}
 							}
 						}
@@ -502,18 +641,25 @@ std::vector<FLOAT3> collectHullCornersFromSurface(const SparseBinaryGrid& grid)
 			}
 		});
 
-	// Convert integer corner keys to world coordinates.
-	std::vector<FLOAT3> points;
-	points.reserve(cornerSet.size());
-	for (const CornerKey& k : cornerSet)
+	// Convert to world coordinates
+	std::vector<FLOAT3> pts; pts.reserve(cornerSet.size());
+	for (uint64_t key : cornerSet)
 	{
-		// world = Origin + Cell * (corner integer coords)
-		const float wx = O.x + h * (float)k.kx;
-		const float wy = O.y + h * (float)k.ky;
-		const float wz = O.z + h * (float)k.kz;
-		points.emplace_back(wx, wy, wz);
+		// Unpack (inverse of PackCornerKey)
+		auto unpack = [](uint64_t v)->int
+			{
+				int s = (int)(v & ((1ull << 21) - 1ull));
+				return s - (1 << 20);
+			};
+		const int kz = unpack(key);
+		const int ky = unpack(key >> 21);
+		const int kx = unpack(key >> 42);
+		pts.emplace_back(
+			O.x + h * (float)kx,
+			O.y + h * (float)ky,
+			O.z + h * (float)kz);
 	}
-	return points;
+	return pts;
 }
 
 // Main entry (voxel-grid version):
@@ -521,10 +667,10 @@ std::vector<FLOAT3> collectHullCornersFromSurface(const SparseBinaryGrid& grid)
 // - Delegates to point-set QuickHull below.
 void QuickHull(
 	const SparseBinaryGrid& voxelGrid,
-	std::vector<FLOAT3>*
-	outVertices, std::vector<uint32_t>* outIndices)
+	std::vector<FLOAT3>* outVertices,
+	std::vector<uint32_t>* outIndices)
 {
-	const std::vector<FLOAT3> points = collectHullCornersFromSurface(voxelGrid);
+	const std::vector<FLOAT3> points = collectHullCornersFromSparseGrid(voxelGrid);
 	QuickHull(points, outVertices, outIndices);
 }
 
@@ -555,7 +701,7 @@ void QuickHull(const std::vector<FLOAT3>& points,
 	ScaleEps eps = makeScaleEps(P);
 
 	// Try to form an initial tetrahedron.
-	auto T = BuildInitialTetra(P, eps);
+	auto T = buildInitialTetra(P, eps);
 	if (T[0] == ~0u)
 	{
 		// Coplanar (or worse) fallback:
@@ -574,21 +720,21 @@ void QuickHull(const std::vector<FLOAT3>& points,
 	}
 
 	// Compute an interior reference point from tetra center for consistent outward normals.
-	DOUBLE3 insideRef = TetraCenter(T, P);
-	auto faces = MakeInitialHull(T, P, insideRef);
+	DOUBLE3 insideRef = tetraCenter(T, P);
+	auto faces = makeInitialHull(T, P, insideRef);
 
 	// -------- Main loop --------
 	while (true)
 	{
 		// 1) Global farthest outside point and a face that sees it.
-		MaxOutInfo info = FindFarthest(faces, P, eps);
+		MaxOutInfo info = findFarthest(faces, P, eps);
 		if (info.face < 0) break; // No outside points -> hull is complete.
 
 		uint32_t apex = info.pid;
 
 		// 2) Build adjacency and BFS-expand all faces visible from the apex.
 		EdgeAdj adj = buildAdj(faces);
-		std::vector<int> visible = CollectVisibleFacesBFS(faces, adj, info.face, apex, P, eps);
+		std::vector<int> visible = collectVisibleFacesBFS(faces, adj, info.face, apex, P, eps);
 		if (visible.empty())
 		{
 			// Numerical corner-case. Graceful exit is acceptable for practical usage.
@@ -596,7 +742,7 @@ void QuickHull(const std::vector<FLOAT3>& points,
 		}
 
 		// 3) Build horizon loop (directed boundary edges).
-		auto horizon = BuildHorizon(faces, adj, visible);
+		auto horizon = buildHorizon(faces, adj, visible);
 
 		// 4) Remove all visible faces.
 		std::vector<bool> bDead(faces.size(), false);

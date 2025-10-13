@@ -26,6 +26,9 @@
     <Filter Include="Voxelize">
       <UniqueIdentifier>{85b7f465-e67c-44c4-98f6-14ed946d346f}</UniqueIdentifier>
     </Filter>
+    <Filter Include="SparseBinaryGrid\Internal">
+      <UniqueIdentifier>{f0daba8c-d1da-4ef9-851b-a17f85a19cce}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Prelight.h">
@@ -48,6 +51,12 @@
     </ClInclude>
     <ClInclude Include="Voxelize.h">
       <Filter>Voxelize</Filter>
+    </ClInclude>
+    <ClInclude Include="Brick.h">
+      <Filter>SparseBinaryGrid\Internal</Filter>
+    </ClInclude>
+    <ClInclude Include="FaceLayer1024.h">
+      <Filter>SparseBinaryGrid\Internal</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -77,6 +86,12 @@
     </ClCompile>
     <ClCompile Include="GridConcavity.cpp">
       <Filter>ConvexDecomposition</Filter>
+    </ClCompile>
+    <ClCompile Include="Brick.cpp">
+      <Filter>SparseBinaryGrid\Internal</Filter>
+    </ClCompile>
+    <ClCompile Include="FaceLayer1024.cpp">
+      <Filter>SparseBinaryGrid\Internal</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

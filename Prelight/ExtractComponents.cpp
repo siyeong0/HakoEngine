@@ -1,150 +1,7 @@
 ﻿#include "pch.h"
+#include "FaceLayer1024.h"
 #include "SparseBinaryGrid.h"
 #include "ConvexDecomposition.h"
-
-// ============================================================================
-// POPCOUNT64
-// ----------------------------------------------------------------------------
-// Platform-optimized population count for 64-bit words.
-// ============================================================================
-
-#ifndef POPCOUNT64
-#  if defined(_MSC_VER)
-#    include <intrin.h>
-static inline uint32_t POPCOUNT64(uint64_t x) { return (uint32_t)__popcnt64(x); }
-#  else
-static inline uint32_t POPCOUNT64(uint64_t x) { return (uint32_t)__builtin_popcountll(x); }
-#  endif
-#endif
-
-// ============================================================================
-// FaceLayer1024 (32x32 = 1024 bits)
-// ----------------------------------------------------------------------------
-// Represents a single voxel "face slice" of a 32×32×32 brick.
-// A face slice has 32×32 = 1024 cells. We pack this into 16 x uint64_t words.
-// ============================================================================
-
-struct FaceLayer1024
-{
-	static constexpr int WORDS = 1024 / 64; // 16
-	uint64_t Words[WORDS];
-
-	void clear() { for (int i = 0; i < WORDS; ++i) Words[i] = 0ull; }
-	void setAll() { for (int i = 0; i < WORDS; ++i) Words[i] = ~0ull; }
-
-	bool any() const
-	{
-		uint64_t acc = 0;
-		for (int i = 0; i < WORDS; ++i)
-		{
-			acc |= Words[i];
-		}
-		return acc != 0ull;
-	}
-
-	uint32_t popcnt() const
-	{
-		uint32_t s = 0;
-		for (int i = 0; i < WORDS; ++i)
-		{
-			s += POPCOUNT64(Words[i]);
-		}
-		return s;
-	}
-
-	static uint32_t popcntAND(const FaceLayer1024& a, const FaceLayer1024& b)
-	{
-		uint32_t s = 0;
-		for (int i = 0; i < WORDS; ++i)
-		{
-			s += POPCOUNT64(a.Words[i] & b.Words[i]);
-		}
-		return s;
-	}
-};
-
-// ============================================================================
-// FACE_DIR
-// ----------------------------------------------------------------------------
-// Identifiers for the six axis-aligned faces of a brick.
-// ============================================================================
-
-enum FACE_DIR { NEGX = 0, POSX = 1, NEGY = 2, POSY = 3, NEGZ = 4, POSZ = 5 };
-
-// ============================================================================
-// extractFaceLayer
-// ----------------------------------------------------------------------------
-// Extracts a 32×32 bitfield (FaceLayer1024) from a 32×32×32 brick's chosen face.
-// Indexing inside a brick uses: li = x | (y<<5) | (z<<10), with x,y,z in [0..31].
-// ============================================================================
-
-// TileCPU::Bits index: li = x | (y<<5) | (z<<10), x,y,z ∈ [0..31]
-static inline void extractFaceLayer(const Brick& t, FACE_DIR f, FaceLayer1024& out)
-{
-	out.clear();
-	if (t.Mode == Brick::FULL)
-	{
-		out.setAll();
-		return;
-	}
-
-	if (f == NEGX || f == POSX)
-	{
-		const int x = (f == NEGX) ? 0 : 31;
-		int bitIdx = 0;
-		for (int z = 0; z < 32; ++z)
-		{
-			for (int y = 0; y < 32; ++y)
-			{
-				const uint16_t li = (uint16_t)(x | (y << 5) | (z << 10));
-				const uint64_t bit = (t.Bits[li >> 6] >> (li & 63)) & 1ull;
-				if (bit)
-				{
-					out.Words[bitIdx >> 6] |= (1ull << (bitIdx & 63));
-				}
-				++bitIdx;
-			}
-		}
-		return;
-	}
-	if (f == NEGY || f == POSY)
-	{
-		const int y = (f == NEGY) ? 0 : 31;
-		int bitIdx = 0;
-		for (int z = 0; z < 32; ++z)
-		{
-			for (int x = 0; x < 32; ++x)
-			{
-				const uint16_t li = (uint16_t)(x | (y << 5) | (z << 10));
-				const uint64_t bit = (t.Bits[li >> 6] >> (li & 63)) & 1ull;
-				if (bit)
-				{
-					out.Words[bitIdx >> 6] |= (1ull << (bitIdx & 63));
-				}
-				++bitIdx;
-			}
-		}
-		return;
-	}
-	{ // ZMIN / ZMAX
-		const int z = (f == NEGZ) ? 0 : 31;
-		int bitIdx = 0;
-		for (int y = 0; y < 32; ++y)
-		{
-			for (int x = 0; x < 32; ++x)
-			{
-				const uint16_t li = (uint16_t)(x | (y << 5) | (z << 10));
-				const uint64_t bit = (t.Bits[li >> 6] >> (li & 63)) & 1ull;
-				if (bit)
-				{
-					out.Words[bitIdx >> 6] |= (1ull << (bitIdx & 63));
-				}
-				++bitIdx;
-			}
-		}
-		return;
-	}
-}
 
 // ============================================================================
 // isTileFaceConnected
@@ -158,7 +15,7 @@ static inline bool isTileFaceConnected(const Brick& a, FACE_DIR fa, const Brick&
 	FaceLayer1024 LA, LB;
 	extractFaceLayer(a, fa, LA);
 	extractFaceLayer(b, fB, LB);
-	return FaceLayer1024::popcntAND(LA, LB) > 0;
+	return FaceLayer1024::PopCountAND(LA, LB) > 0;
 }
 
 // ============================================================================
@@ -231,7 +88,6 @@ static inline bool getTileLocalAABB(
 // there exists a chain of neighboring bricks where each adjacent pair has at
 // least one overlapping "solid" voxel on the touching faces.
 // ============================================================================
-
 void ExtractConnectedComponents6(
 	const SparseBinaryGrid& solid,
 	std::vector<SparseBinaryGrid>* outComponents)

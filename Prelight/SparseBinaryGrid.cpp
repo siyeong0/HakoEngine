@@ -1,4 +1,6 @@
 ﻿#include "pch.h"
+#include "Brick.h"
+#include "FaceLayer1024.h"
 #include "SparseBinaryGrid.h"
 
 // ============================================================================
