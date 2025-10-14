@@ -19,28 +19,36 @@ using uint = unsigned int;
 
 struct int2
 {
-    int x;
-    int y;
+	int x;
+	int y;
+	
+	int operator[](size_t idx) const { return (&x)[idx]; }
 };
 
 struct int3
 {
-    int x;
-    int y;
-    int z;
+	int x;
+	int y;
+	int z;
+
+	int operator[](size_t idx) const { return (&x)[idx]; }
 };
 
 struct uint2
 {
-    uint x;
-    uint y;
+	uint x;
+	uint y;
+
+	uint operator[](size_t idx) const { return (&x)[idx]; }
 };
 
 struct uint3
 {
-    uint x;
-    uint y;
-    uint z;
+	uint x;
+	uint y;
+	uint z;
+
+	uint operator[](size_t idx) const { return (&x)[idx]; }
 };
 
 using Matrix4x4 = DirectX::XMMATRIX;
@@ -55,10 +63,10 @@ static_assert(sizeof(FLOAT3) == 12, "FLOAT3 size mismatch");
 
 struct FLOAT4
 {
-    float x;
-    float y;
-    float z;
-    float w;
+	float x;
+	float y;
+	float z;
+	float w;
 };
 static_assert(sizeof(FLOAT4) == 16, "FLOAT4 size mismatch");
 
@@ -67,33 +75,33 @@ static_assert(sizeof(FLOAT4) == 16, "FLOAT4 size mismatch");
 
 union RGBA
 {
-    struct
-    {
-        uint8_t	r;
-        uint8_t	g;
-        uint8_t	b;
-        uint8_t	a;
-    };
-    uint8_t ColorData[4];
+	struct
+	{
+		uint8_t	r;
+		uint8_t	g;
+		uint8_t	b;
+		uint8_t	a;
+	};
+	uint8_t ColorData[4];
 };
 
 static inline void HSVtoRGB(float h, float s, float v, float& r, float& g, float& b)
 {
-    h = std::fmodf(std::fmax(h, 0.f), 1.f) * 6.f;
-    const int   i = (int)std::floor(h);
-    const float f = h - i;
-    const float p = v * (1.f - s);
-    const float q = v * (1.f - s * f);
-    const float t = v * (1.f - s * (1.f - f));
-    switch (i) {
-    default:
-    case 0: r = v; g = t; b = p; break;
-    case 1: r = q; g = v; b = p; break;
-    case 2: r = p; g = v; b = t; break;
-    case 3: r = p; g = q; b = v; break;
-    case 4: r = t; g = p; b = v; break;
-    case 5: r = v; g = p; b = q; break;
-    }
+	h = std::fmodf(std::fmax(h, 0.f), 1.f) * 6.f;
+	const int   i = (int)std::floor(h);
+	const float f = h - i;
+	const float p = v * (1.f - s);
+	const float q = v * (1.f - s * f);
+	const float t = v * (1.f - s * (1.f - f));
+	switch (i) {
+	default:
+	case 0: r = v; g = t; b = p; break;
+	case 1: r = q; g = v; b = p; break;
+	case 2: r = p; g = v; b = t; break;
+	case 3: r = p; g = q; b = v; break;
+	case 4: r = t; g = p; b = v; break;
+	case 5: r = v; g = p; b = q; break;
+	}
 }
 
 #include "Vertex.h"

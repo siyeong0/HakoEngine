@@ -107,12 +107,14 @@ int main()
 	if (true)
 	{
 		StaticMesh mesh;
-		bool bLoaded = mesh.LoadFromFile("../../Resources/Decomp/camel.off", 3.0f);
+		bool bLoaded = mesh.LoadFromFile("../../Resources/Decomp/bunny.off", 20.0f);
 		if (bLoaded == false)
 		{
 			ASSERT(false, "Fail to load mesh file");
 			return -1;
 		}
+
+		//mesh = StaticMesh::CreateSphereMesh(1.0f, 16, 8);
 
 		prl::DecomposeToConvex(mesh);
 	}

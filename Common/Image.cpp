@@ -1,9 +1,16 @@
-﻿#include <filesystem>
+﻿#define _CRT_SECURE_NO_WARNINGS
+#include <iostream>
+#include <filesystem>
+
 #define STB_IMAGE_IMPLEMENTATION
+#define STB_IMAGE_WRITE_IMPLEMENTATION
 #include <stb_image.h>
+#include <stb_image_write.h>
+
 #include <assimp/Importer.hpp>
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
+
 #include "Image.h"
 
 // -----------------------------
@@ -30,11 +37,68 @@ bool LoadImageFromFile(const std::filesystem::path& path, Image* outImage)
 	unsigned char* pixels = stbi_load(path.string().c_str(), &w, &h, &comp, 4);
 	if (!pixels)
 	{
-		std::fprintf(stderr, "[Image] stbi_load failed: %s\n", path.string().c_str());
+		std::cout << "[Image] Texture not found: " << path << "\n";
 		return false;
 	}
 	FillImageRGBA(*outImage, w, h, pixels);
 	stbi_image_free(pixels);
+	return true;
+}
+
+bool SaveImageToFile(const std::filesystem::path& path, const Image& img, IMAGE_FORMAT format)
+{
+	if (img.Data.empty() || img.Width == 0 || img.Height == 0)
+		return false;
+
+	int comp = 4;
+	const void* dataPtr = img.Data.data();
+
+	switch (format)
+	{
+	case IMAGE_FORMAT_R8:
+		comp = 1;
+		break;
+	case IMAGE_FORMAT_RGB8:
+		comp = 3;
+		break;
+	case IMAGE_FORMAT_RGBA8:
+		comp = 4;
+		break;
+
+	case IMAGE_FORMAT_BC1:
+	case IMAGE_FORMAT_BC3:
+	case IMAGE_FORMAT_BC4:
+	case IMAGE_FORMAT_BC5:
+	case IMAGE_FORMAT_BC6H:
+	case IMAGE_FORMAT_BC7:
+		// TODO: use DDSTexutreLoader, etc.
+		std::cout << "[SaveImageToFile] WARNING: BC-compressed formats (BC1~BC7) "
+			"cannot be written as PNG. Saving as RGBA8 fallback.\n";
+		comp = 4;
+		break;
+
+	default:
+		std::cout << "[SaveImageToFile] Unknown image format, defaulting to RGBA8.\n";
+		comp = 4;
+		break;
+	}
+
+	int stride = int(img.Width) * comp;
+
+	int res = stbi_write_png(
+		path.string().c_str(),
+		int(img.Width),
+		int(img.Height),
+		comp,
+		dataPtr,
+		stride);
+
+	if (res == 0)
+	{
+		std::cerr << "[SaveImageToFile] Failed to write image: " << path << "\n";
+		return false;
+	}
+
 	return true;
 }
 

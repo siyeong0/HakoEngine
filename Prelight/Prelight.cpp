@@ -60,6 +60,7 @@ bool ENGINECALL Prelight::PrecomputeAtmos(const AtmosParams& in, AtmosResult* ou
 #include "QuickHull.h"
 #include <functional>
 #include <filesystem>
+#include <fstream>
 
 // voxelHullId(gx,gy,gz) -> -1 이면 미분류(기본색), 0..H-1 이면 해당 hull 색상 사용
 bool SaveAsObjColored(
@@ -168,6 +169,7 @@ bool SaveAsObjColored(
 		{
 			// 이 복셀의 material id 결정
 			const int matId = voxelHullId ? voxelHullId(gx, gy, gz) : -1;
+			ASSERT(matId != -1);
 			SetMaterial(matId);
 
 			// 중심
@@ -259,7 +261,7 @@ bool ENGINECALL Prelight::DecomposeToConvex(const StaticMesh& m) const
 {
 	// ---- Parameters (tune) ----
 	constexpr float  voxelSize = 0.05f;
-	constexpr double concavityThreshold = 0.02;   // stop when part concavity <= 2%
+	constexpr double concavityThreshold = 0.05;   // stop when part concavity <= 10%
 	constexpr size_t minVoxelsPerPart = 256;    // do not split if a side gets too small
 	constexpr int    maxRecursionDepth = 16;
 
@@ -270,6 +272,18 @@ bool ENGINECALL Prelight::DecomposeToConvex(const StaticMesh& m) const
 	leafHullSolids.reserve(64);
 
 	// ---- Helpers ----
+	// Compute mesh bounds
+	auto computeBounds = [](
+		const std::vector<FLOAT3>& vertices,
+		const std::vector<uint32_t>& indices) -> Bounds
+		{
+			Bounds b;
+			for (uint32_t i : indices) 
+			{
+				b.Encapsulate(vertices[i]);
+			}
+			return b;
+		};
 
 	// Build a convex hull (mesh) and its solid voxelization for a solid component grid.
 	auto buildHullForSolid = [&](const SparseBinaryGrid& compSolid,
@@ -281,7 +295,11 @@ bool ENGINECALL Prelight::DecomposeToConvex(const StaticMesh& m) const
 
 			// Voxelize hull's surface back to grid space and make it solid
 			SparseBinaryGrid hullSurface;
-			VoxelizeToSparse(outHull.first, outHull.second, m.MeshBounds, voxelSize, &hullSurface);
+			VoxelizeToSparse(
+				outHull.first, outHull.second, 
+				m.MeshBounds, // TODO: use
+				//computeBounds(outHull.first, outHull.second), -> Must reconfigure origin of the grid
+				voxelSize, &hullSurface);
 			MakeSolidFromSurfaceSparse(hullSurface, &outHullSolid);
 		};
 
@@ -381,6 +399,44 @@ bool ENGINECALL Prelight::DecomposeToConvex(const StaticMesh& m) const
 		SparseBinaryGrid solidGrid;
 		MakeSolidFromSurfaceSparse(surfaceGrid, &solidGrid);
 
+		if (false)
+		{
+			namespace fs = std::filesystem;
+			const fs::path outDir = "C:\\Dev\\VoxVis\\Assets\\hulls";
+			// 0) 폴더 비우기 (폴더 유지)
+			{
+				std::error_code ec;
+				if (!fs::exists(outDir, ec)) fs::create_directories(outDir, ec);
+				for (auto& e : fs::directory_iterator(outDir, ec)) fs::remove_all(e.path(), ec);
+			}
+			const fs::path metaPath = outDir / "metadata.txt";
+			std::ofstream meta(metaPath);
+			if (!meta.is_open())
+			{
+				std::cerr << "Failed to open metadata.txt for writing.\n";
+			}
+			else
+			{
+				meta << "# CASPER convex decomposition metadata\n";
+				meta << "# Each entry: leaf_index cell_size origin_x origin_y origin_z num_voxels\n";
+				meta << std::format(
+					"{}\t{:.6f}\t{:.6f}\t{:.6f}\t{:.6f}\t{}\n",
+					"leaf_",
+					solidGrid.GetCellSize(),
+					solidGrid.GetOrigin().x,
+					solidGrid.GetOrigin().y,
+					solidGrid.GetOrigin().z,
+					solidGrid.NumVoxels()
+				);
+
+				meta.close();
+				std::cout << std::format("[CASPER] Saved {} leaf grids + metadata.txt\n", leafHullSolids.size());
+			}
+			solidGrid.SaveAsCasper("C:\\Dev\\VoxVis\\Assets\\hulls\\leaf_");
+			solidGrid.SaveAsObj("C:\\Dev\\VoxVis\\Assets\\hulls\\a.obj");
+			return true;
+		}
+
 		// 6-connected components
 		std::vector<SparseBinaryGrid> components;
 		ExtractConnectedComponents6(solidGrid, &components);
@@ -410,13 +466,53 @@ bool ENGINECALL Prelight::DecomposeToConvex(const StaticMesh& m) const
 			for (auto& e : fs::directory_iterator(outDir, ec)) fs::remove_all(e.path(), ec);
 		}
 
-		// 1) 섹션별 or 전체 저장 중 택1.
-		//    여기선 "전체" 원본 solid를 컬러로 한 번 저장하고 싶다면,
-		//    각 section의 solidGrid를 합치거나(별도 유틸 필요) 가장 최근 solidGrid를 사용하세요.
-		//    예시로는 섹션별 저장을 보여줍니다. (surfaceGrid/solidGrid를 섹션 루프 외로 보관해두거나
-		//    바로 아래에서 재계산해도 됨)
+		// =============================================================
+		// 📦 (NEW) Save each leaf hull as CASPER file + metadata.txt
+		// =============================================================
+		{
+			const fs::path metaPath = outDir / "metadata.txt";
+			std::ofstream meta(metaPath);
+			if (!meta.is_open())
+			{
+				std::cerr << "Failed to open metadata.txt for writing.\n";
+			}
+			else
+			{
+				meta << "# CASPER convex decomposition metadata\n";
+				meta << "# Each entry: leaf_index cell_size origin_x origin_y origin_z num_voxels\n";
 
-		// 섹션 루프를 다시 한 번 돌며 섹션별로 컬러 저장:
+				for (size_t i = 0; i < leafHullSolids.size(); ++i)
+				{
+					const SparseBinaryGrid& grid = leafHullSolids[i];
+					const std::string fileName = std::format("leaf_{:04d}.cpr", (int)i);
+					const fs::path filePath = outDir / fileName;
+
+					if (grid.SaveAsCasper(filePath.string()))
+					{
+						meta << std::format(
+							"{}\t{:.6f}\t{:.6f}\t{:.6f}\t{:.6f}\t{}\n",
+							fileName,
+							grid.GetCellSize(),
+							grid.GetOrigin().x,
+							grid.GetOrigin().y,
+							grid.GetOrigin().z,
+							grid.NumVoxels()
+						);
+					}
+					else
+					{
+						meta << std::format("# FAILED {}\n", fileName);
+					}
+				}
+
+				meta.close();
+				std::cout << std::format("[CASPER] Saved {} leaf grids + metadata.txt\n", leafHullSolids.size());
+			}
+		}
+
+		// =============================================================
+		// 기존 색상 OBJ 저장 루틴
+		// =============================================================
 		for (uint section = 0; section < (uint)m.Sections.size(); ++section)
 		{
 			// (재)생성: section의 base solid grid
@@ -425,23 +521,25 @@ bool ENGINECALL Prelight::DecomposeToConvex(const StaticMesh& m) const
 			SparseBinaryGrid baseSolid;
 			MakeSolidFromSurfaceSparse(surfaceGrid, &baseSolid);
 
-			// 2) 매퍼: 이 복셀(gx,gy,gz)이 어떤 리프 헐에 속하는지 찾기
+			// 매퍼: 이 복셀(gx,gy,gz)이 어떤 리프 헐에 속하는지 찾기
 			auto voxelHullId = [&](int gx, int gy, int gz)->int {
-				for (int i = 0; i < (int)leafHullSolids.size(); ++i) 
-				{
-					if (leafHullSolids[i].GetVoxel(gx, gy, gz))
-					{
-						return i; // 첫 매칭 hull 색
-					}
-				}
-				return -1; // 기본색
+				for (int i = 0; i < (int)leafHullSolids.size(); ++i)
+					if (leafHullSolids[i].GetVoxel(gx, gy, gz)) return i;
+				ASSERT(false);
+				return -1;
 				};
 
-			// 3) OBJ+MTL로 저장 (HSV hue만 변경, alpha 적용)
 			const std::string objPath = std::format("{}\\colored_voxels_section_{}.obj", outDir.string(), section);
 			const float sat = 1.0f, val = 1.0f;
 
 			SaveAsObjColored(baseSolid, objPath, voxelHullId, (int)leafHullSolids.size(), sat, val);
+		}
+
+		for (const auto& hull : hulls)
+		{
+			static int hullId = 0;
+			const fs::path hullPath = outDir / std::format("hull_{:04d}.obj", hullId++);
+			SaveHullAsObj(hullPath.string(), hull.first, hull.second);
 		}
 	}
 

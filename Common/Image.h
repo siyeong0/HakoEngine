@@ -2,6 +2,20 @@
 #include <vector>
 #include "Common/Common.h"
 
+enum IMAGE_FORMAT
+{
+	IMAGE_FORMAT_UNKNOWN = 0,
+	IMAGE_FORMAT_RGBA8,
+	IMAGE_FORMAT_RGB8,
+	IMAGE_FORMAT_R8,
+	IMAGE_FORMAT_BC1, // DXT1
+	IMAGE_FORMAT_BC3, // DXT5
+	IMAGE_FORMAT_BC4, // ATI1
+	IMAGE_FORMAT_BC5, // ATI2
+	IMAGE_FORMAT_BC6H,
+	IMAGE_FORMAT_BC7,
+};
+
 struct Image
 {
 	uint Width = 0;
@@ -12,6 +26,7 @@ struct Image
 
 void FillImageRGBA(Image& img, int w, int h, const unsigned char* rgba8);
 bool LoadImageFromFile(const std::filesystem::path& path, Image* outImage);
+bool SaveImageToFile(const std::filesystem::path& path, const Image& img, IMAGE_FORMAT format = IMAGE_FORMAT_RGBA8);
 
 struct aiScene;
 struct aiMaterial;
