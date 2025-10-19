@@ -2,6 +2,7 @@
 #include <vector>
 #include "Image.h"
 #include "Common/Common.h"
+#include "Shaders/HLSL_CPP_CommonTypes.h"
 
 struct Material
 {
@@ -10,6 +11,7 @@ struct Material
 	Image Specular;
 	Image Metallic;
 	Image Roughness;
+	MATERIAL_TYPE Type = MATERIAL_TYPE_DEFAULT;
 };
 
 struct MeshSection

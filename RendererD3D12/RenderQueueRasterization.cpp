@@ -86,7 +86,7 @@ int RenderQueueRasterization::Process(
 			case RENDER_ITEM_TYPE_MESH_OBJ:
 				{
 					BasicMeshObject* meshObj = reinterpret_cast<BasicMeshObject*>(pItem->pObjHandle);
-					meshObj->Draw(threadIndex, pCurrCommandList, &pItem->MeshObjParam.matWorld);
+					meshObj->Draw(threadIndex, pCurrCommandList, &pItem->MeshObjParam.WorldMatrix);
 				}
 				break;
 			case RENDER_ITEM_TYPE_SPRITE:

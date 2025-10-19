@@ -105,6 +105,9 @@
     <Filter Include="Shaders\Raytracing">
       <UniqueIdentifier>{7179c628-899f-4022-8c94-240fa19e17a2}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Shaders\Common">
+      <UniqueIdentifier>{cc684ff0-528b-467b-acb9-ae6e572bfcd2}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h">
@@ -271,6 +274,15 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
+    <None Include="..\Shaders\HLSL_CPP_CommonTypes.h">
+      <Filter>Shaders\Common</Filter>
+    </None>
+    <None Include="..\Shaders\BxDF.hlsli">
+      <Filter>Shaders\Rasterization</Filter>
+    </None>
+    <None Include="..\Shaders\HLSLTypes.hlsli">
+      <Filter>Shaders\Common</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <CustomBuild Include="..\Shaders\AtmosphericSky.hlsl">

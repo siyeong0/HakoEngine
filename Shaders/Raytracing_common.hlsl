@@ -14,11 +14,12 @@ SamplerState g_SamplerPoint : register(s2); // TODO: sync with Standard SamplerS
 SamplerState g_SamplerMirror : register(s3);
 
 // Local Root Parameter
+ConstantBuffer<CONSTANT_BUFFER_RT_TRIGROUP> l_RayGeomCB : register(b0, space1);
 StructuredBuffer<Vertex> l_Vertices : register(t0, space1);
 ByteAddressBuffer l_Indices : register(t1, space1);
 Texture2D<float4> l_DiffuseTexture : register(t2, space1);
 
-cbuffer CONSTANT_BUFFER_PER_FRAME : register(b0)
+cbuffer CONSTANT_BUFFER_PER_FRAME : register(b0, space0)
 {
     matrix g_View;
     matrix g_Proj;
@@ -37,6 +38,9 @@ cbuffer CONSTANT_BUFFER_PER_FRAME : register(b0)
     float g_Near;
     float g_Far;
     uint g_MaxRadianceRayRecursionDepth;
+    uint g_NumLights;
+    
+    Light g_LightList[MAX_LIGHT_COUNT];
 };
 
 // Interpolate vertex attribute using barycentric coordinates.
@@ -98,6 +102,5 @@ static uint3 Load3x16BitIndices(uint offsetBytes)
 
     return indices;
 }
-
 
 #endif // RAYTRACING_COMMON_HLSL

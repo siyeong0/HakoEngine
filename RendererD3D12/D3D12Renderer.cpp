@@ -419,6 +419,16 @@ void ENGINECALL D3D12Renderer::Update(float dt)
 	m_PerFrameCB.Near = NEAR_Z;
 	m_PerFrameCB.Far = FAR_Z;
 	m_PerFrameCB.MaxRadianceRayRecursionDepth = 1;
+
+
+	updateCamera();
+	
+	// Update lights
+	m_PerFrameCB.NumLights = 1;
+	m_PerFrameCB.LightList[0].Type = LIGHT_TYPE_DIRECTIONAL;
+	m_PerFrameCB.LightList[0].PosOrDir = FLOAT3(-0.577f, -0.577f, -0.577f);
+	m_PerFrameCB.LightList[0].Color = FLOAT3(1.0f, 1.0f, 1.0f);
+	m_PerFrameCB.LightList[0].Rs = 0.0f;
 }
 
 void ENGINECALL D3D12Renderer::BeginRender()
@@ -607,7 +617,7 @@ void ENGINECALL D3D12Renderer::RenderMeshObject(
 	RenderItem item = {};
 	item.Type = RENDER_ITEM_TYPE_MESH_OBJ;
 	item.pObjHandle = pMeshObj;
-	item.MeshObjParam.matWorld = *pMatWorld;
+	item.MeshObjParam.WorldMatrix = *pMatWorld;
 
 	bool bAdded = false;
 	switch (pMeshObj->GetRenderPass())

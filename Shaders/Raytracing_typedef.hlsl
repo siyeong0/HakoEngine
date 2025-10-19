@@ -1,6 +1,8 @@
 ﻿#ifndef RAYTRACING_CONST_BUFFERL_HLSL
 #define RAYTRACING_CONST_BUFFERL_HLSL
 
+#include "HLSLTypes.hlsli"
+
 #define INT_MIN     (-2147483647 - 1)
 #define INT_MAX       2147483647
 #define EPSILON 1e-10
@@ -12,7 +14,6 @@
 static const uint g_IndexSizeInBytes = 2;
 static const uint g_IndicesPerTriangle = 3;
 static const uint g_TriangleIndexStride = g_IndicesPerTriangle * g_IndexSizeInBytes;
-
 
 struct Vertex
 {
@@ -44,5 +45,35 @@ static const float NEAR_PLANE = 0.01;
 static const float FAR_PLANE = 800.0;
 
 //typedef BuiltInTriangleIntersectionAttributes MyAttributes;
+    
+// input from cpu side
+struct BasicMaterial
+{
+    float3 Ks;
+    MATERIAL_TYPE Type;
+    float3 Kr;
+    float Roughness;
+    float3 Kt;
+    float AmbientIntensity;
+    float3 Opacity;
+    uint Reserved0;
+};
+
+// shader internal
+struct RayTracingMaterial
+{
+    float3 Kd;
+    float3 Ks;
+    float3 Kr;
+    float3 Kt;
+    MATERIAL_TYPE Type;
+    float Roughness;
+    float AmbientIntensity;
+};
+    
+struct CONSTANT_BUFFER_RT_TRIGROUP
+{
+    BasicMaterial Material;
+};
 
 #endif

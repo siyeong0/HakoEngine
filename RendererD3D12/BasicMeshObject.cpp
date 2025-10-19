@@ -75,8 +75,9 @@ bool ENGINECALL BasicMeshObject::InsertTriGroup(const uint16_t* indices, uint nu
 	pTriGroup->IndexBufferView = indexBufferView;
 	pTriGroup->NumTriangles = static_cast<uint>(numTriangles);
 	pTriGroup->pTexHandle = (TextureHandle*)m_pRenderer->CreateTextureFromFile(wchTexFileName);
-	pTriGroup->bOpaque = true;
+	pTriGroup->Material = CreateBasicMaterial(MATERIAL_TYPE_DEFAULT);
 	m_NumTriGroups++;
+
 	return true;
 }
 
@@ -103,7 +104,7 @@ bool ENGINECALL BasicMeshObject::InsertTriGroup(const uint16_t* indices, uint nu
 	pTriGroup->IndexBufferView = indexBufferView;
 	pTriGroup->NumTriangles = static_cast<uint>(numTriangles);
 	pTriGroup->pTexHandle = (TextureHandle*)m_pRenderer->CreateImmutableTexture(material.Diffuse);
-	pTriGroup->bOpaque = true;
+	pTriGroup->Material = CreateBasicMaterial(material.Type);
 	m_NumTriGroups++;
 	return true;
 }
@@ -213,6 +214,35 @@ void BasicMeshObject::UpdateBLASTransform(const Matrix4x4& worldMatrix)
 {
 	RayTracingManager* pRayTracingManager = m_pRenderer->GetRayTracingManager();
 	pRayTracingManager->UpdateBLASTransform(m_pBLASHandle, worldMatrix);
+}
+
+RenderMaterial BasicMeshObject::CreateBasicMaterial(MATERIAL_TYPE mtlType)
+{
+	RenderMaterial out;
+	out.Type = mtlType;
+	out.Ks = FLOAT3(0.9f, 0.9f, 0.9f);
+	out.Roughness = 0.01f;
+	out.Kr = FLOAT3(0.5f, 0.5f, 0.5f);
+	out.Kt = FLOAT3(0.0f, 0.0f, 0.0f);
+	out.Type = MATERIAL_TYPE_DEFAULT;
+	out.AmbientIntensity = 0.25f;
+	out.Opacity = FLOAT3(1.0f, 1.0f, 1.0f);
+
+	if (mtlType == MATERIAL_TYPE_GLASS)
+	{
+		out.Ks = FLOAT3(0.1f, 0.1f, 0.1f);
+		out.Kr = FLOAT3(0.05f, 0.05f, 0.05f);
+		out.Kt = FLOAT3(0.95f, 0.95f, 0.95f);
+		out.Opacity = FLOAT3(0.5f, 0.5f, 0.5f);
+		out.AmbientIntensity = 0.01f;
+	}
+
+	if (mtlType == MATERIAL_TYPE_MATTE)
+	{
+		out.Kr = FLOAT3(0.0f, 0.0f, 0.0f);
+	}
+
+	return out;
 }
 
 bool BasicMeshObject::initPipelineState()

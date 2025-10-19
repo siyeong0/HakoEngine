@@ -42,6 +42,8 @@ public:
 	void Draw(int threadIndex, ID3D12GraphicsCommandList6* pCommandList, const Matrix4x4* worldMatrix);
 	void UpdateBLASTransform(const Matrix4x4& worldMatrix);
 
+	static RenderMaterial CreateBasicMaterial(MATERIAL_TYPE mtlType);
+
 private:
 	bool initPipelineState();
 

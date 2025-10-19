@@ -1,4 +1,6 @@
-﻿Texture2D texDiffuse : register(t0);
+﻿#include "HLSLTypes.hlsli"
+
+Texture2D texDiffuse : register(t0);
 
 cbuffer CONSTANT_BUFFER_PER_FRAME : register(b0)
 {
@@ -19,6 +21,9 @@ cbuffer CONSTANT_BUFFER_PER_FRAME : register(b0)
     float g_Near;
     float g_Far;
     uint g_MaxRadianceRayRecursionDepth;
+    uint NumLights;
+    
+    Light g_LightList[MAX_LIGHT_COUNT];
 };
 
 cbuffer CONSTANT_BUFFER_PER_OBJECT : register(b1)

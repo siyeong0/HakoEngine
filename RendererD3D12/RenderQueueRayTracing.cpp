@@ -49,7 +49,7 @@ int RenderQueueRayTracing::Process(
 		case RENDER_ITEM_TYPE_MESH_OBJ:
 		{
 			BasicMeshObject* meshObj = reinterpret_cast<BasicMeshObject*>(pItem->pObjHandle);
-			meshObj->UpdateBLASTransform(pItem->MeshObjParam.matWorld);
+			meshObj->UpdateBLASTransform(pItem->MeshObjParam.WorldMatrix);
 		}
 		break;
 		case RENDER_ITEM_TYPE_SPRITE:

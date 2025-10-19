@@ -5,6 +5,14 @@ constexpr uint ROOT_SLOT_CBV_PER_FRAME = 0;
 constexpr uint ROOT_SLOT_CBV_PER_DRAW = 1;
 constexpr uint ROOT_SLOT_SRV_TABLE = 2;
 
+struct Light
+{
+	FLOAT3 PosOrDir;
+	float Rs;
+	FLOAT3 Color;
+	LIGHT_TYPE Type;
+};
+
 enum CONSTANT_BUFFER_TYPE
 {
 	CONSTANT_BUFFER_TYPE_PER_FRAME,
@@ -39,12 +47,24 @@ struct CONSTANT_BUFFER_PER_FRAME
 	float Near;
 	float Far;
 	uint MaxRadianceRayRecursionDepth;
+	uint NumLights;
+
+	Light LightList[MAX_LIGHT_COUNT];
 };
+static_assert(sizeof(CONSTANT_BUFFER_PER_FRAME) % 16 == 0, "CONSTANT_BUFFER_PER_FRAME size must be multiple of 16 bytes.");
+static_assert(sizeof(CONSTANT_BUFFER_PER_FRAME) <= 1024, "CONSTANT_BUFFER_PER_FRAME size must be less than or equal to 1024 bytes.");
+static_assert(sizeof(CONSTANT_BUFFER_PER_FRAME) == 
+	6 * sizeof(Matrix4x4) + 
+	3 * sizeof(FLOAT4) + 
+	3 * sizeof(float) + 
+	1 * sizeof(uint) + 
+	MAX_LIGHT_COUNT * sizeof(Light), "CONSTANT_BUFFER_PER_FRAME size mismatch.");
 
 struct CONSTANT_BUFFER_MESH_OBJECT
 {
 	Matrix4x4 WorldMatrix;
 };
+static_assert(sizeof(CONSTANT_BUFFER_MESH_OBJECT) % 16 == 0, "CONSTANT_BUFFER_MESH_OBJECT size must be multiple of 16 bytes.");
 
 struct CONSTANT_BUFFER_SPRITE_OBJECT
 {
@@ -59,6 +79,7 @@ struct CONSTANT_BUFFER_SPRITE_OBJECT
 	float	Reserved0;
 	float	Reserved1;
 };
+static_assert(sizeof(CONSTANT_BUFFER_SPRITE_OBJECT) % 16 == 0, "CONSTANT_BUFFER_SPRITE_OBJECT size must be multiple of 16 bytes.");
 
 struct CONSTANT_BUFFER_ATMOS
 {
@@ -87,4 +108,8 @@ struct CONSTANT_BUFFER_ATMOS
 	float SMU;
 	float SMUS;
 	float SNU;
+
+	float _pad3;
+	float _pad4;
 };
+static_assert(sizeof(CONSTANT_BUFFER_ATMOS) % 16 == 0, "CONSTANT_BUFFER_ATMOS size must be multiple of 16 bytes.");

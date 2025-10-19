@@ -214,6 +214,9 @@
     <ClCompile Include="TextureManager.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="..\Shaders\BxDF.hlsli" />
+    <None Include="..\Shaders\HLSLTypes.hlsli" />
+    <None Include="..\Shaders\HLSL_CPP_CommonTypes.h" />
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>

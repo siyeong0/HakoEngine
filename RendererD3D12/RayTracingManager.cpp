@@ -292,10 +292,11 @@ BLASHandle* RayTracingManager::buildBLAS(
 		pGeomDescList[i].Triangles.VertexCount = numVertices;
 		pGeomDescList[i].Triangles.VertexBuffer.StartAddress = VB_GPU_Ptr;
 		pGeomDescList[i].Triangles.VertexBuffer.StrideInBytes = vertexSize;
-		// Mark the geometry as opaque. 
+		// TODO: Mark the geometry as opaque. 
 		// PERFORMANCE TIP: mark geometry as opaque whenever applicable as it can enable important ray processing optimizations.
 		// Note: When rays encounter opaque geometry an any hit shader will not be executed whether it is present or not.
-		pGeomDescList[i].Flags = pTriGroupInfoList[i].bOpaque ? D3D12_RAYTRACING_GEOMETRY_FLAG_OPAQUE : D3D12_RAYTRACING_GEOMETRY_FLAG_NONE;
+		// pGeomDescList[i].Flags = pTriGroupInfoList[i].bOpaque ? D3D12_RAYTRACING_GEOMETRY_FLAG_OPAQUE : D3D12_RAYTRACING_GEOMETRY_FLAG_NONE;
+		pGeomDescList[i].Flags = true ? D3D12_RAYTRACING_GEOMETRY_FLAG_OPAQUE : D3D12_RAYTRACING_GEOMETRY_FLAG_NONE;
 	}
 
 	// Build BLAS
@@ -382,6 +383,9 @@ BLASHandle* RayTracingManager::buildBLAS(
 
 		for (uint i = 0; i < numTriGroupInfos; i++)
 		{
+			// Set Material
+			pBLASHandle->pRootArg[i].Cb.Material = pTriGroupInfoList[i].Material;
+
 			// Create Shader Resource from Vertex Buffer
 			srvDesc.Buffer.FirstElement = 0;
 			srvDesc.Buffer.NumElements = numVertices;
@@ -711,7 +715,7 @@ void RayTracingManager::createRootSignatures()
 	samplers[2].Filter = D3D12_FILTER_MIN_MAG_MIP_POINT;
 	D3DUtil::SetSamplerDesc_Mirror(samplers + 3, 3);	// Mirror Linear
 	samplers[3].Filter = D3D12_FILTER_MIN_MAG_MIP_LINEAR;
-	for (DWORD i = 0; i < (DWORD)_countof(samplers); i++)
+	for (uint i = 0; i < (uint)_countof(samplers); i++)
 	{
 		samplers[i].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
 	}
@@ -724,8 +728,9 @@ void RayTracingManager::createRootSignatures()
 	CD3DX12_DESCRIPTOR_RANGE localRanges[1] = {};
 	localRanges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 3, 0, 1);	// space1
 
-	CD3DX12_ROOT_PARAMETER localRootParameters[1] = {};
-	localRootParameters[0].InitAsDescriptorTable(_countof(localRanges), localRanges, D3D12_SHADER_VISIBILITY_ALL);
+	CD3DX12_ROOT_PARAMETER localRootParameters[2] = {};
+	localRootParameters[0].InitAsConstants(SizeOfInUint32(CONSTANT_BUFFER_RT_TRIGROUP), 0, 1);	// b0 : CBV Per TriGroup
+	localRootParameters[1].InitAsDescriptorTable(_countof(localRanges), localRanges, D3D12_SHADER_VISIBILITY_ALL);
 
 	CD3DX12_ROOT_SIGNATURE_DESC localRootSignatureDesc(ARRAYSIZE(localRootParameters), localRootParameters, 0, nullptr);
 	localRootSignatureDesc.Flags = D3D12_ROOT_SIGNATURE_FLAG_LOCAL_ROOT_SIGNATURE;
@@ -810,7 +815,6 @@ void RayTracingManager::createRaytracingPipelineStateObject()
 	// as drivers may apply optimization strategies for low recursion depths. 
 	UINT maxRecursionDepth = MAX_RECURSION_DEPTH; // ~ primary rays only. 
 	pPipelineConfig->Config(maxRecursionDepth);
-
 
 	// Create the state object.
 	const D3D12_STATE_OBJECT_DESC* pRaytracingPipeline = raytracingPipeline;

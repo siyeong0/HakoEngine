@@ -1,5 +1,6 @@
 ﻿#pragma once
 #include "Common/Common.h"
+#include "Shaders/HLSL_CPP_CommonTypes.h"
 
 // Constants
 constexpr uint SWAP_CHAIN_FRAME_COUNT = 3;
@@ -24,15 +25,6 @@ struct TextureHandle
 	int RefCount;
 };
 
-struct IndexedTriGroup
-{
-	ID3D12Resource* IndexBuffer = nullptr;
-	D3D12_INDEX_BUFFER_VIEW IndexBufferView = {};
-	uint NumTriangles = 0;
-	TextureHandle* pTexHandle = nullptr;
-	bool bOpaque = true;
-};
-
 struct FontHandle
 {
 	IDWriteTextFormat*	pTextFormat;
@@ -49,8 +41,35 @@ struct ShaderHandle
 	uint CodeBuffer[1];
 };
 
+struct RenderMaterial
+{
+	FLOAT3 Ks;
+	MATERIAL_TYPE Type;
+	FLOAT3 Kr;
+	float Roughness;
+	FLOAT3 Kt;
+	float AmbientIntensity;
+	FLOAT3 Opacity;
+	float Reserved0;
+};
+
+struct IndexedTriGroup
+{
+	ID3D12Resource* IndexBuffer = nullptr;
+	D3D12_INDEX_BUFFER_VIEW IndexBufferView = {};
+	uint NumTriangles = 0;
+	TextureHandle* pTexHandle = nullptr;
+	RenderMaterial Material;
+};
+
+struct CONSTANT_BUFFER_RT_TRIGROUP
+{
+	RenderMaterial Material;
+};
+
 struct RootArgument
 {
+	CONSTANT_BUFFER_RT_TRIGROUP Cb;
 	D3D12_GPU_DESCRIPTOR_HANDLE SrvVB;
 	D3D12_GPU_DESCRIPTOR_HANDLE SrvIB;
 	D3D12_GPU_DESCRIPTOR_HANDLE SrvTexDiffuse;
@@ -87,7 +106,7 @@ enum RENDER_ITEM_TYPE
 	RENDER_ITEM_TYPE_SPRITE
 };
 
-struct RenderObjectParam
+struct RenderMeshParam
 {
 	Matrix4x4 WorldMatrix;
 };
@@ -110,7 +129,7 @@ struct RenderItem
 	void* pObjHandle;
 	union
 	{
-		RenderObjectParam MeshObjParam;
+		RenderMeshParam MeshObjParam;
 		RenderSpriteParam SpriteParam;
 	};
 };

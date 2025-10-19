@@ -2,15 +2,16 @@
 #define RAYTRACING_HLSL
 
 #include "Raytracing_common.hlsl"
+#include "BxDF.hlsli"
 
-RadiancePayload TraceRadianceRay(in Ray ray, in uint CurRayRecursionDepth, in uint MaxRecursionDepth, float tMin, float tMax, bool cullNonOpaque, bool cullBackFace)
+RadiancePayload TraceRadianceRay(in Ray ray, in uint currRayRecursionDepth, in uint maxRecursionDepth, float tMin, float tMax, bool bCullNonOpaque, bool bCullBackFace)
 {
     RadiancePayload rayPayload = (RadiancePayload) 0;
 
-    rayPayload.rayRecursionDepth = CurRayRecursionDepth + 1;
+    rayPayload.rayRecursionDepth = currRayRecursionDepth + 1;
     rayPayload.radiance = 0;
 	
-    if (CurRayRecursionDepth >= MaxRecursionDepth)
+    if (currRayRecursionDepth >= maxRecursionDepth)
     {
         rayPayload.radiance = float3(1, 1, 1);
         return rayPayload;
@@ -24,11 +25,11 @@ RadiancePayload TraceRadianceRay(in Ray ray, in uint CurRayRecursionDepth, in ui
     rayDesc.TMax = tMax;
 
     uint rayFlags = 0;
-    if (cullNonOpaque)
+    if (bCullNonOpaque)
     {
         rayFlags |= RAY_FLAG_CULL_NON_OPAQUE;
     }
-    if (cullBackFace)
+    if (bCullBackFace)
     {
         rayFlags |= RAY_FLAG_CULL_BACK_FACING_TRIANGLES;
     }
@@ -48,20 +49,73 @@ RadiancePayload TraceRadianceRay(in Ray ray, in uint CurRayRecursionDepth, in ui
     return rayPayload;
 }
 
+float3 Shade(inout RadiancePayload rayPayload, in float3 N, in float3 hitPosition, in RayTracingMaterial material)
+{
+    uint MaxRadianceRecursionDepth = g_MaxRadianceRayRecursionDepth;
+	
+    float3 V = -WorldRayDirection(); // View Vector
+    float pdf;
+    float3 indirectContribution = 0;
+    float3 L = 0;
+	
+    const float3 Kd = material.Kd;
+    const float3 Ks = material.Ks;
+    const float3 Kr = material.Kr;
+    const float3 Kt = material.Kt;
+    const float roughness = material.Roughness;
+
+	// Direct illumination
+    if (!BxDF::IsBlack(material.Kd) || !BxDF::IsBlack(material.Ks))
+    {
+        for (uint i = 0; i < g_NumLights; i++)
+        {
+            float3 LightColor = g_LightList[i].Color;
+            float3 wi = normalize(g_LightList[i].PosOrDir) * -1;
+
+			// Raytraced shadows.
+            bool isInShadow = false;
+            // Kd = diffuse , Ks = specular , V = view vector, wi = light vector
+            L += BxDF::DirectLighting::Shade(
+						material.Type,
+						Kd,
+						Ks,
+						LightColor.rgb,
+						isInShadow,
+						roughness,
+						N,
+						V,
+						wi);
+        }
+    }
+	// Ambient Indirect Illumination
+	// Add a default ambient contribution to all hits. 
+	// This will be subtracted for hitPositions with 
+	// calculated Ambient coefficient in the composition pass.
+    L += material.AmbientIntensity * Kd;
+
+	// Specular Indirect Illumination
+    bool isReflective = !BxDF::IsBlack(Kr);
+    bool isTransmissive = !BxDF::IsBlack(Kt);
+
+	// Handle cases where ray is coming from behind due to imprecision,
+	// don't cast reflection rays in that case.
+    float smallValue = 1e-6f;
+    isReflective = dot(V, N) > smallValue ? isReflective : false;
+	
+    return L;
+}
+
 [shader("raygeneration")]
 void MyRaygenShader_RadianceRay()
 {
     uint2 launchIndex = DispatchRaysIndex().xy;
     uint2 launchDim = DispatchRaysDimensions().xy;
 
-    // Generate primary ray.
-    // Ray origin is the camera position.
-    float3 worldOrigin = g_InvView._41_42_43;
-    
     // Ray direction is computed by transforming the screen space coordinate to world space.
     float2 currPixel = float2(launchIndex.xy) + 0.5f; // center in the middle of the pixel.
     float2 resolution = float2(launchDim.xy);
     
+    // Generate primary ray.
     float4 rayView = float4(
         ((currPixel.x / resolution.x) * 2.0f - 1.0f) / g_Proj._11,
         -((currPixel.y / resolution.y) * 2.0f - 1.0f) / g_Proj._22,
@@ -69,6 +123,7 @@ void MyRaygenShader_RadianceRay()
     float4 rayDstWorld = mul(rayView, g_InvView);
     rayDstWorld.xyz = normalize(rayDstWorld.xyz);
     float3 worldDir = rayDstWorld.xyz;
+    float3 worldOrigin = g_InvView._41_42_43; // Ray origin is the camera position.
     
     Ray ray =
     {
@@ -78,9 +133,9 @@ void MyRaygenShader_RadianceRay()
     
     // Trace primary ray.
     uint currRayRecursionDepth = 0;
-    bool cullNonOpaque = false;
-    bool cullBackFace = false;
-    RadiancePayload rayPayload = TraceRadianceRay(ray, currRayRecursionDepth, g_MaxRadianceRayRecursionDepth, NEAR_PLANE, FAR_PLANE, cullNonOpaque, cullBackFace);
+    bool bCullNonOpaque = false;
+    bool bCullBackFace = false;
+    RadiancePayload rayPayload = TraceRadianceRay(ray, currRayRecursionDepth, g_MaxRadianceRayRecursionDepth, NEAR_PLANE, FAR_PLANE, bCullNonOpaque, bCullBackFace);
 	
     // Output to the screen.
     g_OutputDiffuse[launchIndex.xy] = float4(rayPayload.radiance, 1);
@@ -117,13 +172,38 @@ void MyClosestHitShader_RadianceRay(inout RadiancePayload rayPayload, in BuiltIn
         l_Vertices[indices[2]].Tangent
     };
     
-    float2 currTexCoord = HitAttribute(vertexUV, attr);
-    float4 texDiffuse = l_DiffuseTexture.SampleLevel(g_SamplerPoint, currTexCoord, 0);
-    float3 localNormal = HitAttribute(vertexNormal, attr);
-    float3 worldNormal = normalize(mul(localNormal, (float3x3) ObjectToWorld4x3())); // TODO: like Standard.hlsl. use InverseTranspose?
+    float2 texCoord = HitAttribute(vertexUV, attr);
     
-    rayPayload.depth = hitPosition.z;
-    rayPayload.radiance = texDiffuse.xyz;
+    float4 texDiffuse = l_DiffuseTexture.SampleLevel(g_SamplerPoint, texCoord, 0);
+    // TODO: normal map
+    
+    float3 localNormal = HitAttribute(vertexNormal, attr);
+    float3 localTangent = HitAttribute(vertexTangent, attr);
+    
+    float3 worldNormal = normalize(mul(localNormal, (float3x3) ObjectToWorld4x3())); // TODO: like Standard.hlsl. use InverseTranspose?
+    float3 worldTangent = normalize(mul(localTangent, (float3x3) ObjectToWorld4x3()));
+    float3 worldBinormal = normalize(cross(worldTangent, worldNormal));
+    
+    //float3 tanNormal = texNormal.rgb * 2 - 1;
+    //float3 surfaceNormal = (tanNormal.xxx * worldTangent) + (tanNormal.yyy * worldBinormal) + (tanNormal.zzz * worldNormal);
+    float3 surfaceNormal = worldNormal;
+    
+    // Compute depth
+    float4 projPos = mul(float4(hitPosition, 1.0), g_ViewProj);
+    projPos /= projPos.w;
+    rayPayload.depth = saturate(projPos.z);
+    
+    // Compute radiance
+    RayTracingMaterial material;
+    material.Kd = texDiffuse.rgb * l_RayGeomCB.Material.Opacity;
+    material.Type = l_RayGeomCB.Material.Type;
+    material.Ks = l_RayGeomCB.Material.Ks;
+    material.Roughness = l_RayGeomCB.Material.Roughness;
+    material.Kr = l_RayGeomCB.Material.Kr;
+    material.AmbientIntensity = l_RayGeomCB.Material.AmbientIntensity;
+    material.Kt = l_RayGeomCB.Material.Kt;
+   
+    rayPayload.radiance = Shade(rayPayload, surfaceNormal, hitPosition, material);
 }
 
 [shader("miss")]
