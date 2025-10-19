@@ -25,6 +25,8 @@ public:
 	ID3D12Resource* GetDepthResource() { return m_pOutputDepth; }
 	bool IsUpdatedAccelerationStructure() const { return (BOOL)(m_UpdateAccelerationStructureFlags != 0); }
 
+	uint GetMaxRecursionDepth() const { return MAX_RECURSION_DEPTH; }
+
 private:
 	BLASHandle* buildBLAS(ID3D12Resource* pVertexBuffer, uint vertexSize, uint numVertices, const IndexedTriGroup* pTriGroupInfoList, uint numTriGroupInfos, bool bAllowUpdate);
 	ID3D12Resource* buildTLAS(ID3D12Resource* pInstanceDescResource, BLASHandle** ppInstanceList, uint numBLASHandles, bool bAllowUpdate, uint currContextIndex);
@@ -83,8 +85,8 @@ private:
 		UPDATE_ACCELERATION_STRCTURE_TYPE_HIT_GROUP_SHADER_TABLE = 0b01,
 		UPDATE_ACCELERATION_STRCTURE_TYPE_TLAS = 0b10
 	};
-	static const uint MAX_RECURSION_DEPTH = 1;
-	static const uint MAX_RADIANCE_RECURSION_DEPTH = std::min<uint>(MAX_RECURSION_DEPTH, 1u);
+	static const uint MAX_RECURSION_DEPTH = 3;
+	static const uint MAX_RADIANCE_RECURSION_DEPTH = std::min<uint>(MAX_RECURSION_DEPTH, 3);
 
 
 	D3D12Renderer* m_pRenderer = nullptr;

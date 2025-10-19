@@ -2,9 +2,6 @@
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
     <ClInclude Include="$(MSBuildThisFileDirectory)Common.h" />
-    <ClInclude Include="$(MSBuildThisFileDirectory)Vertex.h">
-      <Filter>Geometry</Filter>
-    </ClInclude>
     <ClInclude Include="$(MSBuildThisFileDirectory)IndexCreator.h">
       <Filter>Util\IndexCreator</Filter>
     </ClInclude>
@@ -27,7 +24,7 @@
       <Filter>Math</Filter>
     </ClInclude>
     <ClInclude Include="$(MSBuildThisFileDirectory)StaticMesh.h">
-      <Filter>Geometry\StaticMesh</Filter>
+      <Filter>StaticMesh</Filter>
     </ClInclude>
     <ClInclude Include="$(MSBuildThisFileDirectory)Plane.h">
       <Filter>Math</Filter>
@@ -35,7 +32,12 @@
     <ClInclude Include="$(MSBuildThisFileDirectory)Image.h">
       <Filter>Image</Filter>
     </ClInclude>
-    <ClInclude Include="$(MSBuildThisFileDirectory)Color.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)Vertex.h">
+      <Filter>Vertex</Filter>
+    </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)Color.h">
+      <Filter>Color</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Util">
@@ -53,17 +55,20 @@
     <Filter Include="Util\WriteDebugString">
       <UniqueIdentifier>{4bac4bf1-eb7f-4266-8290-9ce722f9e408}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Geometry">
-      <UniqueIdentifier>{bde5fc60-9bd4-4ee1-9414-a87687c290a0}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Math">
       <UniqueIdentifier>{617fbfa9-ceec-475a-9026-03cf10c6c710}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Geometry\StaticMesh">
-      <UniqueIdentifier>{7b3c1f51-1f78-4a17-bc3d-998d0f8f0f54}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Image">
       <UniqueIdentifier>{bf5b2f53-f60e-4cc0-863d-be06cb8eefa8}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="StaticMesh">
+      <UniqueIdentifier>{7b3c1f51-1f78-4a17-bc3d-998d0f8f0f54}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Color">
+      <UniqueIdentifier>{43b9a942-4d04-436c-bf83-aa2f16e90e51}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Vertex">
+      <UniqueIdentifier>{112cf960-fd35-4139-9a8f-0bdfdbe7aec1}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -80,7 +85,7 @@
       <Filter>Util\WriteDebugString</Filter>
     </ClCompile>
     <ClCompile Include="$(MSBuildThisFileDirectory)StaticMesh.cpp">
-      <Filter>Geometry\StaticMesh</Filter>
+      <Filter>StaticMesh</Filter>
     </ClCompile>
     <ClCompile Include="$(MSBuildThisFileDirectory)Image.cpp">
       <Filter>Image</Filter>

@@ -238,7 +238,7 @@ RenderMaterial BasicMeshObject::CreateBasicMaterial(MATERIAL_TYPE mtlType)
 {
 	RenderMaterial out;
 	out.Type = mtlType;
-	out.Ks = FLOAT3(0.9f, 0.9f, 0.9f);
+	out.Ks = FLOAT3(0.5f, 0.5f, 0.5f);
 	out.Roughness = 0.01f;
 	out.Kr = FLOAT3(0.5f, 0.5f, 0.5f);
 	out.Kt = FLOAT3(0.0f, 0.0f, 0.0f);

@@ -414,8 +414,7 @@ void ENGINECALL D3D12Renderer::Update(float dt)
 {
 	m_PerFrameCB.Near = NEAR_Z;
 	m_PerFrameCB.Far = FAR_Z;
-	m_PerFrameCB.MaxRadianceRayRecursionDepth = 1;
-
+	m_PerFrameCB.MaxRadianceRayRecursionDepth = m_pRayTracingManager->GetMaxRecursionDepth();
 
 	updateCamera();
 	

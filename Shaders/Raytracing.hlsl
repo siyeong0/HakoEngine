@@ -49,13 +49,32 @@ RadiancePayload TraceRadianceRay(in Ray ray, in uint currRayRecursionDepth, in u
     return rayPayload;
 }
 
+float3 TraceReflectedRay(in float3 hitPosition, in float3 wi, in float3 N, inout RadiancePayload rayPayload, in float tMax, in uint maxRecursionDepth)
+{
+	// Here we offset ray start along the ray direction instead of surface normal 
+	// so that the reflected ray projects to the same screen pixel. 
+	// Offsetting by surface normal would result in incorrect mappating in temporally accumulated buffer. 
+    const float T_OFFSET = 0.01;
+    float3 offsetAlongRay = T_OFFSET * wi;
+
+    float3 adjustedHitPosition = hitPosition + offsetAlongRay;
+
+    Ray ray = { adjustedHitPosition, wi };
+
+    float tMin = NEAR_PLANE;
+
+    bool bCullNonOpaque = false;
+    bool bCullBackFace = true;
+		
+    rayPayload = TraceRadianceRay(ray, rayPayload.rayRecursionDepth, maxRecursionDepth, tMin, tMax, bCullNonOpaque, bCullBackFace);
+    return rayPayload.radiance;
+}
+
 float3 Shade(inout RadiancePayload rayPayload, in float3 N, in float3 hitPosition, in ShadingMaterial material)
 {
     uint MaxRadianceRecursionDepth = g_MaxRadianceRayRecursionDepth;
 	
     float3 V = -WorldRayDirection(); // View Vector
-    float pdf;
-    float3 indirectContribution = 0;
     float3 L = 0;
 	
     const float3 Kd = material.Kd;
@@ -102,14 +121,38 @@ float3 Shade(inout RadiancePayload rayPayload, in float3 N, in float3 hitPositio
     L += material.AmbientIntensity * Kd;
 
 	// Specular Indirect Illumination
-    bool isReflective = !BxDF::IsBlack(Kr);
-    bool isTransmissive = !BxDF::IsBlack(Kt);
+    bool bReflective = !BxDF::IsBlack(Kr);
+    bool bTransmissive = !BxDF::IsBlack(Kt);
 
 	// Handle cases where ray is coming from behind due to imprecision,
 	// don't cast reflection rays in that case.
     float smallValue = 1e-6f;
-    isReflective = dot(V, N) > smallValue ? isReflective : false;
+    bReflective = dot(V, N) > smallValue ? bReflective : false;
 	
+    if (bReflective || bTransmissive)
+    {
+        if (bReflective && (BxDF::Specular::Reflection::IsTotalInternalReflection(V, N)))
+        {
+            float3 wi = reflect(-V, N);
+            RadiancePayload reflectedRayPayload = rayPayload;
+            L += Kr * TraceReflectedRay(hitPosition, wi, N, reflectedRayPayload, FAR_PLANE, MaxRadianceRecursionDepth);
+        }
+        else
+        {
+            float3 Fo = Ks;
+            if (bReflective)
+            {
+				// Radiance contribution from reflection.
+                float3 wi;
+                float3 Fr = Kr * BxDF::Specular::Reflection::Sample_Fr(V, wi, N, Fo); // Calculates wi
+
+                RadiancePayload reflectedRayPayLoad = rayPayload;
+				// Ref: eq 24.4, [Ray-tracing from the Ground Up]
+                L += Fr * TraceReflectedRay(hitPosition, wi, N, reflectedRayPayLoad, FAR_PLANE, MaxRadianceRecursionDepth);
+            }
+        }
+    }
+    
     return L;
 }
 
@@ -183,7 +226,8 @@ void MyClosestHitShader_RadianceRay(inout RadiancePayload rayPayload, in BuiltIn
     float2 texCoord = HitAttribute(vertexUV, attr);
     
     float4 texDiffuse = l_DiffuseTexture.SampleLevel(g_SamplerPoint, texCoord, 0);
-    float3 texNormal = l_NormalTexture.SampleLevel(g_SamplerWrap, texCoord, 0).rgb;
+    // float3 texNormal = l_NormalTexture.SampleLevel(g_SamplerWrap, texCoord, 0).rgb;
+    float3 texNormal = float3(0.5, 0.5, 1.0);
     
     float3 localNormal = HitAttribute(vertexNormal, attr);
     float3 localTangent = HitAttribute(vertexTangent, attr);
@@ -217,7 +261,7 @@ void MyClosestHitShader_RadianceRay(inout RadiancePayload rayPayload, in BuiltIn
 void MyMissShader_RadianceRay(inout RadiancePayload rayPayload)
 {
     // TODO: sky diffuse
-    rayPayload.radiance = float3(0, 0, 1);
+    rayPayload.radiance = float3(0, 0, 0);
     rayPayload.depth = 1.2;
 }
 
