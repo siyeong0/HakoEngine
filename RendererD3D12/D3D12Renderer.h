@@ -146,7 +146,7 @@ private:
 	static constexpr size_t NUM_RENDER_QUEUE_ITEMS_TRANSPARENT = 2048;
 	static constexpr size_t NUM_RENDER_QUEUE_ITEMS_RAYTRACING = 8192;
 
-	std::atomic<RenderPassType> m_RenderPhase = {};
+	std::atomic<RENDER_PASS_TYPE> m_RenderPhase = {};
 	IRenderQueue* m_ppRenderQueueOpaque[MAX_RENDER_THREAD_COUNT] = {};
 	IRenderQueue* m_ppRenderQueueTrasnparent[MAX_RENDER_THREAD_COUNT] = {};
 	IRenderQueue* m_ppRenderQueueRayTracing[1]; // TODO: Multi-thread support??

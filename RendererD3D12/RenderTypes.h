@@ -89,7 +89,7 @@ enum RENDER_ITEM_TYPE
 
 struct RenderObjectParam
 {
-	Matrix4x4 matWorld;
+	Matrix4x4 WorldMatrix;
 };
 
 struct RenderSpriteParam
@@ -110,7 +110,7 @@ struct RenderItem
 	void* pObjHandle;
 	union
 	{
-		RenderObjectParam	MeshObjParam;
-		RenderSpriteParam	SpriteParam;
+		RenderObjectParam MeshObjParam;
+		RenderSpriteParam SpriteParam;
 	};
 };
