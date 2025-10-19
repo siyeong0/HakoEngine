@@ -39,8 +39,13 @@ struct CONSTANT_BUFFER_PER_FRAME
 
 	float Near;
 	float Far;
+
 	uint MaxRadianceRayRecursionDepth;
+	uint MaxShadowRayRecursionDepth;
 	uint NumLights;
+	uint Reseaved0;
+	uint Reseaved1;
+	uint Reseaved2;
 
 	Light LightList[MAX_LIGHT_COUNT];
 };
@@ -49,7 +54,7 @@ static_assert(sizeof(CONSTANT_BUFFER_PER_FRAME) <= 1024, "CONSTANT_BUFFER_PER_FR
 static_assert(sizeof(CONSTANT_BUFFER_PER_FRAME) == 
 	6 * sizeof(Matrix4x4) + 
 	2 * sizeof(float) + 
-	2 * sizeof(uint) + 
+	6 * sizeof(uint) + 
 	MAX_LIGHT_COUNT * sizeof(Light), "CONSTANT_BUFFER_PER_FRAME size mismatch.");
 
 struct CONSTANT_BUFFER_MESH_OBJECT

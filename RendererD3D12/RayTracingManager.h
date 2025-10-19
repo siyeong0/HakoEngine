@@ -25,7 +25,8 @@ public:
 	ID3D12Resource* GetDepthResource() { return m_pOutputDepth; }
 	bool IsUpdatedAccelerationStructure() const { return (BOOL)(m_UpdateAccelerationStructureFlags != 0); }
 
-	uint GetMaxRecursionDepth() const { return MAX_RECURSION_DEPTH; }
+	uint GetMaxRadianceRecursionDepth() const { return MAX_RECURSION_DEPTH; }
+	uint GetMaxShadowRecursionDepth() const { return MAX_SHADOW_RECURSION_DEPTH; }
 
 private:
 	BLASHandle* buildBLAS(ID3D12Resource* pVertexBuffer, uint vertexSize, uint numVertices, const IndexedTriGroup* pTriGroupInfoList, uint numTriGroupInfos, bool bAllowUpdate);
@@ -86,8 +87,8 @@ private:
 		UPDATE_ACCELERATION_STRCTURE_TYPE_TLAS = 0b10
 	};
 	static const uint MAX_RECURSION_DEPTH = 3;
-	static const uint MAX_RADIANCE_RECURSION_DEPTH = std::min<uint>(MAX_RECURSION_DEPTH, 3);
-
+	static const uint MAX_RADIANCE_RECURSION_DEPTH = std::min(MAX_RECURSION_DEPTH, 3u);
+	static const uint MAX_SHADOW_RECURSION_DEPTH = std::min(MAX_RECURSION_DEPTH, 2u);
 
 	D3D12Renderer* m_pRenderer = nullptr;
 	ID3D12Device5* m_pD3DDevice = nullptr;
@@ -122,6 +123,7 @@ private:
 	uint m_HitGroupShaderTableStrideInBytes = 0;
 	uint m_HitGroupShaderRecordNum = 0;
 	uint m_ShaderIdentifierSize = D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES;
+	uint m_HitGroupShaderRecordSize = 0;
 
 	uint m_MaxNumBLASs = 0;
 	std::list<BLASHandle*> m_BLASHandleList; // BLAS Instance list

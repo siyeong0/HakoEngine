@@ -4,6 +4,8 @@
 #include "Raytracing_common.hlsl"
 #include "BxDF.hlsli"
 
+static const float T_OFFSET = 0.01;
+
 RadiancePayload TraceRadianceRay(in Ray ray, in uint currRayRecursionDepth, in uint maxRecursionDepth, float tMin, float tMax, bool bCullNonOpaque, bool bCullBackFace)
 {
     RadiancePayload rayPayload = (RadiancePayload) 0;
@@ -44,7 +46,7 @@ RadiancePayload TraceRadianceRay(in Ray ray, in uint currRayRecursionDepth, in u
     //      uint MissShaderIndex,
     //      RayDesc Ray,
     //      inout payload_t Payload);
-    TraceRay(Scene, rayFlags, ~0, 0, 1, 0, rayDesc, rayPayload);
+    TraceRay(Scene, rayFlags, ~0, 0, 2, 0, rayDesc, rayPayload);
 
     return rayPayload;
 }
@@ -54,7 +56,6 @@ float3 TraceReflectedRay(in float3 hitPosition, in float3 wi, in float3 N, inout
 	// Here we offset ray start along the ray direction instead of surface normal 
 	// so that the reflected ray projects to the same screen pixel. 
 	// Offsetting by surface normal would result in incorrect mappating in temporally accumulated buffer. 
-    const float T_OFFSET = 0.01;
     float3 offsetAlongRay = T_OFFSET * wi;
 
     float3 adjustedHitPosition = hitPosition + offsetAlongRay;
@@ -70,9 +71,84 @@ float3 TraceReflectedRay(in float3 hitPosition, in float3 wi, in float3 N, inout
     return rayPayload.radiance;
 }
 
+bool TraceShadowRayAndReportIfHit(out float tHit, in Ray ray, in bool retrieveTHit, in float TMax)
+{
+	// Set the ray's extents.
+    RayDesc rayDesc;
+    rayDesc.Origin = ray.origin;
+    rayDesc.Direction = ray.direction;
+    rayDesc.TMin = T_OFFSET;
+    rayDesc.TMax = TMax;
+
+	// Initialize shadow ray payload.
+	// Set the initial value to a hit at TMax. 
+	// Miss shader will set it to HitDistanceOnMiss.
+	// This way closest and any hit shaders can be skipped if true tHit is not needed. 
+    ShadowPayload shadowPayload = { TMax };
+
+    uint rayFlags = RAY_FLAG_CULL_NON_OPAQUE; // ~skip transparent objects
+    bool acceptFirstHit = !retrieveTHit;
+    if (acceptFirstHit)
+    {
+	// Performance TIP: Accept first hit if true hit is not neeeded,
+	// or has minimal to no impact. The peformance gain can
+	// be substantial.
+        rayFlags |= RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH; // hit이벤트가 발생하면 그대로 탐색을 종료한다.
+    }
+
+    // Skip closest hit shaders of tHit time is not needed.
+    if (!retrieveTHit)
+    {
+        // closest hit shader를 사용하지 않는다. 가깝든 멀든 광원에 사이에 장애물이 있는지만 확인하면 된다. 이는 miss shader에서 확인 가능하다.
+        rayFlags |= RAY_FLAG_SKIP_CLOSEST_HIT_SHADER;
+    }
+    rayFlags = 0; // RAY_FLAG_CULL_BACK_FACING_TRIANGLES;
+
+    // TraceRay(Scene, rayFlags, ~0, 0, 2, 0, rayDesc, rayPayload); // radiance
+	// TraceRay(Scene, rayFlags, ~0, 1, 2, 1, rayDesc, shadowPayload); // shadow
+
+	//void TraceRay(RaytracingAccelerationStructure AccelerationStructure,
+    //      uint RayFlags,
+    //      uint InstanceInclusionMask,
+    //      uint RayContributionToHitGroupIndex,
+    //      uint MultiplierForGeometryContributionToHitGroupIndex,  //stride
+    //      uint MissShaderIndex,
+    //      RayDesc Ray,
+    //      inout payload_t Payload);
+    TraceRay(Scene, rayFlags, ~0, 1, 2, 1, rayDesc, shadowPayload);
+
+    tHit = shadowPayload.tHit;
+
+    return shadowPayload.tHit > 0;
+}
+
+bool TryTraceShadowRayAndReportIfHit(in float3 hitPosition, in float3 direction, in float3 N, in RadiancePayload rayPayload, in float tMax, in uint maxRecursionDepth)
+{
+	// hitPosition - ray가 충돌한 점
+	// direction - ray가 충돌한 점에서 광원까지의 normalized 방향벡터
+	// N - ray가 충돌한 점의 노말벡터
+    bool bInShadow = false;
+    float dummyTHit;
+		
+    if (rayPayload.rayRecursionDepth >= maxRecursionDepth)
+    {
+        return false;
+    }
+    
+    Ray visibilityRay = { hitPosition + T_OFFSET * N, direction };
+	
+	// Only trace if the surface is facing the target.
+    if (dot(visibilityRay.direction, N) <= 0)
+    {
+        return false;
+    }
+    
+    return TraceShadowRayAndReportIfHit(dummyTHit, visibilityRay, false, tMax);
+}
+
 float3 Shade(inout RadiancePayload rayPayload, in float3 N, in float3 hitPosition, in ShadingMaterial material)
 {
-    uint MaxRadianceRecursionDepth = g_MaxRadianceRayRecursionDepth;
+    uint maxRadianceRecursionDepth = g_MaxRadianceRayRecursionDepth;
 	
     float3 V = -WorldRayDirection(); // View Vector
     float3 L = 0;
@@ -90,6 +166,8 @@ float3 Shade(inout RadiancePayload rayPayload, in float3 N, in float3 hitPositio
         {
             float3 lightColor = g_LightList[i].Color;
             float3 wi;
+            float tMax = g_LightList[i].Rs;
+            
             if (g_LightList[i].Type == LIGHT_TYPE_DIRECTIONAL)
             {
                 wi = normalize(-g_LightList[i].PosOrDir);
@@ -100,7 +178,7 @@ float3 Shade(inout RadiancePayload rayPayload, in float3 N, in float3 hitPositio
             }
             
 			// Raytraced shadows.
-            bool isInShadow = false;
+            bool isInShadow = TryTraceShadowRayAndReportIfHit(hitPosition, wi, N, rayPayload, tMax, maxRadianceRecursionDepth);
             // Kd = diffuse , Ks = specular , V = view vector, wi = light vector
             L += BxDF::DirectLighting::Shade(
 						material.Type,
@@ -135,7 +213,7 @@ float3 Shade(inout RadiancePayload rayPayload, in float3 N, in float3 hitPositio
         {
             float3 wi = reflect(-V, N);
             RadiancePayload reflectedRayPayload = rayPayload;
-            L += Kr * TraceReflectedRay(hitPosition, wi, N, reflectedRayPayload, FAR_PLANE, MaxRadianceRecursionDepth);
+            L += Kr * TraceReflectedRay(hitPosition, wi, N, reflectedRayPayload, FAR_PLANE, maxRadianceRecursionDepth);
         }
         else
         {
@@ -148,7 +226,7 @@ float3 Shade(inout RadiancePayload rayPayload, in float3 N, in float3 hitPositio
 
                 RadiancePayload reflectedRayPayLoad = rayPayload;
 				// Ref: eq 24.4, [Ray-tracing from the Ground Up]
-                L += Fr * TraceReflectedRay(hitPosition, wi, N, reflectedRayPayLoad, FAR_PLANE, MaxRadianceRecursionDepth);
+                L += Fr * TraceReflectedRay(hitPosition, wi, N, reflectedRayPayLoad, FAR_PLANE, maxRadianceRecursionDepth);
             }
         }
     }
@@ -271,6 +349,29 @@ void MyAnyHitShader_RadianceRay(inout RadiancePayload payload, in BuiltInTriangl
     float3 hitPosition = HitWorldPosition();
 
     uint instanceID = InstanceID(); // The instance ID as specified in the instance desc.
+    uint systemInstanceIndex = InstanceIndex(); // The autogenerated index of the current instance in the top-level structure.
+}
+
+[shader("closesthit")]
+void MyClosestHitShader_ShadowRay(inout ShadowPayload rayPayload, in BuiltInTriangleIntersectionAttributes attr)
+{
+    rayPayload.tHit = RayTCurrent();
+}
+	
+[shader("miss")]
+void MyMissShader_ShadowRay(inout ShadowPayload rayPayload)
+{
+    // hit이벤트가 발생하지 않는다면(충돌하는 매시가 없다면 rayPayload.tHit = 0이 된다.
+    rayPayload.tHit = HitDistanceOnMiss;
+}
+
+[shader("anyhit")]
+void MyAnyHitShader_ShadowRay(inout ShadowPayload rayPayload, in BuiltInTriangleIntersectionAttributes attr)
+{
+    float3 hitPosition = HitWorldPosition();
+
+	// Get the base index of the triangle's first 16 bit index.
+    uint instanceID = InstanceID();
     uint systemInstanceIndex = InstanceIndex(); // The autogenerated index of the current instance in the top-level structure.
 }
 #endif // RAYTRACING_HLSL

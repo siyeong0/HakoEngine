@@ -9,13 +9,32 @@
 #include "ShaderTable.h"
 #include "RayTracingManager.h"
 
-const wchar_t* g_RaygenShaderName = { L"MyRaygenShader_RadianceRay" };
-const wchar_t* g_ClosestHitShaderName[] = { L"MyClosestHitShader_RadianceRay" };
-const wchar_t* g_MissShaderName[] = { L"MyMissShader_RadianceRay" };
-const wchar_t* g_AnyHitShaderName[] = { L"MyAnyHitShader_RadianceRay" };
+constexpr uint NUM_RAYTRACING_SHADER_TYPES = 2;
 
-// Hit groups.
-const wchar_t* g_HitGroupName[] = { L"MyHitGroup_Triangle_RadianceRay" };
+// Shader
+const wchar_t* g_RaygenShaderName = { L"MyRaygenShader_RadianceRay" };
+const wchar_t* g_ClosestHitShaderNames[NUM_RAYTRACING_SHADER_TYPES] =
+{ 
+	L"MyClosestHitShader_RadianceRay", 
+	L"MyClosestHitShader_ShadowRay" 
+};
+const wchar_t* g_MissShaderNames[NUM_RAYTRACING_SHADER_TYPES] =
+{ 
+	L"MyMissShader_RadianceRay" ,
+	L"MyMissShader_ShadowRay"
+};
+const wchar_t* g_AnyHitShaderNames[NUM_RAYTRACING_SHADER_TYPES] =
+{ 
+	L"MyAnyHitShader_RadianceRay",
+	L"MyAnyHitShader_ShadowRay"
+};
+
+// Hit group
+const wchar_t* g_HitGroupNames[NUM_RAYTRACING_SHADER_TYPES] =
+{
+	L"MyHitGroup_Triangle_RadianceRay",
+	L"MyHitGroup_Triangle_ShadowRay"
+};
 
 bool RayTracingManager::Initialize(D3D12Renderer* pRenderer, uint width, uint height, uint maxNumBLASs)
 {
@@ -103,8 +122,10 @@ void RayTracingManager::DoRaytracing(ID3D12GraphicsCommandList6* pCommandList)
 	ASSERT(pCB, "Failed to allocate constant buffer.");
 
 	CONSTANT_BUFFER_PER_FRAME* pCBPerFrame = (CONSTANT_BUFFER_PER_FRAME*)pCB->pSystemMemAddr;
-	CONSTANT_BUFFER_PER_FRAME	srcCBData = m_pRenderer->GetFrameCBData();
+	CONSTANT_BUFFER_PER_FRAME srcCBData = m_pRenderer->GetFrameCBData();
 	std::memcpy(pCBPerFrame, &srcCBData, sizeof(CONSTANT_BUFFER_PER_FRAME));
+	pCBPerFrame->MaxRadianceRayRecursionDepth = GetMaxRadianceRecursionDepth();
+	pCBPerFrame->MaxShadowRayRecursionDepth = GetMaxShadowRecursionDepth();
 
 	// (0) CBV - RayTracing
 	m_pD3DDevice->CopyDescriptorsSimple(1, dispatchHeapHandleCPU, pCB->CBVHandle, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
@@ -205,7 +226,7 @@ bool RayTracingManager::UpdateAccelerationStructure()
 		ASSERT(numBLASHandles < (uint64_t)_countof(ppBLASHandlelist), "Too many BLAS instances");
 		ppBLASHandlelist[numBLASHandles] = curr;
 		numBLASHandles++;
-		numRequiredShaderRecordCount += curr->NumTriGroups;
+		numRequiredShaderRecordCount += curr->NumTriGroups * NUM_RAYTRACING_SHADER_TYPES;
 	}
 
 	if (m_UpdateAccelerationStructureFlags & UPDATE_ACCELERATION_STRCTURE_TYPE_HIT_GROUP_SHADER_TABLE)
@@ -279,7 +300,7 @@ BLASHandle* RayTracingManager::buildBLAS(
 	// Fill D3D12_RAYTRACING_GEOMETRY_DESC arrays
 	D3D12_RAYTRACING_GEOMETRY_DESC pGeomDescList[MAX_TRIGROUP_COUNT_PER_BLAS] = {};
 	D3D12_GPU_VIRTUAL_ADDRESS VB_GPU_Ptr = pVertexBuffer->GetGPUVirtualAddress();
-	for (uint i = 0; i < numTriGroupInfos; i++)
+	for (uint i = 0; i < numTriGroupInfos; ++i)
 	{
 		D3D12_GPU_VIRTUAL_ADDRESS IB_GPU_Ptr = pTriGroupInfoList[i].IndexBuffer->GetGPUVirtualAddress();
 
@@ -381,7 +402,7 @@ BLASHandle* RayTracingManager::buildBLAS(
 		srvDesc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
 		srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
 
-		for (uint i = 0; i < numTriGroupInfos; i++)
+		for (uint i = 0; i < numTriGroupInfos; ++i)
 		{
 			// Set Material
 			pBLASHandle->pRootArg[i].Cb.Material = pTriGroupInfoList[i].Material;
@@ -506,7 +527,7 @@ ID3D12Resource* RayTracingManager::buildTLAS(
 
 	uint numTlasElements = 0;
 	D3D12_RAYTRACING_INSTANCE_DESC* pInstanceDescEntry = pInstanceDescList;
-	for (uint i = 0; i < numBLASHandles; i++)
+	for (uint i = 0; i < numBLASHandles; ++i)
 	{
 		const BLASHandle* pInstanceSrc = ppHandleList[i];
 		Matrix4x4 matTranspose = XMMatrixTranspose(pInstanceSrc->Transform);
@@ -574,20 +595,28 @@ void RayTracingManager::updateHitGroupShaderTable(uint numShaderRecords)
 	m_pDXRStateObject->QueryInterface(IID_PPV_ARGS(&pStateObjectProperties));
 
 	// hitgroup Shader Table
-	void* pHitGroupShaderIdentifier = pStateObjectProperties->GetShaderIdentifier(g_HitGroupName[0]);
+	void* pHitGroupShaderIdentifier[NUM_RAYTRACING_SHADER_TYPES] = {};
+	for (uint i = 0; i < NUM_RAYTRACING_SHADER_TYPES; ++i)
+	{
+		pHitGroupShaderIdentifier[i] = pStateObjectProperties->GetShaderIdentifier(g_HitGroupNames[i]);
+		ASSERT(pHitGroupShaderIdentifier[i], "Failed to get hit group shader identifier.");
+	}
 	m_pHitGroupShaderTable->CommitResource(numShaderRecords);
 
 	uint shaderRecordIndex = 0;
-	for (auto& curr : m_BLASHandleList)
+	for (BLASHandle* curr : m_BLASHandleList)
 	{
 		// pBLASHandle->ShaderRecordIndex는 HitGroupShaderTable에서의 ShaderRecord 시작 인덱스.
 		// 이 값은 TLAS빌드 시에 D3D12_RAYTRACING_INSTANCE_DESC::InstanceContributionToHitGroupIndex에 대입한다.
 		curr->ShaderRecordIndex = shaderRecordIndex;
-		for (uint i = 0; i < curr->NumTriGroups; i++)
+		for (uint i = 0; i < curr->NumTriGroups; ++i)
 		{
-			ShaderRecord record = ShaderRecord(pHitGroupShaderIdentifier, m_ShaderIdentifierSize, &curr->pRootArg[i], sizeof(RootArgument));
-			m_pHitGroupShaderTable->InsertShaderRecord(&record);
-			shaderRecordIndex++;
+			for (uint j = 0; j < NUM_RAYTRACING_SHADER_TYPES; ++j)
+			{
+				ShaderRecord record = ShaderRecord(pHitGroupShaderIdentifier[j], m_ShaderIdentifierSize, &curr->pRootArg[i], sizeof(RootArgument));
+				m_pHitGroupShaderTable->InsertShaderRecord(&record);
+				++shaderRecordIndex;
+			}
 		}
 	}
 
@@ -728,7 +757,7 @@ void RayTracingManager::createRootSignatures()
 	samplers[2].Filter = D3D12_FILTER_MIN_MAG_MIP_POINT;
 	D3DUtil::SetSamplerDesc_Mirror(samplers + 3, 3);	// Mirror Linear
 	samplers[3].Filter = D3D12_FILTER_MIN_MAG_MIP_LINEAR;
-	for (uint i = 0; i < (uint)_countof(samplers); i++)
+	for (uint i = 0; i < (uint)_countof(samplers); ++i)
 	{
 		samplers[i].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
 	}
@@ -781,18 +810,23 @@ void RayTracingManager::createRaytracingPipelineStateObject()
 
 	// HitGroup에서 import할 수 있도록 export
 	// 쉐이더 타입별(radiance/shadow)로 Closest Hit, Any Hit, Miss 쉐이더를 export
-	pLib->DefineExport(g_ClosestHitShaderName[0]);	// hit group에서 import할 수 있도록 export
-	pLib->DefineExport(g_AnyHitShaderName[0]);
-	pLib->DefineExport(g_MissShaderName[0]);
+	for (uint i = 0; i < NUM_RAYTRACING_SHADER_TYPES; ++i)
+	{
+		pLib->DefineExport(g_ClosestHitShaderNames[i]);	// hit group에서 import할 수 있도록 export
+		pLib->DefineExport(g_AnyHitShaderNames[i]);
+		pLib->DefineExport(g_MissShaderNames[i]);
+	}
 
 	// 2) Triangle hit group
 	// 히트 그룹 Subobject 생성
 	// 히트 그룹은 Geometry에 레이가 교차했을 때 실행할 ClosestHit, AnyHit, Intersection 쉐이더를 정의
-	CD3DX12_HIT_GROUP_SUBOBJECT* pHitGroup = raytracingPipeline.CreateSubobject<CD3DX12_HIT_GROUP_SUBOBJECT>();
-	pHitGroup->SetClosestHitShaderImport(g_ClosestHitShaderName[0]);
-	pHitGroup->SetAnyHitShaderImport(g_AnyHitShaderName[0]);
-	pHitGroup->SetHitGroupExport(g_HitGroupName[0]);
-	pHitGroup->SetHitGroupType(D3D12_HIT_GROUP_TYPE_TRIANGLES);
+	for (uint i = 0; i < NUM_RAYTRACING_SHADER_TYPES; ++i)
+	{
+		CD3DX12_HIT_GROUP_SUBOBJECT* pHitGroup = raytracingPipeline.CreateSubobject<CD3DX12_HIT_GROUP_SUBOBJECT>();
+		pHitGroup->SetClosestHitShaderImport(g_ClosestHitShaderNames[i]);
+		pHitGroup->SetAnyHitShaderImport(g_AnyHitShaderNames[i]);
+		pHitGroup->SetHitGroupExport(g_HitGroupNames[i]);
+	}
 	//pHitGroup->SetIntersectionShaderImport(); <- trinagle만 처리하므로 필요없다.
 
 	// 3) Shader config
@@ -813,7 +847,7 @@ void RayTracingManager::createRaytracingPipelineStateObject()
 	pLocalRootSignature->SetRootSignature(m_pRaytracingLocalRootSignature);
 	CD3DX12_SUBOBJECT_TO_EXPORTS_ASSOCIATION_SUBOBJECT* pRootSignatureAssociation = raytracingPipeline.CreateSubobject<CD3DX12_SUBOBJECT_TO_EXPORTS_ASSOCIATION_SUBOBJECT>();
 	pRootSignatureAssociation->SetSubobjectToAssociate(*pLocalRootSignature);
-	pRootSignatureAssociation->AddExports(g_HitGroupName);
+	pRootSignatureAssociation->AddExports(g_HitGroupNames);
 
 	// 6) Global root signature
 	// Global Root Signature Subobject 생성
@@ -855,17 +889,19 @@ void RayTracingManager::buildShaderTables()
 	// Miss shader table
 	m_pMissShaderTable = new ShaderTable;
 	m_pMissShaderTable->Initiailze(m_pD3DDevice, m_ShaderIdentifierSize, L"MissShaderTable");
-	m_pMissShaderTable->CommitResource(1);
-
-	void* pMissShaderIdentifier = pStateObjectProperties->GetShaderIdentifier(g_MissShaderName[0]);
-	ShaderRecord missShaderRecord = ShaderRecord(pMissShaderIdentifier, m_ShaderIdentifierSize);
-	m_pMissShaderTable->InsertShaderRecord(&missShaderRecord);
+	m_pMissShaderTable->CommitResource(NUM_RAYTRACING_SHADER_TYPES);
+	for(int i = 0; i < NUM_RAYTRACING_SHADER_TYPES; ++i)
+	{
+		void* pMissShaderIdentifier = pStateObjectProperties->GetShaderIdentifier(g_MissShaderNames[i]);
+		ShaderRecord missShaderRecord = ShaderRecord(pMissShaderIdentifier, m_ShaderIdentifierSize);
+		m_pMissShaderTable->InsertShaderRecord(&missShaderRecord);
+	}
 	m_MissShaderTableStrideInBytes = m_pMissShaderTable->GetShaderRecordSize();
 
 	// Hitgroup Shader Table
 	m_pHitGroupShaderTable = new ShaderTable;
 	m_pHitGroupShaderTable->Initiailze(m_pD3DDevice, m_ShaderIdentifierSize + sizeof(RootArgument), L"HitGroupShaderTable");
-	void* pHitGroupShaderIdentifier = pStateObjectProperties->GetShaderIdentifier(g_HitGroupName[0]);
+	m_HitGroupShaderRecordSize = m_pHitGroupShaderTable->GetShaderRecordSize();
 
 	SAFE_RELEASE(pStateObjectProperties);
 }
