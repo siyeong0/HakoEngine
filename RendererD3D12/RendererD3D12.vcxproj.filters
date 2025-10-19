@@ -99,6 +99,12 @@
     <Filter Include="RenderManager\RenderQueue\PostProcessing">
       <UniqueIdentifier>{4928fcc1-63ad-4731-b4b4-7e0ecbd2f951}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Shaders\Rasterization">
+      <UniqueIdentifier>{c10257ed-04a4-4606-8cc8-deeba6454eb0}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Shaders\Raytracing">
+      <UniqueIdentifier>{7179c628-899f-4022-8c94-240fa19e17a2}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h">
@@ -267,23 +273,23 @@
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
-    <CustomBuild Include="..\Shaders\Sprite.hlsl">
-      <Filter>Shaders</Filter>
-    </CustomBuild>
     <CustomBuild Include="..\Shaders\AtmosphericSky.hlsl">
-      <Filter>Shaders</Filter>
-    </CustomBuild>
-    <CustomBuild Include="..\Shaders\Standard.hlsl">
-      <Filter>Shaders</Filter>
+      <Filter>Shaders\Rasterization</Filter>
     </CustomBuild>
     <CustomBuild Include="..\Shaders\Raytracing.hlsl">
-      <Filter>Shaders</Filter>
+      <Filter>Shaders\Raytracing</Filter>
     </CustomBuild>
     <CustomBuild Include="..\Shaders\Raytracing_common.hlsl">
-      <Filter>Shaders</Filter>
+      <Filter>Shaders\Raytracing</Filter>
     </CustomBuild>
     <CustomBuild Include="..\Shaders\Raytracing_typedef.hlsl">
-      <Filter>Shaders</Filter>
+      <Filter>Shaders\Raytracing</Filter>
+    </CustomBuild>
+    <CustomBuild Include="..\Shaders\Sprite.hlsl">
+      <Filter>Shaders\Rasterization</Filter>
+    </CustomBuild>
+    <CustomBuild Include="..\Shaders\Standard.hlsl">
+      <Filter>Shaders\Rasterization</Filter>
     </CustomBuild>
   </ItemGroup>
 </Project>
