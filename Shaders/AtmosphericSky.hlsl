@@ -9,6 +9,8 @@
 //  - All textures are LINEAR (no sRGB sampling)
 // ==========================================================
 
+#include "AtmosphericSky.hlsli"
+
 // ---------- Resources ----------
 Texture2D<float3> g_TransmittanceLUT : register(t0); // R^3
 Texture3D<float4> g_ScatteringLUT : register(t1); // RGBA
@@ -16,9 +18,8 @@ Texture2D<float3> g_IrradianceLUT : register(t2); // optional
 SamplerState g_LinearClamp : register(s1);
 
 // ---------- Constants ----------
-static const float PI = 3.14159265;
 
-cbuffer PerFrame : register(b0)
+cbuffer CONSTANT_BUFFER_PER_FRAME : register(b0)
 {
     matrix g_View;
     matrix g_Proj;
@@ -27,15 +28,20 @@ cbuffer PerFrame : register(b0)
     matrix g_InvProj;
     matrix g_InvViewProj;
     
-    float3 g_LightDir; // Directional light direction (normalized)
-    float _pad0;
-    float3 g_LightColor; // Light color
-    float _pad1;
-    float3 g_Ambient; // Ambient light color
-    float _pad2;
+    float g_Near;
+    float g_Far;
+    
+    uint g_MaxRadianceRayRecursionDepth;
+    uint g_MaxShadowRayRecursionDepth;
+    uint g_NumLights;
+    uint Reserved0;
+    uint Reserved1;
+    uint Reserved2;
+    
+    // Light g_LightList[MAX_LIGHT_COUNT];
 };
 
-cbuffer AtmosConstants : register(b1)
+cbuffer CONSTANT_BUFFER_ATMOS : register(b1)
 {
     // Camera + sun (in planet-centered space; normalized)
     float3 g_CameraPosPlanetCoord;
@@ -89,42 +95,6 @@ VSOut VSMain(uint vid : SV_VertexID)
     o.pos = float4(ndc, 0.0, 1.0);
     o.uv = uv;
     return o;
-}
-
-// ==========================================================
-// Helper Functions
-// ==========================================================
-
-float RayleighPhase(float cosTheta)
-{
-    return 3.0 / (16.0 * PI) * (1.0 + cosTheta * cosTheta);
-}
-
-float HenyeyGreenstein(float cosTheta, float g)
-{
-    float gg = g * g;
-    return (1.0 - gg) / (4.0 * PI * pow(1.0 + gg - 2.0 * g * cosTheta, 1.5));
-}
-
-// Local "up" at camera (planet-centered)
-float3 GetUp(float3 camPosPlanetCS)
-{
-    float r = max(length(camPosPlanetCS), 1e-6);
-    return camPosPlanetCS / r;
-}
-
-float3 ReconstructViewDirW(float2 uv)
-{
-    float2 ndc = float2(uv.x * 2.0 - 1.0, 1.0 - uv.y * 2.0);
-    float4 vs = mul(float4(ndc, 1.0, 1.0), g_InvProj);
-    vs.xyz /= max(vs.w, 1e-6);
-    return normalize(mul(vs.xyz, (float3x3) g_InvView)); // Drop translation
-}
-
-float3 Tonemap_ACES(float3 x)
-{
-    const float a = 2.51, b = 0.03, c = 2.43, d = 0.59, e = 0.14;
-    return saturate((x * (a * x + b)) / (x * (c * x + d) + e));
 }
 
 // ==========================================================
@@ -228,6 +198,13 @@ float3 SampleSky(float3 viewDirWorld)
 // Tonemapping & Output
 // ==========================================================
 
+float3 ReconstructViewDirW(float2 uv)
+{
+    float2 ndc = float2(uv.x * 2.0 - 1.0, 1.0 - uv.y * 2.0);
+    float4 vs = mul(float4(ndc, 1.0, 1.0), g_InvProj);
+    vs.xyz /= max(vs.w, 1e-6);
+    return normalize(mul(vs.xyz, (float3x3) g_InvView)); // Drop translation
+}
 
 float4 PSMain(VSOut i) : SV_Target
 {

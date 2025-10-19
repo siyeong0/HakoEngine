@@ -283,6 +283,9 @@
     <None Include="..\Shaders\BxDF.hlsli">
       <Filter>Shaders\Common</Filter>
     </None>
+    <None Include="..\Shaders\AtmosphericSky.hlsli">
+      <Filter>Shaders\Common</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <CustomBuild Include="..\Shaders\AtmosphericSky.hlsl">

@@ -15,8 +15,13 @@ cbuffer CONSTANT_BUFFER_PER_FRAME : register(b0)
     
     float g_Near;
     float g_Far;
+    
     uint g_MaxRadianceRayRecursionDepth;
+    uint g_MaxShadowRayRecursionDepth;
     uint g_NumLights;
+    uint Reserved0;
+    uint Reserved1;
+    uint Reserved2;
     
     Light g_LightList[MAX_LIGHT_COUNT];
 };

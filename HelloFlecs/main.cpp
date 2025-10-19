@@ -12,7 +12,7 @@
 #pragma comment(lib, "Shlwapi.lib")
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-bool g_bEnableRayTracing	= true;
+bool g_bEnableRayTracing	= false;
 bool g_bEnableDebugLayer	= true;
 bool g_bEnableGBV			= true;
 bool g_bEnableShaderDebug	= true;
