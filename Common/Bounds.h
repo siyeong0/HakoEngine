@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include "Common/Common.h"
 #include "FVector3.h"
 
@@ -25,6 +25,13 @@ struct Bounds
 	{
 		Encapsulate(other.Min);
 		Encapsulate(other.Max);
+	}
+
+	inline bool Contains(const FVector3& point) const
+	{
+		return (point.x >= Min.x && point.x <= Max.x) &&
+			(point.y >= Min.y && point.y <= Max.y) &&
+			(point.z >= Min.z && point.z <= Max.z);
 	}
 };
 static_assert(sizeof(Bounds) == 24, "Wrong size of Bounds struct");

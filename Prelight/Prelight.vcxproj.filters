@@ -58,6 +58,9 @@
     <ClInclude Include="FaceLayer1024.h">
       <Filter>SparseBinaryGrid\Internal</Filter>
     </ClInclude>
+    <ClInclude Include="V-HACD.h">
+      <Filter>ConvexDecomposition</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="dllmain.cpp">
@@ -83,9 +86,6 @@
     </ClCompile>
     <ClCompile Include="QuickHull.cpp">
       <Filter>QuickHull</Filter>
-    </ClCompile>
-    <ClCompile Include="GridConcavity.cpp">
-      <Filter>ConvexDecomposition</Filter>
     </ClCompile>
     <ClCompile Include="Brick.cpp">
       <Filter>SparseBinaryGrid\Internal</Filter>
