@@ -70,8 +70,16 @@ float3 Shade(inout RadiancePayload rayPayload, in float3 N, in float3 hitPositio
         for (uint i = 0; i < g_NumLights; i++)
         {
             float3 lightColor = g_LightList[i].Color;
-            float3 wi = normalize(g_LightList[i].PosOrDir) * -1;
-
+            float3 wi;
+            if (g_LightList[i].Type == LIGHT_TYPE_DIRECTIONAL)
+            {
+                wi = normalize(-g_LightList[i].PosOrDir);
+            }
+            else /* point */
+            {
+                wi = normalize(g_LightList[i].PosOrDir - HitWorldPosition());
+            }
+            
 			// Raytraced shadows.
             bool isInShadow = false;
             // Kd = diffuse , Ks = specular , V = view vector, wi = light vector
