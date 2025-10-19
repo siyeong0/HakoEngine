@@ -355,6 +355,7 @@ void MyAnyHitShader_RadianceRay(inout RadiancePayload payload, in BuiltInTriangl
 [shader("closesthit")]
 void MyClosestHitShader_ShadowRay(inout ShadowPayload rayPayload, in BuiltInTriangleIntersectionAttributes attr)
 {
+    // Never called if RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH is set.
     rayPayload.tHit = RayTCurrent();
 }
 	
