@@ -79,10 +79,10 @@ bool ENGINECALL BasicMeshObject::InsertTriGroup(
 	pTriGroup->NumTriangles = static_cast<uint>(numTriangles);
 	pTriGroup->DiffuseTexHandle = diffuseFilePathOrNull 
 		? (TextureHandle*)m_pRenderer->CreateTextureFromFile(diffuseFilePathOrNull) 
-		: (TextureHandle*)m_pRenderer->CreateImmutableTexture(CreateSolidColorImageRGBA(128, 128, RGBA{255,255,255,255}));
+		: (TextureHandle*)m_pRenderer->CreateImmutableTexture(CreateSolidColorImageRGBA(128, 128, Color::White()));
 	pTriGroup->NormalTexHandle = normalFilePathOrNull
 		? (TextureHandle*)m_pRenderer->CreateTextureFromFile(normalFilePathOrNull)
-		: (TextureHandle*)m_pRenderer->CreateImmutableTexture(CreateSolidColorImageRGBA(128, 128, RGBA{ 128,128,255,255 }));
+		: (TextureHandle*)m_pRenderer->CreateImmutableTexture(CreateSolidColorImageRGBA(128, 128, Color{0.5f, 0.5f, 1.0f}));
 	pTriGroup->Material = CreateBasicMaterial(MATERIAL_TYPE_DEFAULT);
 	m_NumTriGroups++;
 
@@ -113,10 +113,10 @@ bool ENGINECALL BasicMeshObject::InsertTriGroup(const uint16_t* indices, uint nu
 	pTriGroup->NumTriangles = static_cast<uint>(numTriangles);
 	pTriGroup->DiffuseTexHandle = material.Diffuse.IsValid()
 		? (TextureHandle*)m_pRenderer->CreateImmutableTexture(material.Diffuse)
-		: (TextureHandle*)m_pRenderer->CreateImmutableTexture(CreateSolidColorImageRGBA(128, 128, RGBA{ 255,255,255,255 }));
+		: (TextureHandle*)m_pRenderer->CreateImmutableTexture(CreateSolidColorImageRGBA(128, 128, Color::White()));
 	pTriGroup->NormalTexHandle = material.Normal.IsValid()
 		? (TextureHandle*)m_pRenderer->CreateImmutableTexture(material.Normal)
-		: (TextureHandle*)m_pRenderer->CreateImmutableTexture(CreateSolidColorImageRGBA(128, 128, RGBA{ 128,128,255,255 }));
+		: (TextureHandle*)m_pRenderer->CreateImmutableTexture(CreateSolidColorImageRGBA(128, 128, Color{ 0.5f, 0.5f, 1.0f }));
 	pTriGroup->Material = CreateBasicMaterial(MATERIAL_TYPE_DEFAULT);
 	pTriGroup->Material = CreateBasicMaterial(material.Type);
 	m_NumTriGroups++;
