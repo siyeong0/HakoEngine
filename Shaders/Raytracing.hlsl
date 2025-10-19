@@ -178,14 +178,14 @@ float3 Shade(inout RadiancePayload rayPayload, in float3 N, in float3 hitPositio
             }
             
 			// Raytraced shadows.
-            bool isInShadow = TryTraceShadowRayAndReportIfHit(hitPosition, wi, N, rayPayload, tMax, maxRadianceRecursionDepth);
+            bool bInShadow = TryTraceShadowRayAndReportIfHit(hitPosition, wi, N, rayPayload, tMax, maxRadianceRecursionDepth);
             // Kd = diffuse , Ks = specular , V = view vector, wi = light vector
             L += BxDF::DirectLighting::Shade(
 						material.Type,
 						Kd,
 						Ks,
 						lightColor.rgb,
-						isInShadow,
+						bInShadow,
 						roughness,
 						N,
 						V,
