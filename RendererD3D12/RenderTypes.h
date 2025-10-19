@@ -73,7 +73,7 @@ struct BLASHandle
 	RootArgument pRootArg[1];
 };
 
-enum RenderPassType : uint
+enum RENDER_PASS_TYPE : uint
 {
 	RENDER_PASS_OPAQUE,
 	RENDER_PASS_TRANSPARENT,
@@ -81,7 +81,7 @@ enum RenderPassType : uint
 	RENDER_PASS_RAYTRACING_TRANSPARENT,
 };
 
-enum RenderItemType
+enum RENDER_ITEM_TYPE
 {
 	RENDER_ITEM_TYPE_MESH_OBJ,
 	RENDER_ITEM_TYPE_SPRITE
@@ -106,7 +106,7 @@ struct RenderSpriteParam
 
 struct RenderItem
 {
-	RenderItemType Type;
+	RENDER_ITEM_TYPE Type;
 	void* pObjHandle;
 	union
 	{
