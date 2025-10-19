@@ -86,7 +86,7 @@ float4 PSMain(PSInput input) : SV_TARGET
     float3 worldTangent = input.WorldTangent;
     float3 worldBinormal = normalize(cross(worldTangent, worldNormal));
     
-    float3 tanNormal = texNormal.rgb * 2 - 1;
+    float3 tanNormal = texNormal.rgb * 2.0 - 1.0;
     float3 surfaceNormal = (tanNormal.xxx * worldTangent) + (tanNormal.yyy * worldBinormal) + (tanNormal.zzz * worldNormal);
     
     float3 viewDir = normalize(g_InvView._41_42_43 - input.WorldPosition);

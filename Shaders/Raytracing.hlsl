@@ -192,7 +192,7 @@ void MyClosestHitShader_RadianceRay(inout RadiancePayload rayPayload, in BuiltIn
     float3 worldTangent = normalize(mul(localTangent, (float3x3) ObjectToWorld4x3()));
     float3 worldBinormal = normalize(cross(worldTangent, worldNormal));
     
-    float3 tanNormal = texNormal.rgb * 2 - 1;
+    float3 tanNormal = texNormal.rgb * 2.0 - 1.0;
     float3 surfaceNormal = (tanNormal.xxx * worldTangent) + (tanNormal.yyy * worldBinormal) + (tanNormal.zzz * worldNormal);
     
     // Compute depth
