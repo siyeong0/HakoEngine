@@ -145,8 +145,13 @@ namespace BxDF
             // so as to nullify the cos term in the rendering equation. Therefore the caller should skip the cos term in the rendering equation.
             float3 Sample_Ft(in float3 V, out float3 wt, in float3 N, in float3 Fo)
             {
-                float ior = 1;
-                wt = -V; // TODO: refract(-V, N, ior);
+                // TODO: Use ior parameters
+                // eta - relative index of refraction, namely iorIn / iorOut
+                float iorIn = 1.0;   // air
+                float iorOut = 1.33; // water
+                float eta = iorIn / iorOut;
+                wt = refract(-V, N, eta);
+                
                 float cos_thetai = dot(V, N);
                 float3 Kr = Fresnel(Fo, cos_thetai);
 

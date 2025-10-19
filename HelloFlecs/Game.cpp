@@ -188,6 +188,26 @@ static IMeshObject* createKannaGridMeshObject(IRenderer* pRenderer)
 	return pMeshObj;
 }
 
+static IMeshObject* createWaterMeshObject(IRenderer* pRenderer)
+{
+	IMeshObject* pMeshObj = nullptr;
+
+	StaticMesh meshData = StaticMesh::CreatePlaneMesh(20.0f, 20.0f);
+	std::vector<Vertex> vertices = meshData.GetVertexArray();
+
+	pMeshObj = pRenderer->CreateBasicMeshObject();
+	pMeshObj->BeginCreateMesh(vertices.data(), (uint)vertices.size(), (uint)meshData.Sections.size());
+
+	for (size_t si = 0; si < meshData.Sections.size(); ++si)
+	{
+		const MeshSection& sec = meshData.Sections[si];
+		pMeshObj->InsertTriGroup(sec.Indices.data(), (uint)(sec.Indices.size() / 3), L"./Resources/megayuchi/Wat_S_Mo_000.dds", nullptr, MATERIAL_TYPE_GLASS);
+	}
+
+	pMeshObj->EndCreateMesh();
+	return pMeshObj;
+}
+
 static IMeshObject* createMeshFromFile(IRenderer* pRenderer, const char* filename)
 {
 	IMeshObject* pMeshObj = nullptr;
@@ -514,6 +534,15 @@ bool Game::Initialize(
 		//		.set<MeshRenderer>({ createPlaneMeshObject(m_pRenderer) });
 		//	m_Entities.emplace_back(e.id());
 		//}		
+		// Create water plane
+		{
+			flecs::entity e = m_ECSWorld.entity()
+				.set<Position>({ 0.0f, 0.0f, 0.0f })
+				.set<Rotation>({ 0.0f, 0.0f, 0.0f })
+				.set<Scale>({ 10.0f, 10.0f, 10.0f })
+				.set<MeshRenderer>({ createWaterMeshObject(m_pRenderer) });
+			m_Entities.emplace_back(e.id());
+		}
 		// Create grid
 		{
 			flecs::entity e = m_ECSWorld.entity()

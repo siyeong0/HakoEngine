@@ -15,7 +15,7 @@ RadiancePayload TraceRadianceRay(in Ray ray, in uint currRayRecursionDepth, in u
 	
     if (currRayRecursionDepth >= maxRecursionDepth)
     {
-        rayPayload.radiance = float3(1, 1, 1);
+        rayPayload.radiance = float3(1, 0, 1);
         return rayPayload;
     }
 
@@ -67,6 +67,32 @@ float3 TraceReflectedRay(in float3 hitPosition, in float3 wi, in float3 N, inout
     bool bCullNonOpaque = false;
     bool bCullBackFace = true;
 		
+    rayPayload = TraceRadianceRay(ray, rayPayload.rayRecursionDepth, maxRecursionDepth, tMin, tMax, bCullNonOpaque, bCullBackFace);
+    return rayPayload.radiance;
+}
+
+float3 TraceRefractedRay(in float3 hitPosition, in float3 wt, in float3 N, inout RadiancePayload rayPayload, in float tMax, in uint maxRecursionDepth)
+{
+    // Here we offset ray start along the ray direction instead of surface normal 
+    // so that the reflected ray projects to the same screen pixel. 
+    // Offsetting by surface normal would result in incorrect mappating in temporally accumulated buffer. 
+    float3 offsetAlongRay = T_OFFSET * wt;
+
+    float3 adjustedHitPosition = hitPosition + offsetAlongRay;
+
+    Ray ray = { adjustedHitPosition, wt };
+
+    float tMin = NEAR_PLANE;
+
+    // TRADEOFF: Performance vs visual quality
+    // Cull transparent surfaces when casting a transmission ray for a transparent surface.
+    // Spaceship in particular has multiple layer glass causing a substantial perf hit 
+    // with multiple bounces along the way.
+    // This can cause visual pop ins however, such as in a case of looking at the spaceship's
+    // glass cockpit through a window in the house. The cockpit will be skipped in this case.
+    bool bCullNonOpaque = false; // 나뭇잎등은 NonOpaque이므로 이 경우 non opaque 매시를 컬링하면 나뭇잎 모서리 알파 문제가 생긴다.
+    bool bCullBackFace = true;
+    
     rayPayload = TraceRadianceRay(ray, rayPayload.rayRecursionDepth, maxRecursionDepth, tMin, tMax, bCullNonOpaque, bCullBackFace);
     return rayPayload.radiance;
 }
@@ -205,11 +231,11 @@ float3 Shade(inout RadiancePayload rayPayload, in float3 N, in float3 hitPositio
 	// Handle cases where ray is coming from behind due to imprecision,
 	// don't cast reflection rays in that case.
     float smallValue = 1e-6f;
-    bReflective = dot(V, N) > smallValue ? bReflective : false;
+    bReflective = (dot(V, N) > smallValue) ? bReflective : false;
 	
     if (bReflective || bTransmissive)
     {
-        if (bReflective && (BxDF::Specular::Reflection::IsTotalInternalReflection(V, N)))
+        if (bReflective && (BxDF::Specular::Reflection::IsTotalInternalReflection(V, N)) || material.Type == MATERIAL_TYPE_MIRROR)
         {
             float3 wi = reflect(-V, N);
             RadiancePayload reflectedRayPayload = rayPayload;
@@ -227,6 +253,17 @@ float3 Shade(inout RadiancePayload rayPayload, in float3 N, in float3 hitPositio
                 RadiancePayload reflectedRayPayLoad = rayPayload;
 				// Ref: eq 24.4, [Ray-tracing from the Ground Up]
                 L += Fr * TraceReflectedRay(hitPosition, wi, N, reflectedRayPayLoad, FAR_PLANE, maxRadianceRecursionDepth);
+            }
+            
+            if (bTransmissive)
+            {
+			    // Radiance contribution from refraction.
+                float3 wt;
+                float3 Ft = Kt * BxDF::Specular::Transmission::Sample_Ft(V, wt, N, Fo); // Calculates wt
+
+                RadiancePayload refractedRayPayLoad = rayPayload;
+
+                L += Ft * TraceRefractedRay(hitPosition, wt, N, refractedRayPayLoad, FAR_PLANE, maxRadianceRecursionDepth);
             }
         }
     }
@@ -263,7 +300,7 @@ void MyRaygenShader_RadianceRay()
     // Trace primary ray.
     uint currRayRecursionDepth = 0;
     bool bCullNonOpaque = false;
-    bool bCullBackFace = false;
+    bool bCullBackFace = true;
     RadiancePayload rayPayload = TraceRadianceRay(ray, currRayRecursionDepth, g_MaxRadianceRayRecursionDepth, NEAR_PLANE, FAR_PLANE, bCullNonOpaque, bCullBackFace);
 	
     // Output to the screen.
@@ -304,8 +341,8 @@ void MyClosestHitShader_RadianceRay(inout RadiancePayload rayPayload, in BuiltIn
     float2 texCoord = HitAttribute(vertexUV, attr);
     
     float4 texDiffuse = l_DiffuseTexture.SampleLevel(g_SamplerPoint, texCoord, 0);
-    // float3 texNormal = l_NormalTexture.SampleLevel(g_SamplerWrap, texCoord, 0).rgb;
-    float3 texNormal = float3(0.5, 0.5, 1.0);
+    float3 texNormal = l_NormalTexture.SampleLevel(g_SamplerWrap, texCoord, 0).rgb;
+    // float3 texNormal = float3(0.5, 0.5, 1.0);
     
     float3 localNormal = HitAttribute(vertexNormal, attr);
     float3 localTangent = HitAttribute(vertexTangent, attr);

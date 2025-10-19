@@ -55,7 +55,8 @@ bool ENGINECALL BasicMeshObject::BeginCreateMesh(const Vertex* vertices, uint nu
 bool ENGINECALL BasicMeshObject::InsertTriGroup(
 	const uint16_t* indices, uint numTriangles, 
 	const wchar_t* diffuseFilePathOrNull, 
-	const wchar_t* normalFilePathOrNull)
+	const wchar_t* normalFilePathOrNull,
+	MATERIAL_TYPE mltType)
 {
 	ID3D12Device5* pD3DDeivce = m_pRenderer->GetD3DDevice();
 	size_t srvDescriptorSize = m_pRenderer->GetSrvDescriptorSize();
@@ -83,7 +84,7 @@ bool ENGINECALL BasicMeshObject::InsertTriGroup(
 	pTriGroup->NormalTexHandle = normalFilePathOrNull
 		? (TextureHandle*)m_pRenderer->CreateTextureFromFile(normalFilePathOrNull)
 		: (TextureHandle*)m_pRenderer->CreateImmutableTexture(CreateSolidColorImageRGBA(128, 128, Color{0.5f, 0.5f, 1.0f}));
-	pTriGroup->Material = CreateBasicMaterial(MATERIAL_TYPE_DEFAULT);
+	pTriGroup->Material = CreateBasicMaterial(mltType);
 	m_NumTriGroups++;
 
 	return true;
@@ -249,8 +250,8 @@ RenderMaterial BasicMeshObject::CreateBasicMaterial(MATERIAL_TYPE mtlType)
 	if (mtlType == MATERIAL_TYPE_GLASS)
 	{
 		out.Ks = FLOAT3(0.1f, 0.1f, 0.1f);
-		out.Kr = FLOAT3(0.05f, 0.05f, 0.05f);
-		out.Kt = FLOAT3(0.95f, 0.95f, 0.95f);
+		out.Kr = FLOAT3(0.25f, 0.25f, 0.25f);
+		out.Kt = FLOAT3(0.75f, 0.75f, 0.75f);
 		out.Opacity = FLOAT3(0.5f, 0.5f, 0.5f);
 		out.AmbientIntensity = 0.01f;
 	}
