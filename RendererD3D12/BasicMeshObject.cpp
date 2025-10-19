@@ -162,7 +162,6 @@ void BasicMeshObject::Draw(int threadIndex, ID3D12GraphicsCommandList6* pCommand
 	// --- 1) Constant buffer alloc and intialization. (as root cbv)
 	ConstantBufferContainer* cb = pMeshConstantBufferPool->Alloc();
 	ASSERT(cb, "Failed to allocate constant buffer.");
-
 	CONSTANT_BUFFER_MESH_OBJECT* pCBPerDraw = (CONSTANT_BUFFER_MESH_OBJECT*)cb->pSystemMemAddr;
 	pCBPerDraw->WorldMatrix = XMMatrixTranspose(*worldMatrix);
 
@@ -190,13 +189,13 @@ void BasicMeshObject::Draw(int threadIndex, ID3D12GraphicsCommandList6* pCommand
 	pCommandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 	pCommandList->IASetVertexBuffers(0, 1, &m_VertexBufferView);
 
-	// --- 4) Root CBV binding
-	pCommandList->SetGraphicsRootConstantBufferView(ROOT_SLOT_CBV_PER_DRAW, cb->pGPUMemAddr);
-
-	// --- 5) TriGroup loop: t0가 가리키는 SRV를 매 드로우마다 바꿈
+	// --- 4) TriGroup loop: t0가 가리키는 SRV를 매 드로우마다 바꿈
 	CD3DX12_GPU_DESCRIPTOR_HANDLE gpuCurrDescHandleAddress = gpuDescriptorTable; // 첫 TriGroup의 t0
 	for (uint i = 0; i < m_NumTriGroups; ++i)
 	{
+		pCBPerDraw->Material = m_pTriGroupList[i].Material;
+		pCommandList->SetGraphicsRootConstantBufferView(ROOT_SLOT_CBV_PER_DRAW, cb->pGPUMemAddr);
+
 		// SRV 테이블 루트 파라미터 바인딩 (t0 시작 핸들)
 		pCommandList->SetGraphicsRootDescriptorTable(ROOT_SLOT_SRV_TABLE, gpuCurrDescHandleAddress);
 

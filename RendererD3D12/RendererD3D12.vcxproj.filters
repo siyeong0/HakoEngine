@@ -277,10 +277,10 @@
     <None Include="..\Shaders\HLSL_CPP_CommonTypes.h">
       <Filter>Shaders\Common</Filter>
     </None>
-    <None Include="..\Shaders\BxDF.hlsli">
-      <Filter>Shaders\Rasterization</Filter>
+    <None Include="..\Shaders\HLSL_Common.hlsli">
+      <Filter>Shaders\Common</Filter>
     </None>
-    <None Include="..\Shaders\HLSLTypes.hlsli">
+    <None Include="..\Shaders\BxDF.hlsli">
       <Filter>Shaders\Common</Filter>
     </None>
   </ItemGroup>

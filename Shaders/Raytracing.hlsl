@@ -49,7 +49,7 @@ RadiancePayload TraceRadianceRay(in Ray ray, in uint currRayRecursionDepth, in u
     return rayPayload;
 }
 
-float3 Shade(inout RadiancePayload rayPayload, in float3 N, in float3 hitPosition, in RayTracingMaterial material)
+float3 Shade(inout RadiancePayload rayPayload, in float3 N, in float3 hitPosition, in ShadingMaterial material)
 {
     uint MaxRadianceRecursionDepth = g_MaxRadianceRayRecursionDepth;
 	
@@ -69,7 +69,7 @@ float3 Shade(inout RadiancePayload rayPayload, in float3 N, in float3 hitPositio
     {
         for (uint i = 0; i < g_NumLights; i++)
         {
-            float3 LightColor = g_LightList[i].Color;
+            float3 lightColor = g_LightList[i].Color;
             float3 wi = normalize(g_LightList[i].PosOrDir) * -1;
 
 			// Raytraced shadows.
@@ -79,7 +79,7 @@ float3 Shade(inout RadiancePayload rayPayload, in float3 N, in float3 hitPositio
 						material.Type,
 						Kd,
 						Ks,
-						LightColor.rgb,
+						lightColor.rgb,
 						isInShadow,
 						roughness,
 						N,
@@ -194,7 +194,7 @@ void MyClosestHitShader_RadianceRay(inout RadiancePayload rayPayload, in BuiltIn
     rayPayload.depth = saturate(projPos.z);
     
     // Compute radiance
-    RayTracingMaterial material;
+    ShadingMaterial material;
     material.Kd = texDiffuse.rgb * l_RayGeomCB.Material.Opacity;
     material.Type = l_RayGeomCB.Material.Type;
     material.Ks = l_RayGeomCB.Material.Ks;

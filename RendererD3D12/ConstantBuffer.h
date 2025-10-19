@@ -63,6 +63,7 @@ static_assert(sizeof(CONSTANT_BUFFER_PER_FRAME) ==
 struct CONSTANT_BUFFER_MESH_OBJECT
 {
 	Matrix4x4 WorldMatrix;
+	RenderMaterial Material;
 };
 static_assert(sizeof(CONSTANT_BUFFER_MESH_OBJECT) % 16 == 0, "CONSTANT_BUFFER_MESH_OBJECT size must be multiple of 16 bytes.");
 
