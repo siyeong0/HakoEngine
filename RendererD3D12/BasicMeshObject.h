@@ -28,7 +28,7 @@ public:
 
 	// Derived from IMeshObject
 	bool ENGINECALL BeginCreateMesh(const Vertex* vertices, uint numVertices, uint numTriGroups) override;
-	bool ENGINECALL InsertTriGroup(const uint16_t* indices, uint numTriangles, const WCHAR* wchTexFileName) override;
+	bool ENGINECALL InsertTriGroup(const uint16_t* indices, uint numTriangles, const wchar_t* diffuseFilePathOrNull, const wchar_t* normalFilePathOrNull) override;
 	bool ENGINECALL InsertTriGroup(const uint16_t* indices, uint numTriangles, const Material& material) override;
 	void ENGINECALL EndCreateMesh(bool bOpaque, bool bUseRayTracingIfSupported) override;
 

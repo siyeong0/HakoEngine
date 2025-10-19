@@ -18,6 +18,7 @@ ConstantBuffer<CONSTANT_BUFFER_RT_TRIGROUP> l_RayGeomCB : register(b0, space1);
 StructuredBuffer<Vertex> l_Vertices : register(t0, space1);
 ByteAddressBuffer l_Indices : register(t1, space1);
 Texture2D<float4> l_DiffuseTexture : register(t2, space1);
+Texture2D<float4> l_NormalTexture : register(t3, space1);
 
 cbuffer CONSTANT_BUFFER_PER_FRAME : register(b0, space0)
 {
@@ -27,13 +28,6 @@ cbuffer CONSTANT_BUFFER_PER_FRAME : register(b0, space0)
     matrix g_InvView;
     matrix g_InvProj;
     matrix g_InvViewProj;
-    
-    float3 g_LightDir; // Directional light direction (normalized)
-    float _pad0;
-    float3 g_LightColor; // Light color
-    float _pad1;
-    float3 g_Ambient; // Ambient light color
-    float _pad2;
     
     float g_Near;
     float g_Far;

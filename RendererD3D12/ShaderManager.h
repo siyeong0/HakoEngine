@@ -8,8 +8,8 @@ public:
 	ShaderManager() = default;
 	~ShaderManager() { Cleanup(); };
 
-	bool Initialize(D3D12Renderer* pRenderer, const WCHAR* wchShaderPath, bool bDisableOptimize);
-	ShaderHandle* CreateShaderDXC(const WCHAR* wchShaderFileName, const WCHAR* wchEntryPoint, const WCHAR* wchShaderModel, uint flags);
+	bool Initialize(D3D12Renderer* pRenderer, const wchar_t* wchShaderPath, bool bDisableOptimize);
+	ShaderHandle* CreateShaderDXC(const wchar_t* wchShaderFileName, const wchar_t* wchEntryPoint, const wchar_t* wchShaderModel, uint flags);
 	void ReleaseShader(ShaderHandle* pShaderHandle);
 	void Cleanup();
 
@@ -19,5 +19,5 @@ private:
 	IDxcCompiler* m_pCompiler = nullptr;
 	IDxcIncludeHandler* m_pIncludeHandler = nullptr;
 	bool m_bDisableOptimize = false;
-	WCHAR m_wchDefaultShaderPath[_MAX_PATH] = {};
+	wchar_t m_wchDefaultShaderPath[_MAX_PATH] = {};
 };

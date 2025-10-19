@@ -24,7 +24,7 @@ int main()
 {
 	// Load Prelight DLL
 	{
-		const WCHAR* wchPrelightFileName = nullptr;
+		const wchar_t* wchPrelightFileName = nullptr;
 #if defined(_M_ARM64EC) || defined(_M_ARM64)
 #ifdef _DEBUG
 		wchPrelightFileName = L"Prelight_arm64_debug.dll";
@@ -44,7 +44,7 @@ int main()
 		wchPrelightFileName = L"Prelight_x86_release.dll";
 #endif
 #endif
-		WCHAR wchErrTxt[128] = {};
+		wchar_t wchErrTxt[128] = {};
 		int	errCode = 0;
 
 		m_hPrelightDLL = LoadLibrary(wchPrelightFileName);
@@ -60,7 +60,7 @@ int main()
 
 	// Load Geometry DLL
 	{
-		const WCHAR* wchGeometryFileName = nullptr;
+		const wchar_t* wchGeometryFileName = nullptr;
 #if defined(_M_ARM64EC) || defined(_M_ARM64)
 #ifdef _DEBUG
 		wchGeometryFileName = L"Geometry_arm64_debug.dll";
@@ -80,7 +80,7 @@ int main()
 		wchGeometryFileName = L"Geometry_x86_release.dll";
 #endif
 #endif
-		WCHAR wchErrTxt[128] = {};
+		wchar_t wchErrTxt[128] = {};
 		int	errCode = 0;
 
 		m_hGeometryDLL = LoadLibrary(wchGeometryFileName);

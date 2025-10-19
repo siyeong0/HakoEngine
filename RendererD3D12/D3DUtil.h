@@ -13,8 +13,8 @@ namespace D3DUtil
 	void SetSamplerDesc_Mirror(D3D12_STATIC_SAMPLER_DESC* pOutSamperDesc, uint RegisterIndex);
 	void SerializeAndCreateRaytracingRootSignature(ID3D12Device* pDevice, D3D12_ROOT_SIGNATURE_DESC* pDesc, ID3D12RootSignature** ppOutRootSig);
 	HRESULT CreateVertexBuffer(ID3D12Device* pDevice, uint sizePerVertex, uint numVertices, D3D12_VERTEX_BUFFER_VIEW* pOutVertexBufferView, ID3D12Resource** ppOutBuffer);
-	HRESULT CreateUploadBuffer(ID3D12Device* pDevice, void* pData, uint64_t DataSize, ID3D12Resource** ppResource, const WCHAR* wchResourceName);
-	HRESULT CreateUAVBuffer(ID3D12Device* pDevice, uint64_t BufferSize, ID3D12Resource** ppResource, D3D12_RESOURCE_STATES initialResourceState, const WCHAR* wchResourceName);
+	HRESULT CreateUploadBuffer(ID3D12Device* pDevice, void* pData, uint64_t DataSize, ID3D12Resource** ppResource, const wchar_t* wchResourceName);
+	HRESULT CreateUAVBuffer(ID3D12Device* pDevice, uint64_t BufferSize, ID3D12Resource** ppResource, D3D12_RESOURCE_STATES initialResourceState, const wchar_t* wchResourceName);
 	void UpdateTexture(ID3D12Device* pD3DDevice, ID3D12GraphicsCommandList6* pCommandList, ID3D12Resource* pDestTexResource, ID3D12Resource* pSrcTexResource);
 
 	inline size_t AlignConstantBufferSize(size_t size)

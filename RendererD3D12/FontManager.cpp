@@ -17,7 +17,7 @@ bool FontManager::Initialize(D3D12Renderer* pRenderer, ID3D12CommandQueue* pComm
 	return true;
 }
 
-FontHandle* FontManager::CreateFontObject(const WCHAR* wchFontFamilyName, float fontSize)
+FontHandle* FontManager::CreateFontObject(const wchar_t* wchFontFamilyName, float fontSize)
 {
 	HRESULT hr = S_OK;
 
@@ -66,7 +66,7 @@ void FontManager::DeleteFontObject(FontHandle* pFontHandle)
 	delete pFontHandle;
 }
 
-bool FontManager::WriteTextToBitmap(uint8_t* dstImage, int dstWidth, int dstHeight, int dstPitch, int* outWidth, int* outHeight, FontHandle* pFontHandle, const WCHAR* wchString, int len)
+bool FontManager::WriteTextToBitmap(uint8_t* dstImage, int dstWidth, int dstHeight, int dstPitch, int* outWidth, int* outHeight, FontHandle* pFontHandle, const wchar_t* wchString, int len)
 {
 	HRESULT hr = S_OK;
 
@@ -203,7 +203,7 @@ bool FontManager::createDWrite(ID3D12Device* pD3DDevice, uint texWidth, uint tex
 	return true;
 }
 
-bool FontManager::createBitmapFromText(int* outWidth, int* outHeight, IDWriteTextFormat* pTextFormat, const WCHAR* wchString, int len)
+bool FontManager::createBitmapFromText(int* outWidth, int* outHeight, IDWriteTextFormat* pTextFormat, const wchar_t* wchString, int len)
 {
 	HRESULT hr = S_OK;
 

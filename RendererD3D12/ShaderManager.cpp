@@ -5,7 +5,7 @@
 
 typedef DXC_API_IMPORT HRESULT(__stdcall* DxcCreateInstanceT)(_In_ REFCLSID rclsid, _In_ REFIID riid, _Out_ LPVOID* ppv);
 
-bool ShaderManager::Initialize(D3D12Renderer* pRenderer, const WCHAR* wchShaderPath, bool bDisableOptimize)
+bool ShaderManager::Initialize(D3D12Renderer* pRenderer, const wchar_t* wchShaderPath, bool bDisableOptimize)
 {
 	bool bResult = false;
 
@@ -14,7 +14,7 @@ bool ShaderManager::Initialize(D3D12Renderer* pRenderer, const WCHAR* wchShaderP
 	wcscpy_s(m_wchDefaultShaderPath, _MAX_PATH, wchShaderPath);
 
 	// Initialize DXC.
-	const WCHAR* wchDllPath = nullptr;
+	const wchar_t* wchDllPath = nullptr;
 #if defined(_M_ARM64EC)
 	wchDllPath = L"./Dxc/arm64";
 #elif defined(_M_ARM64)
@@ -24,7 +24,7 @@ bool ShaderManager::Initialize(D3D12Renderer* pRenderer, const WCHAR* wchShaderP
 #elif defined(_M_IX86)
 	wchDllPath = L"./Dxc/x86";
 #endif
-	WCHAR wchOldPath[_MAX_PATH];
+	wchar_t wchOldPath[_MAX_PATH];
 	GetCurrentDirectoryW(_MAX_PATH, wchOldPath);
 	SetCurrentDirectoryW(wchDllPath);
 
@@ -50,14 +50,14 @@ lb_return:
 	return bResult;
 }
 
-ShaderHandle* ShaderManager::CreateShaderDXC(const WCHAR* wchShaderFileName, const WCHAR* wchEntryPoint, const WCHAR* wchShaderModel, uint flags)
+ShaderHandle* ShaderManager::CreateShaderDXC(const wchar_t* wchShaderFileName, const wchar_t* wchEntryPoint, const wchar_t* wchShaderModel, uint flags)
 {
 	bool bResult = false;
 
 	SYSTEMTIME	creationTime = {};
 	ShaderHandle* newShaderHandle = nullptr;
 
-	WCHAR wchOldPath[MAX_PATH];
+	wchar_t wchOldPath[MAX_PATH];
 	GetCurrentDirectory(_MAX_PATH, wchOldPath);
 
 	IDxcBlob* pBlob = nullptr;

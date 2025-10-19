@@ -22,11 +22,22 @@ struct Image
 	uint Height = 0;
 	uint Channels = 0;
 	std::vector<RGBA> Data; // RGBA format
+
+	bool IsValid() const { return Width > 0 && Height > 0 && !Data.empty(); }
 };
 
-void FillImageRGBA(Image& img, int w, int h, const unsigned char* rgba8);
-bool LoadImageFromFile(const std::filesystem::path& path, Image* outImage);
-bool SaveImageToFile(const std::filesystem::path& path, const Image& img, IMAGE_FORMAT format = IMAGE_FORMAT_RGBA8);
+void FillImageRGBA(Image* outImg, uint w, uint h, const unsigned char* rgba8);
+void FillImageRGBA(Image* outImg, uint w, uint h, const RGBA* rgba);
+Image CreateSolidColorImageRGBA(uint w, uint h, const RGBA& color);
+Image CreateCheckerboardImageRGBA(uint w, uint h, const RGBA& color1, const RGBA& color2, int checkerSize = -1);
+
+bool LoadImageFromFile(
+	const std::filesystem::path& path, 
+	Image* outImage);
+bool SaveImageToFile(
+	const std::filesystem::path& path,
+	const Image& img, 
+	IMAGE_FORMAT format = IMAGE_FORMAT_RGBA8);
 
 struct aiScene;
 struct aiMaterial;
@@ -35,30 +46,30 @@ enum aiTextureType;
 bool LoadExternalTexture(
 	const std::filesystem::path& modelDir,
 	const std::string& relPath,
-	Image& outImg);
+	Image* outImg);
 bool LoadEmbeddedTexture(
 	const aiScene* scene,
 	const std::string& starPath,
-	Image& outImg);
+	Image* outImg);
 
 bool TryLoadMaterialTexture(
 	const aiScene* scene,
 	const aiMaterial* mat,
 	aiTextureType type,
 	const std::filesystem::path& modelDir,
-	Image& outImg);
+	Image* outImg);
 bool TryLoadNormalLike(
 	const aiScene* scene,
 	const aiMaterial* mat,
 	const std::filesystem::path& modelDir,
-	Image& outImg);
+	Image* outImg);
 bool TryLoadMetallic(
 	const aiScene* scene,
 	const aiMaterial* mat,
 	const std::filesystem::path& modelDir,
-	Image& outImg);
+	Image* outImg);
 bool TryLoadRoughness(
 	const aiScene* scene,
 	const aiMaterial* mat,
 	const std::filesystem::path& modelDir,
-	Image& outImg);
+	Image* outImg);

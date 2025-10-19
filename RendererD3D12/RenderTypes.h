@@ -29,7 +29,7 @@ struct FontHandle
 {
 	IDWriteTextFormat*	pTextFormat;
 	float FontSize;
-	WCHAR wchFontFamilyName[512];
+	wchar_t wchFontFamilyName[512];
 };
 
 struct ShaderHandle
@@ -37,7 +37,7 @@ struct ShaderHandle
 	uint Flags;
 	uint CodeSize;
 	uint ShaderNameLen;
-	WCHAR wchShaderName[MAX_SHADER_NAME_BUFFER_LEN];
+	wchar_t wchShaderName[MAX_SHADER_NAME_BUFFER_LEN];
 	uint CodeBuffer[1];
 };
 
@@ -58,8 +58,9 @@ struct IndexedTriGroup
 	ID3D12Resource* IndexBuffer = nullptr;
 	D3D12_INDEX_BUFFER_VIEW IndexBufferView = {};
 	uint NumTriangles = 0;
-	TextureHandle* pTexHandle = nullptr;
-	RenderMaterial Material;
+	TextureHandle* DiffuseTexHandle = nullptr;
+	TextureHandle* NormalTexHandle = nullptr;
+	RenderMaterial Material = {};
 };
 
 struct CONSTANT_BUFFER_RT_TRIGROUP
@@ -73,6 +74,7 @@ struct RootArgument
 	D3D12_GPU_DESCRIPTOR_HANDLE SrvVB;
 	D3D12_GPU_DESCRIPTOR_HANDLE SrvIB;
 	D3D12_GPU_DESCRIPTOR_HANDLE SrvTexDiffuse;
+	D3D12_GPU_DESCRIPTOR_HANDLE SrvTexNormal;
 };
 
 struct BLASHandle

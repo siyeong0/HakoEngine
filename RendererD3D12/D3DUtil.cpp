@@ -202,7 +202,7 @@ namespace D3DUtil
 		return hr;
 	}
 
-	HRESULT CreateUAVBuffer(ID3D12Device* pDevice, uint64_t bufferSize, ID3D12Resource** ppResource, D3D12_RESOURCE_STATES initialResourceState, const WCHAR* wchResourceName)
+	HRESULT CreateUAVBuffer(ID3D12Device* pDevice, uint64_t bufferSize, ID3D12Resource** ppResource, D3D12_RESOURCE_STATES initialResourceState, const wchar_t* wchResourceName)
 	{
 		auto uploadHeapProperties = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT);
 		auto bufferDesc = CD3DX12_RESOURCE_DESC::Buffer(bufferSize, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS);
@@ -226,7 +226,7 @@ namespace D3DUtil
 		return hr;
 	}
 
-	HRESULT CreateUploadBuffer(ID3D12Device* pDevice, void* pData, uint64_t DataSize, ID3D12Resource** ppResource, const WCHAR* wchResourceName)
+	HRESULT CreateUploadBuffer(ID3D12Device* pDevice, void* pData, uint64_t DataSize, ID3D12Resource** ppResource, const wchar_t* wchResourceName)
 	{
 		auto uploadHeapProperties = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD);
 		auto bufferDesc = CD3DX12_RESOURCE_DESC::Buffer(DataSize);

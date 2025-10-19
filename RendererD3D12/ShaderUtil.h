@@ -1,6 +1,6 @@
 ﻿#pragma once
 
-bool CreateShaderCodeFromFile(uint8_t** ppOutCodeBuffer, uint* outCodeSize, SYSTEMTIME* outLastWriteTime, const WCHAR* wchFileName);
+bool CreateShaderCodeFromFile(uint8_t** ppOutCodeBuffer, uint* outCodeSize, SYSTEMTIME* outLastWriteTime, const wchar_t* wchFileName);
 
 void DeleteShaderCode(uint8_t* pCodeBuffer);
 
@@ -9,9 +9,9 @@ HRESULT CompileShaderFromFileWithDXC(
 	IDxcCompiler* pCompiler,
 	IDxcIncludeHandler*
 	pIncludeHandler,
-	const WCHAR* wchFileName,
-	const WCHAR* wchEntryPoint,
-	const WCHAR* wchShaderModel,
+	const wchar_t* wchFileName,
+	const wchar_t* wchEntryPoint,
+	const wchar_t* wchShaderModel,
 	IDxcBlob** ppOutCodeBlob,
 	bool bDisableOptimize,
 	SYSTEMTIME* outLastWriteTime,

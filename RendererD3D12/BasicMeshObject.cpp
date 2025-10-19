@@ -52,7 +52,10 @@ bool ENGINECALL BasicMeshObject::BeginCreateMesh(const Vertex* vertices, uint nu
 	return true;
 }
 
-bool ENGINECALL BasicMeshObject::InsertTriGroup(const uint16_t* indices, uint numTriangles, const WCHAR* wchTexFileName)
+bool ENGINECALL BasicMeshObject::InsertTriGroup(
+	const uint16_t* indices, uint numTriangles, 
+	const wchar_t* diffuseFilePathOrNull, 
+	const wchar_t* normalFilePathOrNull)
 {
 	ID3D12Device5* pD3DDeivce = m_pRenderer->GetD3DDevice();
 	size_t srvDescriptorSize = m_pRenderer->GetSrvDescriptorSize();
@@ -74,7 +77,12 @@ bool ENGINECALL BasicMeshObject::InsertTriGroup(const uint16_t* indices, uint nu
 	pTriGroup->IndexBuffer = pIndexBuffer;
 	pTriGroup->IndexBufferView = indexBufferView;
 	pTriGroup->NumTriangles = static_cast<uint>(numTriangles);
-	pTriGroup->pTexHandle = (TextureHandle*)m_pRenderer->CreateTextureFromFile(wchTexFileName);
+	pTriGroup->DiffuseTexHandle = diffuseFilePathOrNull 
+		? (TextureHandle*)m_pRenderer->CreateTextureFromFile(diffuseFilePathOrNull) 
+		: (TextureHandle*)m_pRenderer->CreateImmutableTexture(CreateSolidColorImageRGBA(128, 128, RGBA{255,255,255,255}));
+	pTriGroup->NormalTexHandle = normalFilePathOrNull
+		? (TextureHandle*)m_pRenderer->CreateTextureFromFile(normalFilePathOrNull)
+		: (TextureHandle*)m_pRenderer->CreateImmutableTexture(CreateSolidColorImageRGBA(128, 128, RGBA{ 128,128,255,255 }));
 	pTriGroup->Material = CreateBasicMaterial(MATERIAL_TYPE_DEFAULT);
 	m_NumTriGroups++;
 
@@ -103,7 +111,13 @@ bool ENGINECALL BasicMeshObject::InsertTriGroup(const uint16_t* indices, uint nu
 	pTriGroup->IndexBuffer = pIndexBuffer;
 	pTriGroup->IndexBufferView = indexBufferView;
 	pTriGroup->NumTriangles = static_cast<uint>(numTriangles);
-	pTriGroup->pTexHandle = (TextureHandle*)m_pRenderer->CreateImmutableTexture(material.Diffuse);
+	pTriGroup->DiffuseTexHandle = material.Diffuse.IsValid()
+		? (TextureHandle*)m_pRenderer->CreateImmutableTexture(material.Diffuse)
+		: (TextureHandle*)m_pRenderer->CreateImmutableTexture(CreateSolidColorImageRGBA(128, 128, RGBA{ 255,255,255,255 }));
+	pTriGroup->NormalTexHandle = material.Normal.IsValid()
+		? (TextureHandle*)m_pRenderer->CreateImmutableTexture(material.Normal)
+		: (TextureHandle*)m_pRenderer->CreateImmutableTexture(CreateSolidColorImageRGBA(128, 128, RGBA{ 128,128,255,255 }));
+	pTriGroup->Material = CreateBasicMaterial(MATERIAL_TYPE_DEFAULT);
 	pTriGroup->Material = CreateBasicMaterial(material.Type);
 	m_NumTriGroups++;
 	return true;
@@ -166,9 +180,11 @@ void BasicMeshObject::Draw(int threadIndex, ID3D12GraphicsCommandList6* pCommand
 	pCBPerDraw->WorldMatrix = XMMatrixTranspose(*worldMatrix);
 
 	// --- 2) SRV Descriptor table (TriGroup 개수 만큼)
+	static constexpr uint NUM_SRV_PER_TRIGROUP = 2;
+	const uint requiredSrvCount = static_cast<uint>(m_NumTriGroups) * NUM_SRV_PER_TRIGROUP;
+
 	CD3DX12_CPU_DESCRIPTOR_HANDLE cpuDescriptorTable = {};
 	CD3DX12_GPU_DESCRIPTOR_HANDLE gpuDescriptorTable = {};
-	const uint requiredSrvCount = static_cast<uint>(m_NumTriGroups);
 	bool bOk = pDescriptorPool->AllocDescriptorTable(&cpuDescriptorTable, &gpuDescriptorTable, requiredSrvCount);
 	ASSERT(bOk, "Failed to allocate descriptor table.");
 
@@ -176,11 +192,14 @@ void BasicMeshObject::Draw(int threadIndex, ID3D12GraphicsCommandList6* pCommand
 	for (uint i = 0; i < m_NumTriGroups; ++i)
 	{
 		const IndexedTriGroup& tg = m_pTriGroupList[i];
-		TextureHandle* pTex = tg.pTexHandle;
-		ASSERT(pTex && pTex->SRV.ptr != 0, "Texture SRV missing.");
+		TextureHandle* pDiffuseTex = tg.DiffuseTexHandle;
+		TextureHandle* pNormalTex = tg.NormalTexHandle;
+		ASSERT(pDiffuseTex && pDiffuseTex->SRV.ptr != 0, "Texture SRV missing.");
 
-		// SRV 하나씩 렌더링 힙에 복사 (t0로 쓸 자리)
-		pDevice->CopyDescriptorsSimple(1, cpuCurrDescHandleAddress, pTex->SRV, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+		pDevice->CopyDescriptorsSimple(1, cpuCurrDescHandleAddress, pDiffuseTex->SRV, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+		cpuCurrDescHandleAddress.Offset(1, srvDescriptorSize);
+
+		pDevice->CopyDescriptorsSimple(1, cpuCurrDescHandleAddress, pNormalTex->SRV, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 		cpuCurrDescHandleAddress.Offset(1, srvDescriptorSize);
 	}
 
@@ -196,7 +215,7 @@ void BasicMeshObject::Draw(int threadIndex, ID3D12GraphicsCommandList6* pCommand
 		pCBPerDraw->Material = m_pTriGroupList[i].Material;
 		pCommandList->SetGraphicsRootConstantBufferView(ROOT_SLOT_CBV_PER_DRAW, cb->pGPUMemAddr);
 
-		// SRV 테이블 루트 파라미터 바인딩 (t0 시작 핸들)
+		// i번째 TriGroup의 SRV 테이블 시작(t0=diffuse, t1=normal)
 		pCommandList->SetGraphicsRootDescriptorTable(ROOT_SLOT_SRV_TABLE, gpuCurrDescHandleAddress);
 
 		// 인덱스 버퍼/드로우
@@ -204,8 +223,8 @@ void BasicMeshObject::Draw(int threadIndex, ID3D12GraphicsCommandList6* pCommand
 		pCommandList->IASetIndexBuffer(&tg.IndexBufferView);
 		pCommandList->DrawIndexedInstanced(tg.NumTriangles * 3, 1, 0, 0, 0);
 
-		// 다음 TriGroup의 SRV로 한 칸 이동 (t0만 쓰므로 1칸씩)
-		gpuCurrDescHandleAddress.Offset(1, srvDescriptorSize);
+		// 다음 TriGroup의 SRV 시작점으로 이동
+		gpuCurrDescHandleAddress.Offset(NUM_SRV_PER_TRIGROUP, srvDescriptorSize);
 	}
 }
 
@@ -320,7 +339,7 @@ void BasicMeshObject::cleanup()
 		for (uint i = 0; i < m_NumTriGroups; i++)
 		{
 			SAFE_RELEASE(m_pTriGroupList[i].IndexBuffer);
-			SAFE_CLEANUP(m_pTriGroupList[i].pTexHandle, m_pRenderer->DeleteTexture);
+			SAFE_CLEANUP(m_pTriGroupList[i].DiffuseTexHandle, m_pRenderer->DeleteTexture);
 		}
 		SAFE_DELETE_ARRAY(m_pTriGroupList);
 	}

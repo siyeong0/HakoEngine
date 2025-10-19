@@ -3,7 +3,7 @@
 #include "Common/WriteDebugString.h"
 #include "ShaderUtil.h"
 
-bool CreateShaderCodeFromFile(uint8_t** ppOutCodeBuffer, uint* outCodeSize, SYSTEMTIME* pOutLastWriteTime, const WCHAR* wchFileName)
+bool CreateShaderCodeFromFile(uint8_t** ppOutCodeBuffer, uint* outCodeSize, SYSTEMTIME* pOutLastWriteTime, const wchar_t* wchFileName)
 {
 	bool bResult = false;
 
@@ -11,7 +11,7 @@ bool CreateShaderCodeFromFile(uint8_t** ppOutCodeBuffer, uint* outCodeSize, SYST
 	DWORD accessMode = GENERIC_READ;
 	DWORD share = FILE_SHARE_READ;
 
-	WCHAR	wchTxt[256] = {};
+	wchar_t wchTxt[256] = {};
 
 	CREATEFILE2_EXTENDED_PARAMETERS extendedParams = {};
 	extendedParams.dwSize = sizeof(CREATEFILE2_EXTENDED_PARAMETERS);
@@ -76,9 +76,9 @@ HRESULT CompileShaderFromFileWithDXC(
 	IDxcLibrary* pLibrary,
 	IDxcCompiler* pCompiler,
 	IDxcIncludeHandler* pIncludeHandler,
-	const WCHAR* wchFileName,
-	const WCHAR* wchEntryPoint,
-	const WCHAR* wchShaderModel,
+	const wchar_t* wchFileName,
+	const wchar_t* wchEntryPoint,
+	const wchar_t* wchShaderModel,
 	IDxcBlob** ppOutCodeBlob,
 	bool bDisableOptimize,
 	SYSTEMTIME* outLastWriteTime,

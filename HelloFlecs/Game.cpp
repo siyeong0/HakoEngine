@@ -15,10 +15,10 @@
 // #define USE_GPU_UPLOAD_HEAPS
 
 // TODO: Separate to another file or project
-static IMeshObject* createBoxMeshObject(IRenderer* pRenderer)
+static IMeshObject* createKittyBoxMeshObject(IRenderer* pRenderer)
 {
 	IMeshObject* pMeshObj = nullptr;
-	const WCHAR* wchTexFileNameList[6] =
+	const wchar_t* wchTexFileNameList[6] =
 	{
 		L"./Resources/KittyCraft_01.dds",
 		L"./Resources/KittyCraft_02.dds",
@@ -43,10 +43,48 @@ static IMeshObject* createBoxMeshObject(IRenderer* pRenderer)
 	return pMeshObj;
 }
 
-static IMeshObject* createSphereMeshObject(IRenderer* pRenderer)
+static IMeshObject* createMegayuchiBoxMeshObject(IRenderer* pRenderer)
 {
 	IMeshObject* pMeshObj = nullptr;
-	const WCHAR* wchTexFileName = L"./Resources/Kanna.dds";
+	const wchar_t* diffuseFileNameList[6] =
+	{
+		L"./Resources/megayuchi/tex_00.dds",
+		L"./Resources/megayuchi/tex_01.dds",
+		L"./Resources/megayuchi/tex_02.dds",
+		L"./Resources/megayuchi/tex_03.dds",
+		L"./Resources/megayuchi/tex_04.dds",
+		L"./Resources/megayuchi/tex_05.dds"
+	};
+
+	const wchar_t* normalFileNameList[6] =
+	{
+		L"./Resources/megayuchi/tex_00_N.dds",
+		L"./Resources/megayuchi/tex_01_N.dds",
+		L"./Resources/megayuchi/tex_02_N.dds",
+		L"./Resources/megayuchi/tex_03_N.dds",
+		L"./Resources/megayuchi/tex_04_N.dds",
+		L"./Resources/megayuchi/tex_05_N.dds"
+	};
+
+	StaticMesh meshData = StaticMesh::CreateUnitCubeMesh();
+
+	std::vector<Vertex> vertices = meshData.GetVertexArray();
+
+	pMeshObj = pRenderer->CreateBasicMeshObject();
+	pMeshObj->BeginCreateMesh(vertices.data(), (uint)vertices.size(), 6);	// 박스의 6면-1면당 삼각형 2개-인덱스 6개
+	for (int i = 0; i < 6; i++)
+	{
+		pMeshObj->InsertTriGroup(meshData.Sections[0].Indices.data() + i * 6, 2, diffuseFileNameList[i], normalFileNameList[i]);
+	}
+	pMeshObj->EndCreateMesh();
+
+	return pMeshObj;
+}
+
+static IMeshObject* createKannaSphereMeshObject(IRenderer* pRenderer)
+{
+	IMeshObject* pMeshObj = nullptr;
+	const wchar_t* wchTexFileName = L"./Resources/Kanna.dds";
 
 	StaticMesh meshData = StaticMesh::CreateSphereMesh(1.0f, 20, 20);
 
@@ -68,7 +106,7 @@ static IMeshObject* createSphereMeshObject(IRenderer* pRenderer)
 static IMeshObject* createPlaneMeshObject(IRenderer* pRenderer)
 {
 	IMeshObject* pMeshObj = nullptr;
-	const WCHAR* wchTexFileName = L"./Resources/Floor.dds";
+	const wchar_t* wchTexFileName = L"./Resources/Floor.dds";
 
 	StaticMesh meshData = StaticMesh::CreatePlaneMesh(20.0f, 20.0f);
 	std::vector<Vertex> vertices = meshData.GetVertexArray();
@@ -86,10 +124,10 @@ static IMeshObject* createPlaneMeshObject(IRenderer* pRenderer)
 	return pMeshObj;
 }
 
-static IMeshObject* createCylinderMeshObject(IRenderer* pRenderer)
+static IMeshObject* createStoneCylinderMeshObject(IRenderer* pRenderer)
 {
 	IMeshObject* pMeshObj = nullptr;
-	const WCHAR* wchTexFileName = L"./Resources/Stone.dds";
+	const wchar_t* wchTexFileName = L"./Resources/Stone.dds";
 
 	StaticMesh meshData = StaticMesh::CreateCylinderMesh(0.5f, 2.0f, 20);
 	std::vector<Vertex> vertices = meshData.GetVertexArray();
@@ -107,10 +145,10 @@ static IMeshObject* createCylinderMeshObject(IRenderer* pRenderer)
 	return pMeshObj;
 }
 
-static IMeshObject* createConeMeshObject(IRenderer* pRenderer)
+static IMeshObject* createStoneConeMeshObject(IRenderer* pRenderer)
 {
 	IMeshObject* pMeshObj = nullptr;
-	const WCHAR* wchTexFileName = L"./Resources/Stone.dds";
+	const wchar_t* wchTexFileName = L"./Resources/Stone.dds";
 
 	StaticMesh meshData = StaticMesh::CreateConeMesh(1.0f, 2.0f, 20);
 	std::vector<Vertex> vertices = meshData.GetVertexArray();
@@ -128,12 +166,13 @@ static IMeshObject* createConeMeshObject(IRenderer* pRenderer)
 	return pMeshObj;
 }
 
-static IMeshObject* createGridMeshObject(IRenderer* pRenderer)
+static IMeshObject* createKannaGridMeshObject(IRenderer* pRenderer)
 {
 	IMeshObject* pMeshObj = nullptr;
-	const WCHAR* wchTexFileName = L"./Resources/Kanna.dds";
+	const wchar_t* diffuseFileName = L"./Resources/megayuchi/tilemap_008.dds";
+	const wchar_t* normalFileName = L"./Resources/megayuchi/tilemap_008_N.dds";
 
-	StaticMesh meshData = StaticMesh::CreateGridMesh(20.0f, 20.0f, 3, 3);
+	StaticMesh meshData = StaticMesh::CreateGridMesh(20.0f, 20.0f, 10, 10);
 	std::vector<Vertex> vertices = meshData.GetVertexArray();
 
 	pMeshObj = pRenderer->CreateBasicMeshObject();
@@ -142,7 +181,7 @@ static IMeshObject* createGridMeshObject(IRenderer* pRenderer)
 	for (size_t si = 0; si < meshData.Sections.size(); ++si)
 	{
 		const MeshSection& sec = meshData.Sections[si];
-		pMeshObj->InsertTriGroup(sec.Indices.data(), (uint)(sec.Indices.size() / 3), wchTexFileName);
+		pMeshObj->InsertTriGroup(sec.Indices.data(), (uint)(sec.Indices.size() / 3), diffuseFileName, normalFileName);
 	}
 
 	pMeshObj->EndCreateMesh();
@@ -152,7 +191,6 @@ static IMeshObject* createGridMeshObject(IRenderer* pRenderer)
 static IMeshObject* createMeshFromFile(IRenderer* pRenderer, const char* filename)
 {
 	IMeshObject* pMeshObj = nullptr;
-	const WCHAR* wchTexFileName = L"./Resources/White.dds";
 
 	StaticMesh meshData;
 	if (!meshData.LoadFromFile(filename, 10.0f))
@@ -167,7 +205,7 @@ static IMeshObject* createMeshFromFile(IRenderer* pRenderer, const char* filenam
 	for (size_t si = 0; si < meshData.Sections.size(); ++si)
 	{
 		const MeshSection& sec = meshData.Sections[si];
-		pMeshObj->InsertTriGroup(sec.Indices.data(), (uint)(sec.Indices.size() / 3), wchTexFileName);
+		pMeshObj->InsertTriGroup(sec.Indices.data(), (uint)(sec.Indices.size() / 3));
 	}
 	pMeshObj->EndCreateMesh();
 	return pMeshObj;
@@ -182,7 +220,7 @@ bool Game::Initialize(
 {
 	// Load Renderer DLL
 	{
-		const WCHAR* wchRendererFileName = nullptr;
+		const wchar_t* wchRendererFileName = nullptr;
 #if defined(_M_ARM64EC) || defined(_M_ARM64)
 #ifdef _DEBUG
 		wchRendererFileName = L"RendererD3D12_arm64_debug.dll";
@@ -202,7 +240,7 @@ bool Game::Initialize(
 		wchRendererFileName = L"RendererD3D12_x86_release.dll";
 #endif
 #endif
-		WCHAR wchErrTxt[128] = {};
+		wchar_t wchErrTxt[128] = {};
 		int	errCode = 0;
 
 		m_hRendererDLL = LoadLibrary(wchRendererFileName);
@@ -219,7 +257,7 @@ bool Game::Initialize(
 
 	// Load Geometry DLL
 	{
-		const WCHAR* wchGeometryFileName = nullptr;
+		const wchar_t* wchGeometryFileName = nullptr;
 #if defined(_M_ARM64EC) || defined(_M_ARM64)
 #ifdef _DEBUG
 		wchGeometryFileName = L"Geometry_arm64_debug.dll";
@@ -239,7 +277,7 @@ bool Game::Initialize(
 		wchGeometryFileName = L"Geometry_x86_release.dll";
 #endif
 #endif
-		WCHAR wchErrTxt[128] = {};
+		wchar_t wchErrTxt[128] = {};
 		int	errCode = 0;
 
 		m_hGeometryDLL = LoadLibrary(wchGeometryFileName);
@@ -255,8 +293,8 @@ bool Game::Initialize(
 	}
 
 	// Get App Path and Set Shader Path
-	//WCHAR exePath[_MAX_PATH] = {};
-	WCHAR wchShaderPath[_MAX_PATH] = L"./Shaders";
+	//wchar_t exePath[_MAX_PATH] = {};
+	wchar_t wchShaderPath[_MAX_PATH] = L"./Shaders";
 	//if (GetModuleFileNameW(nullptr, exePath, _MAX_PATH))
 	//{
 	//	std::filesystem::path exeDir = std::filesystem::path(exePath).parent_path();         // ...\x64\Debug
@@ -482,7 +520,7 @@ bool Game::Initialize(
 				.set<Position>({ 0.0f, -5.0f, 0.0f })
 				.set<Rotation>({ 0.0f, 0.0f, 0.0f })
 				.set<Scale>({ 10.0f, 10.0f, 10.0f })
-				.set<MeshRenderer>({ createGridMeshObject(m_pRenderer) });
+				.set<MeshRenderer>({ createKannaGridMeshObject(m_pRenderer) });
 			m_Entities.emplace_back(e.id());
 		}
 		// Create cylinder
@@ -491,7 +529,7 @@ bool Game::Initialize(
 				.set<Position>({ -15.0f, 0.0f, 0.0f })
 				.set<Rotation>({ 0.0f, 0.0f, 0.0f })
 				.set<Scale>({ 3.0f, 3.0f, 3.0f })
-				.set<MeshRenderer>({ createCylinderMeshObject(m_pRenderer) });
+				.set<MeshRenderer>({ createStoneCylinderMeshObject(m_pRenderer) });
 			m_Entities.emplace_back(e.id());
 		}
 		// Create cone
@@ -500,12 +538,12 @@ bool Game::Initialize(
 				.set<Position>({ 15.0f, 0.0f, 0.0f })
 				.set<Rotation>({ 0.0f, 0.0f, 0.0f })
 				.set<Scale>({ 3.0f, 3.0f, 3.0f })
-				.set<MeshRenderer>({ createConeMeshObject(m_pRenderer) });
+				.set<MeshRenderer>({ createStoneConeMeshObject(m_pRenderer) });
 			m_Entities.emplace_back(e.id());
 		}
-		// Create box entities
-		const uint BOX_OBJECT_COUNT = 50;
-		for (uint i = 0; i < BOX_OBJECT_COUNT; i++)
+		// Create kitty box entities
+		const uint KITTY_BOX_OBJECT_COUNT = 50;
+		for (uint i = 0; i < KITTY_BOX_OBJECT_COUNT; i++)
 		{
 			float x = (float)((rand() % 51) - 25);	// -10m - 10m 
 			float y = (float)((rand() % 11) - 2);	// -2m - 7m
@@ -523,7 +561,30 @@ bool Game::Initialize(
 				.set<Force>({ 0.0f, 0.0f, 0.0f })
 				.set<Rotation>({ rx, ry, rz })
 				.set<Scale>({ s, s, s })
-				.set<MeshRenderer>({ createBoxMeshObject(m_pRenderer) });
+				.set<MeshRenderer>({ createKittyBoxMeshObject(m_pRenderer) });
+			m_Entities.emplace_back(e.id());
+		}
+		// Create megayuchi box entities
+		const uint MEGA_BOX_OBJECT_COUNT = 20;
+		for (uint i = 0; i < MEGA_BOX_OBJECT_COUNT; i++)
+		{
+			float x = (float)((rand() % 51) - 25);	// -10m - 10m 
+			float y = (float)((rand() % 11) - 2);	// -2m - 7m
+			float z = (float)((rand() % 51) - 25);	// -10m - 10m 
+			float rx = (rand() % 181) * (3.1415f / 180.0f);
+			float ry = (rand() % 181) * (3.1415f / 180.0f);
+			float rz = (rand() % 181) * (3.1415f / 180.0f);
+			float s = 0.5f * (float)((rand() % 10) + 1) * 0.5f;	// 1 - 3
+			// float vx = (float)((rand() % 3) - 1);
+			// float vz = (float)((rand() % 3) - 1);
+
+			flecs::entity e = m_ECSWorld.entity()
+				.set<Position>({ x, y, z })
+				// .set<Velocity>({ vx, 0.0f, vz })
+				.set<Force>({ 0.0f, 0.0f, 0.0f })
+				.set<Rotation>({ rx, ry, rz })
+				.set<Scale>({ s, s, s })
+				.set<MeshRenderer>({ createMegayuchiBoxMeshObject(m_pRenderer) });
 			m_Entities.emplace_back(e.id());
 		}
 		// Create sphere entities
@@ -546,7 +607,7 @@ bool Game::Initialize(
 				.set<Force>({ 0.0f, 0.0f, 0.0f })
 				.set<Rotation>({ rx, ry, rz })
 				.set<Scale>({ s, s, s })
-				.set<MeshRenderer>({ createSphereMeshObject(m_pRenderer) });
+				.set<MeshRenderer>({ createKannaSphereMeshObject(m_pRenderer) });
 			m_Entities.emplace_back(e.id());
 		}
 
@@ -588,7 +649,7 @@ bool Game::Initialize(
 	// end perf check
 	float elpasedTick = QCMeasureElapsedTick(QCGetCounter(), prevCounter);
 
-	WCHAR wchTxt[128] = {};
+	wchar_t wchTxt[128] = {};
 	swprintf_s(wchTxt, L"App Initialized. GPU-UploadHeaps:%s, %.2f ms elapsed.\n", m_pRenderer->IsGpuUploadHeapsEnabled() ? L"Enabled" : L"N/A", elpasedTick);
 	OutputDebugStringW(wchTxt);
 
@@ -611,7 +672,7 @@ void Game::Run()
 	{
 		m_PrevFrameCheckTick = currTick;
 
-		WCHAR wchTxt[64];
+		wchar_t wchTxt[64];
 		m_FPS = m_FrameCount;
 		m_NumCommandLists = m_pRenderer->GetCommandListCount();
 

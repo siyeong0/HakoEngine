@@ -74,7 +74,7 @@ private:
 	uint32_t m_FrameCount = 0;
 	uint32_t m_FPS = 0;
 	uint32_t m_NumCommandLists = 0;
-	WCHAR m_wchText[64] = {};
+	wchar_t m_wchText[64] = {};
 
-	WCHAR m_wchAppPath[_MAX_PATH] = {};
+	wchar_t m_wchAppPath[_MAX_PATH] = {};
 };

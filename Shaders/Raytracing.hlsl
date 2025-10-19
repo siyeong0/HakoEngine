@@ -175,7 +175,7 @@ void MyClosestHitShader_RadianceRay(inout RadiancePayload rayPayload, in BuiltIn
     float2 texCoord = HitAttribute(vertexUV, attr);
     
     float4 texDiffuse = l_DiffuseTexture.SampleLevel(g_SamplerPoint, texCoord, 0);
-    // TODO: normal map
+    float3 texNormal = l_NormalTexture.SampleLevel(g_SamplerWrap, texCoord, 0).rgb;
     
     float3 localNormal = HitAttribute(vertexNormal, attr);
     float3 localTangent = HitAttribute(vertexTangent, attr);
@@ -184,9 +184,8 @@ void MyClosestHitShader_RadianceRay(inout RadiancePayload rayPayload, in BuiltIn
     float3 worldTangent = normalize(mul(localTangent, (float3x3) ObjectToWorld4x3()));
     float3 worldBinormal = normalize(cross(worldTangent, worldNormal));
     
-    //float3 tanNormal = texNormal.rgb * 2 - 1;
-    //float3 surfaceNormal = (tanNormal.xxx * worldTangent) + (tanNormal.yyy * worldBinormal) + (tanNormal.zzz * worldNormal);
-    float3 surfaceNormal = worldNormal;
+    float3 tanNormal = texNormal.rgb * 2 - 1;
+    float3 surfaceNormal = (tanNormal.xxx * worldTangent) + (tanNormal.yyy * worldBinormal) + (tanNormal.zzz * worldNormal);
     
     // Compute depth
     float4 projPos = mul(float4(hitPosition, 1.0), g_ViewProj);

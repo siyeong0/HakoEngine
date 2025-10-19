@@ -12,7 +12,7 @@ public:
 	ShaderTable() = default;
 	~ShaderTable() { Cleanup(); }
 
-	bool Initiailze(ID3D12Device5* pD3DDevice, uint shaderRecordSize, const WCHAR* wchResourceName);
+	bool Initiailze(ID3D12Device5* pD3DDevice, uint shaderRecordSize, const wchar_t* wchResourceName);
 	void Cleanup();
 	uint CommitResource(uint maxNumShaderRecords);
 	bool  InsertShaderRecord(const ShaderRecord* pShaderRecord);
@@ -31,7 +31,7 @@ private:
 	uint m_ShaderRecordSize = 0;
 	uint m_MaxNumShaderRecords = 0;
 	uint m_CurrShaderRecordNum = 0;
-	WCHAR m_wchResourceName[128] = {};
+	wchar_t m_wchResourceName[128] = {};
 };
 
 

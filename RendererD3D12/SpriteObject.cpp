@@ -53,7 +53,7 @@ bool SpriteObject::Initialize(D3D12Renderer* pRenderer)
 	return bResult;
 }
 
-bool SpriteObject::Initialize(D3D12Renderer* pRenderer, const WCHAR* wchTexFileName, const RECT* pRectOrNull)
+bool SpriteObject::Initialize(D3D12Renderer* pRenderer, const wchar_t* wchTexFileName, const RECT* pRectOrNull)
 {
 	bool bResult = Initialize(pRenderer);
 	ASSERT(bResult, "Failed to initialize sprite object.");

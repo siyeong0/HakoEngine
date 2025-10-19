@@ -31,7 +31,7 @@ public:
 	STDMETHODIMP_(ULONG)	Release() override;
 
 	// Derived from IRenderer
-	bool ENGINECALL Initialize(HWND hWnd, bool bEnableRayTracing, bool bEnableDebugLayer, bool bEnableGBV, bool bEnableShaderDebug, bool bUseGpuUploadHeaps, const WCHAR* wchShaderPath) override;
+	bool ENGINECALL Initialize(HWND hWnd, bool bEnableRayTracing, bool bEnableDebugLayer, bool bEnableGBV, bool bEnableShaderDebug, bool bUseGpuUploadHeaps, const wchar_t* wchShaderPath) override;
 	void ENGINECALL Cleanup() override;
 
 	void ENGINECALL Update(float dt) override;
@@ -46,19 +46,19 @@ public:
 	IMeshObject* ENGINECALL CreateBasicMeshObject(bool bOpaque, bool bUseRayTracingIfSupported) override;
 	IMeshObject* ENGINECALL CreateBasicMeshObject(const StaticMesh& staticMesh, bool bOpaque, bool bUseRayTracingIfSupported) override;
 	ISprite* ENGINECALL CreateSpriteObject() override;
-	ISprite* ENGINECALL CreateSpriteObject(const WCHAR* wchTexFileName) override;
-	ISprite* ENGINECALL CreateSpriteObject(const WCHAR* wchTexFileName, int posX, int posY, int width, int height) override;
+	ISprite* ENGINECALL CreateSpriteObject(const wchar_t* wchTexFileName) override;
+	ISprite* ENGINECALL CreateSpriteObject(const wchar_t* wchTexFileName, int posX, int posY, int width, int height) override;
 
 	void* ENGINECALL CreateTiledTexture(uint texWidth, uint texHeight, uint8_t r, uint8_t g, uint8_t b) override;
 	void* ENGINECALL CreateImmutableTexture(const Image& image) override;
 	void* ENGINECALL CreateDynamicTexture(uint texWidth, uint texHeight) override;
-	void* ENGINECALL CreateTextureFromFile(const WCHAR* wchFileName) override;
+	void* ENGINECALL CreateTextureFromFile(const wchar_t* wchFileName) override;
 	void ENGINECALL UpdateTextureWithImage(void* pTexHandle, const uint8_t* pSrcBits, uint srcWidth, uint srcHeight) override;
 	void ENGINECALL DeleteTexture(void* pTexHandle) override;
 
-	void* ENGINECALL CreateFontObject(const WCHAR* wchFontFamilyName, float fontSize) override;
+	void* ENGINECALL CreateFontObject(const wchar_t* wchFontFamilyName, float fontSize) override;
 	void ENGINECALL DeleteFontObject(void* pFontHandle) override;
-	bool ENGINECALL WriteTextToBitmap(uint8_t* dstImage, uint dstWidth, uint dstHeight, uint dstPitch, int* outWidth, int* outHeight, void* pFontObjHandle, const WCHAR* wchString, uint len) override;
+	bool ENGINECALL WriteTextToBitmap(uint8_t* dstImage, uint dstWidth, uint dstHeight, uint dstPitch, int* outWidth, int* outHeight, void* pFontObjHandle, const wchar_t* wchString, uint len) override;
 
 	bool ENGINECALL UpdateWindowSize(uint32_t backBufferWidth, uint32_t backBufferHeight) override;
 	void ENGINECALL SetCameraPos(float x, float y, float z) override;
@@ -208,7 +208,7 @@ private:
 
 	SkyObject* m_pSkyObject = {};
 
-	WCHAR m_wchCurrentPathBackup[_MAX_PATH] = {};
-	WCHAR m_wchShaderPath[_MAX_PATH] = {};
+	wchar_t m_wchCurrentPathBackup[_MAX_PATH] = {};
+	wchar_t m_wchShaderPath[_MAX_PATH] = {};
 };
 

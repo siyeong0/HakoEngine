@@ -35,6 +35,7 @@
     <ClInclude Include="$(MSBuildThisFileDirectory)Image.h">
       <Filter>Image</Filter>
     </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)Color.h" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Util">

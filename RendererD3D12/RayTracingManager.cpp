@@ -410,16 +410,29 @@ BLASHandle* RayTracingManager::buildBLAS(
 			srvCpu.Offset(1, m_DescriptorSize);
 			srvGpu.Offset(1, m_DescriptorSize);
 
-			// Create Shader Resource View from TextureResource
-			if (pTriGroupInfoList[i].pTexHandle)
+			// Diffuse Texture
+			if (pTriGroupInfoList[i].DiffuseTexHandle)
 			{
-				D3D12_CPU_DESCRIPTOR_HANDLE srvTexSrc = pTriGroupInfoList[i].pTexHandle->SRV;
+				D3D12_CPU_DESCRIPTOR_HANDLE srvTexSrc = pTriGroupInfoList[i].DiffuseTexHandle->SRV;
 				if (srvTexSrc.ptr)
 				{
 					pD3DDevice->CopyDescriptorsSimple(1, srvCpu, srvTexSrc, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 				}
 			}
-			pBLASHandle->pRootArg[i].SrvIB = srvGpu;
+			pBLASHandle->pRootArg[i].SrvTexDiffuse = srvGpu;
+			srvCpu.Offset(1, m_DescriptorSize);
+			srvGpu.Offset(1, m_DescriptorSize);
+
+			// Normal Texture
+			if (pTriGroupInfoList[i].NormalTexHandle)
+			{
+				D3D12_CPU_DESCRIPTOR_HANDLE srvTexSrc = pTriGroupInfoList[i].NormalTexHandle->SRV;
+				if (srvTexSrc.ptr)
+				{
+					pD3DDevice->CopyDescriptorsSimple(1, srvCpu, srvTexSrc, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+				}
+			}
+			pBLASHandle->pRootArg[i].SrvTexNormal = srvGpu;
 			srvCpu.Offset(1, m_DescriptorSize);
 			srvGpu.Offset(1, m_DescriptorSize);
 		}
@@ -724,9 +737,9 @@ void RayTracingManager::createRootSignatures()
 
 	// Local Root Signature
 	// space1
-	// t0 : vertex buffer, t1 : index buffer, t2 : diffuse texture
+	// t0 : vertex buffer, t1 : index buffer, t2 : diffuse texture, t3 : normal texture
 	CD3DX12_DESCRIPTOR_RANGE localRanges[1] = {};
-	localRanges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 3, 0, 1);	// space1
+	localRanges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 4, 0, 1);	// space1
 
 	CD3DX12_ROOT_PARAMETER localRootParameters[2] = {};
 	localRootParameters[0].InitAsConstants(SizeOfInUint32(CONSTANT_BUFFER_RT_TRIGROUP), 0, 1);	// b0 : CBV Per TriGroup

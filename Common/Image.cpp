@@ -2,10 +2,13 @@
 #include <iostream>
 #include <filesystem>
 
+#pragma warning(push)
+#pragma warning(disable : 6262)
 #define STB_IMAGE_IMPLEMENTATION
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include <stb_image.h>
 #include <stb_image_write.h>
+#pragma warning(pop)
 
 #include <assimp/Importer.hpp>
 #include <assimp/scene.h>
@@ -13,22 +16,61 @@
 
 #include "Image.h"
 
-// -----------------------------
-// Helpers: Image loaders
-// -----------------------------
-
-void FillImageRGBA(Image& img, int w, int h, const unsigned char* rgba8)
+void FillImageRGBA(Image* outImg, uint w, uint h, const unsigned char* rgba8)
 {
+	outImg->Width = w;
+	outImg->Height = h;
+	outImg->Channels = 4;
+	outImg->Data.resize(size_t(w) * size_t(h));
+	for (size_t i = 0; i < outImg->Data.size(); ++i)
+	{
+		for (uint y = 0; y < h; ++y)
+		{
+			const unsigned char* p = rgba8 + i * 4;
+			std::memcpy((void*)(&outImg->Data[i]), p, 4);
+		}
+	}
+}
+
+void FillImageRGBA(Image* outImg, uint w, uint h, const RGBA* rgba)
+{
+	FillImageRGBA(outImg, w, h, reinterpret_cast<const unsigned char*>(rgba));
+}
+
+Image CreateSolidColorImageRGBA(uint w, uint h, const RGBA& color)
+{
+	Image img;
+	img.Width = w;
+	img.Height = h;
+	img.Channels = 4;
+	img.Data.resize(size_t(w) * size_t(h), color);
+
+	return img;
+}
+
+Image CreateCheckerboardImageRGBA(uint w, uint h, const RGBA& color1, const RGBA& color2, int checkerSize)
+{
+	checkerSize = (checkerSize <= 0) ? std::min(w, h) / 8 : checkerSize;
+
+	Image img;
 	img.Width = w;
 	img.Height = h;
 	img.Channels = 4;
 	img.Data.resize(size_t(w) * size_t(h));
-	for (size_t i = 0; i < img.Data.size(); ++i)
+	for (uint y = 0; y < h; ++y)
 	{
-		const unsigned char* p = rgba8 + i * 4;
-		std::memcpy(img.Data[i].ColorData, p, 4);
+		for (uint x = 0; x < w; ++x)
+		{
+			bool bUseColor1 = ((x / checkerSize) % 2) == ((y / checkerSize) % 2);
+			img.Data[size_t(y) * size_t(w) + size_t(x)] = bUseColor1 ? color1 : color2;
+		}
 	}
+	return img;
 }
+
+// -----------------------------
+// Helpers: Image loaders
+// -----------------------------
 
 bool LoadImageFromFile(const std::filesystem::path& path, Image* outImage)
 {
@@ -40,7 +82,7 @@ bool LoadImageFromFile(const std::filesystem::path& path, Image* outImage)
 		std::cout << "[Image] Texture not found: " << path << "\n";
 		return false;
 	}
-	FillImageRGBA(*outImage, w, h, pixels);
+	FillImageRGBA(outImage, static_cast<uint>(w), static_cast<uint>(h), pixels);
 	stbi_image_free(pixels);
 	return true;
 }
@@ -106,7 +148,7 @@ bool SaveImageToFile(const std::filesystem::path& path, const Image& img, IMAGE_
 bool LoadExternalTexture(
 	const std::filesystem::path& modelDir,
 	const std::string& relPath,
-	Image& outImg)
+	Image* outImg)
 {
 	if (relPath.empty()) return false;
 
@@ -131,7 +173,7 @@ bool LoadExternalTexture(
 		return false;
 	}
 
-	FillImageRGBA(outImg, w, h, pixels);
+	FillImageRGBA(outImg, static_cast<uint>(w), static_cast<uint>(h), pixels);
 	stbi_image_free(pixels);
 
 	return true;
@@ -141,7 +183,7 @@ bool LoadExternalTexture(
 bool LoadEmbeddedTexture(
 	const aiScene* scene,
 	const std::string& starPath,
-	Image& outImg)
+	Image* outImg)
 {
 	// "*0" → 0
 	int texIndex = 0;
@@ -163,7 +205,7 @@ bool LoadEmbeddedTexture(
 			std::fprintf(stderr, "[StaticMesh] stbi_load_from_memory failed for embedded texture %s\n", starPath.c_str());
 			return false;
 		}
-		FillImageRGBA(outImg, w, h, pixels);
+		FillImageRGBA(outImg, static_cast<uint>(w), static_cast<uint>(h), pixels);
 		stbi_image_free(pixels);
 		return true;
 	}
@@ -181,7 +223,7 @@ bool LoadEmbeddedTexture(
 			rgba[i * 4 + 2] = src[i].b;
 			rgba[i * 4 + 3] = src[i].a;
 		}
-		FillImageRGBA(outImg, w, h, rgba.data());
+		FillImageRGBA(outImg, static_cast<uint>(w), static_cast<uint>(h), rgba.data());
 		return true;
 	}
 }
@@ -191,7 +233,7 @@ bool TryLoadMaterialTexture(
 	const aiMaterial* mat,
 	aiTextureType type,
 	const std::filesystem::path& modelDir,
-	Image& outImg)
+	Image* outImg)
 {
 	if (!mat) return false;
 
@@ -215,7 +257,7 @@ bool TryLoadNormalLike(
 	const aiScene* scene,
 	const aiMaterial* mat,
 	const std::filesystem::path& modelDir,
-	Image& outImg)
+	Image* outImg)
 {
 	if (TryLoadMaterialTexture(scene, mat, aiTextureType_NORMALS, modelDir, outImg)) return true;
 	if (TryLoadMaterialTexture(scene, mat, aiTextureType_HEIGHT, modelDir, outImg)) return true;
@@ -228,7 +270,7 @@ bool TryLoadMetallic(
 	const aiScene* scene,
 	const aiMaterial* mat,
 	const std::filesystem::path& modelDir,
-	Image& outImg)
+	Image* outImg)
 {
 	if (TryLoadMaterialTexture(scene, mat, aiTextureType_METALNESS, modelDir, outImg)) return true;
 	// Optional: UNKNOWN fallback or combined ORM parsing could go here
@@ -239,7 +281,7 @@ bool TryLoadRoughness(
 	const aiScene* scene,
 	const aiMaterial* mat,
 	const std::filesystem::path& modelDir,
-	Image& outImg)
+	Image* outImg)
 {
 	if (TryLoadMaterialTexture(scene, mat, aiTextureType_DIFFUSE_ROUGHNESS, modelDir, outImg)) return true;
 	return false;

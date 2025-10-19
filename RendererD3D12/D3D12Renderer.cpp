@@ -57,7 +57,7 @@ bool ENGINECALL D3D12Renderer::Initialize(
 	bool bEnableGBV,
 	bool bEnableShaderDebug,
 	bool bUseGpuUploadHeaps,
-	const WCHAR* wchShaderPath)
+	const wchar_t* wchShaderPath)
 {
 	HRESULT hr = S_OK;
 	ID3D12Debug* pDebugController = nullptr;
@@ -412,10 +412,6 @@ void ENGINECALL D3D12Renderer::Cleanup()
 
 void ENGINECALL D3D12Renderer::Update(float dt)
 {
-	m_PerFrameCB.LightDir = FLOAT3(-0.577f, -0.577f, -0.577f);
-	m_PerFrameCB.LightColor = FLOAT3(1.0f, 1.0f, 1.0f);
-	m_PerFrameCB.Ambient = FLOAT3(0.3f, 0.3f, 0.3f);
-
 	m_PerFrameCB.Near = NEAR_Z;
 	m_PerFrameCB.Far = FAR_Z;
 	m_PerFrameCB.MaxRadianceRayRecursionDepth = 1;
@@ -426,9 +422,9 @@ void ENGINECALL D3D12Renderer::Update(float dt)
 	// Update lights
 	m_PerFrameCB.NumLights = 1;
 	m_PerFrameCB.LightList[0].Type = LIGHT_TYPE_DIRECTIONAL;
-	m_PerFrameCB.LightList[0].PosOrDir = FLOAT3(-0.577f, -0.577f, -0.577f);
-	m_PerFrameCB.LightList[0].Color = FLOAT3(1.0f, 1.0f, 1.0f);
-	m_PerFrameCB.LightList[0].Rs = 0.0f;
+	m_PerFrameCB.LightList[0].PosOrDir = FLOAT3::Normalize({ 0.25f, -1.0f, 0.5f });
+	m_PerFrameCB.LightList[0].Color = FLOAT3(0.5f, 1.0f, 1.0f );
+	m_PerFrameCB.LightList[0].Rs = 1000.0f;
 }
 
 void ENGINECALL D3D12Renderer::BeginRender()
@@ -728,7 +724,7 @@ ISprite* ENGINECALL D3D12Renderer::CreateSpriteObject()
 	return pSprObj;
 }
 
-ISprite* ENGINECALL D3D12Renderer::CreateSpriteObject(const WCHAR* wchTexFileName)
+ISprite* ENGINECALL D3D12Renderer::CreateSpriteObject(const wchar_t* wchTexFileName)
 {
 	SpriteObject* pSprObj = new SpriteObject;
 
@@ -737,7 +733,7 @@ ISprite* ENGINECALL D3D12Renderer::CreateSpriteObject(const WCHAR* wchTexFileNam
 	return pSprObj;
 }
 
-ISprite* ENGINECALL D3D12Renderer::CreateSpriteObject(const WCHAR* wchTexFileName, int posX, int posY, int width, int height)
+ISprite* ENGINECALL D3D12Renderer::CreateSpriteObject(const wchar_t* wchTexFileName, int posX, int posY, int width, int height)
 {
 	SpriteObject* pSprObj = new SpriteObject;
 
@@ -786,29 +782,14 @@ void* ENGINECALL D3D12Renderer::CreateDynamicTexture(uint texWidth, uint texHeig
 
 void* ENGINECALL D3D12Renderer::CreateImmutableTexture(const Image& image)
 {
-	std::vector<uint8_t> tempImageData(image.Width * image.Height * 4);
-	for (uint y = 0; y < image.Height; y++)
-	{
-		for (uint x = 0; x < image.Width; x++)
-		{
-			RGBA src;
-			src.r = static_cast<uint8_t>(image.Data[(x + y * image.Width) * 4 + 0].r * 255.0f);
-			src.g = static_cast<uint8_t>(image.Data[(x + y * image.Width) * 4 + 0].g * 255.0f);
-			src.b = static_cast<uint8_t>(image.Data[(x + y * image.Width) * 4 + 0].b * 255.0f);
-			src.a = static_cast<uint8_t>(image.Data[(x + y * image.Width) * 4 + 0].a * 255.0f);
-			RGBA* pDest = reinterpret_cast<RGBA*>(tempImageData.data() + (x + y * image.Width) * 4);
-			*pDest = src;
-		}
-	}
-
 	TextureHandle* pTexHandle = m_pTextureManager->CreateImmutableTexture(
 		image.Width, image.Height,
 		DXGI_FORMAT_R8G8B8A8_UNORM,
-		tempImageData.data());
+		reinterpret_cast<const uint8_t*>(image.Data.data()));
 	return pTexHandle;
 }
 
-void* ENGINECALL D3D12Renderer::CreateTextureFromFile(const WCHAR* wchFileName)
+void* ENGINECALL D3D12Renderer::CreateTextureFromFile(const wchar_t* wchFileName)
 {
 	TextureHandle* pTexHandle = m_pTextureManager->CreateTextureFromFile(wchFileName);
 	ASSERT(pTexHandle, "Failed to create texture from file.");
@@ -862,7 +843,7 @@ void ENGINECALL D3D12Renderer::DeleteTexture(void* pTexHandle)
 	m_pTextureManager->DeleteTexture((TextureHandle*)pTexHandle);
 }
 
-void* ENGINECALL D3D12Renderer::CreateFontObject(const WCHAR* wchFontFamilyName, float fontSize)
+void* ENGINECALL D3D12Renderer::CreateFontObject(const wchar_t* wchFontFamilyName, float fontSize)
 {
 	FontHandle* pFontHandle = m_pFontManager->CreateFontObject(wchFontFamilyName, fontSize);
 	return pFontHandle;
@@ -873,7 +854,7 @@ void ENGINECALL D3D12Renderer::DeleteFontObject(void* pFontHandle)
 	m_pFontManager->DeleteFontObject((FontHandle*)pFontHandle);
 }
 
-bool ENGINECALL D3D12Renderer::WriteTextToBitmap(uint8_t* dstImage, uint dstWidth, uint dstHeight, uint dstPitch, int* outWidth, int* outHeight, void* pFontObjHandle, const WCHAR* wchString, uint len)
+bool ENGINECALL D3D12Renderer::WriteTextToBitmap(uint8_t* dstImage, uint dstWidth, uint dstHeight, uint dstPitch, int* outWidth, int* outHeight, void* pFontObjHandle, const wchar_t* wchString, uint len)
 {
 	bool bResult = m_pFontManager->WriteTextToBitmap(dstImage, dstWidth, dstHeight, dstPitch, outWidth, outHeight, (FontHandle*)pFontObjHandle, wchString, len);
 	return bResult;

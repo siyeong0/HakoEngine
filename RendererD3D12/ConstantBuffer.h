@@ -37,13 +37,6 @@ struct CONSTANT_BUFFER_PER_FRAME
 	Matrix4x4 InvProj;
 	Matrix4x4 InvViewProj;
 
-	FLOAT3 LightDir; // Directional light direction (normalized)
-	float _pad0;
-	FLOAT3 LightColor; // Light color
-	float _pad1;
-	FLOAT3 Ambient; // Ambient light color
-	float _pad2;
-
 	float Near;
 	float Far;
 	uint MaxRadianceRayRecursionDepth;
@@ -55,9 +48,8 @@ static_assert(sizeof(CONSTANT_BUFFER_PER_FRAME) % 16 == 0, "CONSTANT_BUFFER_PER_
 static_assert(sizeof(CONSTANT_BUFFER_PER_FRAME) <= 1024, "CONSTANT_BUFFER_PER_FRAME size must be less than or equal to 1024 bytes.");
 static_assert(sizeof(CONSTANT_BUFFER_PER_FRAME) == 
 	6 * sizeof(Matrix4x4) + 
-	3 * sizeof(FLOAT4) + 
-	3 * sizeof(float) + 
-	1 * sizeof(uint) + 
+	2 * sizeof(float) + 
+	2 * sizeof(uint) + 
 	MAX_LIGHT_COUNT * sizeof(Light), "CONSTANT_BUFFER_PER_FRAME size mismatch.");
 
 struct CONSTANT_BUFFER_MESH_OBJECT

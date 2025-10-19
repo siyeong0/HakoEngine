@@ -2,7 +2,7 @@
 #include "ShaderRecord.h"
 #include "ShaderTable.h"
 
-bool ShaderTable::Initiailze(ID3D12Device5* pD3DDevice, uint shaderRecordSize, const WCHAR* wchResourceName)
+bool ShaderTable::Initiailze(ID3D12Device5* pD3DDevice, uint shaderRecordSize, const wchar_t* wchResourceName)
 {
 	m_pD3DDevice = pD3DDevice;
 	m_ShaderRecordSize = D3DUtil::Align(shaderRecordSize, D3D12_RAYTRACING_SHADER_RECORD_BYTE_ALIGNMENT);

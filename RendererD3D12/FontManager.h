@@ -9,15 +9,15 @@ public:
 	~FontManager() { Cleanup(); }
 
 	bool Initialize(D3D12Renderer* pRenderer, ID3D12CommandQueue* pCommandQueue, uint width, uint height, bool bEnableDebugLayer);
-	FontHandle* CreateFontObject(const WCHAR* wchFontFamilyName, float fontSize);
+	FontHandle* CreateFontObject(const wchar_t* wchFontFamilyName, float fontSize);
 	void DeleteFontObject(FontHandle* pFontHandle);
-	bool WriteTextToBitmap(uint8_t* dstImage, int dstWidth, int dstHeight, int dstPitch, int* outWidth, int* outHeight, FontHandle* pFontHandle, const WCHAR* wchString, int len);
+	bool WriteTextToBitmap(uint8_t* dstImage, int dstWidth, int dstHeight, int dstPitch, int* outWidth, int* outHeight, FontHandle* pFontHandle, const wchar_t* wchString, int len);
 	void Cleanup();
 
 private:
 	bool createD2D(ID3D12Device* pD3DDevice, ID3D12CommandQueue* pCommandQueue, bool bEnableDebugLayer);
 	bool createDWrite(ID3D12Device* pD3DDevice, uint texWidth, uint texHeight, float dpi);
-	bool createBitmapFromText(int* outWidth, int* outHeight, IDWriteTextFormat* pTextFormat, const WCHAR* wchString, int len);
+	bool createBitmapFromText(int* outWidth, int* outHeight, IDWriteTextFormat* pTextFormat, const wchar_t* wchString, int len);
 	void cleanupDWrite();
 	void cleanupD2D();
 

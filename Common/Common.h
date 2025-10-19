@@ -73,17 +73,7 @@ static_assert(sizeof(FLOAT4) == 16, "FLOAT4 size mismatch");
 #include "Bounds.h"
 #include "Plane.h"
 
-union RGBA
-{
-	struct
-	{
-		uint8_t	r;
-		uint8_t	g;
-		uint8_t	b;
-		uint8_t	a;
-	};
-	uint8_t ColorData[4];
-};
+#include "Color.h"
 
 static inline void HSVtoRGB(float h, float s, float v, float& r, float& g, float& b)
 {

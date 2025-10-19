@@ -10,7 +10,7 @@ public:
 	~TextureManager() { Cleanup(); }
 
 	bool Initialize(D3D12Renderer* pRenderer, int numExpectedItems);
-	TextureHandle* CreateTextureFromFile(const WCHAR* wchFileName);
+	TextureHandle* CreateTextureFromFile(const wchar_t* wchFileName);
 	TextureHandle* CreateDynamicTexture(uint texWidth, uint texHeight);
 	TextureHandle* CreateImmutableTexture(uint texWidth, uint texHeight, DXGI_FORMAT format, const uint8_t* pInitImage);
 	void DeleteTexture(TextureHandle* pTexHandle);

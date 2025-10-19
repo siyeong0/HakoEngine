@@ -14,7 +14,7 @@ bool TextureManager::Initialize(D3D12Renderer* pRenderer, int numExpectedItems)
 	return true;
 }
 
-TextureHandle* TextureManager::CreateTextureFromFile(const WCHAR* wchFileName)
+TextureHandle* TextureManager::CreateTextureFromFile(const wchar_t* wchFileName)
 {
 	ID3D12Device* pD3DDevice = m_pRenderer->GetD3DDevice();
 	SingleDescriptorAllocator* pSingleDescriptorAllocator = m_pRenderer->GetSingleDescriptorAllocator();

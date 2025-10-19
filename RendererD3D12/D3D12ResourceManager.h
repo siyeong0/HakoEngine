@@ -11,7 +11,7 @@ public:
 	HRESULT CreateIndexBuffer(size_t numIndices, D3D12_INDEX_BUFFER_VIEW* pOutIndexBufferView, ID3D12Resource **ppOutBuffer, void* pInitData, bool bUseGpuUploadHeaps);
 	void UpdateTextureForWrite(ID3D12Resource* pDestTexResource, ID3D12Resource* pSrcTexResource);
 	bool CreateTexture(ID3D12Resource** ppOutResource, uint width, uint height, DXGI_FORMAT format, const uint8_t* pInitImage);
-	bool CreateTextureFromFile(ID3D12Resource** ppOutResource, D3D12_RESOURCE_DESC* pOutDesc, const WCHAR* wchFileName, bool bUseGpuUploadHeaps);
+	bool CreateTextureFromFile(ID3D12Resource** ppOutResource, D3D12_RESOURCE_DESC* pOutDesc, const wchar_t* wchFileName, bool bUseGpuUploadHeaps);
 	bool CreateTexturePair(ID3D12Resource** ppOutResource, ID3D12Resource** ppOutUploadBuffer, uint width, uint height, DXGI_FORMAT format);
 	void Cleanup();
 

@@ -355,7 +355,7 @@ bool D3D12ResourceManager::CreateTexturePair(ID3D12Resource** ppOutResource, ID3
 	return true;
 }
 
-bool D3D12ResourceManager::CreateTextureFromFile(ID3D12Resource** ppOutResource, D3D12_RESOURCE_DESC* pOutDesc, const WCHAR* wchFileName, bool bUseGpuUploadHeaps)
+bool D3D12ResourceManager::CreateTextureFromFile(ID3D12Resource** ppOutResource, D3D12_RESOURCE_DESC* pOutDesc, const wchar_t* wchFileName, bool bUseGpuUploadHeaps)
 {
 	HRESULT hr = S_OK;
 

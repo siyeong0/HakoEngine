@@ -2,6 +2,7 @@
 #include "BxDF.hlsli"
 
 Texture2D g_DiffuseTex : register(t0);
+Texture2D g_NormalTex : register(t1);
 
 cbuffer CONSTANT_BUFFER_PER_FRAME : register(b0)
 {
@@ -11,13 +12,6 @@ cbuffer CONSTANT_BUFFER_PER_FRAME : register(b0)
     matrix g_InvView;
     matrix g_InvProj;
     matrix g_InvViewProj;
-    
-    float3 g_LightDir; // Directional light direction (normalized)
-    float _pad0;
-    float3 g_LightColor; // Light color
-    float _pad1;
-    float3 g_Ambient; // Ambient light color
-    float _pad2;
     
     float g_Near;
     float g_Far;
@@ -85,9 +79,19 @@ float4 PSMain(PSInput input) : SV_TARGET
 {
     float3 L = 0;
     
-    float3 viewDir = normalize(g_InvView._41_42_43 - input.WorldPosition); // ✅ 월드 공간 V
-    float3 normal = input.WorldNormal;
-    const float3 Kd = g_Material.Opacity * g_DiffuseTex.Sample(g_SamplerWrap, input.TexCoord).xyz;
+    float4 texDiffuse = g_DiffuseTex.Sample(g_SamplerClamp, input.TexCoord);
+    float3 texNormal = g_NormalTex.Sample(g_SamplerWrap, input.TexCoord).xyz;
+    
+    float3 worldNormal = input.WorldNormal;
+    float3 worldTangent = input.WorldTangent;
+    float3 worldBinormal = normalize(cross(worldTangent, worldNormal));
+    
+    float3 tanNormal = texNormal.rgb * 2 - 1;
+    float3 surfaceNormal = (tanNormal.xxx * worldTangent) + (tanNormal.yyy * worldBinormal) + (tanNormal.zzz * worldNormal);
+    
+    float3 viewDir = normalize(g_InvView._41_42_43 - input.WorldPosition);
+
+    const float3 Kd = g_Material.Opacity * texDiffuse.xyz;
     const float3 Ks = g_Material.Ks;
     const float roughness = g_Material.Roughness;
 
@@ -117,7 +121,7 @@ float4 PSMain(PSInput input) : SV_TARGET
 						lightColor.rgb,
 						isInShadow,
 						roughness,
-						normal,
+						surfaceNormal,
 						viewDir,
 						wi);
         }
@@ -135,7 +139,7 @@ float4 PSMain(PSInput input) : SV_TARGET
 	// Handle cases where ray is coming from behind due to imprecision,
 	// don't cast reflection rays in that case.
     float smallValue = 1e-6f;
-    isReflective = dot(viewDir, normal) > smallValue ? isReflective : false;
+    isReflective = dot(viewDir, surfaceNormal) > smallValue ? isReflective : false;
 	
     return float4(L, 1.0);
 }

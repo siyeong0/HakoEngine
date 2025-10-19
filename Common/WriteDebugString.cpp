@@ -3,10 +3,10 @@
 
 #include "WriteDebugString.h"
 
-void WriteDebugStringW(DebugOutputType type, const WCHAR* wchFormat, ...)
+void WriteDebugStringW(DebugOutputType type, const wchar_t* wchFormat, ...)
 {
 	va_list argptr;
-	WCHAR cBuf[2048];
+	wchar_t cBuf[2048];
 
 	va_start(argptr, wchFormat);
 	vswprintf_s(cBuf, 2048, wchFormat, argptr);
