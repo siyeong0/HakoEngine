@@ -157,7 +157,7 @@ bool BasicMeshObject::Initialize(D3D12Renderer* pRenderer)
 	return bResult;
 }
 
-void BasicMeshObject::Draw(int threadIndex, ID3D12GraphicsCommandList6* pCommandList, const Matrix4x4* worldMatrix)
+void BasicMeshObject::Draw(int threadIndex, ID3D12GraphicsCommandList6* pCommandList, const Matrix4x4& worldMatrix)
 {
 	ID3D12Device5* pDevice = m_pRenderer->GetD3DDevice();
 	uint srvDescriptorSize = m_pRenderer->GetSrvDescriptorSize();
@@ -168,7 +168,7 @@ void BasicMeshObject::Draw(int threadIndex, ID3D12GraphicsCommandList6* pCommand
 	ConstantBufferContainer* cb = pMeshConstantBufferPool->Alloc();
 	ASSERT(cb, "Failed to allocate constant buffer.");
 	CONSTANT_BUFFER_MESH_OBJECT* pCBPerDraw = (CONSTANT_BUFFER_MESH_OBJECT*)cb->pSystemMemAddr;
-	pCBPerDraw->WorldMatrix = XMMatrixTranspose(*worldMatrix);
+	pCBPerDraw->WorldMatrix = XMMatrixTranspose(worldMatrix);
 
 	// --- 2) SRV Descriptor table (TriGroup 개수 만큼)
 	static constexpr uint NUM_SRV_PER_TRIGROUP = 2;
@@ -219,10 +219,10 @@ void BasicMeshObject::Draw(int threadIndex, ID3D12GraphicsCommandList6* pCommand
 	}
 }
 
-void BasicMeshObject::UpdateBLASTransform(const Matrix4x4& worldMatrix)
+void BasicMeshObject::UpdateBLAS(int threadIndex, ID3D12GraphicsCommandList6* pCommandList, const Matrix4x4& worldMatrix)
 {
 	RayTracingManager* pRayTracingManager = m_pRenderer->GetRayTracingManager();
-	pRayTracingManager->UpdateBLASTransform(m_pBLASHandle, worldMatrix);
+	pRayTracingManager->UpdateBLAS(threadIndex, pCommandList, m_pBLASHandle, worldMatrix);
 }
 
 bool BasicMeshObject::initPipelineState()

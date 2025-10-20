@@ -40,8 +40,8 @@ public:
 	~BasicMeshObject() { cleanup(); }
 
 	bool Initialize(D3D12Renderer* pRenderer);
-	void Draw(int threadIndex, ID3D12GraphicsCommandList6* pCommandList, const Matrix4x4* worldMatrix);
-	void UpdateBLASTransform(const Matrix4x4& worldMatrix);
+	void Draw(int threadIndex, ID3D12GraphicsCommandList6* pCommandList, const Matrix4x4& worldMatrix); 
+	void UpdateBLAS(int threadIndex, ID3D12GraphicsCommandList6* pCommandList, const Matrix4x4& worldMatrix);
 
 private:
 	bool initPipelineState();

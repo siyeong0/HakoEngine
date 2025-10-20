@@ -321,9 +321,10 @@ lb_exit:
 
 		m_ppRenderQueueTrasnparent[i] = new RenderQueueRasterization;
 		m_ppRenderQueueTrasnparent[i]->Initialize(this, NUM_RENDER_QUEUE_ITEMS_TRANSPARENT);
+
+		m_ppRenderQueueRayTracing[i] = new RenderQueueRayTracing;
+		m_ppRenderQueueRayTracing[i]->Initialize(this, NUM_RENDER_QUEUE_ITEMS_RAYTRACING);
 	}
-	m_ppRenderQueueRayTracing[0] = new RenderQueueRayTracing; // TODO: Multi-thread support??
-	m_ppRenderQueueRayTracing[0]->Initialize(this, NUM_RENDER_QUEUE_ITEMS_RAYTRACING);
 
 	m_pSkyObject = new SkyObject;
 	m_pSkyObject->Initialize(this);
@@ -352,8 +353,8 @@ void ENGINECALL D3D12Renderer::Cleanup()
 	{
 		SAFE_DELETE(m_ppRenderQueueOpaque[i]);
 		SAFE_DELETE(m_ppRenderQueueTrasnparent[i]);
+		SAFE_DELETE(m_ppRenderQueueRayTracing[i]);
 	}
-	SAFE_DELETE(m_ppRenderQueueRayTracing[0]);
 	for (int i = 0; i < MAX_PENDING_FRAME_COUNT; i++)
 	{
 		for (int j = 0; j < m_NumRenderThreads; j++)
@@ -475,13 +476,28 @@ void ENGINECALL D3D12Renderer::EndRender()
 	// Do raytracing and copy the output to the back buffer.
 	if (IsRayTracingEnabledInl())
 	{
+#ifdef USE_MULTI_THREAD
+		m_RenderPhase.store(RENDER_PASS_RAYTRACING, std::memory_order_relaxed);
+		m_lActiveThreadCount = m_NumRenderThreads;
+		for (int i = 0; i < m_NumRenderThreads; i++)
+		{
+			SetEvent(m_pThreadDescList[i].hEventList[RENDER_THREAD_EVENT_TYPE_PROCESS]);
+		}
+		WaitForSingleObject(m_hCompleteEvent, INFINITE);
+#else
+		// Each CommandList processes 400 items.
+				// Each CommandList processes 400 items.
+		for (int i = 0; i < m_NumRenderThreads; i++)
+		{
+			m_ppRenderQueueRayTracing[i]->Process(i, pCommandListPool, m_pCommandQueue, 400, rtvHandle, dsvHandle, &m_Viewport, &m_ScissorRect);
+		}
+#endif	
 		ID3D12GraphicsCommandList6* pCommandList = pCommandListPool->GetCurrentCommandList();
+
 		if (m_pRayTracingManager->IsUpdatedAccelerationStructure())
 		{
 			m_pRayTracingManager->UpdateAccelerationStructure(pCommandList);
 		}
-
-		m_ppRenderQueueRayTracing[0]->Process(0, pCommandListPool, m_pCommandQueue, 400, rtvHandle, dsvHandle, &m_Viewport, &m_ScissorRect);
 
 		// const float BackColor[] = { 0.0f, 0.0f, 1.0f, 1.0f };
 		// pCommandList->ClearRenderTargetView(rtvHandle, BackColor, 0, nullptr);
@@ -555,8 +571,8 @@ void ENGINECALL D3D12Renderer::EndRender()
 	{
 		m_ppRenderQueueOpaque[i]->Reset();
 		m_ppRenderQueueTrasnparent[i]->Reset();
+		m_ppRenderQueueRayTracing[i]->Reset();
 	}
-	m_ppRenderQueueRayTracing[0]->Reset();
 }
 
 void ENGINECALL D3D12Renderer::Present()
@@ -620,7 +636,7 @@ void ENGINECALL D3D12Renderer::RenderMeshObject(
 		ASSERT(bAdded, "Render Queue Transparent is full.");
 		break;
 	case RENDER_PASS_RAYTRACING:
-		bAdded = m_ppRenderQueueRayTracing[0]->Add(&item);
+		bAdded = m_ppRenderQueueRayTracing[m_CurrThreadIndex]->Add(&item);
 		ASSERT(bAdded, "Render Queue is full.");
 		break;
 	default:
@@ -979,8 +995,8 @@ void D3D12Renderer::ProcessByThread(int threadIndex)
 			threadIndex, pCommandListPool, m_pCommandQueue, NUM_ITEMS_PER_PROCESS, rtvHandle, dsvHandle, &m_Viewport, &m_ScissorRect);
 		break;
 	case RENDER_PASS_RAYTRACING:
-		// TODO: Raytracing support??
-		ASSERT(false, "Raytracing is not supported in multi-thread rendering.");
+		m_ppRenderQueueRayTracing[threadIndex]->Process(
+			threadIndex, pCommandListPool, m_pCommandQueue, NUM_ITEMS_PER_PROCESS, rtvHandle, dsvHandle, &m_Viewport, &m_ScissorRect);
 		break;
 	default:
 		ASSERT(false, "Invalid render pass.");

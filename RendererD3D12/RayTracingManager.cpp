@@ -361,11 +361,7 @@ bool RayTracingManager::UpdateAccelerationStructure(ID3D12GraphicsCommandList6* 
 	for (BLASHandle* curr : m_BLASHandleList)
 	{
 		ASSERT(numBLASHandles < (uint)_countof(ppBLASHandlelist), "Too many BLAS instances");
-		if (!curr->pBLAS)
-		{
-			bool bBuilt = buildBLAS(pCommandList, curr);
-			ASSERT(bBuilt, "Failed to build BLAS.");
-		}
+		ASSERT(curr->pBLAS, "BLAS must be built before updating TLAS");
 		ppBLASHandlelist[numBLASHandles] = curr;
 		numBLASHandles++;
 		numRequiredShaderRecordCount += curr->NumTriGroups * NUM_RAYTRACING_SHADER_TYPES;
@@ -411,8 +407,14 @@ void RayTracingManager::UpdateManagedResource()
 	m_pResourceBinTLASInstanceDescList->Update(currTick);
 }
 
-void RayTracingManager::UpdateBLASTransform(BLASHandle* pBLASHandle, const Matrix4x4& worldMatrix)
+void RayTracingManager::UpdateBLAS(int threadIndex, ID3D12GraphicsCommandList6* pCommandList, BLASHandle* pBLASHandle, const Matrix4x4& worldMatrix)
 {
+	if (!pBLASHandle->pBLAS)
+	{
+		bool bBuilt = buildBLAS(pCommandList, pBLASHandle);
+		ASSERT(bBuilt, "Failed to build BLAS.");
+	}
+	ASSERT(pBLASHandle->pBLAS, "BLAS must be built before updating transform.");
 	pBLASHandle->Transform = worldMatrix;
 	m_UpdateAccelerationStructureFlags |= UPDATE_ACCELERATION_STRCTURE_TYPE_TLAS;
 }

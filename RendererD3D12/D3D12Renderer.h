@@ -148,7 +148,7 @@ private:
 	std::atomic<RENDER_PASS_TYPE> m_RenderPhase = {};
 	IRenderQueue* m_ppRenderQueueOpaque[MAX_RENDER_THREAD_COUNT] = {};
 	IRenderQueue* m_ppRenderQueueTrasnparent[MAX_RENDER_THREAD_COUNT] = {};
-	IRenderQueue* m_ppRenderQueueRayTracing[1]; // TODO: Multi-thread support??
+	IRenderQueue* m_ppRenderQueueRayTracing[MAX_RENDER_THREAD_COUNT] = {};
 
 	int m_NumRenderThreads = 0;
 	int m_CurrThreadIndex = 0;

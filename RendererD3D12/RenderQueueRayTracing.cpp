@@ -40,16 +40,23 @@ int RenderQueueRayTracing::Process(
 	const D3D12_VIEWPORT* pViewport,
 	const D3D12_RECT* pScissorRect)
 {
+	// Command list for remaining commands.
+	ID3D12GraphicsCommandList6* ppCommandList[64] = {};
+	uint numCmdLists = 0;
+
+	ID3D12GraphicsCommandList6* pCurrCommandList = nullptr;
 	int processCount = 0;
+	int processCountPerCmdList = 0;
 	const RenderItem* pItem = nullptr;
 	while (pItem = dispatch())
 	{
+		pCurrCommandList = pCommandListPool->GetCurrentCommandList();
 		switch (pItem->Type)
 		{
 		case RENDER_ITEM_TYPE_MESH_OBJ:
 		{
 			BasicMeshObject* meshObj = reinterpret_cast<BasicMeshObject*>(pItem->pObjHandle);
-			meshObj->UpdateBLASTransform(pItem->MeshObjParam.WorldMatrix);
+			meshObj->UpdateBLAS(threadIndex, pCurrCommandList, pItem->MeshObjParam.WorldMatrix);
 		}
 		break;
 		case RENDER_ITEM_TYPE_SPRITE:
@@ -63,6 +70,32 @@ int RenderQueueRayTracing::Process(
 		}
 
 		processCount++;
+		processCountPerCmdList++;
+		if (processCountPerCmdList > numProcessPerCmdList)
+		{
+			//pCommandListPool->CloseAndExecute(pCommandQueue);
+			pCommandListPool->Close();
+			ppCommandList[numCmdLists] = pCurrCommandList;
+			numCmdLists++;
+			pCurrCommandList = nullptr;
+			processCountPerCmdList = 0;
+		}
+	}
+
+	// Process remaining commands.
+	if (processCountPerCmdList)
+	{
+		//pCommandListPool->CloseAndExecute(pCommandQueue);
+		pCommandListPool->Close();
+		ppCommandList[numCmdLists] = pCurrCommandList;
+		numCmdLists++;
+		pCurrCommandList = nullptr;
+		processCountPerCmdList = 0;
+	}
+
+	if (numCmdLists)
+	{
+		pCommandQueue->ExecuteCommandLists(numCmdLists, (ID3D12CommandList**)ppCommandList);
 	}
 
 	m_ItemCount = 0;

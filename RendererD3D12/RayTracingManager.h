@@ -19,7 +19,7 @@ public:
 	void FreeBLAS(BLASHandle* pBLASHandle);
 	bool UpdateAccelerationStructure(ID3D12GraphicsCommandList6* pCommandList);
 	void UpdateManagedResource();
-	void UpdateBLASTransform(BLASHandle* pBLASHandle, const Matrix4x4& worldMatrix);
+	void UpdateBLAS(int threadIndex, ID3D12GraphicsCommandList6* pCommandList, BLASHandle* pBLASHandle, const Matrix4x4& worldMatrix);
 	void UpdateWindowSize(uint width, uint height);
 
 	ID3D12Resource* GetOutputResource() { return m_pOutputDiffuse; }
