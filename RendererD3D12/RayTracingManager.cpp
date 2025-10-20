@@ -479,7 +479,7 @@ bool RayTracingManager::buildBLAS(ID3D12GraphicsCommandList6* pCommandList, BLAS
 	//D3D12_RESOURCE_STATES initialResourceState = D3D12_RESOURCE_STATE_RAYTRACING_ACCELERATION_STRUCTURE;
 	//if (FAILED(CreateUAVBuffer(m_pD3DDevice, info.ResultDataMaxSizeInBytes, &pBLAS, initialResourceState, L"BottomLevelAccelerationStructure")))
 	//	__debugbreak();
-	pBLASHandle->pBLAS = m_pResourceBinBLAS->Alloc(info.ScratchDataSizeInBytes);
+	pBLASHandle->pBLAS = m_pResourceBinBLAS->Alloc(info.ResultDataMaxSizeInBytes);
 
 	// Bottom Level Acceleration Structure desc
 	D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_DESC asDesc = {};
