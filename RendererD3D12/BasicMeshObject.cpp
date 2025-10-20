@@ -341,6 +341,7 @@ void BasicMeshObject::cleanup()
 		{
 			SAFE_RELEASE(m_pTriGroupList[i].IndexBuffer);
 			SAFE_CLEANUP(m_pTriGroupList[i].DiffuseTexHandle, m_pRenderer->DeleteTexture);
+			SAFE_CLEANUP(m_pTriGroupList[i].NormalTexHandle, m_pRenderer->DeleteTexture);
 		}
 		SAFE_DELETE_ARRAY(m_pTriGroupList);
 	}
