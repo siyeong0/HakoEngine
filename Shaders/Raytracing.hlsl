@@ -97,20 +97,20 @@ float3 TraceRefractedRay(in float3 hitPosition, in float3 wt, in float3 N, inout
     return rayPayload.radiance;
 }
 
-bool TraceShadowRayAndReportIfHit(out float tHit, in Ray ray, in bool retrieveTHit, in float TMax)
+bool TraceShadowRayAndReportIfHit(out float tHit, in Ray ray, in bool retrieveTHit, in float tMax)
 {
 	// Set the ray's extents.
     RayDesc rayDesc;
     rayDesc.Origin = ray.origin;
     rayDesc.Direction = ray.direction;
     rayDesc.TMin = T_OFFSET;
-    rayDesc.TMax = TMax;
+    rayDesc.TMax = tMax;
 
 	// Initialize shadow ray payload.
 	// Set the initial value to a hit at TMax. 
 	// Miss shader will set it to HitDistanceOnMiss.
 	// This way closest and any hit shaders can be skipped if true tHit is not needed. 
-    ShadowPayload shadowPayload = { TMax };
+    ShadowPayload shadowPayload = { tMax };
 
     uint rayFlags = RAY_FLAG_CULL_NON_OPAQUE; // ~skip transparent objects
     bool acceptFirstHit = !retrieveTHit;
@@ -207,7 +207,6 @@ float3 Shade(inout RadiancePayload rayPayload, in float3 N, in float3 hitPositio
             bool bInShadow = TryTraceShadowRayAndReportIfHit(hitPosition, wi, N, rayPayload, tMax, maxRadianceRecursionDepth);
             // Kd = diffuse , Ks = specular , V = view vector, wi = light vector
             L += BxDF_ShadeDirect(
-						material.Type,
 						Kd,
 						Ks,
 						lightColor.rgb,

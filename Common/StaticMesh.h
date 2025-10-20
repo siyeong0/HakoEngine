@@ -11,6 +11,18 @@ struct Material
 	Image Specular;
 	Image Metallic;
 	Image Roughness;
+
+	FLOAT3 BaseColor = { 1.0f, 1.0f, 1.0f };
+	float Opacity = 1.0f;
+
+	FLOAT3 SpecularColor = { 1.0f, 1.0f, 1.0f };
+	float SpecularIntensity = 1.0f;
+
+	float MetallicIntensity = 0.0f;
+	float RoughnessIntensity = 1.0f;
+	float NormalScale = 1.0f;
+	float AmbientOcclusionStrength = 0.1f;
+
 	MATERIAL_TYPE Type = MATERIAL_TYPE_DEFAULT;
 };
 

@@ -120,7 +120,6 @@ float4 PSMain(PSInput input) : SV_TARGET
             bool isInShadow = false;
             // Kd = diffuse , Ks = specular , V = view vector, wi = light vector
             L += BxDF_ShadeDirect(
-						g_Material.Type,
 						Kd,
 						Ks,
 						lightColor.rgb,

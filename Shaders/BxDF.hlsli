@@ -181,7 +181,6 @@ float3 BxDF_SpecularGGXF(
 // -----------------------------------------------------------------------------
 
 float3 BxDF_ShadeDirect(
-    in MATERIAL_TYPE materialType,
     in float3 Albedo,
     in float3 Fo,
     in float3 Radiance,
@@ -196,24 +195,8 @@ float3 BxDF_ShadeDirect(
     float NoL = dot(N, L);
     if (!inShadow && NoL > 0)
     {
-        float3 directDiffuse = 0;
-        if (!IsBlack(Albedo))
-        {
-            if (materialType == MATERIAL_TYPE_DEFAULT)
-            {
-                directDiffuse = BxDF_DiffuseHammonF(Albedo, Roughness, N, V, L, Fo);
-            }
-            else
-            {
-                directDiffuse = BxDF_DiffuseLambertF(Albedo);
-            }
-        }
-
-        float3 directSpecular = 0;
-        if (materialType == MATERIAL_TYPE_DEFAULT)
-        {
-            directSpecular = BxDF_SpecularGGXF(Roughness, N, V, L, Fo);
-        }
+        float3 directDiffuse = BxDF_DiffuseHammonF(Albedo, Roughness, N, V, L, Fo);
+        float3 directSpecular = BxDF_SpecularGGXF(Roughness, N, V, L, Fo);
 
         directLighting = NoL * Radiance * (directDiffuse + directSpecular);
     }
@@ -226,7 +209,6 @@ float3 BxDF_ShadeDirect(
 // -----------------------------------------------------------------------------
 
 float3 BxDF_Shade(
-    in MATERIAL_TYPE materialType,
     in float3 Albedo,
     in float3 Fo,
     in float3 Radiance,
@@ -244,26 +226,9 @@ float3 BxDF_Shade(
 
     if (!isInShadow && NoL > 0)
     {
-        // Diffuse
-        float3 diffuse;
-        if (materialType == MATERIAL_TYPE_DEFAULT)
-        {
-            diffuse = BxDF_DiffuseHammonF(Albedo, Roughness, N, V, L, Fo);
-        }
-        else
-        {
-            diffuse = BxDF_DiffuseLambertF(Albedo);
-        }
-
-        // Specular
-        float3 directDiffuse = diffuse;
-        float3 directSpecular = 0;
-
-        if (materialType == MATERIAL_TYPE_DEFAULT)
-        {
-            directSpecular = BxDF_SpecularGGXF(Roughness, N, V, L, Fo);
-        }
-
+        float3 directDiffuse = BxDF_DiffuseHammonF(Albedo, Roughness, N, V, L, Fo);
+        float3 directSpecular = BxDF_SpecularGGXF(Roughness, N, V, L, Fo);
+        
         directLighting = NoL * Radiance * (directDiffuse + directSpecular);
     }
 
