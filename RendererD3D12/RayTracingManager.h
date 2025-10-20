@@ -31,7 +31,7 @@ public:
 
 private:
 	bool buildBLAS(ID3D12GraphicsCommandList6* pCommandList, BLASHandle* pBLASHandle);
-	ID3D12Resource* buildTLAS(ID3D12GraphicsCommandList6* pCommandList, ID3D12Resource* pInstanceDescResource, BLASHandle** ppInstanceList, uint numBLASHandles, bool bAllowUpdate, uint currContextIndex);
+	ID3D12Resource* buildTLAS(ID3D12GraphicsCommandList6* pCommandList, bool bAllowUpdate, uint currContextIndex);
 
 	void updateHitGroupShaderTable(uint numShaderRecords);
 
@@ -118,9 +118,8 @@ private:
 	uint m_HitGroupShaderRecordSize = 0;
 
 	uint m_MaxNumBLASs = 0;
-	std::list<BLASHandle*> m_BLASHandleList; // BLAS Instance list
-
-	std::vector<BLASHandle*> m_ppCollectedBLASHandles; // for TLAS build
+	std::list<BLASHandle*> m_GlobalBLASHandleList; // BLAS Instance list
+	std::vector<BLASInstance> m_BLASInstanceListThisFrame[MAX_RENDER_THREAD_COUNT]; // for TLAS build
 
 	ID3D12Resource* m_pBLASInstanceDescResouce = nullptr;
 	ID3D12Resource* m_pTLAS = nullptr;

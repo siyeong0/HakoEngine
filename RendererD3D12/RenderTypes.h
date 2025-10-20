@@ -6,6 +6,8 @@
 constexpr uint SWAP_CHAIN_FRAME_COUNT = 3;
 constexpr uint MAX_PENDING_FRAME_COUNT = SWAP_CHAIN_FRAME_COUNT - 1;
 
+constexpr uint MAX_RENDER_THREAD_COUNT = 8;
+
 constexpr uint MAX_SHADER_NAME_BUFFER_LEN = 256;
 constexpr uint MAX_SHADER_NAME_LEN = MAX_SHADER_NAME_BUFFER_LEN - 1;
 constexpr uint MAX_SHADER_NUM = 2048;
@@ -81,9 +83,7 @@ struct RootArgument
 
 struct BLASHandle
 {
-	void* pSrcMeshObj;
 	ID3D12Resource* pBLAS;
-	Matrix4x4 Transform;
 
 	uint32_t ID;
 	bool bAllowUpdate;
@@ -95,7 +95,15 @@ struct BLASHandle
 	// Local params
 	D3D12_CPU_DESCRIPTOR_HANDLE SrvCpuHandle;
 	D3D12_GPU_DESCRIPTOR_HANDLE SrvGpuHandle;
-	RootArgument pRootArg[1];
+	std::vector<RootArgument> RootArgArray;
+};
+
+struct BLASInstance
+{
+	BLASHandle* pBLASHandle;
+	Matrix4x4 Transform;
+	uint8_t InstanceMask = 0xFF;
+	D3D12_RAYTRACING_INSTANCE_FLAGS Flags = D3D12_RAYTRACING_INSTANCE_FLAG_NONE;
 };
 
 enum RENDER_PASS_TYPE : uint

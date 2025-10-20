@@ -17,7 +17,13 @@
 // TODO: Separate to another file or project
 static IMeshObject* createKittyBoxMeshObject(IRenderer* pRenderer)
 {
-	IMeshObject* pMeshObj = nullptr;
+	static IMeshObject* pMeshObj = nullptr; // TODO: static으로 관리하면 Release가 프로그램 종료 시점까지 안됨. RefCount 누수인것처럼 나옴. 따로 관리하도록..
+	if (pMeshObj)
+	{
+		pMeshObj->AddRef();
+		return pMeshObj;
+	}
+
 	const wchar_t* diffuseTexPaths[6] =
 	{
 		L"./Resources/KittyCraft_01.dds",
@@ -45,7 +51,12 @@ static IMeshObject* createKittyBoxMeshObject(IRenderer* pRenderer)
 
 static IMeshObject* createMegayuchiBoxMeshObject(IRenderer* pRenderer)
 {
-	IMeshObject* pMeshObj = nullptr;
+	static IMeshObject* pMeshObj = nullptr;
+	if (pMeshObj)
+	{
+		pMeshObj->AddRef();
+		return pMeshObj;
+	}
 
 	const wchar_t* diffuseTexPaths[6] =
 	{
@@ -84,7 +95,13 @@ static IMeshObject* createMegayuchiBoxMeshObject(IRenderer* pRenderer)
 
 static IMeshObject* createKannaSphereMeshObject(IRenderer* pRenderer)
 {
-	IMeshObject* pMeshObj = nullptr;
+	static IMeshObject* pMeshObj = nullptr;
+	if (pMeshObj)
+	{
+		pMeshObj->AddRef();
+		return pMeshObj;
+	}
+
 	const wchar_t* diffuseTexPath = L"./Resources/Kanna.dds";
 
 	StaticMesh meshData = StaticMesh::CreateSphereMesh(1.0f, 20, 20);
@@ -104,7 +121,13 @@ static IMeshObject* createKannaSphereMeshObject(IRenderer* pRenderer)
 
 static IMeshObject* createPlaneMeshObject(IRenderer* pRenderer)
 {
-	IMeshObject* pMeshObj = nullptr;
+	static IMeshObject* pMeshObj = nullptr;
+	if (pMeshObj)
+	{
+		pMeshObj->AddRef();
+		return pMeshObj;
+	}
+
 	const wchar_t* diffuseTexPath = L"./Resources/Floor.dds";
 
 	StaticMesh meshData = StaticMesh::CreatePlaneMesh(20.0f, 20.0f);
@@ -123,7 +146,13 @@ static IMeshObject* createPlaneMeshObject(IRenderer* pRenderer)
 
 static IMeshObject* createStoneCylinderMeshObject(IRenderer* pRenderer)
 {
-	IMeshObject* pMeshObj = nullptr;
+	static IMeshObject* pMeshObj = nullptr;
+	if (pMeshObj)
+	{
+		pMeshObj->AddRef();
+		return pMeshObj;
+	}
+
 	const wchar_t* diffuseTexPath = L"./Resources/Stone.dds";
 
 	StaticMesh meshData = StaticMesh::CreateCylinderMesh(0.5f, 2.0f, 20);
@@ -142,7 +171,13 @@ static IMeshObject* createStoneCylinderMeshObject(IRenderer* pRenderer)
 
 static IMeshObject* createStoneConeMeshObject(IRenderer* pRenderer)
 {
-	IMeshObject* pMeshObj = nullptr;
+	static IMeshObject* pMeshObj = nullptr;
+	if (pMeshObj)
+	{
+		pMeshObj->AddRef();
+		return pMeshObj;
+	}
+
 	const wchar_t* diffuseTexPath = L"./Resources/Stone.dds";
 
 	StaticMesh meshData = StaticMesh::CreateConeMesh(1.0f, 2.0f, 20);
@@ -161,7 +196,13 @@ static IMeshObject* createStoneConeMeshObject(IRenderer* pRenderer)
 
 static IMeshObject* createMetalTileGridMeshObject(IRenderer* pRenderer)
 {
-	IMeshObject* pMeshObj = nullptr;
+	static IMeshObject* pMeshObj = nullptr;
+	if (pMeshObj)
+	{
+		pMeshObj->AddRef();
+		return pMeshObj;
+	}
+
 	const wchar_t* diffuseTexPath = L"./Resources/megayuchi/tilemap_008.dds";
 	const wchar_t* normalTexPath = L"./Resources/megayuchi/tilemap_008_N.dds";
 
@@ -182,7 +223,13 @@ static IMeshObject* createMetalTileGridMeshObject(IRenderer* pRenderer)
 
 static IMeshObject* createWaterMeshObject(IRenderer* pRenderer)
 {
-	IMeshObject* pMeshObj = nullptr;
+	static IMeshObject* pMeshObj = nullptr;
+	if (pMeshObj)
+	{
+		pMeshObj->AddRef();
+		return pMeshObj;
+	}
+
 	const wchar_t* diffuseTexPath = L"./Resources/megayuchi/Wat_S_Mo_000.dds";
 
 	StaticMesh meshData = StaticMesh::CreatePlaneMesh(20.0f, 20.0f);
@@ -201,7 +248,12 @@ static IMeshObject* createWaterMeshObject(IRenderer* pRenderer)
 
 static IMeshObject* createMeshFromFile(IRenderer* pRenderer, const char* filename)
 {
-	IMeshObject* pMeshObj = nullptr;
+	static IMeshObject* pMeshObj = nullptr;
+	if (pMeshObj)
+	{
+		pMeshObj->AddRef();
+		return pMeshObj;
+	}
 
 	StaticMesh meshData;
 	if (!meshData.LoadFromFile(filename, 10.0f))
@@ -224,8 +276,8 @@ static IMeshObject* createMeshFromFile(IRenderer* pRenderer, const char* filenam
 bool Game::Initialize(
 	HWND hWnd,
 	bool bEnableRayTracing,
-	bool bEnableDebugLayer, 
-	bool bEnableGBV, 
+	bool bEnableDebugLayer,
+	bool bEnableGBV,
 	bool bEnableShaderDebug)
 {
 	// Load Renderer DLL
@@ -458,10 +510,10 @@ bool Game::Initialize(
 					if (text.Sprite)
 					{
 						m_pRenderer->RenderSpriteWithTex(
-							text.Sprite, 
+							text.Sprite,
 							(int)p.x, (int)p.y,
-							s.x, s.y, 
-							nullptr, 0.0f, 
+							s.x, s.y,
+							nullptr, 0.0f,
 							text.pTextTexHandle);
 					}
 				});
@@ -584,7 +636,7 @@ bool Game::Initialize(
 			m_Entities.emplace_back(e.id());
 		}
 		// Create megayuchi box entities
-		const uint MEGA_BOX_OBJECT_COUNT = 200;
+		const uint MEGA_BOX_OBJECT_COUNT = 2000;
 		for (uint i = 0; i < MEGA_BOX_OBJECT_COUNT; i++)
 		{
 			float x = (float)((rand() % 51) - 25);	// -10m - 10m 
@@ -708,7 +760,7 @@ bool Game::Update(uint64_t currTick)
 	const float dt = (float)elapsedMs * 0.001f; // ms -> s
 	m_PrevUpdateTick = currTick;
 
-	if (m_CamOffsetX || m_CamOffsetY || m_CamOffsetZ) 
+	if (m_CamOffsetX || m_CamOffsetY || m_CamOffsetZ)
 	{
 		m_pRenderer->MoveCamera(m_CamOffsetX, m_CamOffsetY, m_CamOffsetZ);
 	}

@@ -128,7 +128,6 @@ private:
 private:
 	static constexpr uint MAX_DRAW_COUNT_PER_FRAME = 4096;
 	static constexpr uint MAX_DESCRIPTOR_COUNT = 4096;
-	static constexpr uint MAX_RENDER_THREAD_COUNT = 8;
 
 	int	m_RefCount = 1;
 	HWND m_hWnd = nullptr;
