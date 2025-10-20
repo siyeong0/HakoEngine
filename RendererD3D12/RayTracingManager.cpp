@@ -1,5 +1,6 @@
 ﻿#include "pch.h"
 #include "D3D12ResourceManager.h"
+#include "D3D12ResourceRecycleBin.h"
 #include "SimpleConstantBufferPool.h"
 #include "ConstantBufferManager.h"
 #include "ShaderManager.h"
@@ -14,17 +15,17 @@ constexpr uint NUM_RAYTRACING_SHADER_TYPES = 2;
 // Shader
 const wchar_t* g_RaygenShaderName = { L"MyRaygenShader_RadianceRay" };
 const wchar_t* g_ClosestHitShaderNames[NUM_RAYTRACING_SHADER_TYPES] =
-{ 
-	L"MyClosestHitShader_RadianceRay", 
-	L"MyClosestHitShader_ShadowRay" 
+{
+	L"MyClosestHitShader_RadianceRay",
+	L"MyClosestHitShader_ShadowRay"
 };
 const wchar_t* g_MissShaderNames[NUM_RAYTRACING_SHADER_TYPES] =
-{ 
+{
 	L"MyMissShader_RadianceRay" ,
 	L"MyMissShader_ShadowRay"
 };
 const wchar_t* g_AnyHitShaderNames[NUM_RAYTRACING_SHADER_TYPES] =
-{ 
+{
 	L"MyAnyHitShader_RadianceRay",
 	L"MyAnyHitShader_ShadowRay"
 };
@@ -51,15 +52,17 @@ bool RayTracingManager::Initialize(D3D12Renderer* pRenderer, uint width, uint he
 	m_pIndexCreator = new CIndexCreator;
 	m_pIndexCreator->Initialize(m_MaxNumBLASs);
 
-	D3D12_COMMAND_QUEUE_DESC queueDesc = {};
-	queueDesc.Flags = D3D12_COMMAND_QUEUE_FLAG_NONE;
-	queueDesc.Type = D3D12_COMMAND_LIST_TYPE_DIRECT;
+	m_pResourceBinTLAS = new D3D12ResourceRecycleBin;
+	m_pResourceBinTLAS->Initialize(m_pD3DDevice, D3D12_HEAP_TYPE_DEFAULT, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_RAYTRACING_ACCELERATION_STRUCTURE, L"TopLevelAccelerationStructure");
 
-	hr = m_pD3DDevice->CreateCommandQueue(&queueDesc, IID_PPV_ARGS(&m_pCommandQueue));
-	ASSERT(SUCCEEDED(hr), "Failed to create command queue.");
+	m_pResourceBinBLAS = new D3D12ResourceRecycleBin;
+	m_pResourceBinBLAS->Initialize(m_pD3DDevice, D3D12_HEAP_TYPE_DEFAULT, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_RAYTRACING_ACCELERATION_STRUCTURE, L"BottomLevelAccelerationStructure");
 
-	createCommandList();
-	createFence();
+	m_pResourceBinScratchResource = new D3D12ResourceRecycleBin;
+	m_pResourceBinScratchResource->Initialize(m_pD3DDevice, D3D12_HEAP_TYPE_DEFAULT, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_COMMON, L"ScratchResource");
+
+	m_pResourceBinTLASInstanceDescList = new D3D12ResourceRecycleBin;
+	m_pResourceBinTLASInstanceDescList->Initialize(m_pD3DDevice, D3D12_HEAP_TYPE_UPLOAD, D3D12_RESOURCE_FLAG_NONE, D3D12_RESOURCE_STATE_GENERIC_READ, L"InstanceDesces");
 
 	m_Width = width;
 	m_Height = height;
@@ -84,31 +87,39 @@ void RayTracingManager::Cleanup()
 {
 	ShaderManager* pShaderManager = m_pRenderer->GetShaderManager();
 
-	SAFE_RELEASE(m_pCommandQueue);
-
-	cleanupCommandList();
-	cleanupFence();
-
 	cleanupOutputDiffuseBuffer();
 	cleanupOutputDepthBuffer();
 
 	cleanupShaderTables();
-	cleanupPendingFreeedBLASInstace();
 
 	SAFE_RELEASE(m_pDXRStateObject);
 	SAFE_RELEASE(m_pRaytracingGlobalRootSignature);
 	SAFE_RELEASE(m_pRaytracingLocalRootSignature);
 	SAFE_CLEANUP(m_pRayShader, pShaderManager->ReleaseShader);
-	SAFE_RELEASE(m_pTLAS);
-	SAFE_RELEASE(m_pBLASInstanceDescResouce);
+
 	for (auto& blasHandle : m_BLASHandleList)
 	{
 		SAFE_RELEASE(blasHandle->pBLAS);
 	}
 
+	if (m_pTLAS)
+	{
+		m_pResourceBinTLAS->Free(m_pTLAS, 1);
+		m_pTLAS = nullptr;
+	}
+	if (m_pBLASInstanceDescResouce)
+	{
+		m_pResourceBinTLASInstanceDescList->Free(m_pBLASInstanceDescResouce, 1);
+		m_pBLASInstanceDescResouce = nullptr;
+	}
+
 	cleanupDescriptorHeapCBV_SRV_UAV();
 	cleanupDispatchHeap();
 
+	SAFE_DELETE(m_pResourceBinTLAS);
+	SAFE_DELETE(m_pResourceBinBLAS);
+	SAFE_DELETE(m_pResourceBinScratchResource);
+	SAFE_DELETE(m_pResourceBinTLASInstanceDescList);
 	SAFE_DELETE(m_pIndexCreator);
 }
 
@@ -199,94 +210,14 @@ BLASHandle* RayTracingManager::AllocBLAS(
 	uint numTriGroupInfos,
 	bool bAllowUpdate)
 {
-	BLASHandle* pBLASHandle = buildBLAS(
-		pVertexBuffer, vertexSize, numVertices, 
-		pTriGroupInfoList, numTriGroupInfos, 
-		bAllowUpdate);
-	m_BLASHandleList.emplace_back(pBLASHandle);
-	m_UpdateAccelerationStructureFlags = UPDATE_ACCELERATION_STRCTURE_TYPE_HIT_GROUP_SHADER_TABLE | UPDATE_ACCELERATION_STRCTURE_TYPE_TLAS;
-
-	return pBLASHandle;
-}
-
-void RayTracingManager::FreeBLAS(BLASHandle* pBLASHandle)
-{
-	m_pFreedBLASHandleList.emplace_back(pBLASHandle);
-	m_UpdateAccelerationStructureFlags = UPDATE_ACCELERATION_STRCTURE_TYPE_HIT_GROUP_SHADER_TABLE | UPDATE_ACCELERATION_STRCTURE_TYPE_TLAS;
-}
-
-bool RayTracingManager::UpdateAccelerationStructure()
-{
-	cleanupPendingFreeedBLASInstace();
-
-	// Build TLAS
-	BLASHandle* ppBLASHandlelist[1024] = {};
-	uint numBLASHandles = 0;
-	uint numRequiredShaderRecordCount = 0;
-
-	for (auto curr : m_BLASHandleList)
-	{
-		ASSERT(numBLASHandles < (uint64_t)_countof(ppBLASHandlelist), "Too many BLAS instances");
-		ppBLASHandlelist[numBLASHandles] = curr;
-		numBLASHandles++;
-		numRequiredShaderRecordCount += curr->NumTriGroups * NUM_RAYTRACING_SHADER_TYPES;
-	}
-
-	if (m_UpdateAccelerationStructureFlags & UPDATE_ACCELERATION_STRCTURE_TYPE_HIT_GROUP_SHADER_TABLE)
-	{
-		// HitGroupShaderTable갱신과 함께 BLAS별로 ShderReocordIndex를 설정한다.
-		updateHitGroupShaderTable(numRequiredShaderRecordCount);
-		m_UpdateAccelerationStructureFlags &= (~UPDATE_ACCELERATION_STRCTURE_TYPE_HIT_GROUP_SHADER_TABLE);
-	}
-	// TLAS빌드
-	if (m_UpdateAccelerationStructureFlags & UPDATE_ACCELERATION_STRCTURE_TYPE_TLAS)
-	{
-		SAFE_RELEASE(m_pTLAS);
-		SAFE_RELEASE(m_pBLASInstanceDescResouce);
-		// TLAS빌드를 위한 인스턴스 리소스 할당
-		D3DUtil::CreateUploadBuffer(m_pD3DDevice, nullptr, sizeof(D3D12_RAYTRACING_INSTANCE_DESC) * numBLASHandles, &m_pBLASInstanceDescResouce, L"InstanceDescs");
-
-		m_pTLAS = buildTLAS(m_pBLASInstanceDescResouce, ppBLASHandlelist, numBLASHandles, FALSE, 0);
-		m_UpdateAccelerationStructureFlags &= (~UPDATE_ACCELERATION_STRCTURE_TYPE_TLAS);
-	}
-
-	return true;
-}
-
-void RayTracingManager::UpdateBLASTransform(BLASHandle* pBLASHandle, const Matrix4x4& worldMatrix)
-{
-	pBLASHandle->Transform = worldMatrix;
-	m_UpdateAccelerationStructureFlags |= UPDATE_ACCELERATION_STRCTURE_TYPE_TLAS;
-}
-
-void RayTracingManager::UpdateWindowSize(uint width, uint height)
-{
-	cleanupOutputDiffuseBuffer();
-	cleanupOutputDepthBuffer();
-
-	m_Width = width;
-	m_Height = height;
-	createOutputDiffuseBuffer(m_Width, m_Height);
-	createOutputDepthBuffer(m_Width, m_Height);
-}
-
-BLASHandle* RayTracingManager::buildBLAS(
-	ID3D12Resource* pVertexBuffer,
-	uint vertexSize,
-	uint numVertices,
-	const IndexedTriGroup* pTriGroupInfoList,
-	uint numTriGroupInfos,
-	bool bAllowUpdate)
-{
-	//
-	// VB한개, IB여러개
-	//
-	// 추후에 ID3D12CommandList포인터와 uint currContextIndex를 받아서 중첩렌더링을 처리할 수 있도록 수정한다.
-	//
 	BLASHandle* pBLASHandle = nullptr;
-	ID3D12Resource* pBLAS = nullptr;
-
 	ID3D12Device5* pD3DDevice = m_pRenderer->GetD3DDevice();
+
+	if (m_BLASHandleList.size() >= m_MaxNumBLASs)
+	{
+		ASSERT(false, "Exceeded maximum number of BLAS instances.");
+		goto lb_return;
+	}
 
 	ASSERT(numTriGroupInfos < MAX_TRIGROUP_COUNT_PER_BLAS, "Too many triangle groups in BLAS");
 
@@ -300,8 +231,7 @@ BLASHandle* RayTracingManager::buildBLAS(
 	pBLASHandle->Transform = DirectX::XMMatrixIdentity();
 	pBLASHandle->NumVertices = numVertices;
 
-	// Fill D3D12_RAYTRACING_GEOMETRY_DESC arrays
-	D3D12_RAYTRACING_GEOMETRY_DESC pGeomDescList[MAX_TRIGROUP_COUNT_PER_BLAS] = {};
+	D3D12_RAYTRACING_GEOMETRY_DESC* pGeomDescList = pBLASHandle->pGeomDescList;
 	D3D12_GPU_VIRTUAL_ADDRESS VB_GPU_Ptr = pVertexBuffer->GetGPUVirtualAddress();
 	for (uint i = 0; i < numTriGroupInfos; ++i)
 	{
@@ -322,78 +252,6 @@ BLASHandle* RayTracingManager::buildBLAS(
 		// pGeomDescList[i].Flags = pTriGroupInfoList[i].bOpaque ? D3D12_RAYTRACING_GEOMETRY_FLAG_OPAQUE : D3D12_RAYTRACING_GEOMETRY_FLAG_NONE;
 		bool bOpaque = pTriGroupInfoList[i].Material.Opacity > Material::OPACITY_THRESHOLD;
 		pGeomDescList[i].Flags = bOpaque ? D3D12_RAYTRACING_GEOMETRY_FLAG_OPAQUE : D3D12_RAYTRACING_GEOMETRY_FLAG_NONE;
-	}
-
-	// Build BLAS
-	{
-		// Get required sizes for an acceleration structure.
-		D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_INPUTS inputs = {};
-		inputs.DescsLayout = D3D12_ELEMENTS_LAYOUT_ARRAY;
-		if (bAllowUpdate)
-		{
-			inputs.Flags = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_PREFER_FAST_BUILD | D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_ALLOW_UPDATE;
-		}
-		else
-		{
-			inputs.Flags = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_PREFER_FAST_TRACE | D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_ALLOW_COMPACTION;
-		}
-		inputs.NumDescs = numTriGroupInfos;
-		inputs.pGeometryDescs = pGeomDescList;
-		inputs.Type = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL;
-
-		D3D12_RAYTRACING_ACCELERATION_STRUCTURE_PREBUILD_INFO info = {};
-		pD3DDevice->GetRaytracingAccelerationStructurePrebuildInfo(&inputs, &info);
-
-		ID3D12Resource* pScratchResource = nullptr;
-
-		HRESULT hr = m_pD3DDevice->CreateCommittedResource(
-			&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
-			D3D12_HEAP_FLAG_NONE,
-			&CD3DX12_RESOURCE_DESC::Buffer(info.ScratchDataSizeInBytes, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS),
-			D3D12_RESOURCE_STATE_COMMON,
-			nullptr, IID_PPV_ARGS(&pScratchResource));
-		ASSERT(SUCCEEDED(hr), "Failed to create scratch resource for BLAS.");
-
-		D3D12_GPU_VIRTUAL_ADDRESS pScratchGPUAddress = pScratchResource->GetGPUVirtualAddress();
-		ASSERT(pScratchGPUAddress, "Invalid GPU address for scratch resource.");
-
-		// Allocate resources for acceleration structures.
-		// Acceleration structures can only be placed in resources that are created in the default heap (or custom heap equivalent). 
-		// Default heap is OK since the application doesn't need CPU read/write access to them. 
-		// The resources that will contain acceleration structures must be created in the state D3D12_RESOURCE_STATE_RAYTRACING_ACCELERATION_STRUCTURE, 
-		// and must have resource flag D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS. The ALLOW_UNORDERED_ACCESS requirement simply acknowledges both: 
-		//  - the system will be doing this type of access in its implementation of acceleration structure builds behind the scenes.
-		//  - from the app point of view, synchronization of writes/reads to acceleration structures is accomplished using UAV barriers.
-		D3D12_RESOURCE_STATES initialResourceState = D3D12_RESOURCE_STATE_RAYTRACING_ACCELERATION_STRUCTURE;
-		hr = D3DUtil::CreateUAVBuffer(m_pD3DDevice, info.ResultDataMaxSizeInBytes, &pBLAS, initialResourceState, L"BottomLevelAccelerationStructure");
-		ASSERT(SUCCEEDED(hr), "Failed to create BLAS resource.");
-
-		// Bottom Level Acceleration Structure desc
-		D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_DESC asDesc = {};
-		asDesc.Inputs = inputs;
-		asDesc.ScratchAccelerationStructureData = pScratchGPUAddress;
-		asDesc.DestAccelerationStructureData = pBLAS->GetGPUVirtualAddress();
-
-		hr = m_pCommandAllocator->Reset();
-		ASSERT(SUCCEEDED(hr), "Failed to reset command allocator.");
-
-		hr = m_pCommandList->Reset(m_pCommandAllocator, nullptr);
-		ASSERT(SUCCEEDED(hr), "Failed to reset command list.");
-
-		m_pCommandList->BuildRaytracingAccelerationStructure(&asDesc, 0, nullptr);
-
-		// We need to insert a UAV barrier before using the acceleration structures in a raytracing operation
-		m_pCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::UAV(pBLAS));
-
-		m_pCommandList->Close();
-
-		ID3D12CommandList* ppCommandLists[] = { m_pCommandList };
-		m_pCommandQueue->ExecuteCommandLists(_countof(ppCommandLists), ppCommandLists);
-
-		fence();
-		waitForFenceValue();
-
-		SAFE_RELEASE(pScratchResource);
 	}
 
 	// Set Local Root Parameters
@@ -463,13 +321,186 @@ BLASHandle* RayTracingManager::buildBLAS(
 		}
 	}
 
-	pBLASHandle->pBLAS = pBLAS;
+	pBLASHandle->pBLAS = nullptr; // BLAS는 아직 생성되지 않음.
 	pBLASHandle->NumTriGroups = numTriGroupInfos;
+	pBLASHandle->bAllowUpdate = bAllowUpdate;
 
+	m_BLASHandleList.emplace_back(pBLASHandle);
+	m_UpdateAccelerationStructureFlags = UPDATE_ACCELERATION_STRCTURE_TYPE_HIT_GROUP_SHADER_TABLE | UPDATE_ACCELERATION_STRCTURE_TYPE_TLAS;
+lb_return:
 	return pBLASHandle;
 }
 
+void RayTracingManager::FreeBLAS(BLASHandle* pBLASHandle)
+{
+	ASSERT(pBLASHandle, "Invalid BLAS handle to free.");
+
+	m_pIndexCreator->Free(pBLASHandle->ID);
+	pBLASHandle->ID = -1;
+
+	if (pBLASHandle->pBLAS)
+	{
+		m_pResourceBinBLAS->Free(pBLASHandle->pBLAS, MAX_PENDING_FRAME_COUNT);
+		pBLASHandle->pBLAS = nullptr;
+	}
+
+	auto iter = std::find(m_BLASHandleList.begin(), m_BLASHandleList.end(), pBLASHandle);
+	m_BLASHandleList.erase(iter);
+
+	SAFE_FREE(pBLASHandle);
+	m_UpdateAccelerationStructureFlags = UPDATE_ACCELERATION_STRCTURE_TYPE_HIT_GROUP_SHADER_TABLE | UPDATE_ACCELERATION_STRCTURE_TYPE_TLAS;
+}
+
+bool RayTracingManager::UpdateAccelerationStructure(ID3D12GraphicsCommandList6* pCommandList)
+{
+	// Build TLAS
+	BLASHandle* ppBLASHandlelist[1024] = {};
+	uint numBLASHandles = 0;
+	uint numRequiredShaderRecordCount = 0;
+
+	for (BLASHandle* curr : m_BLASHandleList)
+	{
+		ASSERT(numBLASHandles < (uint)_countof(ppBLASHandlelist), "Too many BLAS instances");
+		if (!curr->pBLAS)
+		{
+			bool bBuilt = buildBLAS(pCommandList, curr);
+			ASSERT(bBuilt, "Failed to build BLAS.");
+		}
+		ppBLASHandlelist[numBLASHandles] = curr;
+		numBLASHandles++;
+		numRequiredShaderRecordCount += curr->NumTriGroups * NUM_RAYTRACING_SHADER_TYPES;
+	}
+
+	if (m_UpdateAccelerationStructureFlags & UPDATE_ACCELERATION_STRCTURE_TYPE_HIT_GROUP_SHADER_TABLE)
+	{
+		// HitGroupShaderTable갱신과 함께 BLAS별로 ShderReocordIndex를 설정한다.
+		updateHitGroupShaderTable(numRequiredShaderRecordCount);
+		m_UpdateAccelerationStructureFlags &= (~UPDATE_ACCELERATION_STRCTURE_TYPE_HIT_GROUP_SHADER_TABLE);
+	}
+	// TLAS빌드
+	if (m_UpdateAccelerationStructureFlags & UPDATE_ACCELERATION_STRCTURE_TYPE_TLAS)
+	{
+		if (m_pTLAS)
+		{
+			m_pResourceBinTLAS->Free(m_pTLAS, MAX_PENDING_FRAME_COUNT);
+			m_pTLAS = nullptr;
+		}
+
+		if (m_pBLASInstanceDescResouce)
+		{
+			m_pResourceBinTLASInstanceDescList->Free(m_pBLASInstanceDescResouce, MAX_PENDING_FRAME_COUNT);
+			m_pBLASInstanceDescResouce = nullptr;
+		}
+
+		// TLAS빌드를 위한 인스턴스 리소스 할당
+		m_pBLASInstanceDescResouce = m_pResourceBinTLASInstanceDescList->Alloc(sizeof(D3D12_RAYTRACING_INSTANCE_DESC) * numBLASHandles);
+
+		m_pTLAS = buildTLAS(pCommandList, m_pBLASInstanceDescResouce, ppBLASHandlelist, numBLASHandles, FALSE, 0);
+		m_UpdateAccelerationStructureFlags &= (~UPDATE_ACCELERATION_STRCTURE_TYPE_TLAS);
+	}
+
+	return true;
+}
+
+void RayTracingManager::UpdateManagedResource()
+{
+	uint64_t currTick = static_cast<uint64_t>(GetTickCount64());
+	m_pResourceBinTLAS->Update(currTick);
+	m_pResourceBinBLAS->Update(currTick);
+	m_pResourceBinScratchResource->Update(currTick);
+	m_pResourceBinTLASInstanceDescList->Update(currTick);
+}
+
+void RayTracingManager::UpdateBLASTransform(BLASHandle* pBLASHandle, const Matrix4x4& worldMatrix)
+{
+	pBLASHandle->Transform = worldMatrix;
+	m_UpdateAccelerationStructureFlags |= UPDATE_ACCELERATION_STRCTURE_TYPE_TLAS;
+}
+
+void RayTracingManager::UpdateWindowSize(uint width, uint height)
+{
+	cleanupOutputDiffuseBuffer();
+	cleanupOutputDepthBuffer();
+
+	m_Width = width;
+	m_Height = height;
+	createOutputDiffuseBuffer(m_Width, m_Height);
+	createOutputDepthBuffer(m_Width, m_Height);
+}
+
+bool RayTracingManager::buildBLAS(ID3D12GraphicsCommandList6* pCommandList, BLASHandle* pBLASHandle)
+{
+	bool bResult = false;
+	ID3D12Device5* pD3DDevice = m_pRenderer->GetD3DDevice();
+
+	ASSERT(pBLASHandle->NumTriGroups < MAX_TRIGROUP_COUNT_PER_BLAS, "Too many triangle groups in BLAS");
+
+	if (pBLASHandle->pBLAS)
+	{
+		m_pResourceBinBLAS->Free(pBLASHandle->pBLAS, MAX_PENDING_FRAME_COUNT);
+		pBLASHandle->pBLAS = nullptr;
+	}
+
+	// Build BLAS
+	// Get required sizes for an acceleration structure.
+	D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_INPUTS inputs = {};
+	inputs.DescsLayout = D3D12_ELEMENTS_LAYOUT_ARRAY;
+	if (pBLASHandle->bAllowUpdate)
+	{
+		inputs.Flags = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_PREFER_FAST_BUILD | D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_ALLOW_UPDATE;
+	}
+	else
+	{
+		inputs.Flags = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_PREFER_FAST_TRACE | D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_ALLOW_COMPACTION;
+	}
+	inputs.NumDescs = pBLASHandle->NumTriGroups;
+	inputs.pGeometryDescs = pBLASHandle->pGeomDescList;
+	inputs.Type = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL;
+
+	D3D12_RAYTRACING_ACCELERATION_STRUCTURE_PREBUILD_INFO info = {};
+	pD3DDevice->GetRaytracingAccelerationStructurePrebuildInfo(&inputs, &info);
+
+	ID3D12Resource* pScratchResource = m_pResourceBinScratchResource->Alloc(info.ScratchDataSizeInBytes);
+	ASSERT(pScratchResource, "Failed to allocate scratch resource for BLAS.");
+
+	D3D12_GPU_VIRTUAL_ADDRESS pScratchGPUAddress = pScratchResource->GetGPUVirtualAddress();
+	ASSERT(pScratchGPUAddress, "Invalid GPU address for scratch resource.");
+
+	// Allocate resources for acceleration structures.
+	// Acceleration structures can only be placed in resources that are created in the default heap (or custom heap equivalent). 
+	// Default heap is OK since the application doesn't need CPU read/write access to them. 
+	// The resources that will contain acceleration structures must be created in the state D3D12_RESOURCE_STATE_RAYTRACING_ACCELERATION_STRUCTURE, 
+	// and must have resource flag D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS. The ALLOW_UNORDERED_ACCESS requirement simply acknowledges both: 
+	//  - the system will be doing this type of access in its implementation of acceleration structure builds behind the scenes.
+	//  - from the app point of view, synchronization of writes/reads to acceleration structures is accomplished using UAV barriers.
+	// 
+	//D3D12_RESOURCE_STATES initialResourceState = D3D12_RESOURCE_STATE_RAYTRACING_ACCELERATION_STRUCTURE;
+	//if (FAILED(CreateUAVBuffer(m_pD3DDevice, info.ResultDataMaxSizeInBytes, &pBLAS, initialResourceState, L"BottomLevelAccelerationStructure")))
+	//	__debugbreak();
+	pBLASHandle->pBLAS = m_pResourceBinBLAS->Alloc(info.ScratchDataSizeInBytes);
+
+	// Bottom Level Acceleration Structure desc
+	D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_DESC asDesc = {};
+	asDesc.Inputs = inputs;
+	asDesc.ScratchAccelerationStructureData = pScratchGPUAddress;
+	asDesc.DestAccelerationStructureData = pBLASHandle->pBLAS->GetGPUVirtualAddress();
+
+	pCommandList->BuildRaytracingAccelerationStructure(&asDesc, 0, nullptr);
+	// We need to insert a UAV barrier before using the acceleration structures in a raytracing operation
+	pCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::UAV(pBLASHandle->pBLAS));
+
+	if (pScratchResource)
+	{
+		m_pResourceBinScratchResource->Free(pScratchResource, MAX_PENDING_FRAME_COUNT);
+		pScratchResource = nullptr;
+	}
+
+	bResult = true;
+	return bResult;
+}
+
 ID3D12Resource* RayTracingManager::buildTLAS(
+	ID3D12GraphicsCommandList6* pCommandList,
 	ID3D12Resource* pInstanceDescResource,
 	BLASHandle** ppHandleList,
 	uint numBLASHandles,
@@ -497,21 +528,12 @@ ID3D12Resource* RayTracingManager::buildTLAS(
 	D3D12_RAYTRACING_ACCELERATION_STRUCTURE_PREBUILD_INFO info;
 	m_pD3DDevice->GetRaytracingAccelerationStructurePrebuildInfo(&inputs, &info);
 
-	ID3D12Resource* pScratchResource = nullptr;
-
-	HRESULT hr = m_pD3DDevice->CreateCommittedResource(
-		&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
-		D3D12_HEAP_FLAG_NONE,
-		&CD3DX12_RESOURCE_DESC::Buffer(info.ScratchDataSizeInBytes, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS),
-		D3D12_RESOURCE_STATE_COMMON,
-		nullptr, IID_PPV_ARGS(&pScratchResource));
-	ASSERT(SUCCEEDED(hr), "Failed to create scratch resource for TLAS.");
+	ID3D12Resource* pScratchResource = m_pResourceBinScratchResource->Alloc(info.ScratchDataSizeInBytes);
 
 	D3D12_GPU_VIRTUAL_ADDRESS pScratchGPUAddress = pScratchResource->GetGPUVirtualAddress();
 
-	D3D12_RESOURCE_STATES initialResourceState = D3D12_RESOURCE_STATE_RAYTRACING_ACCELERATION_STRUCTURE;
-	hr = D3DUtil::CreateUAVBuffer(m_pD3DDevice, info.ResultDataMaxSizeInBytes, &pTLASResource, initialResourceState, L"TopLevelAccelerationStructure");
-	ASSERT(SUCCEEDED(hr), "Failed to create TLAS resource.");
+	pTLASResource = m_pResourceBinTLAS->Alloc(info.ResultDataMaxSizeInBytes);
+	ASSERT(pTLASResource, "Failed to allocate TLAS resource.");
 
 	// Allocate resources for acceleration structures.
 	// Acceleration structures can only be placed in resources that are created in the default heap (or custom heap equivalent). 
@@ -557,29 +579,19 @@ ID3D12Resource* RayTracingManager::buildTLAS(
 	asDesc.DestAccelerationStructureData = pTLASResource->GetGPUVirtualAddress();
 	asDesc.ScratchAccelerationStructureData = pScratchGPUAddress;
 
-	hr = m_pCommandAllocator->Reset();
-	ASSERT(SUCCEEDED(hr), "Failed to reset command allocator.");
-
-	hr = m_pCommandList->Reset(m_pCommandAllocator, nullptr);
-	ASSERT(SUCCEEDED(hr), "Failed to reset command list.");
-
-	m_pCommandList->BuildRaytracingAccelerationStructure(&asDesc, 0, nullptr);
+	pCommandList->BuildRaytracingAccelerationStructure(&asDesc, 0, nullptr);
 
 	// We need to insert a UAV barrier before using the acceleration structures in a raytracing operation
 	D3D12_RESOURCE_BARRIER uavBarrier = {};
 	uavBarrier.Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
 	uavBarrier.UAV.pResource = pTLASResource;
-	m_pCommandList->ResourceBarrier(1, &uavBarrier);
+	pCommandList->ResourceBarrier(1, &uavBarrier);
 
-	m_pCommandList->Close();
-
-	ID3D12CommandList* ppCommandLists[] = { m_pCommandList };
-	m_pCommandQueue->ExecuteCommandLists(_countof(ppCommandLists), ppCommandLists);
-
-	fence();
-	waitForFenceValue();
-
-	SAFE_RELEASE(pScratchResource);
+	if (pScratchResource)
+	{
+		m_pResourceBinScratchResource->Free(pScratchResource, MAX_PENDING_FRAME_COUNT);
+		pScratchResource = nullptr;
+	}
 
 	return pTLASResource;
 }
@@ -628,26 +640,6 @@ void RayTracingManager::updateHitGroupShaderTable(uint numShaderRecords)
 	m_HitGroupShaderRecordNum = m_pHitGroupShaderTable->GetShaderRecordNum();
 
 	SAFE_RELEASE(pStateObjectProperties);
-}
-
-void RayTracingManager::cleanupPendingFreeedBLASInstace()
-{
-	for (auto& curr : m_pFreedBLASHandleList)
-	{
-		auto iter = std::find(m_BLASHandleList.begin(), m_BLASHandleList.end(), curr);
-		ASSERT(iter != m_BLASHandleList.end(), "Invalid BLAS handle to free.");
-		if (curr->pBLAS)
-		{
-			uint32_t id = curr->ID;
-			m_pIndexCreator->Free(id);
-			curr->ID = -1;
-			curr->pBLAS->Release();
-			curr->pBLAS = nullptr;
-		}
-		free(curr);
-		m_BLASHandleList.erase(iter);
-	}
-	m_pFreedBLASHandleList.clear();
 }
 
 bool RayTracingManager::createOutputDiffuseBuffer(uint width, uint height)
@@ -894,7 +886,7 @@ void RayTracingManager::buildShaderTables()
 	m_pMissShaderTable = new ShaderTable;
 	m_pMissShaderTable->Initiailze(m_pD3DDevice, m_ShaderIdentifierSize, L"MissShaderTable");
 	m_pMissShaderTable->CommitResource(NUM_RAYTRACING_SHADER_TYPES);
-	for(int i = 0; i < NUM_RAYTRACING_SHADER_TYPES; ++i)
+	for (int i = 0; i < NUM_RAYTRACING_SHADER_TYPES; ++i)
 	{
 		void* pMissShaderIdentifier = pStateObjectProperties->GetShaderIdentifier(g_MissShaderNames[i]);
 		ShaderRecord missShaderRecord = ShaderRecord(pMissShaderIdentifier, m_ShaderIdentifierSize);
@@ -963,61 +955,4 @@ void RayTracingManager::createShaderVisibleHeap(uint maxNumDescriptors)
 void RayTracingManager::cleanupDispatchHeap()
 {
 	SAFE_RELEASE(m_pShaderVisibleDescriptorHeap);
-}
-
-void RayTracingManager::createCommandList()
-{
-	HRESULT hr = S_OK;
-	hr = m_pD3DDevice->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&m_pCommandAllocator));
-	ASSERT(SUCCEEDED(hr), "Failed to create command allocator");
-	// Create the command list.
-	hr = m_pD3DDevice->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, m_pCommandAllocator, nullptr, IID_PPV_ARGS(&m_pCommandList));
-	ASSERT(SUCCEEDED(hr), "Failed to create command list");
-	// Command lists are created in the recording state, but there is nothing
-	// to record yet. The main loop expects it to be closed, so close it now.
-	m_pCommandList->Close();
-}
-
-void RayTracingManager::cleanupCommandList()
-{
-	SAFE_RELEASE(m_pCommandList);
-	SAFE_RELEASE(m_pCommandAllocator);
-}
-
-void RayTracingManager::createFence()
-{
-	HRESULT hr = S_OK;
-	// Create synchronization objects and wait until assets have been uploaded to the GPU.
-	hr = m_pD3DDevice->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&m_pFence));
-	ASSERT(SUCCEEDED(hr), "Failed to create fence");
-
-	m_ui64FenceValue = 0;
-
-	// Create an event handle to use for frame synchronization.
-	m_hFenceEvent = CreateEvent(nullptr, FALSE, FALSE, nullptr);
-}
-
-void RayTracingManager::cleanupFence()
-{
-	SAFE_CLOSE_HANDLE(m_hFenceEvent);
-	SAFE_RELEASE(m_pFence);	
-}
-
-uint64_t RayTracingManager::fence()
-{
-	m_ui64FenceValue++;
-	m_pCommandQueue->Signal(m_pFence, m_ui64FenceValue);
-	return m_ui64FenceValue;
-}
-
-void RayTracingManager::waitForFenceValue()
-{
-	const uint64_t ExpectedFenceValue = m_ui64FenceValue;
-
-	// Wait until the previous frame is finished.
-	if (m_pFence->GetCompletedValue() < ExpectedFenceValue)
-	{
-		m_pFence->SetEventOnCompletion(ExpectedFenceValue, m_hFenceEvent);
-		WaitForSingleObject(m_hFenceEvent, INFINITE);
-	}
 }

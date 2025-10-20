@@ -86,9 +86,11 @@ struct BLASHandle
 	Matrix4x4 Transform;
 
 	uint32_t ID;
+	bool bAllowUpdate;
 	uint ShaderRecordIndex;
 	uint NumVertices;
 	uint NumTriGroups;
+	D3D12_RAYTRACING_GEOMETRY_DESC pGeomDescList[MAX_TRIGROUP_COUNT_PER_BLAS] = {};
 
 	// Local params
 	D3D12_CPU_DESCRIPTOR_HANDLE SrvCpuHandle;

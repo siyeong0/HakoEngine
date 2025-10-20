@@ -108,6 +108,9 @@
     <Filter Include="Shaders\Common">
       <UniqueIdentifier>{cc684ff0-528b-467b-acb9-ae6e572bfcd2}</UniqueIdentifier>
     </Filter>
+    <Filter Include="RenderManager\ResourceRecycleBin">
+      <UniqueIdentifier>{b23d68da-272f-4838-a402-4fcde580b1b1}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h">
@@ -194,6 +197,9 @@
     <ClInclude Include="RenderQueueRayTracing.h">
       <Filter>RenderManager\RenderQueue\RayTracing</Filter>
     </ClInclude>
+    <ClInclude Include="D3D12ResourceRecycleBin.h">
+      <Filter>RenderManager\ResourceRecycleBin</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="dllmain.cpp">
@@ -270,6 +276,9 @@
     </ClCompile>
     <ClCompile Include="RenderQueueRayTracing.cpp">
       <Filter>RenderManager\RenderQueue\RayTracing</Filter>
+    </ClCompile>
+    <ClCompile Include="D3D12ResourceRecycleBin.cpp">
+      <Filter>RenderManager\ResourceRecycleBin</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

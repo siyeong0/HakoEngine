@@ -155,6 +155,7 @@
     <ClInclude Include="ConstantBufferManager.h" />
     <ClInclude Include="D3D12Renderer.h" />
     <ClInclude Include="D3D12ResourceManager.h" />
+    <ClInclude Include="D3D12ResourceRecycleBin.h" />
     <ClInclude Include="D3DUtil.h" />
     <ClInclude Include="DDSTextureLoader12.h" />
     <ClInclude Include="DescriptorPool.h" />
@@ -184,6 +185,7 @@
     <ClCompile Include="ConstantBufferManager.cpp" />
     <ClCompile Include="D3D12Renderer.cpp" />
     <ClCompile Include="D3D12ResourceManager.cpp" />
+    <ClCompile Include="D3D12ResourceRecycleBin.cpp" />
     <ClCompile Include="D3DUtil.cpp" />
     <ClCompile Include="DDSTextureLoader12.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>

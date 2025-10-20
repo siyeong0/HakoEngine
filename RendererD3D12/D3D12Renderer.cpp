@@ -475,18 +475,13 @@ void ENGINECALL D3D12Renderer::EndRender()
 	// Do raytracing and copy the output to the back buffer.
 	if (IsRayTracingEnabledInl())
 	{
-		m_ppRenderQueueRayTracing[0]->Process(0, pCommandListPool, m_pCommandQueue, 400, rtvHandle, dsvHandle, &m_Viewport, &m_ScissorRect);
-
+		ID3D12GraphicsCommandList6* pCommandList = pCommandListPool->GetCurrentCommandList();
 		if (m_pRayTracingManager->IsUpdatedAccelerationStructure())
 		{
-			for (uint i = 0; i < MAX_PENDING_FRAME_COUNT; i++)
-			{
-				waitForFenceValue(m_pui64LastFenceValue[i]);
-			}
-			m_pRayTracingManager->UpdateAccelerationStructure();
+			m_pRayTracingManager->UpdateAccelerationStructure(pCommandList);
 		}
 
-		ID3D12GraphicsCommandList6* pCommandList = pCommandListPool->GetCurrentCommandList();
+		m_ppRenderQueueRayTracing[0]->Process(0, pCommandListPool, m_pCommandQueue, 400, rtvHandle, dsvHandle, &m_Viewport, &m_ScissorRect);
 
 		// const float BackColor[] = { 0.0f, 0.0f, 1.0f, 1.0f };
 		// pCommandList->ClearRenderTargetView(rtvHandle, BackColor, 0, nullptr);

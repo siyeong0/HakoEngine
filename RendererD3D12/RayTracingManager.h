@@ -2,6 +2,7 @@
 
 class ShaderTable;
 class CIndexCreator;
+class D3D12ResourceRecycleBin;
 class D3D12Renderer;
 
 class RayTracingManager
@@ -16,9 +17,9 @@ public:
 	void DoRaytracing(ID3D12GraphicsCommandList6* pCommandList);
 	BLASHandle* AllocBLAS(ID3D12Resource* pVertexBuffer, uint vertexSize, uint numVertices, const IndexedTriGroup* pTriGroupInfoList, uint numTriGroupInfos, bool bAllowUpdate);
 	void FreeBLAS(BLASHandle* pBLASHandle);
-	bool UpdateAccelerationStructure();
+	bool UpdateAccelerationStructure(ID3D12GraphicsCommandList6* pCommandList);
+	void UpdateManagedResource();
 	void UpdateBLASTransform(BLASHandle* pBLASHandle, const Matrix4x4& worldMatrix);
-
 	void UpdateWindowSize(uint width, uint height);
 
 	ID3D12Resource* GetOutputResource() { return m_pOutputDiffuse; }
@@ -29,11 +30,10 @@ public:
 	uint GetMaxShadowRecursionDepth() const { return MAX_SHADOW_RECURSION_DEPTH; }
 
 private:
-	BLASHandle* buildBLAS(ID3D12Resource* pVertexBuffer, uint vertexSize, uint numVertices, const IndexedTriGroup* pTriGroupInfoList, uint numTriGroupInfos, bool bAllowUpdate);
-	ID3D12Resource* buildTLAS(ID3D12Resource* pInstanceDescResource, BLASHandle** ppInstanceList, uint numBLASHandles, bool bAllowUpdate, uint currContextIndex);
+	bool buildBLAS(ID3D12GraphicsCommandList6* pCommandList, BLASHandle* pBLASHandle);
+	ID3D12Resource* buildTLAS(ID3D12GraphicsCommandList6* pCommandList, ID3D12Resource* pInstanceDescResource, BLASHandle** ppInstanceList, uint numBLASHandles, bool bAllowUpdate, uint currContextIndex);
 
 	void updateHitGroupShaderTable(uint numShaderRecords);
-	void cleanupPendingFreeedBLASInstace();
 
 	bool createOutputDiffuseBuffer(uint width, uint height);
 	void cleanupOutputDiffuseBuffer();
@@ -51,13 +51,6 @@ private:
 
 	void createShaderVisibleHeap(uint maxNumDescriptors);
 	void cleanupDispatchHeap();
-
-	void createCommandList();
-	void cleanupCommandList();
-	void createFence();
-	void cleanupFence();
-	uint64_t fence();
-	void waitForFenceValue();
 
 private:
 	enum COMMON_DESCRIPTOR_INDEX
@@ -92,13 +85,12 @@ private:
 
 	D3D12Renderer* m_pRenderer = nullptr;
 	ID3D12Device5* m_pD3DDevice = nullptr;
-	ID3D12CommandQueue* m_pCommandQueue = nullptr;
-	ID3D12CommandAllocator* m_pCommandAllocator = nullptr;
-	ID3D12GraphicsCommandList6* m_pCommandList = nullptr;
 
-	HANDLE m_hFenceEvent = nullptr;
-	ID3D12Fence* m_pFence = nullptr;
-	uint64_t m_ui64FenceValue = 0;
+	D3D12ResourceRecycleBin* m_pResourceBinTLAS = nullptr;
+	D3D12ResourceRecycleBin* m_pResourceBinBLAS = nullptr;
+	D3D12ResourceRecycleBin* m_pResourceBinScratchResource = nullptr;
+	D3D12ResourceRecycleBin* m_pResourceBinTLASInstanceDescList = nullptr;
+
 	CIndexCreator* m_pIndexCreator = nullptr;
 
 	ID3D12Resource* m_pOutputDiffuse = nullptr;	// raytracing output - diffuse
@@ -127,7 +119,6 @@ private:
 
 	uint m_MaxNumBLASs = 0;
 	std::list<BLASHandle*> m_BLASHandleList; // BLAS Instance list
-	std::list<BLASHandle*> m_pFreedBLASHandleList; // Freed BLAS Instance list
 
 	ID3D12Resource* m_pBLASInstanceDescResouce = nullptr;
 	ID3D12Resource* m_pTLAS = nullptr;
