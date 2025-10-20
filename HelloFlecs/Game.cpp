@@ -523,15 +523,15 @@ bool Game::Initialize(
 		//		.set<MeshRenderer>({ createPlaneMeshObject(m_pRenderer) });
 		//	m_Entities.emplace_back(e.id());
 		//}		
-		// Create water plane
-		{
-			flecs::entity e = m_ECSWorld.entity()
-				.set<Position>({ 0.0f, 0.0f, 0.0f })
-				.set<Rotation>({ 0.0f, 0.0f, 0.0f })
-				.set<Scale>({ 10.0f, 10.0f, 10.0f })
-				.set<MeshRenderer>({ createWaterMeshObject(m_pRenderer) });
-			m_Entities.emplace_back(e.id());
-		}
+		//// Create water plane
+		//{
+		//	flecs::entity e = m_ECSWorld.entity()
+		//		.set<Position>({ 0.0f, 0.0f, 0.0f })
+		//		.set<Rotation>({ 0.0f, 0.0f, 0.0f })
+		//		.set<Scale>({ 10.0f, 10.0f, 10.0f })
+		//		.set<MeshRenderer>({ createWaterMeshObject(m_pRenderer) });
+		//	m_Entities.emplace_back(e.id());
+		//}
 		// Create grid
 		{
 			flecs::entity e = m_ECSWorld.entity()
