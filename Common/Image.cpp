@@ -105,11 +105,8 @@ void FillImageRGBA(Image* outImg, uint w, uint h, const unsigned char* rgba8)
 	outImg->Data.resize(size_t(w) * size_t(h));
 	for (size_t i = 0; i < outImg->Data.size(); ++i)
 	{
-		for (uint y = 0; y < h; ++y)
-		{
-			const unsigned char* p = rgba8 + i * 4;
-			std::memcpy((void*)(&outImg->Data[i]), p, 4);
-		}
+		const unsigned char* p = rgba8 + i * 4;
+		std::memcpy((void*)(&outImg->Data[i]), p, 4);
 	}
 }
 

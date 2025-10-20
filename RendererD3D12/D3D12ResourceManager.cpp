@@ -115,7 +115,6 @@ HRESULT D3D12ResourceManager::CreateVertexBuffer(size_t sizePerVertex, size_t nu
 		}
 	}
 	
-
 	// Initialize the vertex buffer view.
 	vertexBufferView.BufferLocation = pVertexBuffer->GetGPUVirtualAddress();
 	vertexBufferView.StrideInBytes = static_cast<uint>(sizePerVertex);
