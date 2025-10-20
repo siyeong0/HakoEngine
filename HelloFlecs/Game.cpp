@@ -535,14 +535,14 @@ bool Game::Initialize(
 		//	m_Entities.emplace_back(e.id());
 		//}		
 		// Create water plane
-		{
-			flecs::entity e = m_ECSWorld.entity()
-				.set<Position>({ 0.0f, 0.0f, 0.0f })
-				.set<Rotation>({ 0.0f, 0.0f, 0.0f })
-				.set<Scale>({ 10.0f, 10.0f, 10.0f })
-				.set<MeshRenderer>({ createWaterMeshObject(m_pRenderer) });
-			m_Entities.emplace_back(e.id());
-		}
+		//{
+		//	flecs::entity e = m_ECSWorld.entity()
+		//		.set<Position>({ 0.0f, 0.0f, 0.0f })
+		//		.set<Rotation>({ 0.0f, 0.0f, 0.0f })
+		//		.set<Scale>({ 10.0f, 10.0f, 10.0f })
+		//		.set<MeshRenderer>({ createWaterMeshObject(m_pRenderer) });
+		//	m_Entities.emplace_back(e.id());
+		//}
 		// Create grid
 		{
 			flecs::entity e = m_ECSWorld.entity()
@@ -641,14 +641,14 @@ bool Game::Initialize(
 		}
 
 		// Create from file (bunny)
-		{
-			flecs::entity e = m_ECSWorld.entity()
-				.set<Position>({ 15.0f, 10.0f, 0.0f })
-				.set<Rotation>({ 0.0f, 0.0f, 0.0f })
-				.set<Scale>({ 3.0f, 3.0f, 3.0f })
-				.set<MeshRenderer>({ createMeshFromFile(m_pRenderer, "./Resources/Decomp/bunny.off") });
-			m_Entities.emplace_back(e.id());
-		}
+		//{
+		//	flecs::entity e = m_ECSWorld.entity()
+		//		.set<Position>({ 15.0f, 10.0f, 0.0f })
+		//		.set<Rotation>({ 0.0f, 0.0f, 0.0f })
+		//		.set<Scale>({ 3.0f, 3.0f, 3.0f })
+		//		.set<MeshRenderer>({ createMeshFromFile(m_pRenderer, "./Resources/Decomp/bunny.off") });
+		//	m_Entities.emplace_back(e.id());
+		//}
 
 		// Create sprite entity
 		{

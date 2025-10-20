@@ -41,17 +41,17 @@ struct VSInput
 {
     float4 Position : POSITION;
     float2 TexCoord : TEXCOORD0;
-    float3 Normal   : NORMAL;
-    float3 Tangent  : TANGENT;
+    float3 Normal : NORMAL;
+    float3 Tangent : TANGENT;
 };
 
 struct PSInput
 {
-    float4 ScreenPosition   : SV_POSITION;
-    float3 WorldPosition    : POSITION;
-    float2 TexCoord         : TEXCOORD0;
-    float3 WorldNormal      : NORMAL;
-    float3 WorldTangent     : TANGENT0;
+    float4 ScreenPosition : SV_POSITION;
+    float3 WorldPosition : POSITION;
+    float2 TexCoord : TEXCOORD0;
+    float3 WorldNormal : NORMAL;
+    float3 WorldTangent : TANGENT0;
 };
 
 float3x3 inverseTranspose(float3x3 M)
@@ -68,7 +68,7 @@ float3x3 inverseTranspose(float3x3 M)
 
 PSInput VSMain(VSInput input)
 {
-    PSInput vsout = (PSInput)0;
+    PSInput vsout = (PSInput) 0;
     
     matrix worldViewProj = mul(g_World, g_ViewProj);
     vsout.ScreenPosition = mul(input.Position, worldViewProj);
@@ -101,7 +101,7 @@ float4 PSMain(PSInput input) : SV_TARGET
     const float roughness = g_Material.Roughness;
 
 	// Direct illumination
-    if (!BxDF::IsBlack(Kd) || !BxDF::IsBlack(Ks))
+    if (!IsBlack(Kd) || !IsBlack(Ks))
     {
         for (uint i = 0; i < g_NumLights; i++)
         {
@@ -119,7 +119,7 @@ float4 PSMain(PSInput input) : SV_TARGET
 			// Raytraced shadows.
             bool isInShadow = false;
             // Kd = diffuse , Ks = specular , V = view vector, wi = light vector
-            L += BxDF::DirectLighting::Shade(
+            L += BxDF_ShadeDirect(
 						g_Material.Type,
 						Kd,
 						Ks,
@@ -138,8 +138,8 @@ float4 PSMain(PSInput input) : SV_TARGET
     L += g_Material.AmbientIntensity * Kd;
 
 	// Specular Indirect Illumination
-    bool isReflective = !BxDF::IsBlack(g_Material.Kr);
-    bool isTransmissive = !BxDF::IsBlack(g_Material.Kt);
+    bool isReflective = !IsBlack(g_Material.Kr);
+    bool isTransmissive = !IsBlack(g_Material.Kt);
 
 	// Handle cases where ray is coming from behind due to imprecision,
 	// don't cast reflection rays in that case.

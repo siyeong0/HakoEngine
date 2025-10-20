@@ -34,4 +34,10 @@ struct ShadingMaterial
     float Roughness;
     float AmbientIntensity;
 };
+
+bool IsBlack(in float3 color)
+{
+    return !any(color);
+}
+
 #endif

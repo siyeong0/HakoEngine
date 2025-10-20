@@ -1,4 +1,4 @@
-; shader hash: c2781f644e6d03d2a682c7830035b92c
+; shader hash: 76296d7eb682319a93473086c479d6aa
 ;
 ; Buffer Definitions:
 ;
@@ -1058,10 +1058,10 @@ declare float @dx.op.worldRayOrigin.f32(i32, i8) #1
 declare float @dx.op.rayTCurrent.f32(i32) #2
 
 ; Function Attrs: nounwind readnone
-declare float @dx.op.dot3.f32(i32, float, float, float, float, float, float) #1
+declare float @dx.op.unary.f32(i32, float) #1
 
 ; Function Attrs: nounwind readnone
-declare float @dx.op.unary.f32(i32, float) #1
+declare float @dx.op.dot3.f32(i32, float, float, float, float, float, float) #1
 
 ; Function Attrs: nounwind readnone
 declare i32 @dx.op.dispatchRaysDimensions.i32(i32, i8) #1

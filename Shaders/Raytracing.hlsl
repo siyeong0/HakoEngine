@@ -186,7 +186,7 @@ float3 Shade(inout RadiancePayload rayPayload, in float3 N, in float3 hitPositio
     const float roughness = material.Roughness;
 
 	// Direct illumination
-    if (!BxDF::IsBlack(material.Kd) || !BxDF::IsBlack(material.Ks))
+    if (!IsBlack(material.Kd) || !IsBlack(material.Ks))
     {
         for (uint i = 0; i < g_NumLights; i++)
         {
@@ -206,7 +206,7 @@ float3 Shade(inout RadiancePayload rayPayload, in float3 N, in float3 hitPositio
 			// Raytraced shadows.
             bool bInShadow = TryTraceShadowRayAndReportIfHit(hitPosition, wi, N, rayPayload, tMax, maxRadianceRecursionDepth);
             // Kd = diffuse , Ks = specular , V = view vector, wi = light vector
-            L += BxDF::DirectLighting::Shade(
+            L += BxDF_ShadeDirect(
 						material.Type,
 						Kd,
 						Ks,
@@ -225,8 +225,8 @@ float3 Shade(inout RadiancePayload rayPayload, in float3 N, in float3 hitPositio
     L += material.AmbientIntensity * Kd;
 
 	// Specular Indirect Illumination
-    bool bReflective = !BxDF::IsBlack(Kr);
-    bool bTransmissive = !BxDF::IsBlack(Kt);
+    bool bReflective = !IsBlack(Kr);
+    bool bTransmissive = !IsBlack(Kt);
 
 	// Handle cases where ray is coming from behind due to imprecision,
 	// don't cast reflection rays in that case.
@@ -235,7 +235,7 @@ float3 Shade(inout RadiancePayload rayPayload, in float3 N, in float3 hitPositio
 	
     if (bReflective || bTransmissive)
     {
-        if (bReflective && (BxDF::Specular::Reflection::IsTotalInternalReflection(V, N)) || material.Type == MATERIAL_TYPE_MIRROR)
+        if (bReflective && (BxDF_IsTotalInternalReflection(V, N)) || material.Type == MATERIAL_TYPE_MIRROR)
         {
             float3 wi = reflect(-V, N);
             RadiancePayload reflectedRayPayload = rayPayload;
@@ -248,7 +248,7 @@ float3 Shade(inout RadiancePayload rayPayload, in float3 N, in float3 hitPositio
             {
 				// Radiance contribution from reflection.
                 float3 wi;
-                float3 Fr = Kr * BxDF::Specular::Reflection::Sample_Fr(V, wi, N, Fo); // Calculates wi
+                float3 Fr = Kr * BxDF_SampleReflectionFr(V, wi, N, Fo); // Calculates wi
 
                 RadiancePayload reflectedRayPayLoad = rayPayload;
 				// Ref: eq 24.4, [Ray-tracing from the Ground Up]
@@ -259,7 +259,7 @@ float3 Shade(inout RadiancePayload rayPayload, in float3 N, in float3 hitPositio
             {
 			    // Radiance contribution from refraction.
                 float3 wt;
-                float3 Ft = Kt * BxDF::Specular::Transmission::Sample_Ft(V, wt, N, Fo); // Calculates wt
+                float3 Ft = Kt * BxDF_SampleTransmissionFt(V, wt, N, Fo); // Calculates wt
 
                 RadiancePayload refractedRayPayLoad = rayPayload;
 
