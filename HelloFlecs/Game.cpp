@@ -18,7 +18,7 @@
 static IMeshObject* createKittyBoxMeshObject(IRenderer* pRenderer)
 {
 	IMeshObject* pMeshObj = nullptr;
-	const wchar_t* wchTexFileNameList[6] =
+	const wchar_t* diffuseTexPaths[6] =
 	{
 		L"./Resources/KittyCraft_01.dds",
 		L"./Resources/KittyCraft_02.dds",
@@ -29,14 +29,14 @@ static IMeshObject* createKittyBoxMeshObject(IRenderer* pRenderer)
 	};
 
 	StaticMesh meshData = StaticMesh::CreateUnitCubeMesh();
-
 	std::vector<Vertex> vertices = meshData.GetVertexArray();
 
 	pMeshObj = pRenderer->CreateBasicMeshObject();
 	pMeshObj->BeginCreateMesh(vertices.data(), (uint)vertices.size(), 6);	// 박스의 6면-1면당 삼각형 2개-인덱스 6개
 	for (int i = 0; i < 6; i++)
 	{
-		pMeshObj->InsertTriGroup(meshData.Sections[0].Indices.data() + i * 6, 2, wchTexFileNameList[i]);
+		Material mtl(diffuseTexPaths[i], nullptr, nullptr, nullptr, nullptr, MATERIAL_TYPE_METAL);
+		pMeshObj->InsertTriGroup(meshData.Sections[0].Indices.data() + i * 6, 2, mtl);
 	}
 	pMeshObj->EndCreateMesh();
 
@@ -46,7 +46,7 @@ static IMeshObject* createKittyBoxMeshObject(IRenderer* pRenderer)
 static IMeshObject* createMegayuchiBoxMeshObject(IRenderer* pRenderer)
 {
 	IMeshObject* pMeshObj = nullptr;
-	const wchar_t* diffuseFileNameList[6] =
+	const wchar_t* diffuseTexPaths[6] =
 	{
 		L"./Resources/megayuchi/tex_00.dds",
 		L"./Resources/megayuchi/tex_01.dds",
@@ -56,7 +56,7 @@ static IMeshObject* createMegayuchiBoxMeshObject(IRenderer* pRenderer)
 		L"./Resources/megayuchi/tex_05.dds"
 	};
 
-	const wchar_t* normalFileNameList[6] =
+	const wchar_t* normalTexPaths[6] =
 	{
 		L"./Resources/megayuchi/tex_00_N.dds",
 		L"./Resources/megayuchi/tex_01_N.dds",
@@ -74,17 +74,17 @@ static IMeshObject* createMegayuchiBoxMeshObject(IRenderer* pRenderer)
 	pMeshObj->BeginCreateMesh(vertices.data(), (uint)vertices.size(), 6);	// 박스의 6면-1면당 삼각형 2개-인덱스 6개
 	for (int i = 0; i < 6; i++)
 	{
-		pMeshObj->InsertTriGroup(meshData.Sections[0].Indices.data() + i * 6, 2, diffuseFileNameList[i], normalFileNameList[i]);
+		Material mtl(diffuseTexPaths[i], normalTexPaths[i], nullptr, nullptr, nullptr, MATERIAL_TYPE_MATTE);
+		pMeshObj->InsertTriGroup(meshData.Sections[0].Indices.data() + i * 6, 2, mtl);
 	}
 	pMeshObj->EndCreateMesh();
-
 	return pMeshObj;
 }
 
 static IMeshObject* createKannaSphereMeshObject(IRenderer* pRenderer)
 {
 	IMeshObject* pMeshObj = nullptr;
-	const wchar_t* wchTexFileName = L"./Resources/Kanna.dds";
+	const wchar_t* diffuseTexPath = L"./Resources/Kanna.dds";
 
 	StaticMesh meshData = StaticMesh::CreateSphereMesh(1.0f, 20, 20);
 
@@ -92,13 +92,11 @@ static IMeshObject* createKannaSphereMeshObject(IRenderer* pRenderer)
 
 	pMeshObj = pRenderer->CreateBasicMeshObject();
 	pMeshObj->BeginCreateMesh(vertices.data(), (uint)vertices.size(), (uint)meshData.Sections.size());
-
-	for (size_t si = 0; si < meshData.Sections.size(); ++si)
+	for (const MeshSection& sec : meshData.Sections)
 	{
-		const MeshSection& sec = meshData.Sections[si];
-		pMeshObj->InsertTriGroup(sec.Indices.data(), (uint)(sec.Indices.size() / 3), wchTexFileName);
+		Material mtl(diffuseTexPath, nullptr, nullptr, nullptr, nullptr, MATERIAL_TYPE_MIRROR);
+		pMeshObj->InsertTriGroup(sec.Indices.data(), (uint)(sec.Indices.size() / 3), mtl);
 	}
-
 	pMeshObj->EndCreateMesh();
 	return pMeshObj;
 }
@@ -106,20 +104,18 @@ static IMeshObject* createKannaSphereMeshObject(IRenderer* pRenderer)
 static IMeshObject* createPlaneMeshObject(IRenderer* pRenderer)
 {
 	IMeshObject* pMeshObj = nullptr;
-	const wchar_t* wchTexFileName = L"./Resources/Floor.dds";
+	const wchar_t* diffuseTexPath = L"./Resources/Floor.dds";
 
 	StaticMesh meshData = StaticMesh::CreatePlaneMesh(20.0f, 20.0f);
 	std::vector<Vertex> vertices = meshData.GetVertexArray();
 
 	pMeshObj = pRenderer->CreateBasicMeshObject();
 	pMeshObj->BeginCreateMesh(vertices.data(), (uint)vertices.size(), (uint)meshData.Sections.size());
-
-	for (size_t si = 0; si < meshData.Sections.size(); ++si)
+	for (const MeshSection& sec : meshData.Sections)
 	{
-		const MeshSection& sec = meshData.Sections[si];
-		pMeshObj->InsertTriGroup(sec.Indices.data(), (uint)(sec.Indices.size() / 3), wchTexFileName);
+		Material mtl(diffuseTexPath, nullptr, nullptr, nullptr, nullptr, MATERIAL_TYPE_MIRROR);
+		pMeshObj->InsertTriGroup(sec.Indices.data(), (uint)(sec.Indices.size() / 3), mtl);
 	}
-
 	pMeshObj->EndCreateMesh();
 	return pMeshObj;
 }
@@ -127,20 +123,18 @@ static IMeshObject* createPlaneMeshObject(IRenderer* pRenderer)
 static IMeshObject* createStoneCylinderMeshObject(IRenderer* pRenderer)
 {
 	IMeshObject* pMeshObj = nullptr;
-	const wchar_t* wchTexFileName = L"./Resources/Stone.dds";
+	const wchar_t* diffuseTexPath = L"./Resources/Stone.dds";
 
 	StaticMesh meshData = StaticMesh::CreateCylinderMesh(0.5f, 2.0f, 20);
 	std::vector<Vertex> vertices = meshData.GetVertexArray();
 
 	pMeshObj = pRenderer->CreateBasicMeshObject();
 	pMeshObj->BeginCreateMesh(vertices.data(), (uint)vertices.size(), (uint)meshData.Sections.size());
-
-	for (size_t si = 0; si < meshData.Sections.size(); ++si)
+	for (const MeshSection& sec : meshData.Sections)
 	{
-		const MeshSection& sec = meshData.Sections[si];
-		pMeshObj->InsertTriGroup(sec.Indices.data(), (uint)(sec.Indices.size() / 3), wchTexFileName);
+		Material mtl(diffuseTexPath, nullptr, nullptr, nullptr, nullptr, MATERIAL_TYPE_MATTE);
+		pMeshObj->InsertTriGroup(sec.Indices.data(), (uint)(sec.Indices.size() / 3), mtl);
 	}
-
 	pMeshObj->EndCreateMesh();
 	return pMeshObj;
 }
@@ -148,42 +142,39 @@ static IMeshObject* createStoneCylinderMeshObject(IRenderer* pRenderer)
 static IMeshObject* createStoneConeMeshObject(IRenderer* pRenderer)
 {
 	IMeshObject* pMeshObj = nullptr;
-	const wchar_t* wchTexFileName = L"./Resources/Stone.dds";
+	const wchar_t* diffuseTexPath = L"./Resources/Stone.dds";
 
 	StaticMesh meshData = StaticMesh::CreateConeMesh(1.0f, 2.0f, 20);
 	std::vector<Vertex> vertices = meshData.GetVertexArray();
 
 	pMeshObj = pRenderer->CreateBasicMeshObject();
 	pMeshObj->BeginCreateMesh(vertices.data(), (uint)vertices.size(), (uint)meshData.Sections.size());
-
-	for (size_t si = 0; si < meshData.Sections.size(); ++si)
+	for (const MeshSection& sec : meshData.Sections)
 	{
-		const MeshSection& sec = meshData.Sections[si];
-		pMeshObj->InsertTriGroup(sec.Indices.data(), (uint)(sec.Indices.size() / 3), wchTexFileName);
+		Material mtl(diffuseTexPath, nullptr, nullptr, nullptr, nullptr, MATERIAL_TYPE_MATTE);
+		pMeshObj->InsertTriGroup(sec.Indices.data(), (uint)(sec.Indices.size() / 3), mtl);
 	}
-
 	pMeshObj->EndCreateMesh();
 	return pMeshObj;
 }
 
-static IMeshObject* createKannaGridMeshObject(IRenderer* pRenderer)
+static IMeshObject* createMetalTileGridMeshObject(IRenderer* pRenderer)
 {
 	IMeshObject* pMeshObj = nullptr;
-	const wchar_t* diffuseFileName = L"./Resources/megayuchi/tilemap_008.dds";
-	const wchar_t* normalFileName = L"./Resources/megayuchi/tilemap_008_N.dds";
+	const wchar_t* diffuseTexPath = L"./Resources/megayuchi/tilemap_008.dds";
+	const wchar_t* normalTexPath = L"./Resources/megayuchi/tilemap_008_N.dds";
 
 	StaticMesh meshData = StaticMesh::CreateGridMesh(20.0f, 20.0f, 10, 10);
 	std::vector<Vertex> vertices = meshData.GetVertexArray();
 
 	pMeshObj = pRenderer->CreateBasicMeshObject();
 	pMeshObj->BeginCreateMesh(vertices.data(), (uint)vertices.size(), (uint)meshData.Sections.size());
-
-	for (size_t si = 0; si < meshData.Sections.size(); ++si)
+	for (const MeshSection& sec : meshData.Sections)
 	{
-		const MeshSection& sec = meshData.Sections[si];
-		pMeshObj->InsertTriGroup(sec.Indices.data(), (uint)(sec.Indices.size() / 3), diffuseFileName, normalFileName);
+		Material mtl(diffuseTexPath, normalTexPath, nullptr, nullptr, nullptr, MATERIAL_TYPE_MIRROR);
+		mtl.NormalScale = 0.1f;
+		pMeshObj->InsertTriGroup(sec.Indices.data(), (uint)(sec.Indices.size() / 3), mtl);
 	}
-
 	pMeshObj->EndCreateMesh();
 	return pMeshObj;
 }
@@ -191,19 +182,18 @@ static IMeshObject* createKannaGridMeshObject(IRenderer* pRenderer)
 static IMeshObject* createWaterMeshObject(IRenderer* pRenderer)
 {
 	IMeshObject* pMeshObj = nullptr;
+	const wchar_t* diffuseTexPath = L"./Resources/megayuchi/Wat_S_Mo_000.dds";
 
 	StaticMesh meshData = StaticMesh::CreatePlaneMesh(20.0f, 20.0f);
 	std::vector<Vertex> vertices = meshData.GetVertexArray();
 
 	pMeshObj = pRenderer->CreateBasicMeshObject();
 	pMeshObj->BeginCreateMesh(vertices.data(), (uint)vertices.size(), (uint)meshData.Sections.size());
-
-	for (size_t si = 0; si < meshData.Sections.size(); ++si)
+	for (const MeshSection& sec : meshData.Sections)
 	{
-		const MeshSection& sec = meshData.Sections[si];
-		pMeshObj->InsertTriGroup(sec.Indices.data(), (uint)(sec.Indices.size() / 3), L"./Resources/megayuchi/Wat_S_Mo_000.dds", nullptr, MATERIAL_TYPE_GLASS);
+		Material mtl(diffuseTexPath, nullptr, nullptr, nullptr, nullptr, MATERIAL_TYPE_WATER);
+		pMeshObj->InsertTriGroup(sec.Indices.data(), (uint)(sec.Indices.size() / 3), mtl);
 	}
-
 	pMeshObj->EndCreateMesh();
 	return pMeshObj;
 }
@@ -222,10 +212,9 @@ static IMeshObject* createMeshFromFile(IRenderer* pRenderer, const char* filenam
 	std::vector<Vertex> vertices = meshData.GetVertexArray();
 	pMeshObj = pRenderer->CreateBasicMeshObject();
 	pMeshObj->BeginCreateMesh(vertices.data(), (uint)vertices.size(), (uint)meshData.Sections.size());
-	for (size_t si = 0; si < meshData.Sections.size(); ++si)
+	for (const MeshSection& sec : meshData.Sections)
 	{
-		const MeshSection& sec = meshData.Sections[si];
-		pMeshObj->InsertTriGroup(sec.Indices.data(), (uint)(sec.Indices.size() / 3));
+		pMeshObj->InsertTriGroup(sec.Indices.data(), (uint)(sec.Indices.size() / 3), sec.Material);
 	}
 	pMeshObj->EndCreateMesh();
 	return pMeshObj;
@@ -535,21 +524,21 @@ bool Game::Initialize(
 		//	m_Entities.emplace_back(e.id());
 		//}		
 		// Create water plane
-		//{
-		//	flecs::entity e = m_ECSWorld.entity()
-		//		.set<Position>({ 0.0f, 0.0f, 0.0f })
-		//		.set<Rotation>({ 0.0f, 0.0f, 0.0f })
-		//		.set<Scale>({ 10.0f, 10.0f, 10.0f })
-		//		.set<MeshRenderer>({ createWaterMeshObject(m_pRenderer) });
-		//	m_Entities.emplace_back(e.id());
-		//}
+		{
+			flecs::entity e = m_ECSWorld.entity()
+				.set<Position>({ 0.0f, 0.0f, 0.0f })
+				.set<Rotation>({ 0.0f, 0.0f, 0.0f })
+				.set<Scale>({ 10.0f, 10.0f, 10.0f })
+				.set<MeshRenderer>({ createWaterMeshObject(m_pRenderer) });
+			m_Entities.emplace_back(e.id());
+		}
 		// Create grid
 		{
 			flecs::entity e = m_ECSWorld.entity()
 				.set<Position>({ 0.0f, -5.0f, 0.0f })
 				.set<Rotation>({ 0.0f, 0.0f, 0.0f })
 				.set<Scale>({ 10.0f, 10.0f, 10.0f })
-				.set<MeshRenderer>({ createKannaGridMeshObject(m_pRenderer) });
+				.set<MeshRenderer>({ createMetalTileGridMeshObject(m_pRenderer) });
 			m_Entities.emplace_back(e.id());
 		}
 		// Create cylinder

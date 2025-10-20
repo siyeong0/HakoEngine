@@ -96,9 +96,12 @@ float4 PSMain(PSInput input) : SV_TARGET
     
     float3 viewDir = normalize(g_InvView._41_42_43 - input.WorldPosition);
 
-    const float3 Kd = g_Material.Opacity * texDiffuse.xyz;
-    const float3 Ks = g_Material.Ks;
-    const float roughness = g_Material.Roughness;
+    float3 baseColor = g_Material.BaseColor * texDiffuse.rgb;
+    float metallic = g_Material.MetallicFactor;
+    float roughness = max(0.04f, saturate(g_Material.RoughnessFactor));
+    
+    const float3 Kd = (1.0f - metallic) * baseColor;
+    const float3 Ks = saturate(lerp(g_Material.SpecularColor, baseColor, metallic) * g_Material.SpecularFactor);
 
 	// Direct illumination
     if (!IsBlack(Kd) || !IsBlack(Ks))
@@ -134,16 +137,7 @@ float4 PSMain(PSInput input) : SV_TARGET
 	// Add a default ambient contribution to all hits. 
 	// This will be subtracted for hitPositions with 
 	// calculated Ambient coefficient in the composition pass.
-    L += g_Material.AmbientIntensity * Kd;
-
-	// Specular Indirect Illumination
-    bool isReflective = !IsBlack(g_Material.Kr);
-    bool isTransmissive = !IsBlack(g_Material.Kt);
-
-	// Handle cases where ray is coming from behind due to imprecision,
-	// don't cast reflection rays in that case.
-    float smallValue = 1e-6f;
-    isReflective = dot(viewDir, surfaceNormal) > smallValue ? isReflective : false;
+    L += g_Material.AmbientOcclusionStrength * Kd;
 	
     return float4(L, 1.0);
 }

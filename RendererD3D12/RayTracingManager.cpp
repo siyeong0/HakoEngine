@@ -199,7 +199,10 @@ BLASHandle* RayTracingManager::AllocBLAS(
 	uint numTriGroupInfos,
 	bool bAllowUpdate)
 {
-	BLASHandle* pBLASHandle = buildBLAS(pVertexBuffer, vertexSize, numVertices, pTriGroupInfoList, numTriGroupInfos, bAllowUpdate);
+	BLASHandle* pBLASHandle = buildBLAS(
+		pVertexBuffer, vertexSize, numVertices, 
+		pTriGroupInfoList, numTriGroupInfos, 
+		bAllowUpdate);
 	m_BLASHandleList.emplace_back(pBLASHandle);
 	m_UpdateAccelerationStructureFlags = UPDATE_ACCELERATION_STRCTURE_TYPE_HIT_GROUP_SHADER_TABLE | UPDATE_ACCELERATION_STRCTURE_TYPE_TLAS;
 
@@ -313,11 +316,12 @@ BLASHandle* RayTracingManager::buildBLAS(
 		pGeomDescList[i].Triangles.VertexCount = numVertices;
 		pGeomDescList[i].Triangles.VertexBuffer.StartAddress = VB_GPU_Ptr;
 		pGeomDescList[i].Triangles.VertexBuffer.StrideInBytes = vertexSize;
-		// TODO: Mark the geometry as opaque. 
+		// Mark the geometry as opaque. 
 		// PERFORMANCE TIP: mark geometry as opaque whenever applicable as it can enable important ray processing optimizations.
 		// Note: When rays encounter opaque geometry an any hit shader will not be executed whether it is present or not.
 		// pGeomDescList[i].Flags = pTriGroupInfoList[i].bOpaque ? D3D12_RAYTRACING_GEOMETRY_FLAG_OPAQUE : D3D12_RAYTRACING_GEOMETRY_FLAG_NONE;
-		pGeomDescList[i].Flags = true ? D3D12_RAYTRACING_GEOMETRY_FLAG_OPAQUE : D3D12_RAYTRACING_GEOMETRY_FLAG_NONE;
+		bool bOpaque = pTriGroupInfoList[i].Material.Opacity > Material::OPACITY_THRESHOLD;
+		pGeomDescList[i].Flags = bOpaque ? D3D12_RAYTRACING_GEOMETRY_FLAG_OPAQUE : D3D12_RAYTRACING_GEOMETRY_FLAG_NONE;
 	}
 
 	// Build BLAS

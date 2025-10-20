@@ -31,6 +31,17 @@ STDMETHODIMP_(ULONG) BasicMeshObject::Release()
 	return refCount;
 }
 
+void ENGINECALL BasicMeshObject::CreateFromStaticMesh(const StaticMesh& mesh, bool bUseRayTracingIfSupported)
+{
+	const std::vector<Vertex> vertexArray = mesh.GetVertexArray();
+	BeginCreateMesh(vertexArray.data(), static_cast<uint>(vertexArray.size()), static_cast<uint>(mesh.Sections.size()));
+	for (const MeshSection& section : mesh.Sections)
+	{
+		InsertTriGroup(section.Indices.data(), static_cast<uint>(section.Indices.size() / 3), section.Material);
+	}
+	EndCreateMesh(bUseRayTracingIfSupported);
+}
+
 bool ENGINECALL BasicMeshObject::BeginCreateMesh(const Vertex* vertices, uint numVertices, uint numTriGroups)
 {
 	ID3D12Device5* pD3DDeivce = m_pRenderer->GetD3DDevice();
@@ -48,42 +59,6 @@ bool ENGINECALL BasicMeshObject::BeginCreateMesh(const Vertex* vertices, uint nu
 	m_MaxNumTriGroups = numTriGroups;
 	m_pTriGroupList = new IndexedTriGroup[m_MaxNumTriGroups];
 	memset(m_pTriGroupList, 0, sizeof(IndexedTriGroup) * m_MaxNumTriGroups);
-
-	return true;
-}
-
-bool ENGINECALL BasicMeshObject::InsertTriGroup(
-	const uint16_t* indices, uint numTriangles, 
-	const wchar_t* diffuseFilePathOrNull, 
-	const wchar_t* normalFilePathOrNull,
-	MATERIAL_TYPE mltType)
-{
-	ID3D12Device5* pD3DDeivce = m_pRenderer->GetD3DDevice();
-	D3D12ResourceManager* pResourceManager = m_pRenderer->GetResourceManager();
-	bool bUseGpuUploadHeaps = m_pRenderer->IsGpuUploadHeapsEnabledInl();
-
-	ID3D12Resource* pIndexBuffer = nullptr;
-	D3D12_INDEX_BUFFER_VIEW indexBufferView = {};
-
-	ASSERT(m_NumTriGroups < m_MaxNumTriGroups, "Too many tri-groups.");
-
-	if (FAILED(pResourceManager->CreateIndexBuffer(numTriangles * 3, &indexBufferView, &pIndexBuffer, (void*)indices, bUseGpuUploadHeaps)))
-	{
-		ASSERT(false, "Failed to create index buffer.");
-		return false;
-	}
-	IndexedTriGroup* pTriGroup = m_pTriGroupList + m_NumTriGroups;
-	pTriGroup->IndexBuffer = pIndexBuffer;
-	pTriGroup->IndexBufferView = indexBufferView;
-	pTriGroup->NumTriangles = static_cast<uint>(numTriangles);
-	pTriGroup->DiffuseTexHandle = diffuseFilePathOrNull 
-		? (TextureHandle*)m_pRenderer->CreateTextureFromFile(diffuseFilePathOrNull) 
-		: (TextureHandle*)m_pRenderer->CreateImmutableTexture(CreateSolidColorImageRGBA(128, 128, Color::White()));
-	pTriGroup->NormalTexHandle = normalFilePathOrNull
-		? (TextureHandle*)m_pRenderer->CreateTextureFromFile(normalFilePathOrNull)
-		: (TextureHandle*)m_pRenderer->CreateImmutableTexture(CreateSolidColorImageRGBA(128, 128, Color{0.5f, 0.5f, 1.0f}));
-	pTriGroup->Material = CreateBasicMaterial(mltType);
-	m_NumTriGroups++;
 
 	return true;
 }
@@ -108,43 +83,62 @@ bool ENGINECALL BasicMeshObject::InsertTriGroup(const uint16_t* indices, uint nu
 	pTriGroup->IndexBuffer = pIndexBuffer;
 	pTriGroup->IndexBufferView = indexBufferView;
 	pTriGroup->NumTriangles = static_cast<uint>(numTriangles);
-	pTriGroup->DiffuseTexHandle = material.Diffuse.IsValid()
-		? (TextureHandle*)m_pRenderer->CreateImmutableTexture(material.Diffuse)
+	pTriGroup->DiffuseTexHandle = material.HasDiffuseTexture()
+		? (TextureHandle*)m_pRenderer->CreateTextureFromFile(material.DiffuseTexturePath.c_str())
 		: (TextureHandle*)m_pRenderer->CreateImmutableTexture(CreateSolidColorImageRGBA(128, 128, Color::White()));
-	pTriGroup->NormalTexHandle = material.Normal.IsValid()
-		? (TextureHandle*)m_pRenderer->CreateImmutableTexture(material.Normal)
+	pTriGroup->NormalTexHandle = material.HasNormalTexture()
+		? (TextureHandle*)m_pRenderer->CreateTextureFromFile(material.NormalTexturePath.c_str())
 		: (TextureHandle*)m_pRenderer->CreateImmutableTexture(CreateSolidColorImageRGBA(128, 128, Color{ 0.5f, 0.5f, 1.0f }));
-	pTriGroup->Material = CreateBasicMaterial(MATERIAL_TYPE_DEFAULT);
-	pTriGroup->Material = CreateBasicMaterial(material.Type);
+	pTriGroup->Material.BaseColor = material.BaseColor;
+	pTriGroup->Material.Opacity = material.Opacity;
+	pTriGroup->Material.SpecularColor = material.SpecularColor;
+	pTriGroup->Material.SpecularFactor = material.SpecularFactor;
+	pTriGroup->Material.MetallicFactor = material.MetallicFactor;
+	pTriGroup->Material.RoughnessFactor = material.RoughnessFactor;
+	pTriGroup->Material.NormalScale = material.NormalScale;
+	pTriGroup->Material.AmbientOcclusionStrength = material.AmbientOcclusionStrength;
+
 	m_NumTriGroups++;
 	return true;
 }
 
-void ENGINECALL BasicMeshObject::EndCreateMesh(bool bOpaque, bool bUseRayTracingIfSupported)
+void ENGINECALL BasicMeshObject::EndCreateMesh(bool bUseRayTracingIfSupported)
 {
 	bool bUseRayTracing = bUseRayTracingIfSupported && m_pRenderer->IsRayTracingEnabledInl();
+	bool bOpaque = true;
+	for (uint i = 0; i < m_NumTriGroups; ++i)
+	{
+		const IndexedTriGroup& tg = m_pTriGroupList[i];
+		if (tg.Material.Opacity < Material::OPACITY_THRESHOLD)
+		{
+			bOpaque = false;
+			break;
+		}
+	}
 
 	if (bOpaque && !bUseRayTracing)
 	{
 		m_RenderPass = RENDER_PASS_OPAQUE;
 	}
-	else if (bOpaque && bUseRayTracing)
-	{
-		m_RenderPass = RENDER_PASS_RAYTRACING_OPAQUE;
-	}
 	else if (!bOpaque && !bUseRayTracing)
 	{
 		m_RenderPass = RENDER_PASS_TRANSPARENT;
 	}
-	else if (!bOpaque && bUseRayTracing)
+	else
 	{
-		m_RenderPass = RENDER_PASS_RAYTRACING_TRANSPARENT;
+		m_RenderPass = RENDER_PASS_RAYTRACING;
 	}
 
 	if (bUseRayTracing)
 	{
 		RayTracingManager* pRayTracingManager = m_pRenderer->GetRayTracingManager();
-		m_pBLASHandle = pRayTracingManager->AllocBLAS(m_pVertexBuffer, sizeof(Vertex), m_VertexBufferView.SizeInBytes / sizeof(Vertex), m_pTriGroupList, m_NumTriGroups, false);
+		m_pBLASHandle = pRayTracingManager->AllocBLAS(
+			m_pVertexBuffer, 
+			sizeof(Vertex), 
+			m_VertexBufferView.SizeInBytes / sizeof(Vertex), 
+			m_pTriGroupList, 
+			m_NumTriGroups, 
+			false);
 	}
 }
 
@@ -229,35 +223,6 @@ void BasicMeshObject::UpdateBLASTransform(const Matrix4x4& worldMatrix)
 {
 	RayTracingManager* pRayTracingManager = m_pRenderer->GetRayTracingManager();
 	pRayTracingManager->UpdateBLASTransform(m_pBLASHandle, worldMatrix);
-}
-
-RenderMaterial BasicMeshObject::CreateBasicMaterial(MATERIAL_TYPE mtlType)
-{
-	RenderMaterial out;
-	out.Type = mtlType;
-	out.Ks = FLOAT3(0.5f, 0.5f, 0.5f);
-	out.Roughness = 0.01f;
-	out.Kr = FLOAT3(0.5f, 0.5f, 0.5f);
-	out.Kt = FLOAT3(0.0f, 0.0f, 0.0f);
-	out.Type = MATERIAL_TYPE_DEFAULT;
-	out.AmbientIntensity = 0.25f;
-	out.Opacity = FLOAT3(1.0f, 1.0f, 1.0f);
-
-	if (mtlType == MATERIAL_TYPE_GLASS)
-	{
-		out.Ks = FLOAT3(0.1f, 0.1f, 0.1f);
-		out.Kr = FLOAT3(0.25f, 0.25f, 0.25f);
-		out.Kt = FLOAT3(0.75f, 0.75f, 0.75f);
-		out.Opacity = FLOAT3(0.5f, 0.5f, 0.5f);
-		out.AmbientIntensity = 0.01f;
-	}
-
-	if (mtlType == MATERIAL_TYPE_MATTE)
-	{
-		out.Kr = FLOAT3(0.0f, 0.0f, 0.0f);
-	}
-
-	return out;
 }
 
 bool BasicMeshObject::initPipelineState()

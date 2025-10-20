@@ -21,6 +21,7 @@
     <ClInclude Include="$(MSBuildThisFileDirectory)FVector3.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)Image.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)IndexCreator.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)Material.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)Plane.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)ProcessorInfo.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)QueryPerfCounter.h" />

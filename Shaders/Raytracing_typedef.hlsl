@@ -49,4 +49,14 @@ struct CONSTANT_BUFFER_RT_TRIGROUP
     BasicMaterial Material;
 };
 
+struct ShadingInfo
+{
+    float3 Kd;
+    float3 Ks;
+    float3 Kr;
+    float3 Kt;
+    float Roughness;
+    float AmbientOcclusionStrength;
+};
+
 #endif

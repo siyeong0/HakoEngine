@@ -15,7 +15,7 @@ RadiancePayload TraceRadianceRay(in Ray ray, in uint currRayRecursionDepth, in u
 	
     if (currRayRecursionDepth >= maxRecursionDepth)
     {
-        rayPayload.radiance = float3(1, 0, 1);
+        rayPayload.radiance = float3(0, 0, 0);
         return rayPayload;
     }
 
@@ -172,21 +172,22 @@ bool TryTraceShadowRayAndReportIfHit(in float3 hitPosition, in float3 direction,
     return TraceShadowRayAndReportIfHit(dummyTHit, visibilityRay, false, tMax);
 }
 
-float3 Shade(inout RadiancePayload rayPayload, in float3 N, in float3 hitPosition, in ShadingMaterial material)
+float3 Shade(inout RadiancePayload rayPayload, in float3 N, in float3 hitPosition, in ShadingInfo info)
 {
     uint maxRadianceRecursionDepth = g_MaxRadianceRayRecursionDepth;
 	
     float3 V = -WorldRayDirection(); // View Vector
     float3 L = 0;
 	
-    const float3 Kd = material.Kd;
-    const float3 Ks = material.Ks;
-    const float3 Kr = material.Kr;
-    const float3 Kt = material.Kt;
-    const float roughness = material.Roughness;
+    const float3 Kd = info.Kd;
+    const float3 Ks = info.Ks;
+    const float3 Kr = info.Kr;
+    const float3 Kt = info.Kt;
+    const float roughness = info.Roughness;
+    const float ambientOcclusionStrength = info.AmbientOcclusionStrength;
 
 	// Direct illumination
-    if (!IsBlack(material.Kd) || !IsBlack(material.Ks))
+    if (!IsBlack(Kd) || !IsBlack(Ks))
     {
         for (uint i = 0; i < g_NumLights; i++)
         {
@@ -200,7 +201,7 @@ float3 Shade(inout RadiancePayload rayPayload, in float3 N, in float3 hitPositio
             }
             else /* point */
             {
-                wi = normalize(g_LightList[i].PosOrDir - HitWorldPosition());
+                wi = normalize(g_LightList[i].PosOrDir - hitPosition);
             }
             
 			// Raytraced shadows.
@@ -221,7 +222,7 @@ float3 Shade(inout RadiancePayload rayPayload, in float3 N, in float3 hitPositio
 	// Add a default ambient contribution to all hits. 
 	// This will be subtracted for hitPositions with 
 	// calculated Ambient coefficient in the composition pass.
-    L += material.AmbientIntensity * Kd;
+    L += ambientOcclusionStrength * Kd;
 
 	// Specular Indirect Illumination
     bool bReflective = !IsBlack(Kr);
@@ -234,7 +235,7 @@ float3 Shade(inout RadiancePayload rayPayload, in float3 N, in float3 hitPositio
 	
     if (bReflective || bTransmissive)
     {
-        if (bReflective && (BxDF_IsTotalInternalReflection(V, N)) || material.Type == MATERIAL_TYPE_MIRROR)
+        if (bReflective && (BxDF_IsTotalInternalReflection(V, N)))
         {
             float3 wi = reflect(-V, N);
             RadiancePayload reflectedRayPayload = rayPayload;
@@ -351,6 +352,9 @@ void MyClosestHitShader_RadianceRay(inout RadiancePayload rayPayload, in BuiltIn
     float3 worldBinormal = normalize(cross(worldTangent, worldNormal));
     
     float3 tanNormal = texNormal.rgb * 2.0 - 1.0;
+    tanNormal.xy *= l_RayGeomCB.Material.NormalScale;
+    tanNormal = normalize(tanNormal);
+    
     float3 surfaceNormal = (tanNormal.xxx * worldTangent) + (tanNormal.yyy * worldBinormal) + (tanNormal.zzz * worldNormal);
     
     // Compute depth
@@ -359,16 +363,21 @@ void MyClosestHitShader_RadianceRay(inout RadiancePayload rayPayload, in BuiltIn
     rayPayload.depth = saturate(projPos.z);
     
     // Compute radiance
-    ShadingMaterial material;
-    material.Kd = texDiffuse.rgb * l_RayGeomCB.Material.Opacity;
-    material.Type = l_RayGeomCB.Material.Type;
-    material.Ks = l_RayGeomCB.Material.Ks;
-    material.Roughness = l_RayGeomCB.Material.Roughness;
-    material.Kr = l_RayGeomCB.Material.Kr;
-    material.AmbientIntensity = l_RayGeomCB.Material.AmbientIntensity;
-    material.Kt = l_RayGeomCB.Material.Kt;
-   
-    rayPayload.radiance = Shade(rayPayload, surfaceNormal, hitPosition, material);
+    BasicMaterial mtl = l_RayGeomCB.Material;
+    float3 baseColor = mtl.BaseColor * texDiffuse.rgb;
+    float metallic = mtl.MetallicFactor;
+    float roughness = max(0.04f, saturate(mtl.RoughnessFactor));
+    
+    ShadingInfo info;
+    info.Kd = (1.0 - mtl.MetallicFactor) * baseColor;
+    info.Ks = saturate(lerp(mtl.SpecularColor, baseColor, metallic) * mtl.SpecularFactor);
+    info.Kr = (metallic > 0.5) ? normalize(max(baseColor, float3(1e-4, 1e-4, 1e-4))) : float3(1.0, 1.0, 1.0);
+    //info.Kr = float3(mtl.SpecularFactor, mtl.SpecularFactor, mtl.SpecularFactor);
+    info.Kt = (1.0f - saturate(mtl.Opacity)) * baseColor;
+    info.Roughness = roughness;
+    info.AmbientOcclusionStrength = mtl.AmbientOcclusionStrength;
+    
+    rayPayload.radiance = Shade(rayPayload, surfaceNormal, hitPosition, info);
 }
 
 [shader("miss")]

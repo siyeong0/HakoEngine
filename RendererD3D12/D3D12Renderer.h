@@ -43,8 +43,7 @@ public:
 	void ENGINECALL RenderSpriteWithTex(void* pSprObjHandle, int posX, int posY, float scaleX, float scaleY, const RECT* pRect, float z, void* pTexHandle) override;
 	void ENGINECALL RenderSprite(void* pSprObjHandle, int posX, int posY, float scaleX, float scaleY, float z) override;
 
-	IMeshObject* ENGINECALL CreateBasicMeshObject(bool bOpaque, bool bUseRayTracingIfSupported) override;
-	IMeshObject* ENGINECALL CreateBasicMeshObject(const StaticMesh& staticMesh, bool bOpaque, bool bUseRayTracingIfSupported) override;
+	IMeshObject* ENGINECALL CreateBasicMeshObject() override;
 	ISprite* ENGINECALL CreateSpriteObject() override;
 	ISprite* ENGINECALL CreateSpriteObject(const wchar_t* wchTexFileName) override;
 	ISprite* ENGINECALL CreateSpriteObject(const wchar_t* wchTexFileName, int posX, int posY, int width, int height) override;

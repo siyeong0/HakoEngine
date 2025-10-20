@@ -13,26 +13,16 @@ struct Light
 
 struct BasicMaterial
 {
-    float3 Ks;
-    MATERIAL_TYPE Type;
-    float3 Kr;
-    float Roughness;
-    float3 Kt;
-    float AmbientIntensity;
-    float3 Opacity;
-    uint Reserved0;
-};
+    float3 BaseColor;
+    float Opacity;
 
-// shader internal
-struct ShadingMaterial
-{
-    float3 Kd;
-    float3 Ks;
-    float3 Kr;
-    float3 Kt;
-    MATERIAL_TYPE Type;
-    float Roughness;
-    float AmbientIntensity;
+    float3 SpecularColor;
+    float SpecularFactor;
+
+    float MetallicFactor;
+    float RoughnessFactor;
+    float NormalScale;
+    float AmbientOcclusionStrength;
 };
 
 bool IsBlack(in float3 color)

@@ -624,13 +624,9 @@ void ENGINECALL D3D12Renderer::RenderMeshObject(
 		bAdded = m_ppRenderQueueTrasnparent[m_CurrThreadIndex]->Add(&item);
 		ASSERT(bAdded, "Render Queue Transparent is full.");
 		break;
-	case RENDER_PASS_RAYTRACING_OPAQUE:
+	case RENDER_PASS_RAYTRACING:
 		bAdded = m_ppRenderQueueRayTracing[0]->Add(&item);
 		ASSERT(bAdded, "Render Queue is full.");
-		break;
-	case RENDER_PASS_RAYTRACING_TRANSPARENT:
-		// TODO: Support transparent object in raytracing.
-		ASSERT(false, "Raytracing Transparent is not supported yet.");
 		break;
 	default:
 		ASSERT(false, "Invalid render pass.");
@@ -688,28 +684,10 @@ void ENGINECALL D3D12Renderer::RenderSprite(
 	RenderSpriteWithTex(pSprObjHandle, posX, posY, scaleX, scaleY, nullptr, z, nullptr);
 }
 
-IMeshObject* ENGINECALL D3D12Renderer::CreateBasicMeshObject(bool bOpaque, bool bUseRayTracingIfSupported)
+IMeshObject* ENGINECALL D3D12Renderer::CreateBasicMeshObject()
 {
 	BasicMeshObject* pMeshObj = new BasicMeshObject;
 	pMeshObj->Initialize(this);
-
-	return pMeshObj;
-}
-
-IMeshObject* ENGINECALL D3D12Renderer::CreateBasicMeshObject(const StaticMesh& staticMesh, bool bOpaque, bool bUseRayTracingIfSupported)
-{
-	BasicMeshObject* pMeshObj = new BasicMeshObject;
-	pMeshObj->Initialize(this);
-
-	std::vector<Vertex> vertices = staticMesh.GetVertexArray();
-	uint numSections = static_cast<uint>(staticMesh.Sections.size());
-	pMeshObj->BeginCreateMesh(vertices.data(), static_cast<uint>(vertices.size()), numSections);
-	for (uint i = 0; i < numSections; i++)
-	{
-		const MeshSection& section = staticMesh.Sections[i];
-		pMeshObj->InsertTriGroup(section.Indices.data(), static_cast<uint>(section.Indices.size()), section.Material);
-	}
-	pMeshObj->EndCreateMesh(bOpaque, bUseRayTracingIfSupported);
 
 	return pMeshObj;
 }
@@ -1005,11 +983,7 @@ void D3D12Renderer::ProcessByThread(int threadIndex)
 		m_ppRenderQueueTrasnparent[threadIndex]->Process(
 			threadIndex, pCommandListPool, m_pCommandQueue, NUM_ITEMS_PER_PROCESS, rtvHandle, dsvHandle, &m_Viewport, &m_ScissorRect);
 		break;
-	case RENDER_PASS_RAYTRACING_OPAQUE:
-		// TODO: Raytracing support??
-		ASSERT(false, "Raytracing is not supported in multi-thread rendering.");
-		break;
-	case RENDER_PASS_RAYTRACING_TRANSPARENT:
+	case RENDER_PASS_RAYTRACING:
 		// TODO: Raytracing support??
 		ASSERT(false, "Raytracing is not supported in multi-thread rendering.");
 		break;

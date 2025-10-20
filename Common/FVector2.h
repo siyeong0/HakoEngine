@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include "Common/Common.h"
 #include <cmath>
 #include <numeric>
@@ -13,25 +13,26 @@ struct FVector2
     FLOAT x;
     FLOAT y;
 
-    FVector2() = default;
+    constexpr FVector2() : x(0.0f), y(0.0f) {}
     ~FVector2() = default;
 
-    FVector2(FLOAT x, FLOAT y) : x(x), y(y) {}
-    FVector2(const FVector2& other) : x(other.x), y(other.y) {}
+    constexpr FVector2(FLOAT x, FLOAT y) : x(x), y(y) {}
+    constexpr FVector2(const FVector2& other) : x(other.x), y(other.y) {}
+
     FVector2& operator=(const FVector2& other) { x = other.x; y = other.y; return *this; }
     inline FLOAT& operator[](size_t idx) { return (&x)[idx]; }
     inline const FLOAT& operator[](size_t idx) const { return (&x)[idx]; }
 
-    static inline FVector2 Zero() { return FVector2{ 0.f, 0.f }; }
-    static inline FVector2 One() { return FVector2{ 1.f, 1.f }; }
-    static inline FVector2 UnitX() { return FVector2{ 1.f, 0.f }; }
-    static inline FVector2 UnitY() { return FVector2{ 0.f, 1.f }; }
-    static inline FVector2 FMaxValue() { constexpr FLOAT v = std::numeric_limits<FLOAT>::max();  return FVector2{ v, v }; }
-    static inline FVector2 FMinValue() { constexpr FLOAT v = std::numeric_limits<FLOAT>::lowest();  return FVector2{ v, v }; }
-    static inline FVector2 Up() { return FVector2{ 0.f, 1.f }; }
-    static inline FVector2 Down() { return FVector2{ 0.f, -1.f }; }
-    static inline FVector2 Right() { return FVector2{ 1.f, 0.f }; }
-    static inline FVector2 Left() { return FVector2{ -1.f, 0.f }; }
+    static inline constexpr FVector2 Zero() { return FVector2{ 0.f, 0.f }; }
+    static inline constexpr FVector2 One() { return FVector2{ 1.f, 1.f }; }
+    static inline constexpr FVector2 UnitX() { return FVector2{ 1.f, 0.f }; }
+    static inline constexpr FVector2 UnitY() { return FVector2{ 0.f, 1.f }; }
+    static inline constexpr FVector2 FMaxValue() { constexpr FLOAT v = std::numeric_limits<FLOAT>::max();  return FVector2{ v, v }; }
+    static inline constexpr FVector2 FMinValue() { constexpr FLOAT v = std::numeric_limits<FLOAT>::lowest();  return FVector2{ v, v }; }
+    static inline constexpr FVector2 Up() { return FVector2{ 0.f, 1.f }; }
+    static inline constexpr FVector2 Down() { return FVector2{ 0.f, -1.f }; }
+    static inline constexpr FVector2 Right() { return FVector2{ 1.f, 0.f }; }
+    static inline constexpr FVector2 Left() { return FVector2{ -1.f, 0.f }; }
 
     inline FLOAT Dot(const FVector2& other) const { return x * other.x + y * other.y; }
 

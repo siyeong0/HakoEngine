@@ -38,6 +38,9 @@
     <ClInclude Include="$(MSBuildThisFileDirectory)Color.h">
       <Filter>Color</Filter>
     </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)Material.h">
+      <Filter>Material</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Util">
@@ -69,6 +72,9 @@
     </Filter>
     <Filter Include="Vertex">
       <UniqueIdentifier>{112cf960-fd35-4139-9a8f-0bdfdbe7aec1}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Material">
+      <UniqueIdentifier>{95c35fa7-ac56-46eb-931f-1c1b062fc1db}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>

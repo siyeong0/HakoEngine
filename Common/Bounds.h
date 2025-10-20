@@ -7,8 +7,8 @@ struct Bounds
 	FVector3 Min;
 	FVector3 Max;
 
-	Bounds() : Min(FVector3::FMaxValue()), Max(FVector3::FMinValue()) {};
-	Bounds(const FVector3& min, const FVector3& max) : Min(min), Max(max) {}
+	constexpr Bounds() : Min(FVector3::FMaxValue()), Max(FVector3::FMinValue()) {};
+	constexpr Bounds(const FVector3& min, const FVector3& max) : Min(min), Max(max) {}
 
 	inline FVector3 Center() const { return (Min + Max) * 0.5f; }
 	inline FVector3 Size() const { return Max - Min; }

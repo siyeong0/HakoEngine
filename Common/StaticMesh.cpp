@@ -8,6 +8,7 @@
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
 
+#include "Image.h"
 #include "StaticMesh.h"
 
 void StaticMesh::BeginCreate(
@@ -352,19 +353,52 @@ bool StaticMesh::LoadFromFile(const char* filename, float scale)
 
 		// Load material. if possible
 		const aiMaterial* aimat = scene->mMaterials[m->mMaterialIndex];
-		if (aimat)
+		if (aimat->GetTextureCount(aiTextureType_DIFFUSE) > 0)
 		{
-			// Diffuse
-			TryLoadMaterialTexture(scene, aimat, aiTextureType_DIFFUSE, modelDir, &sec.Material.Diffuse);
-			// Normal (NORMALS or HEIGHT)
-			TryLoadNormalLike(scene, aimat, modelDir, &sec.Material.Normal);
-			// Specular
-			TryLoadMaterialTexture(scene, aimat, aiTextureType_SPECULAR, modelDir, &sec.Material.Specular);
-			// Metallic / Roughness (PBR)
-			TryLoadMetallic(scene, aimat, modelDir, &sec.Material.Metallic);
-			TryLoadRoughness(scene, aimat, modelDir, &sec.Material.Roughness);
-			// 필요하면 aiTextureType_UNKNOWN 에서 ORM(OCclusionRoughnessMetallic) 같은 텍스처를 파싱하는 로직을 추가 가능
+			aiString texPath;
+			if (aimat->GetTexture(aiTextureType_DIFFUSE, 0, &texPath) == aiReturn_SUCCESS)
+			{
+				std::filesystem::path fullTexPath = modelDir / std::filesystem::path(texPath.C_Str());
+				sec.Material.DiffuseTexturePath = fullTexPath.wstring();
+			}
 		}
+		if (aimat->GetTextureCount(aiTextureType_NORMALS) > 0)
+		{
+			aiString texPath;
+			if (aimat->GetTexture(aiTextureType_NORMALS, 0, &texPath) == aiReturn_SUCCESS)
+			{
+				std::filesystem::path fullTexPath = modelDir / std::filesystem::path(texPath.C_Str());
+				sec.Material.NormalTexturePath = fullTexPath.wstring();
+			}
+		}
+		if (aimat->GetTextureCount(aiTextureType_SPECULAR) > 0)
+		{
+			aiString texPath;
+			if (aimat->GetTexture(aiTextureType_SPECULAR, 0, &texPath) == aiReturn_SUCCESS)
+			{
+				std::filesystem::path fullTexPath = modelDir / std::filesystem::path(texPath.C_Str());
+				sec.Material.SpecularTexturePath = fullTexPath.wstring();
+			}
+		}
+		if (aimat->GetTextureCount(aiTextureType_METALNESS) > 0)
+		{
+			aiString texPath;
+			if (aimat->GetTexture(aiTextureType_METALNESS, 0, &texPath) == aiReturn_SUCCESS)
+			{
+				std::filesystem::path fullTexPath = modelDir / std::filesystem::path(texPath.C_Str());
+				sec.Material.MetallicTexturePath = fullTexPath.wstring();
+			}
+		}
+		if (aimat->GetTextureCount(aiTextureType_DIFFUSE_ROUGHNESS) > 0)
+		{
+			aiString texPath;
+			if (aimat->GetTexture(aiTextureType_DIFFUSE_ROUGHNESS, 0, &texPath) == aiReturn_SUCCESS)
+			{
+				std::filesystem::path fullTexPath = modelDir / std::filesystem::path(texPath.C_Str());
+				sec.Material.RoughnessTexturePath = fullTexPath.wstring();
+			}
+		}
+		
 
 		Sections.emplace_back(std::move(sec));
 

@@ -1,7 +1,7 @@
 ﻿#define _CRT_SECURE_NO_WARNINGS
 #include <iostream>
 #include <filesystem>
-
+#include <fstream>
 #pragma warning(push)
 #pragma warning(disable : 6262)
 #define STB_IMAGE_IMPLEMENTATION
@@ -15,6 +15,87 @@
 #include <assimp/postprocess.h>
 
 #include "Image.h"
+
+Image Image::LoadFromFile(const char* path)
+{
+	ASSERT(path, "Image path is null");
+	return LoadFromFile(std::filesystem::path(path));
+}
+
+Image Image::LoadFromFile(const wchar_t* path)
+{
+	ASSERT(path, "Image wide path is null");
+	return Image::LoadFromFile(std::filesystem::path(path));
+}
+
+Image Image::LoadFromFile(const std::filesystem::path& path)
+{
+	ASSERT(!path.empty(), "Image path is empty");
+	Image img;
+
+	std::error_code ec;
+	if (!std::filesystem::exists(path, ec))
+	{
+		std::cout << "[Image] Texture not found: " << path << "\n";
+		return img;
+	}
+
+	std::ifstream ifs(path, std::ios::binary);
+	if (!ifs)
+	{
+		std::cout << "[Image] Failed to open: " << path << "\n";
+		return img;
+	}
+
+	ifs.seekg(0, std::ios::end);
+	std::streamoff len = ifs.tellg();
+	if (len <= 0)
+	{
+		std::cout << "[Image] Empty file: " << path << "\n";
+		return img;
+	}
+	ifs.seekg(0, std::ios::beg);
+
+	std::vector<unsigned char> buffer(static_cast<size_t>(len));
+	if (!ifs.read(reinterpret_cast<char*>(buffer.data()), len))
+	{
+		std::cout << "[Image] Failed to read: " << path << "\n";
+		return img;
+	}
+
+	return Image::LoadFromMemory(buffer.data(), buffer.size());
+}
+
+Image Image::LoadFromMemory(const unsigned char* fileData, size_t dataSize)
+{
+	ASSERT(fileData && dataSize > 0, "Invalid image memory");
+	Image img;
+
+	if (dataSize > static_cast<size_t>(INT_MAX))
+	{
+		std::cout << "[Image] Data too large for stb_image (" << dataSize << " bytes)\n";
+		return img;
+	}
+
+	int w = 0, h = 0, comp = 0;
+	unsigned char* pixels = stbi_load_from_memory(
+		fileData,
+		static_cast<int>(dataSize),
+		&w, &h, &comp,
+		4 // force RGBA8
+	);
+
+	if (!pixels)
+	{
+		std::cout << "[Image] stbi_load_from_memory failed: "
+			<< (stbi_failure_reason() ? stbi_failure_reason() : "unknown") << "\n";
+		return img;
+	}
+
+	FillImageRGBA(&img, static_cast<uint>(w), static_cast<uint>(h), pixels);
+	stbi_image_free(pixels);
+	return img;
+}
 
 void FillImageRGBA(Image* outImg, uint w, uint h, const unsigned char* rgba8)
 {
@@ -142,147 +223,4 @@ bool SaveImageToFile(const std::filesystem::path& path, const Image& img, IMAGE_
 	}
 
 	return true;
-}
-
-// Load external file (relative to model dir) via stb_image → RGBA8
-bool LoadExternalTexture(
-	const std::filesystem::path& modelDir,
-	const std::string& relPath,
-	Image* outImg)
-{
-	if (relPath.empty()) return false;
-
-	// Assimp material path can be absolute/relative; try relative first
-	std::filesystem::path full = modelDir / relPath;
-	if (!std::filesystem::exists(full))
-	{
-		// Fallback: as is (maybe absolute)
-		full = relPath;
-		if (!std::filesystem::exists(full))
-		{
-			std::fprintf(stderr, "[StaticMesh] Texture not found: %s\n", relPath.c_str());
-			return false;
-		}
-	}
-
-	int w = 0, h = 0, comp = 0;
-	unsigned char* pixels = stbi_load(full.string().c_str(), &w, &h, &comp, 4);
-	if (!pixels)
-	{
-		std::fprintf(stderr, "[StaticMesh] stbi_load failed: %s\n", full.string().c_str());
-		return false;
-	}
-
-	FillImageRGBA(outImg, static_cast<uint>(w), static_cast<uint>(h), pixels);
-	stbi_image_free(pixels);
-
-	return true;
-}
-
-// Load embedded texture (*N) from aiScene → RGBA8/float
-bool LoadEmbeddedTexture(
-	const aiScene* scene,
-	const std::string& starPath,
-	Image* outImg)
-{
-	// "*0" → 0
-	int texIndex = 0;
-	try { texIndex = std::stoi(starPath.substr(1)); }
-	catch (...) { return false; }
-
-	if (texIndex < 0 || texIndex >= int(scene->mNumTextures)) return false;
-	const aiTexture* tex = scene->mTextures[texIndex];
-	if (!tex) return false;
-
-	if (tex->mHeight == 0)
-	{
-		// Compressed data (PNG/JPG/…)
-		int w = 0, h = 0, comp = 0;
-		const unsigned char* src = reinterpret_cast<const unsigned char*>(tex->pcData);
-		unsigned char* pixels = stbi_load_from_memory(src, tex->mWidth, &w, &h, &comp, 4);
-		if (!pixels)
-		{
-			std::fprintf(stderr, "[StaticMesh] stbi_load_from_memory failed for embedded texture %s\n", starPath.c_str());
-			return false;
-		}
-		FillImageRGBA(outImg, static_cast<uint>(w), static_cast<uint>(h), pixels);
-		stbi_image_free(pixels);
-		return true;
-	}
-	else
-	{
-		// Uncompressed (aiTexel RGBA8888)
-		int w = int(tex->mWidth);
-		int h = int(tex->mHeight);
-		std::vector<unsigned char> rgba; rgba.resize(size_t(w) * size_t(h) * 4);
-		const aiTexel* src = tex->pcData;
-		for (int i = 0; i < w * h; ++i)
-		{
-			rgba[i * 4 + 0] = src[i].r;
-			rgba[i * 4 + 1] = src[i].g;
-			rgba[i * 4 + 2] = src[i].b;
-			rgba[i * 4 + 3] = src[i].a;
-		}
-		FillImageRGBA(outImg, static_cast<uint>(w), static_cast<uint>(h), rgba.data());
-		return true;
-	}
-}
-
-bool TryLoadMaterialTexture(
-	const aiScene* scene,
-	const aiMaterial* mat,
-	aiTextureType type,
-	const std::filesystem::path& modelDir,
-	Image* outImg)
-{
-	if (!mat) return false;
-
-	aiString path;
-	if (mat->GetTexture(type, 0, &path) != AI_SUCCESS) return false;
-
-	std::string p = path.C_Str();
-	if (p.empty()) return false;
-
-	// Embedded?
-	if (p[0] == '*')
-	{
-		return LoadEmbeddedTexture(scene, p, outImg);
-	}
-	// External
-	return LoadExternalTexture(modelDir, p, outImg);
-}
-
-// Many assets put normal map in aiTextureType_HEIGHT. Try NORMALS first, then HEIGHT.
-bool TryLoadNormalLike(
-	const aiScene* scene,
-	const aiMaterial* mat,
-	const std::filesystem::path& modelDir,
-	Image* outImg)
-{
-	if (TryLoadMaterialTexture(scene, mat, aiTextureType_NORMALS, modelDir, outImg)) return true;
-	if (TryLoadMaterialTexture(scene, mat, aiTextureType_HEIGHT, modelDir, outImg)) return true;
-	return false;
-}
-
-// Metallic & Roughness can be stored in aiTextureType_METALNESS / aiTextureType_DIFFUSE_ROUGHNESS.
-// Some exporters put PBR maps under aiTextureType_UNKNOWN too; you could add fallback if needed.
-bool TryLoadMetallic(
-	const aiScene* scene,
-	const aiMaterial* mat,
-	const std::filesystem::path& modelDir,
-	Image* outImg)
-{
-	if (TryLoadMaterialTexture(scene, mat, aiTextureType_METALNESS, modelDir, outImg)) return true;
-	// Optional: UNKNOWN fallback or combined ORM parsing could go here
-	return false;
-}
-
-bool TryLoadRoughness(
-	const aiScene* scene,
-	const aiMaterial* mat,
-	const std::filesystem::path& modelDir,
-	Image* outImg)
-{
-	if (TryLoadMaterialTexture(scene, mat, aiTextureType_DIFFUSE_ROUGHNESS, modelDir, outImg)) return true;
-	return false;
 }

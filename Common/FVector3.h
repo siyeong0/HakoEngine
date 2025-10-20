@@ -14,28 +14,29 @@ struct FVector3
 	FLOAT y;
 	FLOAT z;
 
-	FVector3() = default;
+	constexpr FVector3() : x(0.0f), y(0.0f), z(0.0f) {}
 	~FVector3() = default;
 
-	FVector3(FLOAT x, FLOAT y, FLOAT z) : x(x), y(y), z(z) {}
-	FVector3(const FVector3& other) : x(other.x), y(other.y), z(other.z) {}
+	constexpr FVector3(FLOAT x, FLOAT y, FLOAT z) : x(x), y(y), z(z) {}
+	constexpr FVector3(const FVector3& other) : x(other.x), y(other.y), z(other.z) {}
+
 	FVector3& operator=(const FVector3& other) { x = other.x; y = other.y; z = other.z; return *this; }
 	inline FLOAT& operator[](size_t idx) { return (&x)[idx]; }
 	inline const FLOAT& operator[](size_t idx) const { return (&x)[idx]; }
 
-	static inline FVector3 Zero() { return FVector3{ 0.f, 0.f, 0.f }; }
-	static inline FVector3 One() { return FVector3{ 1.f, 1.f, 1.f }; }
-	static inline FVector3 UnitX() { return FVector3{ 1.f, 0.f, 0.f }; }
-	static inline FVector3 UnitY() { return FVector3{ 0.f, 1.f, 0.f }; }
-	static inline FVector3 UnitZ() { return FVector3{ 0.f, 0.f, 1.f }; }
-	static inline FVector3 FMaxValue() { constexpr FLOAT v = std::numeric_limits<FLOAT>::max();  return FVector3{ v,v,v, }; }
-	static inline FVector3 FMinValue() { constexpr FLOAT v = std::numeric_limits<FLOAT>::lowest();  return FVector3{ v,v,v, }; }
-	static inline FVector3 Up() { return FVector3{ 0.f, 1.f, 0.f }; }
-	static inline FVector3 Down() { return FVector3{ 0.f, -1.f, 0.f }; }
-	static inline FVector3 Right() { return FVector3{ 1.f, 0.f, 0.f }; }
-	static inline FVector3 Left() { return FVector3{ -1.f, 0.f, 0.f }; }
-	static inline FVector3 Forward() { return FVector3{ 0.f, 0.f, 1.f }; }
-	static inline FVector3 Backward() { return FVector3{ 0.f, 0.f, -1.f }; }
+	static inline constexpr FVector3 Zero() { return FVector3{ 0.f, 0.f, 0.f }; }
+	static inline constexpr FVector3 One() { return FVector3{ 1.f, 1.f, 1.f }; }
+	static inline constexpr FVector3 UnitX() { return FVector3{ 1.f, 0.f, 0.f }; }
+	static inline constexpr FVector3 UnitY() { return FVector3{ 0.f, 1.f, 0.f }; }
+	static inline constexpr FVector3 UnitZ() { return FVector3{ 0.f, 0.f, 1.f }; }
+	static inline constexpr FVector3 FMaxValue() { constexpr FLOAT v = std::numeric_limits<FLOAT>::max();  return FVector3{ v,v,v, }; }
+	static inline constexpr FVector3 FMinValue() { constexpr FLOAT v = std::numeric_limits<FLOAT>::lowest();  return FVector3{ v,v,v, }; }
+	static inline constexpr FVector3 Up() { return FVector3{ 0.f, 1.f, 0.f }; }
+	static inline constexpr FVector3 Down() { return FVector3{ 0.f, -1.f, 0.f }; }
+	static inline constexpr FVector3 Right() { return FVector3{ 1.f, 0.f, 0.f }; }
+	static inline constexpr FVector3 Left() { return FVector3{ -1.f, 0.f, 0.f }; }
+	static inline constexpr FVector3 Forward() { return FVector3{ 0.f, 0.f, 1.f }; }
+	static inline constexpr FVector3 Backward() { return FVector3{ 0.f, 0.f, -1.f }; }
 
 	inline FLOAT Dot(const FVector3& other) const { return x * other.x + y * other.y + z * other.z; }
 	inline FVector3 Cross(const FVector3& other) const { return FVector3{ y * other.z - z * other.y,z * other.x - x * other.z,x * other.y - y * other.x }; }

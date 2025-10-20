@@ -43,14 +43,16 @@ struct ShaderHandle
 
 struct RenderMaterial
 {
-	FLOAT3 Ks;
-	MATERIAL_TYPE Type;
-	FLOAT3 Kr;
-	float Roughness;
-	FLOAT3 Kt;
-	float AmbientIntensity;
-	FLOAT3 Opacity;
-	float Reserved0;
+	FLOAT3 BaseColor;
+	float Opacity;
+
+	FLOAT3 SpecularColor;
+	float SpecularFactor;
+
+	float MetallicFactor;
+	float RoughnessFactor;
+	float NormalScale;
+	float AmbientOcclusionStrength;
 };
 
 struct IndexedTriGroup
@@ -98,8 +100,7 @@ enum RENDER_PASS_TYPE : uint
 {
 	RENDER_PASS_OPAQUE,
 	RENDER_PASS_TRANSPARENT,
-	RENDER_PASS_RAYTRACING_OPAQUE,
-	RENDER_PASS_RAYTRACING_TRANSPARENT,
+	RENDER_PASS_RAYTRACING,
 };
 
 enum RENDER_ITEM_TYPE

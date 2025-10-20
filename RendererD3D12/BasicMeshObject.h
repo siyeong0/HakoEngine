@@ -27,13 +27,11 @@ public:
 	STDMETHODIMP_(ULONG)	Release();
 
 	// Derived from IMeshObject
+	void ENGINECALL CreateFromStaticMesh(const StaticMesh& mesh, bool bUseRayTracingIfSupported = true) override;
+
 	bool ENGINECALL BeginCreateMesh(const Vertex* vertices, uint numVertices, uint numTriGroups) override;
-	bool ENGINECALL InsertTriGroup(const uint16_t* indices, uint numTriangles, 
-		const wchar_t* diffuseFilePathOrNull, 
-		const wchar_t* normalFilePathOrNull,
-		MATERIAL_TYPE mltType) override;
 	bool ENGINECALL InsertTriGroup(const uint16_t* indices, uint numTriangles, const Material& material) override;
-	void ENGINECALL EndCreateMesh(bool bOpaque, bool bUseRayTracingIfSupported) override;
+	void ENGINECALL EndCreateMesh(bool bUseRayTracingIfSupported) override;
 
 	uint ENGINECALL GetRenderPass() override;
 
@@ -44,8 +42,6 @@ public:
 	bool Initialize(D3D12Renderer* pRenderer);
 	void Draw(int threadIndex, ID3D12GraphicsCommandList6* pCommandList, const Matrix4x4* worldMatrix);
 	void UpdateBLASTransform(const Matrix4x4& worldMatrix);
-
-	static RenderMaterial CreateBasicMaterial(MATERIAL_TYPE mtlType);
 
 private:
 	bool initPipelineState();

@@ -2,6 +2,7 @@
 #include <Windows.h>
 #include <combaseapi.h>
 #include "Common/Common.h"
+#include "Common/Image.h"
 #include "Common/StaticMesh.h"
 
 #include "IMeshObject.h"
@@ -21,8 +22,7 @@ interface IRenderer : public IUnknown
 	virtual void ENGINECALL RenderSpriteWithTex(void* pSprObjHandle, int posX, int posY, float scaleX, float scaleY, const RECT* pRect, float z, void* pTexHandle) = 0;
 	virtual void ENGINECALL RenderSprite(void* pSprObjHandle, int posX, int posY, float scaleX, float scaleY, float z) = 0;
 
-	virtual IMeshObject* ENGINECALL CreateBasicMeshObject(bool bOpaque = true, bool bUseRayTracingIfSupported = true) = 0;
-	virtual IMeshObject* ENGINECALL CreateBasicMeshObject(const StaticMesh& staticMesh, bool bOpaque = true, bool bUseRayTracingIfSupported = true) = 0;
+	virtual IMeshObject* ENGINECALL CreateBasicMeshObject() = 0;
 	virtual ISprite* ENGINECALL CreateSpriteObject() = 0;
 	virtual ISprite* ENGINECALL CreateSpriteObject(const wchar_t* wchTexFileName) = 0;
 	virtual ISprite* ENGINECALL CreateSpriteObject(const wchar_t* wchTexFileName, int posX, int posY, int width, int height) = 0;
