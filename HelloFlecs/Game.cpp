@@ -46,6 +46,7 @@ static IMeshObject* createKittyBoxMeshObject(IRenderer* pRenderer)
 static IMeshObject* createMegayuchiBoxMeshObject(IRenderer* pRenderer)
 {
 	IMeshObject* pMeshObj = nullptr;
+
 	const wchar_t* diffuseTexPaths[6] =
 	{
 		L"./Resources/megayuchi/tex_00.dds",
@@ -583,7 +584,7 @@ bool Game::Initialize(
 			m_Entities.emplace_back(e.id());
 		}
 		// Create megayuchi box entities
-		const uint MEGA_BOX_OBJECT_COUNT = 20;
+		const uint MEGA_BOX_OBJECT_COUNT = 2000;
 		for (uint i = 0; i < MEGA_BOX_OBJECT_COUNT; i++)
 		{
 			float x = (float)((rand() % 51) - 25);	// -10m - 10m 

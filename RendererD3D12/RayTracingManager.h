@@ -11,7 +11,7 @@ public:
 	RayTracingManager() = default;
 	~RayTracingManager() { Cleanup(); }
 
-	bool Initialize(D3D12Renderer* pRenderer, uint width, uint height, uint maxNumBLASs = 1024);
+	bool Initialize(D3D12Renderer* pRenderer, uint width, uint height, uint maxNumBLASs = 10000);
 	void Cleanup();
 
 	void DoRaytracing(ID3D12GraphicsCommandList6* pCommandList);
@@ -119,6 +119,8 @@ private:
 
 	uint m_MaxNumBLASs = 0;
 	std::list<BLASHandle*> m_BLASHandleList; // BLAS Instance list
+
+	std::vector<BLASHandle*> m_ppCollectedBLASHandles; // for TLAS build
 
 	ID3D12Resource* m_pBLASInstanceDescResouce = nullptr;
 	ID3D12Resource* m_pTLAS = nullptr;

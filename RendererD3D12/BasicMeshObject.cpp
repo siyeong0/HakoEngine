@@ -46,7 +46,7 @@ bool ENGINECALL BasicMeshObject::BeginCreateMesh(const Vertex* vertices, uint nu
 {
 	ID3D12Device5* pD3DDeivce = m_pRenderer->GetD3DDevice();
 	D3D12ResourceManager* pResourceManager = m_pRenderer->GetResourceManager();
-	BOOL bUseGpuUploadHepas = m_pRenderer->IsGpuUploadHeapsEnabledInl();
+	bool bUseGpuUploadHepas = m_pRenderer->IsGpuUploadHeapsEnabledInl();
 
 	ASSERT(numTriGroups <= MAX_TRI_GROUP_COUNT_PER_OBJ, "Too many tri-groups.");
 

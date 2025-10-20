@@ -80,6 +80,8 @@ bool RayTracingManager::Initialize(D3D12Renderer* pRenderer, uint width, uint he
 
 	buildShaderTables();
 
+	m_ppCollectedBLASHandles.resize(m_MaxNumBLASs);
+
 	return true;
 }
 
@@ -354,15 +356,13 @@ void RayTracingManager::FreeBLAS(BLASHandle* pBLASHandle)
 bool RayTracingManager::UpdateAccelerationStructure(ID3D12GraphicsCommandList6* pCommandList)
 {
 	// Build TLAS
-	BLASHandle* ppBLASHandlelist[1024] = {};
 	uint numBLASHandles = 0;
 	uint numRequiredShaderRecordCount = 0;
-
 	for (BLASHandle* curr : m_BLASHandleList)
 	{
-		ASSERT(numBLASHandles < (uint)_countof(ppBLASHandlelist), "Too many BLAS instances");
+		ASSERT(numBLASHandles < m_ppCollectedBLASHandles.size(), "Too many BLAS instances");
 		ASSERT(curr->pBLAS, "BLAS must be built before updating TLAS");
-		ppBLASHandlelist[numBLASHandles] = curr;
+		m_ppCollectedBLASHandles[numBLASHandles] = curr;
 		numBLASHandles++;
 		numRequiredShaderRecordCount += curr->NumTriGroups * NUM_RAYTRACING_SHADER_TYPES;
 	}
@@ -391,7 +391,7 @@ bool RayTracingManager::UpdateAccelerationStructure(ID3D12GraphicsCommandList6* 
 		// TLAS빌드를 위한 인스턴스 리소스 할당
 		m_pBLASInstanceDescResouce = m_pResourceBinTLASInstanceDescList->Alloc(sizeof(D3D12_RAYTRACING_INSTANCE_DESC) * numBLASHandles);
 
-		m_pTLAS = buildTLAS(pCommandList, m_pBLASInstanceDescResouce, ppBLASHandlelist, numBLASHandles, FALSE, 0);
+		m_pTLAS = buildTLAS(pCommandList, m_pBLASInstanceDescResouce, m_ppCollectedBLASHandles.data(), numBLASHandles, FALSE, 0);
 		m_UpdateAccelerationStructureFlags &= (~UPDATE_ACCELERATION_STRCTURE_TYPE_TLAS);
 	}
 
