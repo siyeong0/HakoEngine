@@ -610,7 +610,10 @@ void ENGINECALL D3D12Renderer::Present()
 	m_CurrContextIndex = nextContextIndex;
 
 	// Managing raytracing resources per frame
-	m_pRayTracingManager->UpdateManagedResource();
+	if (IsRayTracingEnabledInl())
+	{
+		m_pRayTracingManager->UpdateManagedResource();
+	}
 }
 
 bool ENGINECALL D3D12Renderer::IsRayTracingEnabled() const
