@@ -296,9 +296,7 @@ bool SpriteObject::initMesh()
 {
 	// TODO: 바깥에서 버텍스데이터와 텍스처를 입력하는 식으로 변경할 것
 	ID3D12Device5* pD3DDeivce = m_pRenderer->GetD3DDevice();
-	uint srvDescriptorSize = m_pRenderer->GetSrvDescriptorSize();
-	D3D12ResourceManager*	pResourceManager = m_pRenderer->GetResourceManager();
-	SingleDescriptorAllocator* pSingleDescriptorAllocator = m_pRenderer->GetSingleDescriptorAllocator();
+	D3D12ResourceManager* pResourceManager = m_pRenderer->GetResourceManager();
 	BOOL bUseGpuUploadHeaps = m_pRenderer->IsGpuUploadHeapsEnabledInl();
 
 	// Create the vertex buffer.

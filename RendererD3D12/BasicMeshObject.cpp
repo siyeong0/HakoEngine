@@ -59,9 +59,7 @@ bool ENGINECALL BasicMeshObject::InsertTriGroup(
 	MATERIAL_TYPE mltType)
 {
 	ID3D12Device5* pD3DDeivce = m_pRenderer->GetD3DDevice();
-	size_t srvDescriptorSize = m_pRenderer->GetSrvDescriptorSize();
 	D3D12ResourceManager* pResourceManager = m_pRenderer->GetResourceManager();
-	SingleDescriptorAllocator* pSingleDescriptorAllocator = m_pRenderer->GetSingleDescriptorAllocator();
 	bool bUseGpuUploadHeaps = m_pRenderer->IsGpuUploadHeapsEnabledInl();
 
 	ID3D12Resource* pIndexBuffer = nullptr;
@@ -93,9 +91,7 @@ bool ENGINECALL BasicMeshObject::InsertTriGroup(
 bool ENGINECALL BasicMeshObject::InsertTriGroup(const uint16_t* indices, uint numTriangles, const Material& material)
 {
 	ID3D12Device5* pD3DDeivce = m_pRenderer->GetD3DDevice();
-	size_t srvDescriptorSize = m_pRenderer->GetSrvDescriptorSize();
 	D3D12ResourceManager* pResourceManager = m_pRenderer->GetResourceManager();
-	SingleDescriptorAllocator* pSingleDescriptorAllocator = m_pRenderer->GetSingleDescriptorAllocator();
 	bool bUseGpuUploadHeaps = m_pRenderer->IsGpuUploadHeapsEnabledInl();
 
 	ID3D12Resource* pIndexBuffer = nullptr;
