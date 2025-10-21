@@ -486,7 +486,6 @@ void ENGINECALL D3D12Renderer::EndRender()
 		WaitForSingleObject(m_hCompleteEvent, INFINITE);
 #else
 		// Each CommandList processes 400 items.
-				// Each CommandList processes 400 items.
 		for (int i = 0; i < m_NumRenderThreads; i++)
 		{
 			m_ppRenderQueueRayTracing[i]->Process(i, pCommandListPool, m_pCommandQueue, 400, rtvHandle, dsvHandle, &m_Viewport, &m_ScissorRect);
@@ -510,14 +509,14 @@ void ENGINECALL D3D12Renderer::EndRender()
 		m_pRayTracingManager->DoRaytracing(pCommandList);
 		ID3D12Resource* pRayTracingOuputResource = m_pRayTracingManager->GetOutputResource();
 
-		D3D12_RESOURCE_BARRIER preCopyBarriers[2];
+		D3D12_RESOURCE_BARRIER preCopyBarriers[2] = {};
 		preCopyBarriers[0] = CD3DX12_RESOURCE_BARRIER::Transition(m_pRenderTargets[m_uiRenderTargetIndex], D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_COPY_DEST);
 		preCopyBarriers[1] = CD3DX12_RESOURCE_BARRIER::Transition(pRayTracingOuputResource, D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_COPY_SOURCE);
 		pCommandList->ResourceBarrier(ARRAYSIZE(preCopyBarriers), preCopyBarriers);
 
 		pCommandList->CopyResource(m_pRenderTargets[m_uiRenderTargetIndex], pRayTracingOuputResource);
 
-		D3D12_RESOURCE_BARRIER postCopyBarriers[2];
+		D3D12_RESOURCE_BARRIER postCopyBarriers[2] = {};
 		postCopyBarriers[0] = CD3DX12_RESOURCE_BARRIER::Transition(m_pRenderTargets[m_uiRenderTargetIndex], D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_RENDER_TARGET);
 		postCopyBarriers[1] = CD3DX12_RESOURCE_BARRIER::Transition(pRayTracingOuputResource, D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE);
 		pCommandList->ResourceBarrier(ARRAYSIZE(postCopyBarriers), postCopyBarriers);

@@ -784,7 +784,7 @@ static inline bool GetVoxelWS(const SparseBinaryGrid& g, const FLOAT3& p_ws)
     const int iy = (int)std::floor(fy + eps);
     const int iz = (int)std::floor(fz + eps);
 
-    if (ix < 0 || iy < 0 || iz < 0 || ix >= dim.x || iy >= dim.y || iz >= dim.z) return false;
+    if (ix < 0 || iy < 0 || iz < 0 || ix >= (int)dim.x || iy >= (int)dim.y || iz >= (int)dim.z) return false;
     return g.GetVoxel(ix, iy, iz);
 }
 

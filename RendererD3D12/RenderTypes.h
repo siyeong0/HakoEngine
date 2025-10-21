@@ -45,16 +45,16 @@ struct ShaderHandle
 
 struct RenderMaterial
 {
-	FLOAT3 BaseColor;
-	float Opacity;
+	FLOAT3 BaseColor = { 0.0f,0.0f,0.0f };
+	float Opacity = 0.0f;
 
-	FLOAT3 SpecularColor;
-	float SpecularFactor;
+	FLOAT3 SpecularColor = { 0.0f,0.0f,0.0f };
+	float SpecularFactor = 0.0f;
 
-	float MetallicFactor;
-	float RoughnessFactor;
-	float NormalScale;
-	float AmbientOcclusionStrength;
+	float MetallicFactor = 0.0f;
+	float RoughnessFactor = 0.0f;
+	float NormalScale = 0.0f;
+	float AmbientOcclusionStrength = 0.0f;
 };
 
 struct IndexedTriGroup
@@ -69,16 +69,16 @@ struct IndexedTriGroup
 
 struct CONSTANT_BUFFER_RT_TRIGROUP
 {
-	RenderMaterial Material;
+	RenderMaterial Material = {};
 };
 
 struct RootArgument
 {
-	CONSTANT_BUFFER_RT_TRIGROUP Cb;
-	D3D12_GPU_DESCRIPTOR_HANDLE SrvVB;
-	D3D12_GPU_DESCRIPTOR_HANDLE SrvIB;
-	D3D12_GPU_DESCRIPTOR_HANDLE SrvTexDiffuse;
-	D3D12_GPU_DESCRIPTOR_HANDLE SrvTexNormal;
+	CONSTANT_BUFFER_RT_TRIGROUP Cb = {};
+	D3D12_GPU_DESCRIPTOR_HANDLE SrvVB = {};
+	D3D12_GPU_DESCRIPTOR_HANDLE SrvIB = {};
+	D3D12_GPU_DESCRIPTOR_HANDLE SrvTexDiffuse = {};
+	D3D12_GPU_DESCRIPTOR_HANDLE SrvTexNormal = {};
 };
 
 struct BLASHandle
