@@ -104,7 +104,7 @@ void RayTracingManager::Cleanup()
 
 	for (auto& blasHandle : m_GlobalBLASHandleList)
 	{
-		SAFE_RELEASE(blasHandle->pBLAS);
+		FreeBLAS(blasHandle);
 	}
 
 	if (m_pTLAS)
