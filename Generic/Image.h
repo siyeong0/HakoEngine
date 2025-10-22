@@ -1,6 +1,6 @@
 ﻿#pragma once
-#include <vector>
 #include "Common/Common.h"
+#include "Generic/Color.h"
 
 enum IMAGE_FORMAT
 {
@@ -43,38 +43,3 @@ bool SaveImageToFile(
 	const std::filesystem::path& path,
 	const Image& img,
 	IMAGE_FORMAT format = IMAGE_FORMAT_RGBA8);
-
-struct aiScene;
-struct aiMaterial;
-enum aiTextureType;
-
-bool LoadExternalTexture(
-	const std::filesystem::path& modelDir,
-	const std::string& relPath,
-	Image* outImg);
-bool LoadEmbeddedTexture(
-	const aiScene* scene,
-	const std::string& starPath,
-	Image* outImg);
-
-bool TryLoadMaterialTexture(
-	const aiScene* scene,
-	const aiMaterial* mat,
-	aiTextureType type,
-	const std::filesystem::path& modelDir,
-	Image* outImg);
-bool TryLoadNormalLike(
-	const aiScene* scene,
-	const aiMaterial* mat,
-	const std::filesystem::path& modelDir,
-	Image* outImg);
-bool TryLoadMetallic(
-	const aiScene* scene,
-	const aiMaterial* mat,
-	const std::filesystem::path& modelDir,
-	Image* outImg);
-bool TryLoadRoughness(
-	const aiScene* scene,
-	const aiMaterial* mat,
-	const std::filesystem::path& modelDir,
-	Image* outImg);

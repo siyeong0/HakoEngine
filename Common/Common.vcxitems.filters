@@ -2,99 +2,19 @@
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
     <ClInclude Include="$(MSBuildThisFileDirectory)Common.h" />
-    <ClInclude Include="$(MSBuildThisFileDirectory)IndexCreator.h">
-      <Filter>Util\IndexCreator</Filter>
+    <ClInclude Include="$(MSBuildThisFileDirectory)ASSERT_MACRO.h">
+      <Filter>Common</Filter>
     </ClInclude>
-    <ClInclude Include="$(MSBuildThisFileDirectory)ProcessorInfo.h">
-      <Filter>Util\ProcessorInfo</Filter>
+    <ClInclude Include="$(MSBuildThisFileDirectory)INTEGER_MACRO.h">
+      <Filter>Common</Filter>
     </ClInclude>
-    <ClInclude Include="$(MSBuildThisFileDirectory)QueryPerfCounter.h">
-      <Filter>Util\QueryPerfCounter</Filter>
-    </ClInclude>
-    <ClInclude Include="$(MSBuildThisFileDirectory)WriteDebugString.h">
-      <Filter>Util\WriteDebugString</Filter>
-    </ClInclude>
-    <ClInclude Include="$(MSBuildThisFileDirectory)Bounds.h">
-      <Filter>Math</Filter>
-    </ClInclude>
-    <ClInclude Include="$(MSBuildThisFileDirectory)FVector3.h">
-      <Filter>Math</Filter>
-    </ClInclude>
-    <ClInclude Include="$(MSBuildThisFileDirectory)FVector2.h">
-      <Filter>Math</Filter>
-    </ClInclude>
-    <ClInclude Include="$(MSBuildThisFileDirectory)StaticMesh.h">
-      <Filter>StaticMesh</Filter>
-    </ClInclude>
-    <ClInclude Include="$(MSBuildThisFileDirectory)Plane.h">
-      <Filter>Math</Filter>
-    </ClInclude>
-    <ClInclude Include="$(MSBuildThisFileDirectory)Image.h">
-      <Filter>Image</Filter>
-    </ClInclude>
-    <ClInclude Include="$(MSBuildThisFileDirectory)Vertex.h">
-      <Filter>Vertex</Filter>
-    </ClInclude>
-    <ClInclude Include="$(MSBuildThisFileDirectory)Color.h">
-      <Filter>Color</Filter>
-    </ClInclude>
-    <ClInclude Include="$(MSBuildThisFileDirectory)Material.h">
-      <Filter>Material</Filter>
+    <ClInclude Include="$(MSBuildThisFileDirectory)SAFE_CLEAN_MACRO.h">
+      <Filter>Common</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <Filter Include="Util">
-      <UniqueIdentifier>{4f1c05fe-4580-40f8-a014-a7f064a3d1a0}</UniqueIdentifier>
+    <Filter Include="Common">
+      <UniqueIdentifier>{1a9c0303-aef2-4530-bbb4-fd39f0ec110b}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Util\IndexCreator">
-      <UniqueIdentifier>{5a914103-ed1b-4643-926c-69abec747da8}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Util\ProcessorInfo">
-      <UniqueIdentifier>{acc07366-e81d-4ac5-84d8-7266cb3a320c}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Util\QueryPerfCounter">
-      <UniqueIdentifier>{9714915b-fc9e-4818-8d4c-e978c755010d}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Util\WriteDebugString">
-      <UniqueIdentifier>{4bac4bf1-eb7f-4266-8290-9ce722f9e408}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Math">
-      <UniqueIdentifier>{617fbfa9-ceec-475a-9026-03cf10c6c710}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Image">
-      <UniqueIdentifier>{bf5b2f53-f60e-4cc0-863d-be06cb8eefa8}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="StaticMesh">
-      <UniqueIdentifier>{7b3c1f51-1f78-4a17-bc3d-998d0f8f0f54}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Color">
-      <UniqueIdentifier>{43b9a942-4d04-436c-bf83-aa2f16e90e51}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Vertex">
-      <UniqueIdentifier>{112cf960-fd35-4139-9a8f-0bdfdbe7aec1}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Material">
-      <UniqueIdentifier>{95c35fa7-ac56-46eb-931f-1c1b062fc1db}</UniqueIdentifier>
-    </Filter>
-  </ItemGroup>
-  <ItemGroup>
-    <ClCompile Include="$(MSBuildThisFileDirectory)IndexCreator.cpp">
-      <Filter>Util\IndexCreator</Filter>
-    </ClCompile>
-    <ClCompile Include="$(MSBuildThisFileDirectory)ProcessorInfo.cpp">
-      <Filter>Util\ProcessorInfo</Filter>
-    </ClCompile>
-    <ClCompile Include="$(MSBuildThisFileDirectory)QueryPerfCounter.cpp">
-      <Filter>Util\QueryPerfCounter</Filter>
-    </ClCompile>
-    <ClCompile Include="$(MSBuildThisFileDirectory)WriteDebugString.cpp">
-      <Filter>Util\WriteDebugString</Filter>
-    </ClCompile>
-    <ClCompile Include="$(MSBuildThisFileDirectory)StaticMesh.cpp">
-      <Filter>StaticMesh</Filter>
-    </ClCompile>
-    <ClCompile Include="$(MSBuildThisFileDirectory)Image.cpp">
-      <Filter>Image</Filter>
-    </ClCompile>
   </ItemGroup>
 </Project>

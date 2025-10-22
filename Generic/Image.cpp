@@ -1,7 +1,4 @@
-﻿#define _CRT_SECURE_NO_WARNINGS
-#include <iostream>
-#include <filesystem>
-#include <fstream>
+﻿#include "pch.h"
 #pragma warning(push)
 #pragma warning(disable : 6262)
 #define STB_IMAGE_IMPLEMENTATION

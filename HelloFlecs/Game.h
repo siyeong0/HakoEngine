@@ -9,7 +9,7 @@
 #include "Common/Common.h"
 #include "Interface/IRenderer.h"
 #include "Interface/IGeometry.h"
-#include "Common/QueryPerfCounter.h"
+#include "Generic/QueryPerfCounter.h"
 
 class GameObject;
 class Game

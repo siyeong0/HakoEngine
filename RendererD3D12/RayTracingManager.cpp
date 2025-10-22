@@ -5,7 +5,7 @@
 #include "ConstantBufferManager.h"
 #include "ShaderManager.h"
 #include "ShaderRecord.h"
-#include "Common/IndexCreator.h"
+#include "Generic/IndexCreator.h"
 #include "D3D12Renderer.h"
 #include "ShaderTable.h"
 #include "RayTracingManager.h"

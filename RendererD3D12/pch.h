@@ -53,8 +53,8 @@
 #include "Interface/IMeshObject.h"
 #include "Interface/ISpriteObject.h"
 #include "Common/Common.h"
-#include "Common/IndexCreator.h"
-#include "Common/WriteDebugString.h"
+#include "Generic/IndexCreator.h"
+#include "Generic/WriteDebugString.h"
 #include "D3DUtil.h"
 
 #endif //PCH_H

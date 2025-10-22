@@ -1,5 +1,5 @@
 ﻿#include "pch.h"
-#include "Common/WriteDebugString.h"
+#include "Generic/WriteDebugString.h"
 #include "ShaderUtil.h"
 #include "ShaderManager.h"
 

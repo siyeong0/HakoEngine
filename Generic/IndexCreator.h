@@ -1,11 +1,7 @@
 ﻿#pragma once
-#include <cstdint>
 
 class CIndexCreator
 {
-	uint32_t* m_pdwIndexTable = nullptr;
-	uint32_t m_dwMaxNum = 0;
-	uint32_t m_dwAllocatedCount = 0;
 public:
 	bool Initialize(uint32_t dwNum);
 
@@ -16,4 +12,8 @@ public:
 
 	CIndexCreator();
 	~CIndexCreator();
+private:
+	uint32_t* m_pdwIndexTable = nullptr;
+	uint32_t m_dwMaxNum = 0;
+	uint32_t m_dwAllocatedCount = 0;
 };

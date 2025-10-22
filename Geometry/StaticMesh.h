@@ -1,6 +1,5 @@
 ﻿#pragma once
-#include <vector>
-#include "Common/Common.h"
+#include "Vertex.h"
 #include "Material.h"
 
 struct MeshSection

@@ -1,0 +1,77 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;c++;cppm;ixx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="pch">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;h++;hm;inl;inc;ipp;xsd</Extensions>
+    </Filter>
+    <Filter Include="Image">
+      <UniqueIdentifier>{fb1d3bc9-9f18-488f-9f4c-f09d8187d598}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Color">
+      <UniqueIdentifier>{56f7ac17-35b9-4900-85ab-b9dac4bb6257}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Util">
+      <UniqueIdentifier>{b8b18c1b-86d8-44e1-8990-01ada59d0c01}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Util\IndexCreator">
+      <UniqueIdentifier>{9a0d88a3-8152-432d-9c5b-75a80f2ee658}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Util\ProcessorInfo">
+      <UniqueIdentifier>{48e23de4-92f2-4f4d-a128-44e2cb348a22}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Util\QueryPerfCounter">
+      <UniqueIdentifier>{17f00ab4-7e1f-4f05-9d95-95c8bfd12036}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Util\WriteDebugString">
+      <UniqueIdentifier>{b9105bab-64de-460b-a3cc-c53f132283de}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="pch.h">
+      <Filter>pch</Filter>
+    </ClInclude>
+    <ClInclude Include="Image.h">
+      <Filter>Image</Filter>
+    </ClInclude>
+    <ClInclude Include="Color.h">
+      <Filter>Color</Filter>
+    </ClInclude>
+    <ClInclude Include="IndexCreator.h">
+      <Filter>Util\IndexCreator</Filter>
+    </ClInclude>
+    <ClInclude Include="ProcessorInfo.h">
+      <Filter>Util\ProcessorInfo</Filter>
+    </ClInclude>
+    <ClInclude Include="QueryPerfCounter.h">
+      <Filter>Util\QueryPerfCounter</Filter>
+    </ClInclude>
+    <ClInclude Include="WriteDebugString.h">
+      <Filter>Util\WriteDebugString</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="pch.cpp">
+      <Filter>pch</Filter>
+    </ClCompile>
+    <ClCompile Include="Image.cpp">
+      <Filter>Image</Filter>
+    </ClCompile>
+    <ClCompile Include="IndexCreator.cpp">
+      <Filter>Util\IndexCreator</Filter>
+    </ClCompile>
+    <ClCompile Include="ProcessorInfo.cpp">
+      <Filter>Util\ProcessorInfo</Filter>
+    </ClCompile>
+    <ClCompile Include="QueryPerfCounter.cpp">
+      <Filter>Util\QueryPerfCounter</Filter>
+    </ClCompile>
+    <ClCompile Include="WriteDebugString.cpp">
+      <Filter>Util\WriteDebugString</Filter>
+    </ClCompile>
+  </ItemGroup>
+</Project>

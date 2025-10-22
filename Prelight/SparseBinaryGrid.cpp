@@ -1,6 +1,6 @@
 ﻿#include "pch.h"
 #include <filesystem>
-#include "Common/Image.h"
+#include "Generic/Image.h"
 #include "Brick.h"
 #include "FaceLayer1024.h"
 #include "SparseBinaryGrid.h"

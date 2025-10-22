@@ -29,7 +29,7 @@
 			<GenerateDebugInformation>true</GenerateDebugInformation>
 			<AdditionalLibraryDirectories>..\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
 			<IgnoreAllDefaultLibraries>false</IgnoreAllDefaultLibraries>
-			<AdditionalDependencies> d3d12.lib;dxgi.lib;d3d11.lib;d2d1.lib;dwrite.lib;d3dcompiler.lib;dxguid.lib;windowscodecs.lib;%(AdditionalDependencies) </AdditionalDependencies>
+			<AdditionalDependencies> %(AdditionalDependencies) </AdditionalDependencies>
 		</Link>
 	</ItemDefinitionGroup>
 </Project>

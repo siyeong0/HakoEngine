@@ -2,6 +2,7 @@
 #include <Windows.h>
 #include <combaseapi.h>
 #include "Common/Common.h"
+#include "Geometry/Geometry.h"
 
 interface IMeshObject : public IUnknown
 {

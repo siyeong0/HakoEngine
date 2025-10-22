@@ -1,5 +1,4 @@
-﻿#include <Windows.h>
-#include "Common.h"
+﻿#include "pch.h"
 #include "ProcessorInfo.h"
 
 typedef bool(WINAPI* LPFN_GLPI)(PSYSTEM_LOGICAL_PROCESSOR_INFORMATION, PDWORD);

@@ -1,6 +1,5 @@
-﻿#include "QueryPerfCounter.h"
-#include <cstdint>
-#include <Windows.h>
+﻿#include "pch.h"
+#include "QueryPerfCounter.h"
 
 LARGE_INTEGER	g_Frequency = {};
 

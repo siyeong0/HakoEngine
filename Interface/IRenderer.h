@@ -2,8 +2,8 @@
 #include <Windows.h>
 #include <combaseapi.h>
 #include "Common/Common.h"
-#include "Common/Image.h"
-#include "Common/StaticMesh.h"
+#include "Generic/Image.h"
+#include "Geometry/StaticMesh.h"
 
 #include "IMeshObject.h"
 #include "ISpriteObject.h"

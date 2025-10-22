@@ -1,5 +1,5 @@
-﻿#include "IndexCreator.h"
-#include <memory>
+﻿#include "pch.h"
+#include "IndexCreator.h"
 
 CIndexCreator::CIndexCreator()
 {

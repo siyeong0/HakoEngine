@@ -5,38 +5,38 @@
       <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
       <Extensions>h;hh;hpp;hxx;h++;hm;inl;inc;ipp;xsd</Extensions>
     </Filter>
-    <Filter Include="Material">
+    <Filter Include="FVector">
       <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
       <Extensions>cpp;c;cc;cxx;c++;cppm;ixx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
     </Filter>
-    <Filter Include="StaticMesh">
-      <UniqueIdentifier>{d864ccf9-521d-4b26-a61c-06309369367a}</UniqueIdentifier>
+    <Filter Include="Bounds">
+      <UniqueIdentifier>{d739bbd2-221a-4c13-b995-a4b369afe83e}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Vertex">
-      <UniqueIdentifier>{da3c5d1c-7c94-4aff-801c-b62e16bd2ace}</UniqueIdentifier>
+    <Filter Include="Plane">
+      <UniqueIdentifier>{51941420-1f53-4bdc-b04c-a91375a17955}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h">
       <Filter>pch</Filter>
     </ClInclude>
-    <ClInclude Include="StaticMesh.h">
-      <Filter>StaticMesh</Filter>
+    <ClInclude Include="FVector2.h">
+      <Filter>FVector</Filter>
     </ClInclude>
-    <ClInclude Include="Material.h">
-      <Filter>Material</Filter>
+    <ClInclude Include="FVector3.h">
+      <Filter>FVector</Filter>
     </ClInclude>
-    <ClInclude Include="Vertex.h">
-      <Filter>Vertex</Filter>
+    <ClInclude Include="Bounds.h">
+      <Filter>Bounds</Filter>
     </ClInclude>
-    <ClInclude Include="Geometry.h" />
+    <ClInclude Include="Plane.h">
+      <Filter>Plane</Filter>
+    </ClInclude>
+    <ClInclude Include="Math.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="pch.cpp">
       <Filter>pch</Filter>
-    </ClCompile>
-    <ClCompile Include="StaticMesh.cpp">
-      <Filter>StaticMesh</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

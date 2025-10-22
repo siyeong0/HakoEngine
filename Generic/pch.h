@@ -7,15 +7,24 @@
 #ifndef PCH_H
 #define PCH_H
 
-#define WIN32_LEAN_AND_MEAN 
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+
+#define _CRT_SECURE_NO_WARNINGS// TODO: It's from Image.cpp stb_image_write.h. 
 
 // add headers that you want to pre-compile here
+#include <windows.h>
+#include <cstdint>
+#include <memory>
 #include <iostream>
-#include <limits>
-#include <vector>
-#include <string>
 #include <filesystem>
+#include <fstream>
 #include <vector>
+#include <algorithm>
 
 #include "Common/Common.h"
 

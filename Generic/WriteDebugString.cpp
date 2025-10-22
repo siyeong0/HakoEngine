@@ -1,6 +1,4 @@
-﻿#include <Windows.h>
-#include <stdio.h>
-
+﻿#include "pch.h"
 #include "WriteDebugString.h"
 
 void WriteDebugStringW(DebugOutputType type, const wchar_t* wchFormat, ...)

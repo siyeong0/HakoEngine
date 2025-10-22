@@ -1,7 +1,7 @@
 ﻿#include "pch.h"
 #include <process.h>
 #include <cmath>
-#include "Common/ProcessorInfo.h"
+#include "Generic/ProcessorInfo.h"
 #include "BasicMeshObject.h"
 #include "CommandListPool.h"
 #include "ConstantBufferManager.h"
@@ -1150,7 +1150,7 @@ bool D3D12Renderer::createDepthStencil(int width, int height)
 	}
 	m_pDepthStencil->SetName(L"D3D12Renderer::m_pDepthStencil");
 
-	CD3DX12_CPU_DESCRIPTOR_HANDLE	dsvHandle(m_pDSVHeap->GetCPUDescriptorHandleForHeapStart());
+	CD3DX12_CPU_DESCRIPTOR_HANDLE dsvHandle(m_pDSVHeap->GetCPUDescriptorHandleForHeapStart());
 	m_pD3DDevice->CreateDepthStencilView(m_pDepthStencil, &depthStencilDesc, dsvHandle);
 
 	return true;
@@ -1199,10 +1199,9 @@ bool D3D12Renderer::createDescriptorHeapForRTV()
 	rtvHeapDesc.NumDescriptors = SWAP_CHAIN_FRAME_COUNT;	// SwapChain Buffer 0	| SwapChain Buffer 1
 	rtvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
 	rtvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
-	if (FAILED(m_pD3DDevice->CreateDescriptorHeap(&rtvHeapDesc, IID_PPV_ARGS(&m_pRTVHeap))))
-	{
-		__debugbreak();
-	}
+
+	HRESULT hr = m_pD3DDevice->CreateDescriptorHeap(&rtvHeapDesc, IID_PPV_ARGS(&m_pRTVHeap));
+	ASSERT(SUCCEEDED(hr), "Failed to create RTV Descriptor Heap.");
 
 	m_rtvDescriptorSize = m_pD3DDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
 	return true;

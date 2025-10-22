@@ -1,5 +1,5 @@
 ﻿#include "pch.h"
-#include "WriteDebugString.h"
+#include "Generic/WriteDebugString.h"
 #include "D3DUtil.h" 
 
 namespace D3DUtil

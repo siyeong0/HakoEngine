@@ -1,14 +1,11 @@
-﻿#include <iostream>
-#include <limits>
-#include <vector>
-#include <string>
-#include <filesystem>
+﻿#include "pch.h"
 
 #include <assimp/Importer.hpp>
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
 
-#include "Image.h"
+#include "Vertex.h"
+#include "Generic/Image.h"
 #include "StaticMesh.h"
 
 void StaticMesh::BeginCreate(
