@@ -575,13 +575,13 @@ bool Game::Initialize(
 		const uint KITTY_BOX_OBJECT_COUNT = 30;
 		for (uint i = 0; i < KITTY_BOX_OBJECT_COUNT; i++)
 		{
-			float x = (float)((rand() % 51) - 25);	// -10m - 10m 
-			float y = (float)((rand() % 11) - 2);	// -2m - 7m
-			float z = (float)((rand() % 51) - 25);	// -10m - 10m 
+			float x = (float)((rand() % 41) - 20);
+			float y = (float)((rand() % 7) - 3);
+			float z = (float)((rand() % 41) - 20);
 			float rx = DegToRad(static_cast<float>(rand() % 181));
 			float ry = DegToRad(static_cast<float>(rand() % 181));
 			float rz = DegToRad(static_cast<float>(rand() % 181));
-			float s = 0.5f * (float)((rand() % 10) + 1) * 0.5f;	// 1 - 3
+			float s = (float)((rand() % 4) + 1) * 0.5f;	// 1 - 3
 			float vx = (float)((rand() % 3) - 1);
 			float vz = (float)((rand() % 3) - 1);
 
@@ -598,13 +598,13 @@ bool Game::Initialize(
 		const uint MEGA_BOX_OBJECT_COUNT = 30;
 		for (uint i = 0; i < MEGA_BOX_OBJECT_COUNT; i++)
 		{
-			float x = (float)((rand() % 51) - 25);	// -10m - 10m 
-			float y = (float)((rand() % 11) - 2);	// -2m - 7m
-			float z = (float)((rand() % 51) - 25);	// -10m - 10m 
+			float x = (float)((rand() % 41) - 20);
+			float y = (float)((rand() % 7) - 3);
+			float z = (float)((rand() % 41) - 20);
 			float rx = DegToRad(static_cast<float>(rand() % 181));
 			float ry = DegToRad(static_cast<float>(rand() % 181));
 			float rz = DegToRad(static_cast<float>(rand() % 181));
-			float s = 0.5f * (float)((rand() % 10) + 1) * 0.5f;	// 1 - 3
+			float s = (float)((rand() % 4) + 1) * 0.5f;	// 1 - 3
 			// float vx = (float)((rand() % 3) - 1);
 			// float vz = (float)((rand() % 3) - 1);
 
@@ -621,13 +621,13 @@ bool Game::Initialize(
 		const uint SPHERE_OBJECT_COUNT = 30;
 		for (uint i = 0; i < SPHERE_OBJECT_COUNT; i++)
 		{
-			float x = (float)((rand() % 51) - 25);	// -10m - 10m 
-			float y = (float)((rand() % 11) - 5);	// -5m - 5m
-			float z = (float)((rand() % 51) - 25);	// -10m - 10m 
+			float x = (float)((rand() % 41) - 20);
+			float y = (float)((rand() % 7) - 3);
+			float z = (float)((rand() % 41) - 20);
 			float rx = DegToRad(static_cast<float>(rand() % 181));
 			float ry = DegToRad(static_cast<float>(rand() % 181));
 			float rz = DegToRad(static_cast<float>(rand() % 181));
-			float s = 0.5f * (float)((rand() % 10) + 1) * 0.5f;	// 1 - 3
+			float s = (float)((rand() % 4) + 1) * 0.5f;
 			float vx = (float)((rand() % 3) - 1);
 			float vz = (float)((rand() % 3) - 1);
 

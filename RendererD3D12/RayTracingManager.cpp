@@ -131,7 +131,7 @@ void RayTracingManager::Cleanup()
 
 void RayTracingManager::DoRaytracing(ID3D12GraphicsCommandList6* pCommandList)
 {
-	CD3DX12_CPU_DESCRIPTOR_HANDLE	dispatchHeapHandleCPU(m_pShaderVisibleDescriptorHeap->GetCPUDescriptorHandleForHeapStart());
+	CD3DX12_CPU_DESCRIPTOR_HANDLE dispatchHeapHandleCPU(m_pShaderVisibleDescriptorHeap->GetCPUDescriptorHandleForHeapStart());
 
 	D3D12_CPU_DESCRIPTOR_HANDLE	cbvHandle = {};
 	SimpleConstantBufferPool* pConstantBufferPool = m_pRenderer->GetConstantBufferPool(CONSTANT_BUFFER_TYPE_PER_FRAME, 0);
@@ -538,7 +538,7 @@ bool RayTracingManager::buildBLAS(ID3D12GraphicsCommandList6* pCommandList, BLAS
 	return bResult;
 }
 
-ID3D12Resource* RayTracingManager::buildTLAS(ID3D12GraphicsCommandList6* pCommandList,bool bAllowUpdate,uint currContextIndex)
+ID3D12Resource* RayTracingManager::buildTLAS(ID3D12GraphicsCommandList6* pCommandList, bool bAllowUpdate, uint currContextIndex)
 {
 	ID3D12Resource* pTLASResource = nullptr;
 
