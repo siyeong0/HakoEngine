@@ -59,6 +59,7 @@ private:
 	PSOHandle* m_pPSOHandle = nullptr;
 
 	IndexedTriGroup* m_pTriGroupList = nullptr;
+	bool* m_pbTriGroupOpaqueList = nullptr;
 	uint m_NumTriGroups = 0;
 	uint m_MaxNumTriGroups = 0;
 

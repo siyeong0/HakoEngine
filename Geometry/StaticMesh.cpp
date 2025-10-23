@@ -863,11 +863,11 @@ StaticMesh StaticMesh::CreatePlaneMesh(float width, float height)
 	std::vector<FVector3> tangents(4);
 	std::vector<FVector2> uvs(4);
 
-	positions[0] = { -halfW, 0, -halfH }; uvs[0] = { 0,0 };
-	positions[1] = { -halfW, 0, +halfH }; uvs[1] = { 0,1 };
-	positions[2] = { +halfW, 0, +halfH }; uvs[2] = { 1,1 };
-	positions[3] = { +halfW, 0, -halfH }; uvs[3] = { 1,0 };
-	for (int i = 0; i < 4; ++i) { normals[i] = { 0,1,0 }; tangents[i] = { 1,0,0 }; }
+	positions[0] = { -halfW, -halfH, 0.0f }; uvs[0] = { 0,0 };
+	positions[1] = { -halfW, +halfH, 0.0f }; uvs[1] = { 0,1 };
+	positions[2] = { +halfW, +halfH, 0.0f }; uvs[2] = { 1,1 };
+	positions[3] = { +halfW, -halfH, 0.0f }; uvs[3] = { 1,0 };
+	for (int i = 0; i < 4; ++i) { normals[i] = { 0,0,-1 }; tangents[i] = { 0,1,0 }; }
 
 	std::vector<uint16_t> indices(6);
 	indices[0] = 0; indices[1] = 1; indices[2] = 2;

@@ -13,8 +13,6 @@ enum MATERIAL_PRESET_TYPE
 	MATERIAL_TYPE_COUNT
 };
 
-
-
 struct Material
 {
 	std::wstring DiffuseTexturePath;
@@ -34,6 +32,8 @@ struct Material
 	float NormalScale = DEFAULT_NORMAL_SCALE;
 	float AmbientOcclusionStrength = DEFAULT_AMBIENT_OCCLUSION_STRENGTH;
 
+	bool bAlphaMasked = false;
+
 	Material() = default;
 	Material(
 		const wchar_t* diffusePathOrNull,
@@ -48,7 +48,8 @@ struct Material
 		float metallicIntensity,
 		float roughnessIntensity,
 		float normalScale,
-		float ambientOcclusionStrength)
+		float ambientOcclusionStrength,
+		bool bAlphaMaskOn)
 		: DiffuseTexturePath(diffusePathOrNull ? diffusePathOrNull : L"")
 		, NormalTexturePath(normalPathOrNull ? normalPathOrNull : L"")
 		, SpecularTexturePath(specularPathOrNull ? specularPathOrNull : L"")
@@ -62,6 +63,7 @@ struct Material
 		, RoughnessFactor(roughnessIntensity)
 		, NormalScale(normalScale)
 		, AmbientOcclusionStrength(ambientOcclusionStrength)
+		, bAlphaMasked(bAlphaMaskOn)
 	{
 	}
 
@@ -71,12 +73,14 @@ struct Material
 		const wchar_t* specularPathOrNull = nullptr,
 		const wchar_t* metallicPathOrNull = nullptr,
 		const wchar_t* roughnessPathOrNull = nullptr,
-		MATERIAL_PRESET_TYPE type = MATERIAL_TYPE_DEFAULT)
+		MATERIAL_PRESET_TYPE type = MATERIAL_TYPE_DEFAULT,
+		bool bAlphaMaskOn = false)
 		: DiffuseTexturePath(diffusePathOrNull ? diffusePathOrNull : L"")
 		, NormalTexturePath(normalPathOrNull ? normalPathOrNull : L"")
 		, SpecularTexturePath(specularPathOrNull ? specularPathOrNull : L"")
 		, MetallicTexturePath(metallicPathOrNull ? metallicPathOrNull : L"")
 		, RoughnessTexturePath(roughnessPathOrNull ? roughnessPathOrNull : L"")
+		, bAlphaMasked(bAlphaMaskOn)
 	{
 		// Reset to defaults first
 		BaseColor = DEFAULT_BASE_COLOR;
@@ -151,7 +155,7 @@ struct Material
 	bool HasRoughnessTexture() const { return !RoughnessTexturePath.empty(); }
 
 	inline static constexpr float OPACITY_THRESHOLD = 0.99f;
-	bool IsOpaque() const { return Opacity >= OPACITY_THRESHOLD; }
+	bool IsOpaque() const { return !bAlphaMasked && Opacity >= OPACITY_THRESHOLD; }
 
 private:
 	// Physically-plausible defaults (dielectric, mid-roughness)

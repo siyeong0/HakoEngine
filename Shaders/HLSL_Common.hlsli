@@ -3,6 +3,8 @@
 
 #include "HLSL_CPP_CommonTypes.h"
 
+static const float ALPHA_TEST_THRESHOLD = 0.01;
+
 struct Light
 {
     float3 PosOrDir;

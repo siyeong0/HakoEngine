@@ -58,6 +58,7 @@ bool ENGINECALL BasicMeshObject::BeginCreateMesh(const Vertex* vertices, uint nu
 	
 	m_MaxNumTriGroups = numTriGroups;
 	m_pTriGroupList = new IndexedTriGroup[m_MaxNumTriGroups];
+	m_pbTriGroupOpaqueList = new bool[m_MaxNumTriGroups];
 	memset(m_pTriGroupList, 0, sizeof(IndexedTriGroup) * m_MaxNumTriGroups);
 
 	return true;
@@ -97,7 +98,7 @@ bool ENGINECALL BasicMeshObject::InsertTriGroup(const uint16_t* indices, uint nu
 	pTriGroup->Material.RoughnessFactor = material.RoughnessFactor;
 	pTriGroup->Material.NormalScale = material.NormalScale;
 	pTriGroup->Material.AmbientOcclusionStrength = material.AmbientOcclusionStrength;
-
+	m_pbTriGroupOpaqueList[m_NumTriGroups] = material.IsOpaque();
 	m_NumTriGroups++;
 	return true;
 }
@@ -137,6 +138,7 @@ void ENGINECALL BasicMeshObject::EndCreateMesh(bool bUseRayTracingIfSupported)
 			sizeof(Vertex), 
 			m_VertexBufferView.SizeInBytes / sizeof(Vertex), 
 			m_pTriGroupList, 
+			m_pbTriGroupOpaqueList,
 			m_NumTriGroups, 
 			false);
 	}
@@ -305,6 +307,7 @@ void BasicMeshObject::cleanup()
 			SAFE_CLEANUP(m_pTriGroupList[i].NormalTexHandle, m_pRenderer->DeleteTexture);
 		}
 		SAFE_DELETE_ARRAY(m_pTriGroupList);
+		SAFE_DELETE_ARRAY(m_pbTriGroupOpaqueList);
 	}
 
 	SAFE_RELEASE(m_pVertexBuffer);

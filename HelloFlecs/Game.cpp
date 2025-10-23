@@ -246,6 +246,29 @@ static IMeshObject* createWaterMeshObject(IRenderer* pRenderer)
 	return pMeshObj;
 }
 
+static IMeshObject* createWireWall(IRenderer* pRenderer)
+{
+	static IMeshObject* pMeshObj = nullptr;
+	if (pMeshObj)
+	{
+		pMeshObj->AddRef();
+		return pMeshObj;
+	}
+	const wchar_t* diffuseTexPath = L"./Resources/wire_fence.dds";
+	StaticMesh meshData = StaticMesh::CreatePlaneMesh(1.0f, 1.0f);
+	std::vector<Vertex> vertices = meshData.GetVertexArray();
+	pMeshObj = pRenderer->CreateBasicMeshObject();
+	pMeshObj->BeginCreateMesh(vertices.data(), (uint)vertices.size(), (uint)meshData.Sections.size());
+	for (const MeshSection& sec : meshData.Sections)
+	{
+		Material mtl(diffuseTexPath, nullptr, nullptr, nullptr, nullptr, MATERIAL_TYPE_METAL, true);
+		// mtl.RoughnessFactor = 0.8f;
+		pMeshObj->InsertTriGroup(sec.Indices.data(), (uint)(sec.Indices.size() / 3), mtl);
+	}
+	pMeshObj->EndCreateMesh();
+	return pMeshObj;
+}
+
 static IMeshObject* createMeshFromFile(IRenderer* pRenderer, const char* filename)
 {
 	static IMeshObject* pMeshObj = nullptr;
@@ -537,6 +560,15 @@ bool Game::Initialize(
 				.set<Rotation>({ 0.0f, 0.0f, 0.0f })
 				.set<Scale>({ 100.0f, 100.0f, 100.0f })
 				.set<MeshRenderer>({ createMetalTileGridMeshObject(m_pRenderer) });
+			m_Entities.emplace_back(e.id());
+		}
+		// wire fence
+		{
+			flecs::entity e = m_ECSWorld.entity()
+				.set<Position>({ 0.0f, 0.0f, 0.0f })
+				.set<Rotation>({ 0.0f, 0.0f, 0.0f })
+				.set<Scale>({ 10.0f, 10.0f, 10.0f })
+				.set<MeshRenderer>({ createWireWall(m_pRenderer) });
 			m_Entities.emplace_back(e.id());
 		}
 		// Create kitty box entities

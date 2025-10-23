@@ -243,6 +243,7 @@ BLASHandle* RayTracingManager::AllocBLAS(
 	uint vertexSize,
 	uint numVertices,
 	const IndexedTriGroup* pTriGroupInfoList,
+	const bool* pbTriGroupOpaqueList,
 	uint numTriGroupInfos,
 	bool bAllowUpdate)
 {
@@ -289,8 +290,7 @@ BLASHandle* RayTracingManager::AllocBLAS(
 		// PERFORMANCE TIP: mark geometry as opaque whenever applicable as it can enable important ray processing optimizations.
 		// Note: When rays encounter opaque geometry an any hit shader will not be executed whether it is present or not.
 		// pGeomDescList[i].Flags = pTriGroupInfoList[i].bOpaque ? D3D12_RAYTRACING_GEOMETRY_FLAG_OPAQUE : D3D12_RAYTRACING_GEOMETRY_FLAG_NONE;
-		bool bOpaque = pTriGroupInfoList[i].Material.Opacity > Material::OPACITY_THRESHOLD;
-		pGeomDescList[i].Flags = bOpaque ? D3D12_RAYTRACING_GEOMETRY_FLAG_OPAQUE : D3D12_RAYTRACING_GEOMETRY_FLAG_NONE;
+		pGeomDescList[i].Flags = pbTriGroupOpaqueList[i] ? D3D12_RAYTRACING_GEOMETRY_FLAG_OPAQUE : D3D12_RAYTRACING_GEOMETRY_FLAG_NONE;
 	}
 
 	// Set Local Root Parameters
