@@ -255,7 +255,7 @@ static IMeshObject* createWireWall(IRenderer* pRenderer)
 		return pMeshObj;
 	}
 	const wchar_t* diffuseTexPath = L"./Resources/wire_fence.dds";
-	StaticMesh meshData = StaticMesh::CreatePlaneMesh(1.0f, 1.0f);
+	StaticMesh meshData = StaticMesh::CreateGridMesh(1.0f, 1.0f, 5, 5);
 	std::vector<Vertex> vertices = meshData.GetVertexArray();
 	pMeshObj = pRenderer->CreateBasicMeshObject();
 	pMeshObj->BeginCreateMesh(vertices.data(), (uint)vertices.size(), (uint)meshData.Sections.size());
@@ -566,7 +566,7 @@ bool Game::Initialize(
 		{
 			flecs::entity e = m_ECSWorld.entity()
 				.set<Position>({ 0.0f, 0.0f, 25.0f })
-				.set<Rotation>({ 0.0f, 0.0f, 0.0f })
+				.set<Rotation>({ PI / 2.0f, 0.0f, 0.0f })
 				.set<Scale>({ 10.0f, 10.0f, 10.0f })
 				.set<MeshRenderer>({ createWireWall(m_pRenderer) });
 			m_Entities.emplace_back(e.id());
