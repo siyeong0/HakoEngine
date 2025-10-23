@@ -565,7 +565,7 @@ bool Game::Initialize(
 		// wire fence
 		{
 			flecs::entity e = m_ECSWorld.entity()
-				.set<Position>({ 0.0f, 0.0f, 0.0f })
+				.set<Position>({ 0.0f, 0.0f, 25.0f })
 				.set<Rotation>({ 0.0f, 0.0f, 0.0f })
 				.set<Scale>({ 10.0f, 10.0f, 10.0f })
 				.set<MeshRenderer>({ createWireWall(m_pRenderer) });

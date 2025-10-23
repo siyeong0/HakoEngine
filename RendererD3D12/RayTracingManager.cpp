@@ -242,9 +242,8 @@ BLASHandle* RayTracingManager::AllocBLAS(
 	ID3D12Resource* pVertexBuffer,
 	uint vertexSize,
 	uint numVertices,
-	const IndexedTriGroup* pTriGroupInfoList,
-	const bool* pbTriGroupOpaqueList,
-	uint numTriGroupInfos,
+	const std::vector<IndexedTriGroup> TriGroups,
+	const std::vector<bool> bTriGroupOpaques,
 	bool bAllowUpdate)
 {
 	BLASHandle* pBLASHandle = nullptr;
@@ -256,6 +255,7 @@ BLASHandle* RayTracingManager::AllocBLAS(
 		goto lb_return;
 	}
 
+	const uint numTriGroupInfos = static_cast<uint>(TriGroups.size());
 	ASSERT(numTriGroupInfos < MAX_TRIGROUP_COUNT_PER_BLAS, "Too many triangle groups in BLAS");
 
 	uint32_t index = m_pIndexCreator->Alloc();
@@ -275,11 +275,11 @@ BLASHandle* RayTracingManager::AllocBLAS(
 	D3D12_GPU_VIRTUAL_ADDRESS VB_GPU_Ptr = pVertexBuffer->GetGPUVirtualAddress();
 	for (uint i = 0; i < numTriGroupInfos; ++i)
 	{
-		D3D12_GPU_VIRTUAL_ADDRESS IB_GPU_Ptr = pTriGroupInfoList[i].IndexBuffer->GetGPUVirtualAddress();
+		D3D12_GPU_VIRTUAL_ADDRESS IB_GPU_Ptr = TriGroups[i].IndexBuffer->GetGPUVirtualAddress();
 
 		pGeomDescList[i].Type = D3D12_RAYTRACING_GEOMETRY_TYPE_TRIANGLES;
 		pGeomDescList[i].Triangles.IndexBuffer = IB_GPU_Ptr;
-		pGeomDescList[i].Triangles.IndexCount = pTriGroupInfoList[i].NumTriangles * 3;
+		pGeomDescList[i].Triangles.IndexCount = TriGroups[i].NumTriangles * 3;
 		pGeomDescList[i].Triangles.IndexFormat = DXGI_FORMAT_R16_UINT;
 		pGeomDescList[i].Triangles.Transform3x4 = 0;
 		pGeomDescList[i].Triangles.VertexFormat = DXGI_FORMAT_R32G32B32_FLOAT;
@@ -290,7 +290,7 @@ BLASHandle* RayTracingManager::AllocBLAS(
 		// PERFORMANCE TIP: mark geometry as opaque whenever applicable as it can enable important ray processing optimizations.
 		// Note: When rays encounter opaque geometry an any hit shader will not be executed whether it is present or not.
 		// pGeomDescList[i].Flags = pTriGroupInfoList[i].bOpaque ? D3D12_RAYTRACING_GEOMETRY_FLAG_OPAQUE : D3D12_RAYTRACING_GEOMETRY_FLAG_NONE;
-		pGeomDescList[i].Flags = pbTriGroupOpaqueList[i] ? D3D12_RAYTRACING_GEOMETRY_FLAG_OPAQUE : D3D12_RAYTRACING_GEOMETRY_FLAG_NONE;
+		pGeomDescList[i].Flags = bTriGroupOpaques[i] ? D3D12_RAYTRACING_GEOMETRY_FLAG_OPAQUE : D3D12_RAYTRACING_GEOMETRY_FLAG_NONE;
 	}
 
 	// Set Local Root Parameters
@@ -308,7 +308,7 @@ BLASHandle* RayTracingManager::AllocBLAS(
 		for (uint i = 0; i < numTriGroupInfos; ++i)
 		{
 			// Set Material
-			pBLASHandle->RootArgArray[i].Cb.Material = pTriGroupInfoList[i].Material;
+			pBLASHandle->RootArgArray[i].Cb.Material = TriGroups[i].Material;
 
 			// Create Shader Resource from Vertex Buffer
 			srvDesc.Buffer.FirstElement = 0;
@@ -324,20 +324,20 @@ BLASHandle* RayTracingManager::AllocBLAS(
 
 			// Create Shader Resource from Index Buffer			
 			srvDesc.Buffer.FirstElement = 0;
-			srvDesc.Buffer.NumElements = (pTriGroupInfoList[i].NumTriangles * 3 * 2) / 4;	// compute shader에서 4bytes 단위로 읽어야 하므로...
+			srvDesc.Buffer.NumElements = (TriGroups[i].NumTriangles * 3 * 2) / 4;	// compute shader에서 4bytes 단위로 읽어야 하므로...
 			srvDesc.Format = DXGI_FORMAT_R32_TYPELESS;
 			srvDesc.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_RAW;
 			srvDesc.Buffer.StructureByteStride = 0;
 
-			m_pD3DDevice->CreateShaderResourceView(pTriGroupInfoList[i].IndexBuffer, &srvDesc, srvCpu);
+			m_pD3DDevice->CreateShaderResourceView(TriGroups[i].IndexBuffer, &srvDesc, srvCpu);
 			pBLASHandle->RootArgArray[i].SrvIB = srvGpu;
 			srvCpu.Offset(1, m_DescriptorSize);
 			srvGpu.Offset(1, m_DescriptorSize);
 
 			// Diffuse Texture
-			if (pTriGroupInfoList[i].DiffuseTexHandle)
+			if (TriGroups[i].DiffuseTexHandle)
 			{
-				D3D12_CPU_DESCRIPTOR_HANDLE srvTexSrc = pTriGroupInfoList[i].DiffuseTexHandle->SRV;
+				D3D12_CPU_DESCRIPTOR_HANDLE srvTexSrc = TriGroups[i].DiffuseTexHandle->SRV;
 				if (srvTexSrc.ptr)
 				{
 					pD3DDevice->CopyDescriptorsSimple(1, srvCpu, srvTexSrc, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
@@ -348,9 +348,9 @@ BLASHandle* RayTracingManager::AllocBLAS(
 			srvGpu.Offset(1, m_DescriptorSize);
 
 			// Normal Texture
-			if (pTriGroupInfoList[i].NormalTexHandle)
+			if (TriGroups[i].NormalTexHandle)
 			{
-				D3D12_CPU_DESCRIPTOR_HANDLE srvTexSrc = pTriGroupInfoList[i].NormalTexHandle->SRV;
+				D3D12_CPU_DESCRIPTOR_HANDLE srvTexSrc = TriGroups[i].NormalTexHandle->SRV;
 				if (srvTexSrc.ptr)
 				{
 					pD3DDevice->CopyDescriptorsSimple(1, srvCpu, srvTexSrc, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);

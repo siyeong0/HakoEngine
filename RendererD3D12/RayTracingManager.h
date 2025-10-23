@@ -15,7 +15,13 @@ public:
 	void Cleanup();
 
 	void DoRaytracing(ID3D12GraphicsCommandList6* pCommandList);
-	BLASHandle* AllocBLAS(ID3D12Resource* pVertexBuffer, uint vertexSize, uint numVertices, const IndexedTriGroup* pTriGroupInfoList, const bool* pbTriGroupOpaqueList, uint numTriGroupInfos, bool bAllowUpdate);
+	BLASHandle* AllocBLAS(
+		ID3D12Resource* pVertexBuffer,
+		uint vertexSize,
+		uint numVertices,
+		const std::vector<IndexedTriGroup> TriGroups,
+		const std::vector<bool> bTriGroupOpaques,
+		bool bAllowUpdate);
 	void FreeBLAS(BLASHandle* pBLASHandle);
 	bool UpdateAccelerationStructure(ID3D12GraphicsCommandList6* pCommandList);
 	void UpdateManagedResource();

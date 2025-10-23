@@ -57,9 +57,8 @@ bool ENGINECALL BasicMeshObject::BeginCreateMesh(const Vertex* vertices, uint nu
 	}
 	
 	m_MaxNumTriGroups = numTriGroups;
-	m_pTriGroupList = new IndexedTriGroup[m_MaxNumTriGroups];
-	m_pbTriGroupOpaqueList = new bool[m_MaxNumTriGroups];
-	memset(m_pTriGroupList, 0, sizeof(IndexedTriGroup) * m_MaxNumTriGroups);
+	m_TriGroups.reserve(m_MaxNumTriGroups);
+	m_bTriGroupOpaques.reserve(m_MaxNumTriGroups);
 
 	return true;
 }
@@ -73,33 +72,33 @@ bool ENGINECALL BasicMeshObject::InsertTriGroup(const uint16_t* indices, uint nu
 	ID3D12Resource* pIndexBuffer = nullptr;
 	D3D12_INDEX_BUFFER_VIEW indexBufferView = {};
 
-	ASSERT(m_NumTriGroups < m_MaxNumTriGroups, "Too many tri-groups.");
+	ASSERT(m_TriGroups.size() < m_MaxNumTriGroups, "Too many tri-groups.");
 
 	if (FAILED(pResourceManager->CreateIndexBuffer(numTriangles * 3, &indexBufferView, &pIndexBuffer, (void*)indices, bUseGpuUploadHeaps)))
 	{
 		ASSERT(false, "Failed to create index buffer.");
 		return false;
 	}
-	IndexedTriGroup* pTriGroup = m_pTriGroupList + m_NumTriGroups;
-	pTriGroup->IndexBuffer = pIndexBuffer;
-	pTriGroup->IndexBufferView = indexBufferView;
-	pTriGroup->NumTriangles = static_cast<uint>(numTriangles);
-	pTriGroup->DiffuseTexHandle = material.HasDiffuseTexture()
+	IndexedTriGroup& pTriGroup = m_TriGroups.emplace_back();
+	pTriGroup.IndexBuffer = pIndexBuffer;
+	pTriGroup.IndexBufferView = indexBufferView;
+	pTriGroup.NumTriangles = static_cast<uint>(numTriangles);
+	pTriGroup.DiffuseTexHandle = material.HasDiffuseTexture()
 		? (TextureHandle*)m_pRenderer->CreateTextureFromFile(material.DiffuseTexturePath.c_str())
 		: (TextureHandle*)m_pRenderer->CreateImmutableTexture(CreateSolidColorImageRGBA(128, 128, Color::White()));
-	pTriGroup->NormalTexHandle = material.HasNormalTexture()
+	pTriGroup.NormalTexHandle = material.HasNormalTexture()
 		? (TextureHandle*)m_pRenderer->CreateTextureFromFile(material.NormalTexturePath.c_str())
 		: (TextureHandle*)m_pRenderer->CreateImmutableTexture(CreateSolidColorImageRGBA(128, 128, Color{ 0.5f, 0.5f, 1.0f }));
-	pTriGroup->Material.BaseColor = material.BaseColor;
-	pTriGroup->Material.Opacity = material.Opacity;
-	pTriGroup->Material.SpecularColor = material.SpecularColor;
-	pTriGroup->Material.SpecularFactor = material.SpecularFactor;
-	pTriGroup->Material.MetallicFactor = material.MetallicFactor;
-	pTriGroup->Material.RoughnessFactor = material.RoughnessFactor;
-	pTriGroup->Material.NormalScale = material.NormalScale;
-	pTriGroup->Material.AmbientOcclusionStrength = material.AmbientOcclusionStrength;
-	m_pbTriGroupOpaqueList[m_NumTriGroups] = material.IsOpaque();
-	m_NumTriGroups++;
+	pTriGroup.Material.BaseColor = material.BaseColor;
+	pTriGroup.Material.Opacity = material.Opacity;
+	pTriGroup.Material.SpecularColor = material.SpecularColor;
+	pTriGroup.Material.SpecularFactor = material.SpecularFactor;
+	pTriGroup.Material.MetallicFactor = material.MetallicFactor;
+	pTriGroup.Material.RoughnessFactor = material.RoughnessFactor;
+	pTriGroup.Material.NormalScale = material.NormalScale;
+	pTriGroup.Material.AmbientOcclusionStrength = material.AmbientOcclusionStrength;
+	m_bTriGroupOpaques.emplace_back(material.IsOpaque());
+
 	return true;
 }
 
@@ -107,9 +106,9 @@ void ENGINECALL BasicMeshObject::EndCreateMesh(bool bUseRayTracingIfSupported)
 {
 	bool bUseRayTracing = bUseRayTracingIfSupported && m_pRenderer->IsRayTracingEnabledInl();
 	bool bOpaque = true;
-	for (uint i = 0; i < m_NumTriGroups; ++i)
+	for (uint i = 0; i < m_TriGroups.size(); ++i)
 	{
-		const IndexedTriGroup& tg = m_pTriGroupList[i];
+		const IndexedTriGroup& tg = m_TriGroups[i];
 		if (tg.Material.Opacity < Material::OPACITY_THRESHOLD)
 		{
 			bOpaque = false;
@@ -137,9 +136,8 @@ void ENGINECALL BasicMeshObject::EndCreateMesh(bool bUseRayTracingIfSupported)
 			m_pVertexBuffer, 
 			sizeof(Vertex), 
 			m_VertexBufferView.SizeInBytes / sizeof(Vertex), 
-			m_pTriGroupList, 
-			m_pbTriGroupOpaqueList,
-			m_NumTriGroups, 
+			m_TriGroups, 
+			m_bTriGroupOpaques,
 			false);
 	}
 }
@@ -174,7 +172,7 @@ void BasicMeshObject::Draw(int threadIndex, ID3D12GraphicsCommandList6* pCommand
 
 	// --- 2) SRV Descriptor table (TriGroup 개수 만큼)
 	static constexpr uint NUM_SRV_PER_TRIGROUP = 2;
-	const uint requiredSrvCount = static_cast<uint>(m_NumTriGroups) * NUM_SRV_PER_TRIGROUP;
+	const uint requiredSrvCount = static_cast<uint>(m_TriGroups.size()) * NUM_SRV_PER_TRIGROUP;
 
 	CD3DX12_CPU_DESCRIPTOR_HANDLE cpuDescriptorTable = {};
 	CD3DX12_GPU_DESCRIPTOR_HANDLE gpuDescriptorTable = {};
@@ -182,9 +180,9 @@ void BasicMeshObject::Draw(int threadIndex, ID3D12GraphicsCommandList6* pCommand
 	ASSERT(bOk, "Failed to allocate descriptor table.");
 
 	CD3DX12_CPU_DESCRIPTOR_HANDLE cpuCurrDescHandleAddress = cpuDescriptorTable;
-	for (uint i = 0; i < m_NumTriGroups; ++i)
+	for (uint i = 0; i < m_TriGroups.size(); ++i)
 	{
-		const IndexedTriGroup& tg = m_pTriGroupList[i];
+		const IndexedTriGroup& tg = m_TriGroups[i];
 		TextureHandle* pDiffuseTex = tg.DiffuseTexHandle;
 		TextureHandle* pNormalTex = tg.NormalTexHandle;
 		ASSERT(pDiffuseTex && pDiffuseTex->SRV.ptr != 0, "Texture SRV missing.");
@@ -203,16 +201,16 @@ void BasicMeshObject::Draw(int threadIndex, ID3D12GraphicsCommandList6* pCommand
 
 	// --- 4) TriGroup loop: t0가 가리키는 SRV를 매 드로우마다 바꿈
 	CD3DX12_GPU_DESCRIPTOR_HANDLE gpuCurrDescHandleAddress = gpuDescriptorTable; // 첫 TriGroup의 t0
-	for (uint i = 0; i < m_NumTriGroups; ++i)
+	for (uint i = 0; i < m_TriGroups.size(); ++i)
 	{
-		pCBPerDraw->Material = m_pTriGroupList[i].Material;
+		pCBPerDraw->Material = m_TriGroups[i].Material;
 		pCommandList->SetGraphicsRootConstantBufferView(ROOT_SLOT_CBV_PER_DRAW, cb->pGPUMemAddr);
 
 		// i번째 TriGroup의 SRV 테이블 시작(t0=diffuse, t1=normal)
 		pCommandList->SetGraphicsRootDescriptorTable(ROOT_SLOT_SRV_TABLE, gpuCurrDescHandleAddress);
 
 		// 인덱스 버퍼/드로우
-		const IndexedTriGroup& tg = m_pTriGroupList[i];
+		const IndexedTriGroup& tg = m_TriGroups[i];
 		pCommandList->IASetIndexBuffer(&tg.IndexBufferView);
 		pCommandList->DrawIndexedInstanced(tg.NumTriangles * 3, 1, 0, 0, 0);
 
@@ -298,16 +296,11 @@ void BasicMeshObject::cleanup()
 	m_pRenderer->EnsureCompleted();
 
 	// delete all triangles-group
-	if (m_pTriGroupList)
+	for (IndexedTriGroup& tg : m_TriGroups)
 	{
-		for (uint i = 0; i < m_NumTriGroups; i++)
-		{
-			SAFE_RELEASE(m_pTriGroupList[i].IndexBuffer);
-			SAFE_CLEANUP(m_pTriGroupList[i].DiffuseTexHandle, m_pRenderer->DeleteTexture);
-			SAFE_CLEANUP(m_pTriGroupList[i].NormalTexHandle, m_pRenderer->DeleteTexture);
-		}
-		SAFE_DELETE_ARRAY(m_pTriGroupList);
-		SAFE_DELETE_ARRAY(m_pbTriGroupOpaqueList);
+		SAFE_RELEASE(tg.IndexBuffer);
+		SAFE_CLEANUP(tg.DiffuseTexHandle, m_pRenderer->DeleteTexture);
+		SAFE_CLEANUP(tg.NormalTexHandle, m_pRenderer->DeleteTexture);
 	}
 
 	SAFE_RELEASE(m_pVertexBuffer);

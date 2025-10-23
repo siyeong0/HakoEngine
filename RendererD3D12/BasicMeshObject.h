@@ -58,9 +58,8 @@ private:
 
 	PSOHandle* m_pPSOHandle = nullptr;
 
-	IndexedTriGroup* m_pTriGroupList = nullptr;
-	bool* m_pbTriGroupOpaqueList = nullptr;
-	uint m_NumTriGroups = 0;
+	std::vector<IndexedTriGroup> m_TriGroups;
+	std::vector<bool> m_bTriGroupOpaques;
 	uint m_MaxNumTriGroups = 0;
 
 	BLASHandle* m_pBLASHandle = nullptr;
