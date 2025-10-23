@@ -530,24 +530,6 @@ bool Game::Initialize(
 
 	// Create Game Objects
 	{
-		//// Create plane
-		//{
-		//	flecs::entity e = m_ECSWorld.entity()
-		//		.set<Position>({ 0.0f, -5.0f, 0.0f })
-		//		.set<Rotation>({ 0.0f, 0.0f, 0.0f })
-		//		.set<Scale>({ 10.0f, 10.0f, 10.0f })
-		//		.set<MeshRenderer>({ createPlaneMeshObject(m_pRenderer) });
-		//	m_Entities.emplace_back(e.id());
-		//}		
-		//// Create water plane
-		//{
-		//	flecs::entity e = m_ECSWorld.entity()
-		//		.set<Position>({ 0.0f, 0.0f, 0.0f })
-		//		.set<Rotation>({ 0.0f, 0.0f, 0.0f })
-		//		.set<Scale>({ 10.0f, 10.0f, 10.0f })
-		//		.set<MeshRenderer>({ createWaterMeshObject(m_pRenderer) });
-		//	m_Entities.emplace_back(e.id());
-		//}
 		// Create grid
 		{
 			flecs::entity e = m_ECSWorld.entity()
@@ -557,24 +539,6 @@ bool Game::Initialize(
 				.set<MeshRenderer>({ createMetalTileGridMeshObject(m_pRenderer) });
 			m_Entities.emplace_back(e.id());
 		}
-		//// Create cylinder
-		//{
-		//	flecs::entity e = m_ECSWorld.entity()
-		//		.set<Position>({ -15.0f, 0.0f, 0.0f })
-		//		.set<Rotation>({ 0.0f, 0.0f, 0.0f })
-		//		.set<Scale>({ 3.0f, 3.0f, 3.0f })
-		//		.set<MeshRenderer>({ createStoneCylinderMeshObject(m_pRenderer) });
-		//	m_Entities.emplace_back(e.id());
-		//}
-		//// Create cone
-		//{
-		//	flecs::entity e = m_ECSWorld.entity()
-		//		.set<Position>({ 15.0f, 0.0f, 0.0f })
-		//		.set<Rotation>({ 0.0f, 0.0f, 0.0f })
-		//		.set<Scale>({ 3.0f, 3.0f, 3.0f })
-		//		.set<MeshRenderer>({ createStoneConeMeshObject(m_pRenderer) });
-		//	m_Entities.emplace_back(e.id());
-		//}
 		// Create kitty box entities
 		const uint KITTY_BOX_OBJECT_COUNT = 30;
 		for (uint i = 0; i < KITTY_BOX_OBJECT_COUNT; i++)
@@ -655,26 +619,26 @@ bool Game::Initialize(
 		//	m_Entities.emplace_back(e.id());
 		//}
 
-		//// Create sprite entity
-		//{
-		//	flecs::entity e = m_ECSWorld.entity()
-		//		.set<Position>({ 100.0f, 100.0f, 0.0f })
-		//		.set<Rotation>({ 0.0f, 0.0f, 0.0f })
-		//		.set<Scale>({ 0.1f, 0.1f, 0.1f })
-		//		.set<SpriteRenderer>({ L"./Resources/Kanna.dds" });
+		// Create sprite entity
+		{
+			flecs::entity e = m_ECSWorld.entity()
+				.set<Position>({ 100.0f, 100.0f, 0.0f })
+				.set<Rotation>({ 0.0f, 0.0f, 0.0f })
+				.set<Scale>({ 0.1f, 0.1f, 0.1f })
+				.set<SpriteRenderer>({ L"./Resources/Kanna.dds" });
 
-		//	m_Entities.emplace_back(e.id());
-		//}
-		//// Create text entity
-		//{
-		//	flecs::entity e = m_ECSWorld.entity()
-		//		.set<Position>({ 500.0f, 100.0f, 0.0f })
-		//		.set<Rotation>({ 0.0f, 0.0f, 0.0f })
-		//		.set<Scale>({ 1.0f, 1.0f, 1.0f })
-		//		.set<TextRenderer>(TextRenderer(L"Hello"));
+			m_Entities.emplace_back(e.id());
+		}
+		// Create text entity
+		{
+			flecs::entity e = m_ECSWorld.entity()
+				.set<Position>({ 500.0f, 100.0f, 0.0f })
+				.set<Rotation>({ 0.0f, 0.0f, 0.0f })
+				.set<Scale>({ 1.0f, 1.0f, 1.0f })
+				.set<TextRenderer>(TextRenderer(L"Hello"));
 
-		//	m_Entities.emplace_back(e.id());
-		//}
+			m_Entities.emplace_back(e.id());
+		}
 	}
 
 	// begin perf check

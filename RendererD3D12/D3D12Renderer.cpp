@@ -444,24 +444,25 @@ void ENGINECALL D3D12Renderer::BeginRender()
 			D3D12_RESOURCE_STATE_RENDER_TARGET));
 
 	// Clear render taget
+	CD3DX12_CPU_DESCRIPTOR_HANDLE rtvHandle(m_pRTVHeap->GetCPUDescriptorHandleForHeapStart(), m_uiRenderTargetIndex, m_rtvDescriptorSize);
+	CD3DX12_CPU_DESCRIPTOR_HANDLE dsvHandle(m_pDSVHeap->GetCPUDescriptorHandleForHeapStart());
+
+	const float backColor[] = { 0.0f, 0.0f, 1.0f, 1.0f };
+	pCommandList->ClearRenderTargetView(rtvHandle, backColor, 0, nullptr);
+	pCommandList->ClearDepthStencilView(dsvHandle, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
+
+	pCommandList = pCommandListPool->GetCurrentCommandList();
+	pCommandList->RSSetViewports(1, &m_Viewport);
+	pCommandList->RSSetScissorRects(1, &m_ScissorRect);
+	pCommandList->OMSetRenderTargets(1, &rtvHandle, FALSE, &dsvHandle);
+
 	if (!IsRayTracingEnabledInl())
 	{
-		CD3DX12_CPU_DESCRIPTOR_HANDLE rtvHandle(m_pRTVHeap->GetCPUDescriptorHandleForHeapStart(), m_uiRenderTargetIndex, m_rtvDescriptorSize);
-		CD3DX12_CPU_DESCRIPTOR_HANDLE dsvHandle(m_pDSVHeap->GetCPUDescriptorHandleForHeapStart());
-
-		const float BackColor[] = { 0.0f, 0.0f, 1.0f, 1.0f };
-		pCommandList->ClearRenderTargetView(rtvHandle, BackColor, 0, nullptr);
-		pCommandList->ClearDepthStencilView(dsvHandle, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
-
-		pCommandList = pCommandListPool->GetCurrentCommandList();
-		pCommandList->RSSetViewports(1, &m_Viewport);
-		pCommandList->RSSetScissorRects(1, &m_ScissorRect);
-		pCommandList->OMSetRenderTargets(1, &rtvHandle, FALSE, &dsvHandle);
 		m_pSkyObject->Draw(0, pCommandList);
-
-		// Execute immediatey
-		pCommandListPool->CloseAndExecute(m_pCommandQueue);
 	}
+
+	// Execute immediatey
+	pCommandListPool->CloseAndExecute(m_pCommandQueue);
 
 	fence();
 }
@@ -501,14 +502,6 @@ void ENGINECALL D3D12Renderer::EndRender()
 			m_pRayTracingManager->UpdateAccelerationStructure(pCommandList);
 		}
 
-		// const float BackColor[] = { 0.0f, 0.0f, 1.0f, 1.0f };
-		// pCommandList->ClearRenderTargetView(rtvHandle, BackColor, 0, nullptr);
-		// pCommandList->ClearDepthStencilView(dsvHandle, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
-
-		pCommandList->RSSetViewports(1, &m_Viewport);
-		pCommandList->RSSetScissorRects(1, &m_ScissorRect);
-		pCommandList->OMSetRenderTargets(1, &rtvHandle, FALSE, &dsvHandle);
-
 		m_pRayTracingManager->DoRaytracing(pCommandList);
 		ID3D12Resource* pRayTracingOuputResource = m_pRayTracingManager->GetOutputResource();
 
@@ -524,12 +517,9 @@ void ENGINECALL D3D12Renderer::EndRender()
 		postCopyBarriers[1] = CD3DX12_RESOURCE_BARRIER::Transition(pRayTracingOuputResource, D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE);
 		pCommandList->ResourceBarrier(ARRAYSIZE(postCopyBarriers), postCopyBarriers);
 
-		// Present
-		// pCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_pRenderTargets[m_uiRenderTargetIndex], D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT));
 		pCommandListPool->CloseAndExecute(m_pCommandQueue);
 	}
 
-	// if (!IsRayTracingEnabledInl())
 	{
 #ifdef USE_MULTI_THREAD
 		// ---- Phase 1: Opaque ----
