@@ -206,7 +206,7 @@ static IMeshObject* createMetalTileGridMeshObject(IRenderer* pRenderer)
 	const wchar_t* diffuseTexPath = L"./Resources/megayuchi/tilemap_008.dds";
 	const wchar_t* normalTexPath = L"./Resources/megayuchi/tilemap_008_N.dds";
 
-	StaticMesh meshData = StaticMesh::CreateGridMesh(20.0f, 20.0f, 10, 10);
+	StaticMesh meshData = StaticMesh::CreateGridMesh(20.0f, 20.0f, 100, 100);
 	std::vector<Vertex> vertices = meshData.GetVertexArray();
 
 	pMeshObj = pRenderer->CreateBasicMeshObject();
@@ -553,7 +553,7 @@ bool Game::Initialize(
 			flecs::entity e = m_ECSWorld.entity()
 				.set<Position>({ 0.0f, -5.0f, 0.0f })
 				.set<Rotation>({ 0.0f, 0.0f, 0.0f })
-				.set<Scale>({ 10.0f, 10.0f, 10.0f })
+				.set<Scale>({ 100.0f, 100.0f, 100.0f })
 				.set<MeshRenderer>({ createMetalTileGridMeshObject(m_pRenderer) });
 			m_Entities.emplace_back(e.id());
 		}
