@@ -128,7 +128,7 @@ bool TraceShadowRayAndReportIfHit(out float tHit, in Ray ray, in bool retrieveTH
         // closest hit shader를 사용하지 않는다. 가깝든 멀든 광원에 사이에 장애물이 있는지만 확인하면 된다. 이는 miss shader에서 확인 가능하다.
         rayFlags |= RAY_FLAG_SKIP_CLOSEST_HIT_SHADER;
     }
-    rayFlags = 0; // RAY_FLAG_CULL_BACK_FACING_TRIANGLES;
+    // rayFlags = 0; // RAY_FLAG_CULL_BACK_FACING_TRIANGLES;
 
     // TraceRay(Scene, rayFlags, ~0, 0, 2, 0, rayDesc, rayPayload); // radiance
 	// TraceRay(Scene, rayFlags, ~0, 1, 2, 1, rayDesc, shadowPayload); // shadow
@@ -371,7 +371,7 @@ void MyClosestHitShader_RadianceRay(inout RadiancePayload rayPayload, in BuiltIn
     ShadingInfo info;
     info.Kd = (1.0 - mtl.MetallicFactor) * baseColor;
     info.Ks = saturate(lerp(mtl.SpecularColor, baseColor, metallic) * mtl.SpecularFactor);
-    info.Kr = (metallic > 0.5) ? normalize(max(baseColor, float3(1e-4, 1e-4, 1e-4))) : float3(1.0, 1.0, 1.0);
+    info.Kr = (metallic > 0.5) ? baseColor : 1.0.xxx;
     //info.Kr = float3(mtl.SpecularFactor, mtl.SpecularFactor, mtl.SpecularFactor);
     info.Kt = (1.0f - saturate(mtl.Opacity)) * baseColor;
     info.Roughness = roughness;
