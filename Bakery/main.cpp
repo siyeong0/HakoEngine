@@ -8,7 +8,7 @@
 #endif
 
 #include "Common/Common.h"
-#include "Common/StaticMesh.h"
+#include "Geometry/StaticMesh.h"
 #include "Interface/IPrelight.h"
 #include "Interface/IGeometry.h"
 

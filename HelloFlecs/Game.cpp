@@ -317,43 +317,6 @@ bool Game::Initialize(
 		pCreateFunc(&m_pRenderer);
 	}
 
-	// Load Geometry DLL
-	{
-		const wchar_t* wchGeometryFileName = nullptr;
-#if defined(_M_ARM64EC) || defined(_M_ARM64)
-#ifdef _DEBUG
-		wchGeometryFileName = L"Geometry_arm64_debug.dll";
-#else
-		wchGeometryFileName = L"Geometry_arm64_release.dll";
-#endif
-#elif defined(_M_AMD64)
-#ifdef _DEBUG
-		wchGeometryFileName = L"Geometry.dll"; // TODO : arm64_debug.dll";
-#else
-		wchGeometryFileName = L"Geometry.dll";
-#endif
-#elif defined(_M_IX86)
-#ifdef _DEBUG
-		wchGeometryFileName = L"Geometry_x86_debug.dll";
-#else
-		wchGeometryFileName = L"Geometry_x86_release.dll";
-#endif
-#endif
-		wchar_t wchErrTxt[128] = {};
-		int	errCode = 0;
-
-		m_hGeometryDLL = LoadLibrary(wchGeometryFileName);
-		if (!m_hGeometryDLL)
-		{
-			errCode = GetLastError();
-			swprintf_s(wchErrTxt, L"Fail to LoadLibrary(%s) - Error Code: %u", wchGeometryFileName, errCode);
-			MessageBox(hWnd, wchErrTxt, L"Error", MB_OK);
-			ASSERT(false, "Fail to load Geometry DLL");
-		}
-		CREATE_INSTANCE_FUNC pCreateFunc = (CREATE_INSTANCE_FUNC)GetProcAddress(m_hGeometryDLL, "DllCreateInstance");
-		pCreateFunc(&m_pGeometry);
-	}
-
 	// Get App Path and Set Shader Path
 	//wchar_t exePath[_MAX_PATH] = {};
 	wchar_t wchShaderPath[_MAX_PATH] = L"./Shaders";
@@ -594,26 +557,26 @@ bool Game::Initialize(
 				.set<MeshRenderer>({ createMetalTileGridMeshObject(m_pRenderer) });
 			m_Entities.emplace_back(e.id());
 		}
-		// Create cylinder
-		{
-			flecs::entity e = m_ECSWorld.entity()
-				.set<Position>({ -15.0f, 0.0f, 0.0f })
-				.set<Rotation>({ 0.0f, 0.0f, 0.0f })
-				.set<Scale>({ 3.0f, 3.0f, 3.0f })
-				.set<MeshRenderer>({ createStoneCylinderMeshObject(m_pRenderer) });
-			m_Entities.emplace_back(e.id());
-		}
-		// Create cone
-		{
-			flecs::entity e = m_ECSWorld.entity()
-				.set<Position>({ 15.0f, 0.0f, 0.0f })
-				.set<Rotation>({ 0.0f, 0.0f, 0.0f })
-				.set<Scale>({ 3.0f, 3.0f, 3.0f })
-				.set<MeshRenderer>({ createStoneConeMeshObject(m_pRenderer) });
-			m_Entities.emplace_back(e.id());
-		}
+		//// Create cylinder
+		//{
+		//	flecs::entity e = m_ECSWorld.entity()
+		//		.set<Position>({ -15.0f, 0.0f, 0.0f })
+		//		.set<Rotation>({ 0.0f, 0.0f, 0.0f })
+		//		.set<Scale>({ 3.0f, 3.0f, 3.0f })
+		//		.set<MeshRenderer>({ createStoneCylinderMeshObject(m_pRenderer) });
+		//	m_Entities.emplace_back(e.id());
+		//}
+		//// Create cone
+		//{
+		//	flecs::entity e = m_ECSWorld.entity()
+		//		.set<Position>({ 15.0f, 0.0f, 0.0f })
+		//		.set<Rotation>({ 0.0f, 0.0f, 0.0f })
+		//		.set<Scale>({ 3.0f, 3.0f, 3.0f })
+		//		.set<MeshRenderer>({ createStoneConeMeshObject(m_pRenderer) });
+		//	m_Entities.emplace_back(e.id());
+		//}
 		// Create kitty box entities
-		const uint KITTY_BOX_OBJECT_COUNT = 50;
+		const uint KITTY_BOX_OBJECT_COUNT = 30;
 		for (uint i = 0; i < KITTY_BOX_OBJECT_COUNT; i++)
 		{
 			float x = (float)((rand() % 51) - 25);	// -10m - 10m 
@@ -636,7 +599,7 @@ bool Game::Initialize(
 			m_Entities.emplace_back(e.id());
 		}
 		// Create megayuchi box entities
-		const uint MEGA_BOX_OBJECT_COUNT = 100;
+		const uint MEGA_BOX_OBJECT_COUNT = 30;
 		for (uint i = 0; i < MEGA_BOX_OBJECT_COUNT; i++)
 		{
 			float x = (float)((rand() % 51) - 25);	// -10m - 10m 
@@ -692,26 +655,26 @@ bool Game::Initialize(
 		//	m_Entities.emplace_back(e.id());
 		//}
 
-		// Create sprite entity
-		{
-			flecs::entity e = m_ECSWorld.entity()
-				.set<Position>({ 100.0f, 100.0f, 0.0f })
-				.set<Rotation>({ 0.0f, 0.0f, 0.0f })
-				.set<Scale>({ 0.1f, 0.1f, 0.1f })
-				.set<SpriteRenderer>({ L"./Resources/Kanna.dds" });
+		//// Create sprite entity
+		//{
+		//	flecs::entity e = m_ECSWorld.entity()
+		//		.set<Position>({ 100.0f, 100.0f, 0.0f })
+		//		.set<Rotation>({ 0.0f, 0.0f, 0.0f })
+		//		.set<Scale>({ 0.1f, 0.1f, 0.1f })
+		//		.set<SpriteRenderer>({ L"./Resources/Kanna.dds" });
 
-			m_Entities.emplace_back(e.id());
-		}
-		// Create text entity
-		{
-			flecs::entity e = m_ECSWorld.entity()
-				.set<Position>({ 500.0f, 100.0f, 0.0f })
-				.set<Rotation>({ 0.0f, 0.0f, 0.0f })
-				.set<Scale>({ 1.0f, 1.0f, 1.0f })
-				.set<TextRenderer>(TextRenderer(L"Hello"));
+		//	m_Entities.emplace_back(e.id());
+		//}
+		//// Create text entity
+		//{
+		//	flecs::entity e = m_ECSWorld.entity()
+		//		.set<Position>({ 500.0f, 100.0f, 0.0f })
+		//		.set<Rotation>({ 0.0f, 0.0f, 0.0f })
+		//		.set<Scale>({ 1.0f, 1.0f, 1.0f })
+		//		.set<TextRenderer>(TextRenderer(L"Hello"));
 
-			m_Entities.emplace_back(e.id());
-		}
+		//	m_Entities.emplace_back(e.id());
+		//}
 	}
 
 	// begin perf check

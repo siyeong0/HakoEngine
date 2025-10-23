@@ -1,5 +1,5 @@
 ﻿#include "pch.h"
-#include "Common/StaticMesh.h"
+#include "Geometry/StaticMesh.h"
 #include "Prelight.h"
 
 bool ENGINECALL Prelight::Initialize()
