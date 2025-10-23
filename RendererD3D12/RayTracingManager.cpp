@@ -135,8 +135,11 @@ void RayTracingManager::DoRaytracing(ID3D12GraphicsCommandList6* pCommandList)
 
 	D3D12_CPU_DESCRIPTOR_HANDLE	cbvHandle = {};
 	SimpleConstantBufferPool* pConstantBufferPool = m_pRenderer->GetConstantBufferPool(CONSTANT_BUFFER_TYPE_PER_FRAME, 0);
+	SimpleConstantBufferPool* pConstantBufferPoolAtmos = m_pRenderer->GetConstantBufferPool(CONSTANT_BUFFER_TYPE_ATMOS, 0);
 	ConstantBufferContainer* pCB = pConstantBufferPool->Alloc();
+	ConstantBufferContainer* pCBAtmos = pConstantBufferPoolAtmos->Alloc();
 	ASSERT(pCB, "Failed to allocate constant buffer.");
+	ASSERT(pCBAtmos, "Failed to allocate constant buffer.");
 
 	CONSTANT_BUFFER_PER_FRAME* pCBPerFrame = (CONSTANT_BUFFER_PER_FRAME*)pCB->pSystemMemAddr;
 	CONSTANT_BUFFER_PER_FRAME srcCBData = m_pRenderer->GetFrameCBData();
@@ -144,18 +147,39 @@ void RayTracingManager::DoRaytracing(ID3D12GraphicsCommandList6* pCommandList)
 	pCBPerFrame->MaxRadianceRayRecursionDepth = GetMaxRadianceRecursionDepth();
 	pCBPerFrame->MaxShadowRayRecursionDepth = GetMaxShadowRecursionDepth();
 
+	CONSTANT_BUFFER_ATMOS* pCBAtmosData = (CONSTANT_BUFFER_ATMOS*)pCBAtmos->pSystemMemAddr;
+	CONSTANT_BUFFER_ATMOS srcCBAtmosData = m_pRenderer->GetAtmosCBData();
+	std::memcpy(pCBAtmosData, &srcCBAtmosData, sizeof(CONSTANT_BUFFER_ATMOS));
+
 	// (0) CBV - RayTracing
 	m_pD3DDevice->CopyDescriptorsSimple(1, dispatchHeapHandleCPU, pCB->CBVHandle, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 	dispatchHeapHandleCPU.Offset(1, m_DescriptorSize);
 
-	// (1) UAV - output diffuse
+	// (1) CBV - Atmosphere
+	m_pD3DDevice->CopyDescriptorsSimple(1, dispatchHeapHandleCPU, pCBAtmos->CBVHandle, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+	dispatchHeapHandleCPU.Offset(1, m_DescriptorSize);
+
+	// (2) UAV - output diffuse
 	CD3DX12_CPU_DESCRIPTOR_HANDLE uavDiffuse(m_pCommonDescriptorHeap->GetCPUDescriptorHandleForHeapStart(), COMMON_DESCRIPTOR_INDEX_OUTPUT_DIFFUSE_UAV, m_DescriptorSize);
 	m_pD3DDevice->CopyDescriptorsSimple(1, dispatchHeapHandleCPU, uavDiffuse, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 	dispatchHeapHandleCPU.Offset(1, m_DescriptorSize);
 
-	// (2) UAV - output depth
+	// (3) UAV - output depth
 	CD3DX12_CPU_DESCRIPTOR_HANDLE uavDepth(m_pCommonDescriptorHeap->GetCPUDescriptorHandleForHeapStart(), COMMON_DESCRIPTOR_INDEX_OUTPUT_DEPTH_UAV, m_DescriptorSize);
 	m_pD3DDevice->CopyDescriptorsSimple(1, dispatchHeapHandleCPU, uavDepth, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+	dispatchHeapHandleCPU.Offset(1, m_DescriptorSize);
+
+	// (4) SRV - Sky Texture
+	const TextureHandle* skyTransmittanceTexture = m_pRenderer->GetSkyTransmittanceTexture();
+	m_pD3DDevice->CopyDescriptorsSimple(1, dispatchHeapHandleCPU, skyTransmittanceTexture->SRV, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+	dispatchHeapHandleCPU.Offset(1, m_DescriptorSize);
+
+	const TextureHandle* skyScatteringTexture = m_pRenderer->GetSkyScatteringTexture();
+	m_pD3DDevice->CopyDescriptorsSimple(1, dispatchHeapHandleCPU, skyScatteringTexture->SRV, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+	dispatchHeapHandleCPU.Offset(1, m_DescriptorSize);
+
+	const TextureHandle* skyIrradianceTexture = m_pRenderer->GetSkyIrradianceTexture();
+	m_pD3DDevice->CopyDescriptorsSimple(1, dispatchHeapHandleCPU, skyIrradianceTexture->SRV, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 	dispatchHeapHandleCPU.Offset(1, m_DescriptorSize);
 
 	CD3DX12_RESOURCE_BARRIER rcBarrier[] =
@@ -682,7 +706,7 @@ bool RayTracingManager::createOutputDiffuseBuffer(uint width, uint height)
 	m_pOutputDiffuse->SetName(L"CRayTracingManager::m_pOutputDiffuse");
 
 	// Create UAV
-	CD3DX12_CPU_DESCRIPTOR_HANDLE	uavHandle(m_pCommonDescriptorHeap->GetCPUDescriptorHandleForHeapStart(), COMMON_DESCRIPTOR_INDEX_OUTPUT_DIFFUSE_UAV, m_DescriptorSize);
+	CD3DX12_CPU_DESCRIPTOR_HANDLE uavHandle(m_pCommonDescriptorHeap->GetCPUDescriptorHandleForHeapStart(), COMMON_DESCRIPTOR_INDEX_OUTPUT_DIFFUSE_UAV, m_DescriptorSize);
 	m_pD3DDevice->CreateUnorderedAccessView(m_pOutputDiffuse, nullptr, nullptr, uavHandle);
 
 	return true;
@@ -727,7 +751,7 @@ bool RayTracingManager::createOutputDepthBuffer(uint width, uint height)
 	uavDesc.Format = DXGI_FORMAT_R32_FLOAT;
 	uavDesc.Buffer.Flags = D3D12_BUFFER_UAV_FLAG_NONE;
 
-	CD3DX12_CPU_DESCRIPTOR_HANDLE	uavHandle(m_pCommonDescriptorHeap->GetCPUDescriptorHandleForHeapStart(), COMMON_DESCRIPTOR_INDEX_OUTPUT_DEPTH_UAV, m_DescriptorSize);
+	CD3DX12_CPU_DESCRIPTOR_HANDLE uavHandle(m_pCommonDescriptorHeap->GetCPUDescriptorHandleForHeapStart(), COMMON_DESCRIPTOR_INDEX_OUTPUT_DEPTH_UAV, m_DescriptorSize);
 	m_pD3DDevice->CreateUnorderedAccessView(m_pOutputDepth, nullptr, &uavDesc, uavHandle);
 
 	return true;
@@ -749,16 +773,16 @@ void RayTracingManager::createRootSignatures()
 	// root param 1
 	// Acceleration Sturecture
 
-	CD3DX12_DESCRIPTOR_RANGE globalRanges[2] = {};
-	globalRanges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, 1, 0);	// b0 : CBV
-
-	// u0 : u0-diffuse | u1 : out-depth
-	globalRanges[1].Init(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 2, 0);
+	CD3DX12_DESCRIPTOR_RANGE globalRanges[4] = {};
+	globalRanges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, 1, /*b*/0, /*space*/0); // b0, space0
+	globalRanges[1].Init(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, 1, /*b*/0, /*space*/1); // b0, space1
+	globalRanges[2].Init(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 2, /*u*/0, /*space*/0); // u0 : u0-diffuse | u1 : out-depth
+	globalRanges[3].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 3, /*t*/11, /*space*/0); // t0 : AccelerationStructure
 
 	// b0 : RaytracingCBV | u0 : u0-diffuse | u1 : out-depth | t0 : AccelerationStructure
-	CD3DX12_ROOT_PARAMETER GlobalRootParameters[2] = {};
-	GlobalRootParameters[0].InitAsDescriptorTable(_countof(globalRanges), globalRanges, D3D12_SHADER_VISIBILITY_ALL);
-	GlobalRootParameters[1].InitAsShaderResourceView(0);	// Acceleration Structure
+	CD3DX12_ROOT_PARAMETER globalRootParameters[2] = {};
+	globalRootParameters[0].InitAsDescriptorTable(_countof(globalRanges), globalRanges, D3D12_SHADER_VISIBILITY_ALL);
+	globalRootParameters[1].InitAsShaderResourceView(0);	// Acceleration Structure
 
 	// sampler
 	D3D12_STATIC_SAMPLER_DESC samplers[4] = {};
@@ -772,7 +796,7 @@ void RayTracingManager::createRootSignatures()
 	{
 		samplers[i].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
 	}
-	CD3DX12_ROOT_SIGNATURE_DESC globalRootSignatureDesc(ARRAYSIZE(GlobalRootParameters), GlobalRootParameters, (DWORD)_countof(samplers), samplers);
+	CD3DX12_ROOT_SIGNATURE_DESC globalRootSignatureDesc(ARRAYSIZE(globalRootParameters), globalRootParameters, (DWORD)_countof(samplers), samplers);
 	D3DUtil::SerializeAndCreateRaytracingRootSignature(m_pD3DDevice, &globalRootSignatureDesc, &m_pRaytracingGlobalRootSignature);
 
 	// Local Root Signature
@@ -782,7 +806,7 @@ void RayTracingManager::createRootSignatures()
 	localRanges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 4, 0, 1);	// space1
 
 	CD3DX12_ROOT_PARAMETER localRootParameters[2] = {};
-	localRootParameters[0].InitAsConstants(SizeOfInUint32(CONSTANT_BUFFER_RT_TRIGROUP), 0, 1);	// b0 : CBV Per TriGroup
+	localRootParameters[0].InitAsConstants(SizeOfInUint32(CONSTANT_BUFFER_RT_TRIGROUP), /*b*/1, /*space*/0, D3D12_SHADER_VISIBILITY_ALL);
 	localRootParameters[1].InitAsDescriptorTable(_countof(localRanges), localRanges, D3D12_SHADER_VISIBILITY_ALL);
 
 	CD3DX12_ROOT_SIGNATURE_DESC localRootSignatureDesc(ARRAYSIZE(localRootParameters), localRootParameters, 0, nullptr);

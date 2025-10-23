@@ -208,7 +208,7 @@ float3 ReconstructViewDirW(float2 uv)
 
 float4 PSMain(VSOut i) : SV_Target
 {
-    float3 V = ReconstructViewDirW(i.uv);
+    float3 V = normalize(ReconstructViewDirW(i.uv));
     float3 L = SampleSky(V);
 
     // Tonemap -> Gamma

@@ -44,11 +44,13 @@ void SkyObject::Cleanup()
 
 void SkyObject::Draw(int threadIndex, ID3D12GraphicsCommandList6* pCommandList)
 {
+	const EAtmosPreset ATMOS_PRESET = EAtmosPreset::NoonClearSky;
+
 	ID3D12Device5* pDevice = m_pRenderer->GetD3DDevice();
 	uint srvDescriptorSize = m_pRenderer->GetSrvDescriptorSize();
 	DescriptorPool* pDescriptorPool = m_pRenderer->GetDescriptorPool(threadIndex);
 	SimpleConstantBufferPool* pCameraConstantBufferPool = m_pRenderer->GetConstantBufferPool(CONSTANT_BUFFER_TYPE_PER_FRAME, threadIndex);
-	SimpleConstantBufferPool* pAtmosConstantBufferPool = m_pRenderer->GetConstantBufferPool(CONSTANT_BUFFER_TYPE_ATMOS_CONSTANTS, threadIndex);
+	SimpleConstantBufferPool* pAtmosConstantBufferPool = m_pRenderer->GetConstantBufferPool(CONSTANT_BUFFER_TYPE_ATMOS, threadIndex);
 	RootSignatureManager* pRootSigatureManager = m_pRenderer->GetRootSignatureManager();
 
 	// Constant Buffer (b0 = CB_SkyMatrices, b1 = CB_SkyParams)
@@ -64,123 +66,7 @@ void SkyObject::Draw(int threadIndex, ID3D12GraphicsCommandList6* pCommandList)
 
 	// b1: Atmospheric parameters
 	CONSTANT_BUFFER_ATMOS* atmosCB = reinterpret_cast<CONSTANT_BUFFER_ATMOS*>(cb1->pSystemMemAddr);
-
-	enum EAtmospherePresets
-	{
-		AtmosPreset_NoonClearSky = 0,
-		AtmosPreset_AfternoonClearSky,
-		AtmosPreset_GoldenHour,
-		AtmosPreset_WinterSky,
-		AtmosPreset_HazyDay,
-		AtmosPreset_BlueHour,
-		AtmosPreset_HighAltitude,
-		AtmosPreset_ExtraSolar
-	};
-	const int ATMOS_PRESET = AtmosPreset_NoonClearSky;
-	switch (ATMOS_PRESET)
-	{
-	case AtmosPreset_NoonClearSky:
-		// 1) 정오 맑음(밝고 푸른 하늘)
-		//	태양 고도 : 70°, 방위 : -Z
-		//	인상 : 채도가 높은 푸른 하늘, 강한 하이라이트
-		atmosCB->CameraPosPlanetCoord = { 0.0f, 6360005.0f, 0.0f }; // 지상+5m
-		atmosCB->SunDir = { 0.0f, -0.9397f, -0.3420f }; // Sun→Ground
-		atmosCB->SunExposure = 14.0f;
-		atmosCB->SunIrradiance = { 1.0f, 1.0f, 1.0f };
-		atmosCB->MieG = 0.80f;
-		atmosCB->MieTint = { 0.92f, 0.92f, 0.98f };
-		break;
-	case AtmosPreset_AfternoonClearSky:
-		// 2) 오후 3시 맑음 (밝지만 약간 웜)
-		//	태양 고도: 35°, 방위: -Z
-		//	인상: 살짝 따뜻한 톤, 그림자 길어짐
-		atmosCB->CameraPosPlanetCoord = { 0.0f, 6360002.0f, 0.0f };
-		atmosCB->SunDir = { 0.0f, -0.5736f, -0.8192f };
-		atmosCB->SunExposure = 12.0f;
-		atmosCB->SunIrradiance = { 1.05f, 1.0f, 0.95f };
-		atmosCB->MieG = 0.82f;
-		atmosCB->MieTint = { 0.93f, 0.93f, 0.97f };
-		break;
-	case AtmosPreset_GoldenHour:
-		// 3) 해질녘 골든아워 (웜/오렌지 하늘, 스카이라인 강조)
-		//	태양 고도: 10°, 방위: -Z
-		//	인상: 노을빛, 레일리 산란 더 또렷, Mie가 웜하게 영향
-		atmosCB->CameraPosPlanetCoord = { 0.0f, 6360002.0f, 0.0f };
-		atmosCB->SunDir = { 0.0f, -0.5736f, -0.8192f };
-		atmosCB->SunExposure = 12.0f;
-		atmosCB->SunIrradiance = { 1.45f, 1.0f, 0.95f };
-		atmosCB->MieG = 0.82f;
-		atmosCB->MieTint = { 0.93f, 0.93f, 0.97f };
-		break;
-	case AtmosPreset_WinterSky:
-		// 4) 청명한 겨울 하늘 (차갑고 선명)
-		//	태양 고도: 25°, 방위: -Z
-		//	인상: 푸른 채도↑, 맑고 차가운 느낌
-		atmosCB->CameraPosPlanetCoord = { 0.0f, 6360002.0f, 0.0f };
-		atmosCB->SunDir = { 0.0f, -0.5736f, -0.8192f };
-		atmosCB->SunExposure = 12.0f;
-		atmosCB->SunIrradiance = { 1.05f, 1.0f, 0.95f };
-		atmosCB->MieG = 0.82f;
-		atmosCB->MieTint = { 0.93f, 0.93f, 0.97f };
-		break;
-	case AtmosPreset_HazyDay:
-		// 5) 연무 / 안개 낀 날(헤이즈 강함, 콘트라스트↓)
-		//	태양 고도 : 30°, 방위 : -Z
-		//	인상 : 뿌연 안개, 하이라이트 확산
-		atmosCB->CameraPosPlanetCoord = { 0.0f, 6360002.0f, 0.0f };
-		atmosCB->SunDir = { 0.0f, -0.5f, -0.8660f };
-		atmosCB->SunExposure = 18.0f;                           // 노출↑
-		atmosCB->SunIrradiance = { 1.0f, 1.0f, 0.95f };
-		atmosCB->MieG = 0.90f;                           // 전방산란 강하게
-		atmosCB->MieTint = { 0.95f, 0.95f, 0.97f };   // 약간 회백
-		break;
-	case AtmosPreset_BlueHour:
-		// 6) 해뜨기 직전 블루아워(딥블루 / 보랏빛)
-		//	태양 고도 : -3°(지평선 아래), 방위 : -Z
-		//	인상 : 전반적으로 어둡고 푸른 노출, 레일리만 남는 느낌
-		atmosCB->CameraPosPlanetCoord = { 0.0f, 6360002.0f, 0.0f };
-		atmosCB->SunDir = { 0.0f, +0.05234f, -0.99863f }; // 태양이 지평선 아래면 Y가 +일 수 있음(Sun→Ground)
-		atmosCB->SunExposure = 20.0f;                           // 꽤 올려서 보정
-		atmosCB->SunIrradiance = { 0.6f, 0.7f, 1.0f };      // 쿨톤
-		atmosCB->MieG = 0.82f;
-		atmosCB->MieTint = { 0.90f, 0.92f, 1.00f };
-		break;
-	case AtmosPreset_HighAltitude:
-		// 7) 고공 / 항공 시점(대기 얇게 보이고 지평선에 띠)
-		//	카메라: +2km
-		//	태양 고도 : 45°, 방위 : -Z
-		atmosCB->CameraPosPlanetCoord = { 0.0f, 6362000.0f, 0.0f };     // +2km
-		atmosCB->SunDir = { 0.0f, -0.7071f, -0.7071f };
-		atmosCB->SunExposure = 12.0f;
-		atmosCB->SunIrradiance = { 1.0f, 1.0f, 1.0f };
-		atmosCB->MieG = 0.82f;
-		atmosCB->MieTint = { 0.92f, 0.93f, 0.98f };
-		break;
-	case AtmosPreset_ExtraSolar:
-		// 8) 화성풍(붉은 먼지 많은 외계 행성 느낌)
-		//	인상: 레일리 약화, Mie가 붉은 틴트로 강함
-		// (참고 : 물리 파라미터까지 바꾸려면 CPU 베이크에 스펙트럼 조정이 필요하지만, 셰이더 상수만으로 분위기 연출 가능)
-		atmosCB->CameraPosPlanetCoord = { 0.0f, 3360002.0f, 0.0f };     // 임의의 작은 행성 반지름 씬
-		atmosCB->SunDir = { 0.0f, -0.5f, -0.8660f };
-		atmosCB->SunExposure = 14.0f;
-		atmosCB->SunIrradiance = { 2.0f, 0.95f, 0.85f };   // 살짝 웜
-		atmosCB->MieG = 0.88f;
-		atmosCB->MieTint = { 1.0f, 0.82f, 0.7f };     // 붉은 먼지
-		break;
-	default:
-		ASSERT(false, "Sky: Unknown atmosphere preset");
-	}
-
-	// Fixed parameters. Resolution must match the precomputed LUTs.
-	atmosCB->PlanetRadius = 6'360'000.0f; // [m]
-	atmosCB->AtmosphereHeight = 60'000.0f; // [m]
-	atmosCB->TopRadius = atmosCB->PlanetRadius + atmosCB->AtmosphereHeight;
-	atmosCB->TW = 256.0f;	// Transmittance W
-	atmosCB->TH = 64.0f;	// Transmittance H
-	atmosCB->SR = 32.0f;	// Scattering R
-	atmosCB->SMU = 128.0f;	// Scattering Mu
-	atmosCB->SMUS = 32.0f;	// Scattering MuS
-	atmosCB->SNU = 8.0f;	// Scattering Nu
+	SetAtmosStateFromPreset(atmosCB, ATMOS_PRESET);
 
 	// SRV table (t0=Transmittance, t1=Scattering, t2=Irradiance)
 	CD3DX12_CPU_DESCRIPTOR_HANDLE cpuDescriptorTable = {};
@@ -212,6 +98,121 @@ void SkyObject::Draw(int threadIndex, ID3D12GraphicsCommandList6* pCommandList)
 	pCommandList->SetGraphicsRootDescriptorTable(2, gpuDescriptorTable);
 
 	pCommandList->DrawInstanced(4, 1, 0, 0);
+}
+
+CONSTANT_BUFFER_ATMOS SkyObject::GetCBData() const
+{
+	CONSTANT_BUFFER_ATMOS cbData = {};
+	SetAtmosStateFromPreset((CONSTANT_BUFFER_ATMOS*)&cbData, EAtmosPreset::NoonClearSky);
+	return cbData;
+}
+
+void SkyObject::SetAtmosStateFromPreset(CONSTANT_BUFFER_ATMOS* outDst, EAtmosPreset ePreset)
+{
+	// Fixed parameters. Resolution must match the precomputed LUTs.
+	outDst->PlanetRadius = 6'360'000.0f; // [m]
+	outDst->AtmosphereHeight = 60'000.0f; // [m]
+	outDst->TopRadius = outDst->PlanetRadius + outDst->AtmosphereHeight;
+	outDst->TW = 256.0f;	// Transmittance W
+	outDst->TH = 64.0f;	// Transmittance H
+	outDst->SR = 32.0f;	// Scattering R
+	outDst->SMU = 128.0f;	// Scattering Mu
+	outDst->SMUS = 32.0f;	// Scattering MuS
+	outDst->SNU = 8.0f;	// Scattering Nu
+
+	switch (ePreset)
+	{
+	case EAtmosPreset::NoonClearSky:
+		// 1) 정오 맑음(밝고 푸른 하늘)
+		//	태양 고도 : 70°, 방위 : -Z
+		//	인상 : 채도가 높은 푸른 하늘, 강한 하이라이트
+		outDst->CameraPosPlanetCoord = { 0.0f, 6360005.0f, 0.0f }; // 지상+5m
+		outDst->SunDir = { 0.0f, -0.9397f, -0.3420f }; // Sun→Ground
+		outDst->SunExposure = 14.0f;
+		outDst->SunIrradiance = { 1.0f, 1.0f, 1.0f };
+		outDst->MieG = 0.80f;
+		outDst->MieTint = { 0.92f, 0.92f, 0.98f };
+		break;
+	case EAtmosPreset::AfternoonClearSky:
+		// 2) 오후 3시 맑음 (밝지만 약간 웜)
+		//	태양 고도: 35°, 방위: -Z
+		//	인상: 살짝 따뜻한 톤, 그림자 길어짐
+		outDst->CameraPosPlanetCoord = { 0.0f, 6360002.0f, 0.0f };
+		outDst->SunDir = { 0.0f, -0.5736f, -0.8192f };
+		outDst->SunExposure = 12.0f;
+		outDst->SunIrradiance = { 1.05f, 1.0f, 0.95f };
+		outDst->MieG = 0.82f;
+		outDst->MieTint = { 0.93f, 0.93f, 0.97f };
+		break;
+	case EAtmosPreset::GoldenHour:
+		// 3) 해질녘 골든아워 (웜/오렌지 하늘, 스카이라인 강조)
+		//	태양 고도: 10°, 방위: -Z
+		//	인상: 노을빛, 레일리 산란 더 또렷, Mie가 웜하게 영향
+		outDst->CameraPosPlanetCoord = { 0.0f, 6360002.0f, 0.0f };
+		outDst->SunDir = { 0.0f, -0.5736f, -0.8192f };
+		outDst->SunExposure = 12.0f;
+		outDst->SunIrradiance = { 1.45f, 1.0f, 0.95f };
+		outDst->MieG = 0.82f;
+		outDst->MieTint = { 0.93f, 0.93f, 0.97f };
+		break;
+	case EAtmosPreset::WinterSky:
+		// 4) 청명한 겨울 하늘 (차갑고 선명)
+		//	태양 고도: 25°, 방위: -Z
+		//	인상: 푸른 채도↑, 맑고 차가운 느낌
+		outDst->CameraPosPlanetCoord = { 0.0f, 6360002.0f, 0.0f };
+		outDst->SunDir = { 0.0f, -0.5736f, -0.8192f };
+		outDst->SunExposure = 12.0f;
+		outDst->SunIrradiance = { 1.05f, 1.0f, 0.95f };
+		outDst->MieG = 0.82f;
+		outDst->MieTint = { 0.93f, 0.93f, 0.97f };
+		break;
+	case EAtmosPreset::HazyDay:
+		// 5) 연무 / 안개 낀 날(헤이즈 강함, 콘트라스트↓)
+		//	태양 고도 : 30°, 방위 : -Z
+		//	인상 : 뿌연 안개, 하이라이트 확산
+		outDst->CameraPosPlanetCoord = { 0.0f, 6360002.0f, 0.0f };
+		outDst->SunDir = { 0.0f, -0.5f, -0.8660f };
+		outDst->SunExposure = 18.0f;                           // 노출↑
+		outDst->SunIrradiance = { 1.0f, 1.0f, 0.95f };
+		outDst->MieG = 0.90f;                           // 전방산란 강하게
+		outDst->MieTint = { 0.95f, 0.95f, 0.97f };   // 약간 회백
+		break;
+	case EAtmosPreset::BlueHour:
+		// 6) 해뜨기 직전 블루아워(딥블루 / 보랏빛)
+		//	태양 고도 : -3°(지평선 아래), 방위 : -Z
+		//	인상 : 전반적으로 어둡고 푸른 노출, 레일리만 남는 느낌
+		outDst->CameraPosPlanetCoord = { 0.0f, 6360002.0f, 0.0f };
+		outDst->SunDir = { 0.0f, +0.05234f, -0.99863f }; // 태양이 지평선 아래면 Y가 +일 수 있음(Sun→Ground)
+		outDst->SunExposure = 20.0f;                           // 꽤 올려서 보정
+		outDst->SunIrradiance = { 0.6f, 0.7f, 1.0f };      // 쿨톤
+		outDst->MieG = 0.82f;
+		outDst->MieTint = { 0.90f, 0.92f, 1.00f };
+		break;
+	case EAtmosPreset::HighAltitude:
+		// 7) 고공 / 항공 시점(대기 얇게 보이고 지평선에 띠)
+		//	카메라: +2km
+		//	태양 고도 : 45°, 방위 : -Z
+		outDst->CameraPosPlanetCoord = { 0.0f, 6362000.0f, 0.0f };     // +2km
+		outDst->SunDir = { 0.0f, -0.7071f, -0.7071f };
+		outDst->SunExposure = 12.0f;
+		outDst->SunIrradiance = { 1.0f, 1.0f, 1.0f };
+		outDst->MieG = 0.82f;
+		outDst->MieTint = { 0.92f, 0.93f, 0.98f };
+		break;
+	case EAtmosPreset::ExtraSolar:
+		// 8) 화성풍(붉은 먼지 많은 외계 행성 느낌)
+		//	인상: 레일리 약화, Mie가 붉은 틴트로 강함
+		// (참고 : 물리 파라미터까지 바꾸려면 CPU 베이크에 스펙트럼 조정이 필요하지만, 셰이더 상수만으로 분위기 연출 가능)
+		outDst->CameraPosPlanetCoord = { 0.0f, 3360002.0f, 0.0f };     // 임의의 작은 행성 반지름 씬
+		outDst->SunDir = { 0.0f, -0.5f, -0.8660f };
+		outDst->SunExposure = 14.0f;
+		outDst->SunIrradiance = { 2.0f, 0.95f, 0.85f };   // 살짝 웜
+		outDst->MieG = 0.88f;
+		outDst->MieTint = { 1.0f, 0.82f, 0.7f };     // 붉은 먼지
+		break;
+	default:
+		ASSERT(false, "Sky: Unknown atmosphere preset");
+	}
 }
 
 bool SkyObject::initPipelineState()

@@ -225,9 +225,6 @@
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
-    <CustomBuild Include="..\Shaders\AtmosphericSky.hlsl">
-      <FileType>Document</FileType>
-    </CustomBuild>
     <CustomBuild Include="..\Shaders\Sprite.hlsl">
       <FileType>Document</FileType>
     </CustomBuild>
@@ -262,6 +259,11 @@
     <ProjectReference Include="..\Math\Math.vcxproj">
       <Project>{4aebd455-b476-425f-94b7-31ed733a7935}</Project>
     </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="..\Shaders\AtmosphericSky.hlsl">
+      <FileType>Document</FileType>
+    </CustomBuild>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

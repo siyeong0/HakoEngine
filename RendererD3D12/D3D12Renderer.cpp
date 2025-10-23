@@ -417,12 +417,12 @@ void ENGINECALL D3D12Renderer::Update(float dt)
 	m_PerFrameCB.Far = FAR_Z;
 
 	updateCamera();
-	
+
 	// Update lights
 	m_PerFrameCB.NumLights = 1;
 	m_PerFrameCB.LightList[0].Type = LIGHT_TYPE_DIRECTIONAL;
 	m_PerFrameCB.LightList[0].PosOrDir = FLOAT3::Normalize({ 0.25f, -1.0f, 0.5f });
-	m_PerFrameCB.LightList[0].Color = FLOAT3(0.5f, 1.0f, 1.0f );
+	m_PerFrameCB.LightList[0].Color = FLOAT3(0.5f, 1.0f, 1.0f);
 	m_PerFrameCB.LightList[0].Rs = 1000.0f;
 }
 
@@ -444,21 +444,24 @@ void ENGINECALL D3D12Renderer::BeginRender()
 			D3D12_RESOURCE_STATE_RENDER_TARGET));
 
 	// Clear render taget
-	CD3DX12_CPU_DESCRIPTOR_HANDLE rtvHandle(m_pRTVHeap->GetCPUDescriptorHandleForHeapStart(), m_uiRenderTargetIndex, m_rtvDescriptorSize);
-	CD3DX12_CPU_DESCRIPTOR_HANDLE dsvHandle(m_pDSVHeap->GetCPUDescriptorHandleForHeapStart());
+	if (!IsRayTracingEnabledInl())
+	{
+		CD3DX12_CPU_DESCRIPTOR_HANDLE rtvHandle(m_pRTVHeap->GetCPUDescriptorHandleForHeapStart(), m_uiRenderTargetIndex, m_rtvDescriptorSize);
+		CD3DX12_CPU_DESCRIPTOR_HANDLE dsvHandle(m_pDSVHeap->GetCPUDescriptorHandleForHeapStart());
 
-	const float BackColor[] = { 0.0f, 0.0f, 1.0f, 1.0f };
-	pCommandList->ClearRenderTargetView(rtvHandle, BackColor, 0, nullptr);
-	pCommandList->ClearDepthStencilView(dsvHandle, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
+		const float BackColor[] = { 0.0f, 0.0f, 1.0f, 1.0f };
+		pCommandList->ClearRenderTargetView(rtvHandle, BackColor, 0, nullptr);
+		pCommandList->ClearDepthStencilView(dsvHandle, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
 
-	pCommandList = pCommandListPool->GetCurrentCommandList();
-	pCommandList->RSSetViewports(1, &m_Viewport);
-	pCommandList->RSSetScissorRects(1, &m_ScissorRect);
-	pCommandList->OMSetRenderTargets(1, &rtvHandle, FALSE, &dsvHandle);
-	m_pSkyObject->Draw(0, pCommandList);
+		pCommandList = pCommandListPool->GetCurrentCommandList();
+		pCommandList->RSSetViewports(1, &m_Viewport);
+		pCommandList->RSSetScissorRects(1, &m_ScissorRect);
+		pCommandList->OMSetRenderTargets(1, &rtvHandle, FALSE, &dsvHandle);
+		m_pSkyObject->Draw(0, pCommandList);
 
-	// Execute immediatey
-	pCommandListPool->CloseAndExecute(m_pCommandQueue);
+		// Execute immediatey
+		pCommandListPool->CloseAndExecute(m_pCommandQueue);
+	}
 
 	fence();
 }
@@ -1029,6 +1032,26 @@ SimpleConstantBufferPool* D3D12Renderer::GetConstantBufferPool(CONSTANT_BUFFER_T
 	ConstantBufferManager* pConstBufferManager = m_ppConstBufferManager[m_CurrContextIndex][threadIndex];
 	SimpleConstantBufferPool* pConstBufferPool = pConstBufferManager->GetConstantBufferPool(type);
 	return pConstBufferPool;
+}
+
+const CONSTANT_BUFFER_ATMOS D3D12Renderer::GetAtmosCBData() const
+{
+	return m_pSkyObject->GetCBData();
+}
+
+const TextureHandle* D3D12Renderer::GetSkyTransmittanceTexture() const
+{
+	return m_pSkyObject->GetTransmittanceTexture();
+}
+
+const TextureHandle* D3D12Renderer::GetSkyScatteringTexture() const
+{
+	return m_pSkyObject->GetScatteringTexture();
+}
+
+const TextureHandle* D3D12Renderer::GetSkyIrradianceTexture() const
+{
+	return m_pSkyObject->GetIrradianceTexture();
 }
 
 void D3D12Renderer::GetViewProjMatrix(Matrix4x4* outMatView, Matrix4x4* outMatProj) const

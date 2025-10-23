@@ -2,6 +2,7 @@
 #define RAYTRACING_COMMON_HLSL
 
 #include "Raytracing_typedef.hlsl"
+#include "AtmosphericSky.hlsli"
 
 // Global Root Parameter
 RWTexture2D<float4> g_OutputDiffuse : register(u0);
@@ -13,8 +14,12 @@ SamplerState g_SamplerClamp : register(s1);
 SamplerState g_SamplerPoint : register(s2); // TODO: sync with Standard SamplerState
 SamplerState g_SamplerMirror : register(s3);
 
+Texture2D<float3> g_TransmittanceLUT : register(t11, space0); // R^3
+Texture3D<float4> g_ScatteringLUT : register(t12, space0); // RGBA
+Texture2D<float3> g_IrradianceLUT : register(t13, space0); // optional
+
 // Local Root Parameter
-ConstantBuffer<CONSTANT_BUFFER_RT_TRIGROUP> l_RayGeomCB : register(b0, space1);
+ConstantBuffer<CONSTANT_BUFFER_RT_TRIGROUP> l_RayGeomCB : register(b1, space0);
 StructuredBuffer<Vertex> l_Vertices : register(t0, space1);
 ByteAddressBuffer l_Indices : register(t1, space1);
 Texture2D<float4> l_DiffuseTexture : register(t2, space1);
@@ -40,6 +45,40 @@ cbuffer CONSTANT_BUFFER_PER_FRAME : register(b0, space0)
     uint Reserved2;
     
     Light g_LightList[MAX_LIGHT_COUNT];
+};
+
+cbuffer CONSTANT_BUFFER_ATMOS : register(b0, space1)
+{
+    // Camera + sun (in planet-centered space; normalized)
+    float3 g_CameraPosPlanetCoord;
+    float __pad0;
+    
+    // TODO: Unify with g_Light### ?
+    float3 g_SunDir;
+    float g_SunExposure;
+    float3 g_SunIrradiance;
+    float __pad1;
+    
+    // Radii
+    float g_PlanetRadius; // Rg
+    float g_AtmosphereHeight; // H
+    float g_TopRadius; // Rt = Rg + H
+    float __pad2;
+    
+    // Mie phase parameter & tint (derived from MieScattering RGB; unitless tint)
+    float g_MieG;
+    float3 g_MieTint; // normalize(MieScatteringRGB); or (rgb / max(avg(rgb),eps))
+
+    // LUT logical sizes (must match bake)
+    float g_TW; // TransmittanceW/H
+    float g_TH;
+    float g_SR; // Scattering R, MU, MUS, NU counts
+    float g_SMU;
+    float g_SMUS;
+    float g_SNU;
+    
+    float __pad3;
+    float __pad4;
 };
 
 // Interpolate vertex attribute using barycentric coordinates.
@@ -101,5 +140,103 @@ static uint3 Load3x16BitIndices(uint offsetBytes)
 
     return indices;
 }
+
+// ==========================================================
+// LUT mapping (uniform with texel centers)
+//  - Transmittance: (mu ∈ [-1,1], r ∈ [Rg,Rt])  -> (u,v)
+//  - Scattering 3D packed dims: X = SNU * SMUS, Y = SMU, Z = SR
+//    Input params: r, mu, muS, nu
+// ==========================================================
+
+// map to texel-center UV in [0,1]
+float2 GetMapTransmittanceUV(float r, float mu)
+{
+    // grid counts
+    float TW = g_TW;
+    float TH = g_TH;
+
+    // index at texel centers
+    float iu = ((mu + 1.0) * 0.5) * (TW - 1.0);
+    float iv = ((r - g_PlanetRadius) / (g_TopRadius - g_PlanetRadius)) * (TH - 1.0);
+
+    float2 uv = (float2(iu + 0.5, iv + 0.5)) / float2(TW, TH);
+    return uv;
+}
+
+float3 GetMapScatteringUVW(float r, float mu, float muS, float nu)
+{
+    // dimensions
+    float SR = g_SR;
+    float SMU = g_SMU;
+    float SMUS = g_SMUS;
+    float SNU = g_SNU;
+
+    // index at texel centers (uniform bins)
+    float ix = (((muS + 1.0) * 0.5) * (SMUS - 1.0)) * SNU // mus bin
+             + (((nu + 1.0) * 0.5) * (SNU - 1.0)); // nu  bin
+
+    float iy = (((mu + 1.0) * 0.5) * (SMU - 1.0)); // mu  bin
+    float iz = (((r - g_PlanetRadius) / (g_TopRadius - g_PlanetRadius)) * (SR - 1.0)); // r bin
+
+    float3 dim = float3(SNU * SMUS, SMU, SR);
+    float3 uvw = (float3(ix + 0.5, iy + 0.5, iz + 0.5)) / dim;
+    return uvw;
+}
+
+// ==========================================================
+// SampleSky: single scattering using precomputed LUTs
+// ==========================================================
+float3 SampleSky(float3 viewDirWorld)
+{
+    // Normalize inputs
+    float3 viewDir = normalize(viewDirWorld);
+    float3 sunDir = -normalize(g_SunDir);
+
+    // Planet-centered camera info
+    float r = length(g_CameraPosPlanetCoord); // camera radius
+    float3 up = GetUp(g_CameraPosPlanetCoord); // local up
+
+    // Direction cosines
+    float mu = dot(viewDir, up); // angle between view and local up
+    float muS = dot(sunDir, up); // angle between sun and local up
+    float nu = dot(viewDir, sunDir); // angle between view and sun
+
+    // Clamp physical domain
+    r = clamp(r, g_PlanetRadius, g_TopRadius);
+    mu = clamp(mu, -1.0, 1.0);
+    muS = clamp(muS, -1.0, 1.0);
+    nu = clamp(nu, -1.0, 1.0);
+
+    // --- Sample scattering LUT (RayleighRGB, MieScalar) ---
+    float3 uvw = GetMapScatteringUVW(r, mu, muS, nu);
+    float4 scat = g_ScatteringLUT.SampleLevel(g_SamplerClamp, uvw, 0);
+
+    // --- Phase functions (your LUT excludes phase) ---
+    // NOTE: S is "sun -> ground". For usual phase angle θ between "light direction" and -V,
+    // cosθ = dot(-S, V) = -dot(S, V) = -nu. If your definition wants cosθ = dot(V, -S),
+    // it's the same value (-nu). We'll use cosθ = -nu below.
+    float cosTheta = -nu;
+
+    float PR = RayleighPhase(cosTheta);
+    float PM = HenyeyGreenstein(cosTheta, g_MieG);
+
+    // --- Mie scalar -> RGB via tint ---
+    float3 mieRGB = scat.a * g_MieTint;
+
+    // --- Combine (phase only; view transmittance is already baked in the LUT) ---
+    float3 L = scat.rgb * PR + mieRGB * PM;
+
+    // Optional: If your LUT does NOT include view transmittance, multiply here by Transmittance:
+    //float2 uvt = GetMapTransmittanceUV(r, mu);
+    //float3 Tview = g_TransmittanceLUT.Sample(g_LinearClamp, uvt);
+    //L *= Tview;
+
+    // Sun irradiance scaling + exposure
+    L *= g_SunIrradiance;
+    L *= g_SunExposure;
+
+    return L; // linear HDR radiance
+}
+
 
 #endif // RAYTRACING_COMMON_HLSL

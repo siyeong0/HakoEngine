@@ -4,12 +4,31 @@
 struct PSOHandle;
 class D3D12Renderer;
 
+enum class EAtmosPreset
+{
+	NoonClearSky,
+	AfternoonClearSky,
+	GoldenHour,
+	WinterSky,
+	HazyDay,
+	BlueHour,
+	HighAltitude,
+	ExtraSolar
+};
+
 class SkyObject
 {
 public:
 	bool Initialize(D3D12Renderer* pRenderer);
 	void Cleanup();
 	void Draw(int threadIndex, ID3D12GraphicsCommandList6* pCommandList);
+
+	TextureHandle* GetTransmittanceTexture() const { return m_pTransmittanceTex; }
+	TextureHandle* GetScatteringTexture() const { return m_pScatteringTex; }
+	TextureHandle* GetIrradianceTexture() const { return m_pIrradianceTex; }
+
+	CONSTANT_BUFFER_ATMOS GetCBData() const;
+	static void SetAtmosStateFromPreset(CONSTANT_BUFFER_ATMOS* outDst, EAtmosPreset ePreset);
 
 	SkyObject() = default;
 	~SkyObject() { Cleanup(); };

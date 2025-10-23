@@ -297,9 +297,6 @@
     </None>
   </ItemGroup>
   <ItemGroup>
-    <CustomBuild Include="..\Shaders\AtmosphericSky.hlsl">
-      <Filter>Shaders\Rasterization</Filter>
-    </CustomBuild>
     <CustomBuild Include="..\Shaders\Raytracing.hlsl">
       <Filter>Shaders\Raytracing</Filter>
     </CustomBuild>
@@ -313,6 +310,9 @@
       <Filter>Shaders\Rasterization</Filter>
     </CustomBuild>
     <CustomBuild Include="..\Shaders\Standard.hlsl">
+      <Filter>Shaders\Rasterization</Filter>
+    </CustomBuild>
+    <CustomBuild Include="..\Shaders\AtmosphericSky.hlsl">
       <Filter>Shaders\Rasterization</Filter>
     </CustomBuild>
   </ItemGroup>

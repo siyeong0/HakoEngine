@@ -100,6 +100,10 @@ public:
 	inline bool IsRayTracingEnabledInl() const { return m_pRayTracingManager != nullptr; }
 
 	const CONSTANT_BUFFER_PER_FRAME& GetFrameCBData() { return m_PerFrameCB; };
+	const CONSTANT_BUFFER_ATMOS GetAtmosCBData() const;
+	const TextureHandle* GetSkyTransmittanceTexture() const;
+	const TextureHandle* GetSkyScatteringTexture() const;
+	const TextureHandle* GetSkyIrradianceTexture() const;
 	void GetViewProjMatrix(Matrix4x4* outMatView, Matrix4x4* outMatProj) const;
 
 	void SetCurrentPathForShader() const;

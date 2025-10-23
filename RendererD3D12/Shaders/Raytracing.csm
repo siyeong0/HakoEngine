@@ -1,4 +1,4 @@
-; shader hash: ea5f68b31be2f63eb383d79c26275dd9
+; shader hash: 7e4919144eba23830e69df49032b4a06
 ;
 ; Buffer Definitions:
 ;
@@ -68,6 +68,37 @@
 ;
 ; }
 ;
+; cbuffer CONSTANT_BUFFER_ATMOS
+; {
+;
+;   struct CONSTANT_BUFFER_ATMOS
+;   {
+;
+;       float3 g_CameraPosPlanetCoord;                ; Offset:    0
+;       float __pad0;                                 ; Offset:   12
+;       float3 g_SunDir;                              ; Offset:   16
+;       float g_SunExposure;                          ; Offset:   28
+;       float3 g_SunIrradiance;                       ; Offset:   32
+;       float __pad1;                                 ; Offset:   44
+;       float g_PlanetRadius;                         ; Offset:   48
+;       float g_AtmosphereHeight;                     ; Offset:   52
+;       float g_TopRadius;                            ; Offset:   56
+;       float __pad2;                                 ; Offset:   60
+;       float g_MieG;                                 ; Offset:   64
+;       float3 g_MieTint;                             ; Offset:   68
+;       float g_TW;                                   ; Offset:   80
+;       float g_TH;                                   ; Offset:   84
+;       float g_SR;                                   ; Offset:   88
+;       float g_SMU;                                  ; Offset:   92
+;       float g_SMUS;                                 ; Offset:   96
+;       float g_SNU;                                  ; Offset:  100
+;       float __pad3;                                 ; Offset:  104
+;       float __pad4;                                 ; Offset:  108
+;   
+;   } CONSTANT_BUFFER_ATMOS;                          ; Offset:    0 Size:   112
+;
+; }
+;
 ; Resource bind info for l_Vertices
 ; {
 ;
@@ -88,15 +119,18 @@
 ;
 ; Name                                 Type  Format         Dim      ID      HLSL Bind  Count
 ; ------------------------------ ---------- ------- ----------- ------- -------------- ------
-; l_RayGeomCB                       cbuffer      NA          NA     CB0     cb0,space1     1
+; l_RayGeomCB                       cbuffer      NA          NA     CB0            cb1     1
 ; CONSTANT_BUFFER_PER_FRAME         cbuffer      NA          NA     CB1            cb0     1
+; CONSTANT_BUFFER_ATMOS             cbuffer      NA          NA     CB2     cb0,space1     1
 ; g_SamplerWrap                     sampler      NA          NA      S0             s0     1
-; g_SamplerPoint                    sampler      NA          NA      S1             s2     1
+; g_SamplerClamp                    sampler      NA          NA      S1             s1     1
+; g_SamplerPoint                    sampler      NA          NA      S2             s2     1
 ; Scene                             texture     i32         ras      T0             t0     1
-; l_Vertices                        texture  struct         r/o      T1      t0,space1     1
-; l_Indices                         texture    byte         r/o      T2      t1,space1     1
-; l_DiffuseTexture                  texture     f32          2d      T3      t2,space1     1
-; l_NormalTexture                   texture     f32          2d      T4      t3,space1     1
+; g_ScatteringLUT                   texture     f32          3d      T1            t12     1
+; l_Vertices                        texture  struct         r/o      T2      t0,space1     1
+; l_Indices                         texture    byte         r/o      T3      t1,space1     1
+; l_DiffuseTexture                  texture     f32          2d      T4      t2,space1     1
+; l_NormalTexture                   texture     f32          2d      T5      t3,space1     1
 ; g_OutputDiffuse                       UAV     f32          2d      U0             u0     1
 ; g_OutputDepth                         UAV     f32          2d      U1             u1     1
 ;
@@ -106,6 +140,8 @@ target triple = "dxil-ms-dx"
 %"class.RWTexture2D<vector<float, 4> >" = type { <4 x float> }
 %struct.RaytracingAccelerationStructure = type { i32 }
 %struct.SamplerState = type { i32 }
+%"class.Texture3D<vector<float, 4> >" = type { <4 x float>, %"class.Texture3D<vector<float, 4> >::mips_type" }
+%"class.Texture3D<vector<float, 4> >::mips_type" = type { i32 }
 %"class.StructuredBuffer<Vertex>" = type { %struct.Vertex }
 %struct.Vertex = type { <3 x float>, <2 x float>, <3 x float>, <3 x float> }
 %struct.ByteAddressBuffer = type { i32 }
@@ -114,6 +150,7 @@ target triple = "dxil-ms-dx"
 %l_RayGeomCB = type { %struct.CONSTANT_BUFFER_RT_TRIGROUP }
 %struct.CONSTANT_BUFFER_RT_TRIGROUP = type { %struct.BasicMaterial }
 %struct.BasicMaterial = type { <3 x float>, float, <3 x float>, float, float, float, float, float }
+%CONSTANT_BUFFER_ATMOS = type { <3 x float>, float, <3 x float>, float, <3 x float>, float, float, float, float, float, float, <3 x float>, float, float, float, float, float, float, float, float }
 %hostlayout.CONSTANT_BUFFER_PER_FRAME = type { [4 x <4 x float>], [4 x <4 x float>], [4 x <4 x float>], [4 x <4 x float>], [4 x <4 x float>], [4 x <4 x float>], float, float, i32, i32, i32, i32, i32, i32, [16 x %struct.Light] }
 %struct.Light = type { <3 x float>, float, <3 x float>, i32 }
 %struct.RadiancePayload = type { <3 x float>, float, i32 }
@@ -129,12 +166,15 @@ target triple = "dxil-ms-dx"
 @"\01?g_OutputDepth@@3V?$RWTexture2D@V?$vector@M$03@@@@A" = external constant %"class.RWTexture2D<vector<float, 4> >", align 4
 @"\01?Scene@@3URaytracingAccelerationStructure@@A" = external constant %struct.RaytracingAccelerationStructure, align 4
 @"\01?g_SamplerWrap@@3USamplerState@@A" = external constant %struct.SamplerState, align 4
+@"\01?g_SamplerClamp@@3USamplerState@@A" = external constant %struct.SamplerState, align 4
 @"\01?g_SamplerPoint@@3USamplerState@@A" = external constant %struct.SamplerState, align 4
+@"\01?g_ScatteringLUT@@3V?$Texture3D@V?$vector@M$03@@@@A" = external constant %"class.Texture3D<vector<float, 4> >", align 4
 @"\01?l_Vertices@@3V?$StructuredBuffer@UVertex@@@@A" = external constant %"class.StructuredBuffer<Vertex>", align 4
 @"\01?l_Indices@@3UByteAddressBuffer@@A" = external constant %struct.ByteAddressBuffer, align 4
 @"\01?l_DiffuseTexture@@3V?$Texture2D@V?$vector@M$03@@@@A" = external constant %"class.Texture2D<vector<float, 4> >", align 4
 @"\01?l_NormalTexture@@3V?$Texture2D@V?$vector@M$03@@@@A" = external constant %"class.Texture2D<vector<float, 4> >", align 4
 @l_RayGeomCB = external constant %l_RayGeomCB
+@CONSTANT_BUFFER_ATMOS = external constant %CONSTANT_BUFFER_ATMOS
 @CONSTANT_BUFFER_PER_FRAME_legacy = external global %hostlayout.CONSTANT_BUFFER_PER_FRAME
 
 ; Function Attrs: nounwind
@@ -202,7 +242,7 @@ define void @"\01?MyRaygenShader_RadianceRay@@YAXXZ"() #0 {
   %59 = fmul fast float %51, %49
   %60 = fmul fast float %51, %46
   %61 = fmul fast float %51, %43
-  %62 = load %struct.RaytracingAccelerationStructure, %struct.RaytracingAccelerationStructure* @"\01?Scene@@3URaytracingAccelerationStructure@@A", align 4, !noalias !48
+  %62 = load %struct.RaytracingAccelerationStructure, %struct.RaytracingAccelerationStructure* @"\01?Scene@@3URaytracingAccelerationStructure@@A", align 4, !noalias !51
   %63 = call %dx.types.Handle @dx.op.createHandleForLib.struct.RaytracingAccelerationStructure(i32 160, %struct.RaytracingAccelerationStructure %62)  ; CreateHandleForLib(Resource)
   %64 = getelementptr inbounds %struct.RadiancePayload, %struct.RadiancePayload* %4, i32 0, i32 0
   store <3 x float> zeroinitializer, <3 x float>* %64, align 8
@@ -238,7 +278,7 @@ define void @"\01?MyClosestHitShader_RadianceRay@@YAXURadiancePayload@@UBuiltInT
   %4 = load %"class.Texture2D<vector<float, 4> >", %"class.Texture2D<vector<float, 4> >"* @"\01?l_DiffuseTexture@@3V?$Texture2D@V?$vector@M$03@@@@A", align 4
   %5 = load %struct.ByteAddressBuffer, %struct.ByteAddressBuffer* @"\01?l_Indices@@3UByteAddressBuffer@@A", align 4
   %6 = load %"class.StructuredBuffer<Vertex>", %"class.StructuredBuffer<Vertex>"* @"\01?l_Vertices@@3V?$StructuredBuffer@UVertex@@@@A", align 4
-  %7 = load %struct.RaytracingAccelerationStructure, %struct.RaytracingAccelerationStructure* @"\01?Scene@@3URaytracingAccelerationStructure@@A", align 4, !noalias !51
+  %7 = load %struct.RaytracingAccelerationStructure, %struct.RaytracingAccelerationStructure* @"\01?Scene@@3URaytracingAccelerationStructure@@A", align 4, !noalias !54
   %8 = load %hostlayout.CONSTANT_BUFFER_PER_FRAME, %hostlayout.CONSTANT_BUFFER_PER_FRAME* @CONSTANT_BUFFER_PER_FRAME_legacy
   %9 = load %l_RayGeomCB, %l_RayGeomCB* @l_RayGeomCB, align 4
   %10 = alloca %struct.ShadowPayload, align 8
@@ -473,7 +513,7 @@ define void @"\01?MyClosestHitShader_RadianceRay@@YAXURadiancePayload@@UBuiltInT
   %239 = fdiv fast float %234, %238
   %240 = call float @dx.op.unary.f32(i32 7, float %239)  ; Saturate(value)
   %241 = getelementptr inbounds %struct.RadiancePayload, %struct.RadiancePayload* %rayPayload, i32 0, i32 1
-  store float %240, float* %241, align 4, !tbaa !56
+  store float %240, float* %241, align 4, !tbaa !59
   %242 = call %dx.types.CBufRet.f32 @dx.op.cbufferLoadLegacy.f32(i32 59, %dx.types.Handle %14, i32 0)  ; CBufferLoadLegacy(handle,regIndex)
   %243 = extractvalue %dx.types.CBufRet.f32 %242, 0
   %244 = extractvalue %dx.types.CBufRet.f32 %242, 1
@@ -610,7 +650,7 @@ define void @"\01?MyClosestHitShader_RadianceRay@@YAXURadiancePayload@@UBuiltInT
   %357 = fmul fast float %355, %352
   %358 = fmul fast float %355, %353
   %359 = getelementptr inbounds %struct.RadiancePayload, %struct.RadiancePayload* %rayPayload, i32 0, i32 2
-  %360 = load i32, i32* %359, align 4, !tbaa !60, !alias.scope !62
+  %360 = load i32, i32* %359, align 4, !tbaa !63, !alias.scope !65
   %361 = icmp ult i32 %360, %299
   br i1 %361, label %362, label %376
 
@@ -973,16 +1013,154 @@ define void @"\01?MyClosestHitShader_RadianceRay@@YAXURadiancePayload@@UBuiltInT
   %666 = insertelement <3 x float> %665, float %663, i32 1
   %667 = insertelement <3 x float> %666, float %664, i32 2
   %668 = getelementptr inbounds %struct.RadiancePayload, %struct.RadiancePayload* %rayPayload, i32 0, i32 0
-  store <3 x float> %667, <3 x float>* %668, align 4, !tbaa !63
+  store <3 x float> %667, <3 x float>* %668, align 4, !tbaa !66
   ret void
 }
 
 ; Function Attrs: nounwind
 define void @"\01?MyMissShader_RadianceRay@@YAXURadiancePayload@@@Z"(%struct.RadiancePayload* noalias nocapture %rayPayload) #0 {
-  %1 = getelementptr inbounds %struct.RadiancePayload, %struct.RadiancePayload* %rayPayload, i32 0, i32 0
-  store <3 x float> zeroinitializer, <3 x float>* %1, align 4
-  %2 = getelementptr inbounds %struct.RadiancePayload, %struct.RadiancePayload* %rayPayload, i32 0, i32 1
-  store float 0x3FF3333340000000, float* %2, align 4
+  %1 = load %struct.SamplerState, %struct.SamplerState* @"\01?g_SamplerClamp@@3USamplerState@@A", align 4
+  %2 = load %"class.Texture3D<vector<float, 4> >", %"class.Texture3D<vector<float, 4> >"* @"\01?g_ScatteringLUT@@3V?$Texture3D@V?$vector@M$03@@@@A", align 4
+  %3 = load %CONSTANT_BUFFER_ATMOS, %CONSTANT_BUFFER_ATMOS* @CONSTANT_BUFFER_ATMOS, align 4
+  %4 = call %dx.types.Handle @dx.op.createHandleForLib.CONSTANT_BUFFER_ATMOS(i32 160, %CONSTANT_BUFFER_ATMOS %3)  ; CreateHandleForLib(Resource)
+  %5 = call float @dx.op.worldRayDirection.f32(i32 148, i8 0)  ; WorldRayDirection(col)
+  %6 = call float @dx.op.worldRayDirection.f32(i32 148, i8 1)  ; WorldRayDirection(col)
+  %7 = call float @dx.op.worldRayDirection.f32(i32 148, i8 2)  ; WorldRayDirection(col)
+  %8 = call float @dx.op.dot3.f32(i32 55, float %5, float %6, float %7, float %5, float %6, float %7)  ; Dot3(ax,ay,az,bx,by,bz)
+  %9 = call float @dx.op.unary.f32(i32 25, float %8)  ; Rsqrt(value)
+  %10 = fmul fast float %9, %5
+  %11 = fmul fast float %9, %6
+  %12 = fmul fast float %9, %7
+  %13 = call float @dx.op.dot3.f32(i32 55, float %10, float %11, float %12, float %10, float %11, float %12)  ; Dot3(ax,ay,az,bx,by,bz)
+  %14 = call float @dx.op.unary.f32(i32 25, float %13)  ; Rsqrt(value)
+  %15 = fmul fast float %14, %10
+  %16 = fmul fast float %14, %11
+  %17 = fmul fast float %14, %12
+  %18 = call %dx.types.CBufRet.f32 @dx.op.cbufferLoadLegacy.f32(i32 59, %dx.types.Handle %4, i32 1)  ; CBufferLoadLegacy(handle,regIndex)
+  %19 = extractvalue %dx.types.CBufRet.f32 %18, 0
+  %20 = extractvalue %dx.types.CBufRet.f32 %18, 1
+  %21 = extractvalue %dx.types.CBufRet.f32 %18, 2
+  %22 = call float @dx.op.dot3.f32(i32 55, float %19, float %20, float %21, float %19, float %20, float %21)  ; Dot3(ax,ay,az,bx,by,bz)
+  %23 = call float @dx.op.unary.f32(i32 25, float %22)  ; Rsqrt(value)
+  %24 = fmul fast float %19, %23
+  %25 = fsub fast float -0.000000e+00, %24
+  %26 = fmul fast float %20, %23
+  %27 = fsub fast float -0.000000e+00, %26
+  %28 = fmul fast float %21, %23
+  %29 = fsub fast float -0.000000e+00, %28
+  %30 = call %dx.types.CBufRet.f32 @dx.op.cbufferLoadLegacy.f32(i32 59, %dx.types.Handle %4, i32 0)  ; CBufferLoadLegacy(handle,regIndex)
+  %31 = extractvalue %dx.types.CBufRet.f32 %30, 0
+  %32 = extractvalue %dx.types.CBufRet.f32 %30, 1
+  %33 = extractvalue %dx.types.CBufRet.f32 %30, 2
+  %34 = fmul fast float %31, %31
+  %35 = fmul fast float %32, %32
+  %36 = fadd fast float %34, %35
+  %37 = fmul fast float %33, %33
+  %38 = fadd fast float %36, %37
+  %39 = call float @dx.op.unary.f32(i32 24, float %38)  ; Sqrt(value)
+  %40 = call float @dx.op.binary.f32(i32 35, float %39, float 0x3EB0C6F7A0000000)  ; FMax(a,b)
+  %41 = fdiv fast float %31, %40
+  %42 = fdiv fast float %32, %40
+  %43 = fdiv fast float %33, %40
+  %44 = call float @dx.op.dot3.f32(i32 55, float %15, float %16, float %17, float %41, float %42, float %43)  ; Dot3(ax,ay,az,bx,by,bz)
+  %45 = call float @dx.op.dot3.f32(i32 55, float %25, float %27, float %29, float %41, float %42, float %43)  ; Dot3(ax,ay,az,bx,by,bz)
+  %46 = call float @dx.op.dot3.f32(i32 55, float %15, float %16, float %17, float %25, float %27, float %29)  ; Dot3(ax,ay,az,bx,by,bz)
+  %47 = call %dx.types.CBufRet.f32 @dx.op.cbufferLoadLegacy.f32(i32 59, %dx.types.Handle %4, i32 3)  ; CBufferLoadLegacy(handle,regIndex)
+  %48 = extractvalue %dx.types.CBufRet.f32 %47, 2
+  %49 = extractvalue %dx.types.CBufRet.f32 %47, 0
+  %50 = call float @dx.op.binary.f32(i32 35, float %39, float %49)  ; FMax(a,b)
+  %51 = call float @dx.op.binary.f32(i32 36, float %50, float %48)  ; FMin(a,b)
+  %52 = call float @dx.op.binary.f32(i32 35, float %44, float -1.000000e+00)  ; FMax(a,b)
+  %53 = call float @dx.op.binary.f32(i32 36, float %52, float 1.000000e+00)  ; FMin(a,b)
+  %54 = call float @dx.op.binary.f32(i32 35, float %45, float -1.000000e+00)  ; FMax(a,b)
+  %55 = call float @dx.op.binary.f32(i32 36, float %54, float 1.000000e+00)  ; FMin(a,b)
+  %56 = call float @dx.op.binary.f32(i32 35, float %46, float -1.000000e+00)  ; FMax(a,b)
+  %57 = call float @dx.op.binary.f32(i32 36, float %56, float 1.000000e+00)  ; FMin(a,b)
+  %58 = call %dx.types.CBufRet.f32 @dx.op.cbufferLoadLegacy.f32(i32 59, %dx.types.Handle %4, i32 5)  ; CBufferLoadLegacy(handle,regIndex)
+  %59 = extractvalue %dx.types.CBufRet.f32 %58, 2
+  %60 = extractvalue %dx.types.CBufRet.f32 %58, 3
+  %61 = call %dx.types.CBufRet.f32 @dx.op.cbufferLoadLegacy.f32(i32 59, %dx.types.Handle %4, i32 6)  ; CBufferLoadLegacy(handle,regIndex)
+  %62 = extractvalue %dx.types.CBufRet.f32 %61, 0
+  %63 = extractvalue %dx.types.CBufRet.f32 %61, 1
+  %64 = fadd fast float %55, 1.000000e+00
+  %65 = fadd fast float %62, -1.000000e+00
+  %66 = fmul fast float %63, %64
+  %67 = fmul fast float %66, %65
+  %68 = fadd fast float %57, 1.000000e+00
+  %69 = fadd fast float %63, -1.000000e+00
+  %70 = fmul fast float %69, %68
+  %71 = fadd fast float %53, 1.000000e+00
+  %72 = fmul fast float %71, 5.000000e-01
+  %73 = fadd fast float %60, -1.000000e+00
+  %74 = fmul fast float %72, %73
+  %75 = fsub fast float %51, %49
+  %76 = fsub fast float %48, %49
+  %77 = fdiv fast float %75, %76
+  %78 = fadd fast float %59, -1.000000e+00
+  %79 = fmul fast float %77, %78
+  %80 = fmul fast float %63, %62
+  %81 = fadd fast float %67, %70
+  %82 = fmul fast float %81, 5.000000e-01
+  %83 = fadd fast float %82, 5.000000e-01
+  %84 = fadd fast float %74, 5.000000e-01
+  %85 = fadd fast float %79, 5.000000e-01
+  %86 = fdiv fast float %83, %80
+  %87 = fdiv fast float %84, %60
+  %88 = fdiv fast float %85, %59
+  %89 = call %dx.types.Handle @"dx.op.createHandleForLib.class.Texture3D<vector<float, 4> >"(i32 160, %"class.Texture3D<vector<float, 4> >" %2)  ; CreateHandleForLib(Resource)
+  %90 = call %dx.types.Handle @dx.op.createHandleForLib.struct.SamplerState(i32 160, %struct.SamplerState %1)  ; CreateHandleForLib(Resource)
+  %91 = call %dx.types.ResRet.f32 @dx.op.sampleLevel.f32(i32 62, %dx.types.Handle %89, %dx.types.Handle %90, float %86, float %87, float %88, float undef, i32 0, i32 0, i32 0, float 0.000000e+00)  ; SampleLevel(srv,sampler,coord0,coord1,coord2,coord3,offset0,offset1,offset2,LOD)
+  %92 = extractvalue %dx.types.ResRet.f32 %91, 0
+  %93 = extractvalue %dx.types.ResRet.f32 %91, 1
+  %94 = extractvalue %dx.types.ResRet.f32 %91, 2
+  %95 = extractvalue %dx.types.ResRet.f32 %91, 3
+  %96 = fmul fast float %57, %57
+  %97 = fadd fast float %96, 1.000000e+00
+  %98 = fmul fast float %97, 0x3FAE8EC8A0000000
+  %99 = call %dx.types.CBufRet.f32 @dx.op.cbufferLoadLegacy.f32(i32 59, %dx.types.Handle %4, i32 4)  ; CBufferLoadLegacy(handle,regIndex)
+  %100 = extractvalue %dx.types.CBufRet.f32 %99, 0
+  %101 = fmul fast float %100, %100
+  %102 = fsub fast float 1.000000e+00, %101
+  %103 = fadd fast float %101, 1.000000e+00
+  %104 = fmul fast float %57, 2.000000e+00
+  %105 = fmul fast float %104, %100
+  %106 = fadd fast float %103, %105
+  %107 = call float @dx.op.unary.f32(i32 23, float %106)  ; Log(value)
+  %108 = fmul fast float %107, 1.500000e+00
+  %109 = call float @dx.op.unary.f32(i32 21, float %108)  ; Exp(value)
+  %110 = fmul fast float %109, 0x402921FB60000000
+  %111 = fdiv fast float %102, %110
+  %112 = extractvalue %dx.types.CBufRet.f32 %99, 1
+  %113 = extractvalue %dx.types.CBufRet.f32 %99, 2
+  %114 = extractvalue %dx.types.CBufRet.f32 %99, 3
+  %115 = fmul fast float %92, %98
+  %116 = fmul fast float %93, %98
+  %117 = fmul fast float %94, %98
+  %118 = fmul fast float %111, %95
+  %119 = fmul fast float %118, %112
+  %120 = fmul fast float %118, %113
+  %121 = fmul fast float %118, %114
+  %122 = fadd fast float %119, %115
+  %123 = fadd fast float %120, %116
+  %124 = fadd fast float %121, %117
+  %125 = call %dx.types.CBufRet.f32 @dx.op.cbufferLoadLegacy.f32(i32 59, %dx.types.Handle %4, i32 2)  ; CBufferLoadLegacy(handle,regIndex)
+  %126 = extractvalue %dx.types.CBufRet.f32 %125, 0
+  %127 = extractvalue %dx.types.CBufRet.f32 %125, 1
+  %128 = extractvalue %dx.types.CBufRet.f32 %125, 2
+  %129 = extractvalue %dx.types.CBufRet.f32 %18, 3
+  %130 = fmul fast float %126, %129
+  %131 = fmul fast float %130, %122
+  %132 = fmul fast float %127, %129
+  %133 = fmul fast float %132, %123
+  %134 = fmul fast float %128, %129
+  %135 = fmul fast float %134, %124
+  %136 = insertelement <3 x float> undef, float %131, i32 0
+  %137 = insertelement <3 x float> %136, float %133, i32 1
+  %138 = insertelement <3 x float> %137, float %135, i32 2
+  %139 = getelementptr inbounds %struct.RadiancePayload, %struct.RadiancePayload* %rayPayload, i32 0, i32 0
+  store <3 x float> %138, <3 x float>* %139, align 4
+  %140 = getelementptr inbounds %struct.RadiancePayload, %struct.RadiancePayload* %rayPayload, i32 0, i32 1
+  store float 0x3FF3333340000000, float* %140, align 4
   ret void
 }
 
@@ -1012,6 +1190,15 @@ define void @"\01?MyAnyHitShader_ShadowRay@@YAXUShadowPayload@@UBuiltInTriangleI
 }
 
 ; Function Attrs: nounwind readnone
+declare float @dx.op.unary.f32(i32, float) #1
+
+; Function Attrs: nounwind readnone
+declare float @dx.op.binary.f32(i32, float, float) #1
+
+; Function Attrs: nounwind readnone
+declare float @dx.op.dot3.f32(i32, float, float, float, float, float, float) #1
+
+; Function Attrs: nounwind readnone
 declare float @dx.op.worldRayDirection.f32(i32, i8) #1
 
 ; Function Attrs: nounwind readnone
@@ -1020,14 +1207,8 @@ declare float @dx.op.worldRayOrigin.f32(i32, i8) #1
 ; Function Attrs: nounwind readonly
 declare float @dx.op.rayTCurrent.f32(i32) #2
 
-; Function Attrs: nounwind readnone
-declare float @dx.op.unary.f32(i32, float) #1
-
-; Function Attrs: nounwind readnone
-declare float @dx.op.binary.f32(i32, float, float) #1
-
-; Function Attrs: nounwind readnone
-declare float @dx.op.dot3.f32(i32, float, float, float, float, float, float) #1
+; Function Attrs: nounwind readonly
+declare %dx.types.ResRet.f32 @dx.op.sampleLevel.f32(i32, %dx.types.Handle, %dx.types.Handle, float, float, float, float, i32, i32, i32, float) #2
 
 ; Function Attrs: nounwind readnone
 declare i32 @dx.op.dispatchRaysDimensions.i32(i32, i8) #1
@@ -1043,9 +1224,6 @@ declare i32 @dx.op.primitiveIndex.i32(i32) #1
 
 ; Function Attrs: nounwind readonly
 declare %dx.types.ResRet.f32 @dx.op.rawBufferLoad.f32(i32, %dx.types.Handle, i32, i32, i8, i32) #2
-
-; Function Attrs: nounwind readonly
-declare %dx.types.ResRet.f32 @dx.op.sampleLevel.f32(i32, %dx.types.Handle, %dx.types.Handle, float, float, float, float, i32, i32, i32, float) #2
 
 ; Function Attrs: nounwind readonly
 declare %dx.types.ResRet.i32 @dx.op.rawBufferLoad.i32(i32, %dx.types.Handle, i32, i32, i8, i32) #2
@@ -1072,6 +1250,15 @@ declare float @dx.op.objectToWorld.f32(i32, i32, i8) #1
 declare %dx.types.Handle @dx.op.createHandleForLib.l_RayGeomCB(i32, %l_RayGeomCB) #2
 
 ; Function Attrs: nounwind readonly
+declare %dx.types.Handle @dx.op.createHandleForLib.CONSTANT_BUFFER_ATMOS(i32, %CONSTANT_BUFFER_ATMOS) #2
+
+; Function Attrs: nounwind readonly
+declare %dx.types.Handle @"dx.op.createHandleForLib.class.Texture3D<vector<float, 4> >"(i32, %"class.Texture3D<vector<float, 4> >") #2
+
+; Function Attrs: nounwind readonly
+declare %dx.types.Handle @dx.op.createHandleForLib.struct.SamplerState(i32, %struct.SamplerState) #2
+
+; Function Attrs: nounwind readonly
 declare %dx.types.Handle @dx.op.createHandleForLib.struct.RaytracingAccelerationStructure(i32, %struct.RaytracingAccelerationStructure) #2
 
 ; Function Attrs: nounwind readonly
@@ -1082,9 +1269,6 @@ declare %dx.types.Handle @"dx.op.createHandleForLib.class.StructuredBuffer<Verte
 
 ; Function Attrs: nounwind readonly
 declare %dx.types.Handle @"dx.op.createHandleForLib.class.Texture2D<vector<float, 4> >"(i32, %"class.Texture2D<vector<float, 4> >") #2
-
-; Function Attrs: nounwind readonly
-declare %dx.types.Handle @dx.op.createHandleForLib.struct.SamplerState(i32, %struct.SamplerState) #2
 
 ; Function Attrs: nounwind readonly
 declare %dx.types.Handle @dx.op.createHandleForLib.struct.ByteAddressBuffer(i32, %struct.ByteAddressBuffer) #2
@@ -1101,70 +1285,73 @@ attributes #2 = { nounwind readonly }
 !dx.valver = !{!2}
 !dx.shaderModel = !{!3}
 !dx.resources = !{!4}
-!dx.typeAnnotations = !{!23}
-!dx.entryPoints = !{!31, !33, !36, !38, !40, !42, !44, !46}
+!dx.typeAnnotations = !{!26}
+!dx.entryPoints = !{!34, !36, !39, !41, !43, !45, !47, !49}
 
 !0 = !{!"dxcoob 1.8.2505.32 (b106a961d)"}
 !1 = !{i32 1, i32 3}
 !2 = !{i32 1, i32 9}
 !3 = !{!"lib", i32 6, i32 3}
-!4 = !{!5, !14, !17, !20}
-!5 = !{!6, !8, !10, !11, !13}
+!4 = !{!5, !15, !18, !22}
+!5 = !{!6, !8, !10, !12, !13, !14}
 !6 = !{i32 0, %struct.RaytracingAccelerationStructure* @"\01?Scene@@3URaytracingAccelerationStructure@@A", !"Scene", i32 0, i32 0, i32 1, i32 16, i32 0, !7}
 !7 = !{i32 0, i32 4}
-!8 = !{i32 1, %"class.StructuredBuffer<Vertex>"* @"\01?l_Vertices@@3V?$StructuredBuffer@UVertex@@@@A", !"l_Vertices", i32 1, i32 0, i32 1, i32 12, i32 0, !9}
-!9 = !{i32 1, i32 44}
-!10 = !{i32 2, %struct.ByteAddressBuffer* @"\01?l_Indices@@3UByteAddressBuffer@@A", !"l_Indices", i32 1, i32 1, i32 1, i32 11, i32 0, null}
-!11 = !{i32 3, %"class.Texture2D<vector<float, 4> >"* @"\01?l_DiffuseTexture@@3V?$Texture2D@V?$vector@M$03@@@@A", !"l_DiffuseTexture", i32 1, i32 2, i32 1, i32 2, i32 0, !12}
-!12 = !{i32 0, i32 9}
-!13 = !{i32 4, %"class.Texture2D<vector<float, 4> >"* @"\01?l_NormalTexture@@3V?$Texture2D@V?$vector@M$03@@@@A", !"l_NormalTexture", i32 1, i32 3, i32 1, i32 2, i32 0, !12}
-!14 = !{!15, !16}
-!15 = !{i32 0, %"class.RWTexture2D<vector<float, 4> >"* @"\01?g_OutputDiffuse@@3V?$RWTexture2D@V?$vector@M$03@@@@A", !"g_OutputDiffuse", i32 0, i32 0, i32 1, i32 2, i1 false, i1 false, i1 false, !12}
-!16 = !{i32 1, %"class.RWTexture2D<vector<float, 4> >"* @"\01?g_OutputDepth@@3V?$RWTexture2D@V?$vector@M$03@@@@A", !"g_OutputDepth", i32 0, i32 1, i32 1, i32 2, i1 false, i1 false, i1 false, !12}
-!17 = !{!18, !19}
-!18 = !{i32 0, %l_RayGeomCB* @l_RayGeomCB, !"l_RayGeomCB", i32 1, i32 0, i32 1, i32 48, null}
-!19 = !{i32 1, %hostlayout.CONSTANT_BUFFER_PER_FRAME* @CONSTANT_BUFFER_PER_FRAME_legacy, !"CONSTANT_BUFFER_PER_FRAME", i32 0, i32 0, i32 1, i32 928, null}
-!20 = !{!21, !22}
-!21 = !{i32 0, %struct.SamplerState* @"\01?g_SamplerWrap@@3USamplerState@@A", !"g_SamplerWrap", i32 0, i32 0, i32 1, i32 0, null}
-!22 = !{i32 1, %struct.SamplerState* @"\01?g_SamplerPoint@@3USamplerState@@A", !"g_SamplerPoint", i32 0, i32 2, i32 1, i32 0, null}
-!23 = !{i32 1, void ()* @"\01?MyRaygenShader_RadianceRay@@YAXXZ", !24, void (%struct.RadiancePayload*, %struct.BuiltInTriangleIntersectionAttributes*)* @"\01?MyClosestHitShader_RadianceRay@@YAXURadiancePayload@@UBuiltInTriangleIntersectionAttributes@@@Z", !27, void (%struct.RadiancePayload*)* @"\01?MyMissShader_RadianceRay@@YAXURadiancePayload@@@Z", !30, void (%struct.RadiancePayload*, %struct.BuiltInTriangleIntersectionAttributes*)* @"\01?MyAnyHitShader_RadianceRay@@YAXURadiancePayload@@UBuiltInTriangleIntersectionAttributes@@@Z", !27, void (%struct.ShadowPayload*, %struct.BuiltInTriangleIntersectionAttributes*)* @"\01?MyClosestHitShader_ShadowRay@@YAXUShadowPayload@@UBuiltInTriangleIntersectionAttributes@@@Z", !27, void (%struct.ShadowPayload*)* @"\01?MyMissShader_ShadowRay@@YAXUShadowPayload@@@Z", !30, void (%struct.ShadowPayload*, %struct.BuiltInTriangleIntersectionAttributes*)* @"\01?MyAnyHitShader_ShadowRay@@YAXUShadowPayload@@UBuiltInTriangleIntersectionAttributes@@@Z", !27}
-!24 = !{!25}
-!25 = !{i32 1, !26, !26}
-!26 = !{}
-!27 = !{!25, !28, !29}
-!28 = !{i32 2, !26, !26}
-!29 = !{i32 0, !26, !26}
-!30 = !{!25, !28}
-!31 = !{null, !"", null, !4, !32}
-!32 = !{i32 0, i64 16}
-!33 = !{void (%struct.RadiancePayload*, %struct.BuiltInTriangleIntersectionAttributes*)* @"\01?MyAnyHitShader_RadianceRay@@YAXURadiancePayload@@UBuiltInTriangleIntersectionAttributes@@@Z", !"\01?MyAnyHitShader_RadianceRay@@YAXURadiancePayload@@UBuiltInTriangleIntersectionAttributes@@@Z", null, null, !34}
-!34 = !{i32 8, i32 9, i32 6, i32 20, i32 7, i32 8, i32 5, !35}
-!35 = !{i32 0}
-!36 = !{void (%struct.ShadowPayload*, %struct.BuiltInTriangleIntersectionAttributes*)* @"\01?MyAnyHitShader_ShadowRay@@YAXUShadowPayload@@UBuiltInTriangleIntersectionAttributes@@@Z", !"\01?MyAnyHitShader_ShadowRay@@YAXUShadowPayload@@UBuiltInTriangleIntersectionAttributes@@@Z", null, null, !37}
-!37 = !{i32 8, i32 9, i32 6, i32 4, i32 7, i32 8, i32 5, !35}
-!38 = !{void (%struct.RadiancePayload*, %struct.BuiltInTriangleIntersectionAttributes*)* @"\01?MyClosestHitShader_RadianceRay@@YAXURadiancePayload@@UBuiltInTriangleIntersectionAttributes@@@Z", !"\01?MyClosestHitShader_RadianceRay@@YAXURadiancePayload@@UBuiltInTriangleIntersectionAttributes@@@Z", null, null, !39}
-!39 = !{i32 8, i32 10, i32 6, i32 20, i32 7, i32 8, i32 5, !35}
-!40 = !{void (%struct.ShadowPayload*, %struct.BuiltInTriangleIntersectionAttributes*)* @"\01?MyClosestHitShader_ShadowRay@@YAXUShadowPayload@@UBuiltInTriangleIntersectionAttributes@@@Z", !"\01?MyClosestHitShader_ShadowRay@@YAXUShadowPayload@@UBuiltInTriangleIntersectionAttributes@@@Z", null, null, !41}
-!41 = !{i32 8, i32 10, i32 6, i32 4, i32 7, i32 8, i32 5, !35}
-!42 = !{void (%struct.RadiancePayload*)* @"\01?MyMissShader_RadianceRay@@YAXURadiancePayload@@@Z", !"\01?MyMissShader_RadianceRay@@YAXURadiancePayload@@@Z", null, null, !43}
-!43 = !{i32 8, i32 11, i32 6, i32 20, i32 5, !35}
-!44 = !{void (%struct.ShadowPayload*)* @"\01?MyMissShader_ShadowRay@@YAXUShadowPayload@@@Z", !"\01?MyMissShader_ShadowRay@@YAXUShadowPayload@@@Z", null, null, !45}
-!45 = !{i32 8, i32 11, i32 6, i32 4, i32 5, !35}
-!46 = !{void ()* @"\01?MyRaygenShader_RadianceRay@@YAXXZ", !"\01?MyRaygenShader_RadianceRay@@YAXXZ", null, null, !47}
-!47 = !{i32 8, i32 7, i32 5, !35}
-!48 = !{!49}
-!49 = distinct !{!49, !50, !"\01?TraceRadianceRay@@YA?AURadiancePayload@@URay@@IIMM_N1@Z: %agg.result"}
-!50 = distinct !{!50, !"\01?TraceRadianceRay@@YA?AURadiancePayload@@URay@@IIMM_N1@Z"}
-!51 = !{!52, !54}
-!52 = distinct !{!52, !53, !"\01?TraceShadowRayAndReportIfHit@@YA_NAIAMURay@@_NM@Z: %tHit"}
-!53 = distinct !{!53, !"\01?TraceShadowRayAndReportIfHit@@YA_NAIAMURay@@_NM@Z"}
-!54 = distinct !{!54, !55, !"\01?Shade@@YA?AV?$vector@M$02@@URadiancePayload@@V1@1UShadingInfo@@@Z: %rayPayload"}
-!55 = distinct !{!55, !"\01?Shade@@YA?AV?$vector@M$02@@URadiancePayload@@V1@1UShadingInfo@@@Z"}
-!56 = !{!57, !57, i64 0}
-!57 = !{!"float", !58, i64 0}
-!58 = !{!"omnipotent char", !59, i64 0}
-!59 = !{!"Simple C/C++ TBAA"}
-!60 = !{!61, !61, i64 0}
-!61 = !{!"int", !58, i64 0}
-!62 = !{!54}
-!63 = !{!58, !58, i64 0}
+!8 = !{i32 1, %"class.Texture3D<vector<float, 4> >"* @"\01?g_ScatteringLUT@@3V?$Texture3D@V?$vector@M$03@@@@A", !"g_ScatteringLUT", i32 0, i32 12, i32 1, i32 4, i32 0, !9}
+!9 = !{i32 0, i32 9}
+!10 = !{i32 2, %"class.StructuredBuffer<Vertex>"* @"\01?l_Vertices@@3V?$StructuredBuffer@UVertex@@@@A", !"l_Vertices", i32 1, i32 0, i32 1, i32 12, i32 0, !11}
+!11 = !{i32 1, i32 44}
+!12 = !{i32 3, %struct.ByteAddressBuffer* @"\01?l_Indices@@3UByteAddressBuffer@@A", !"l_Indices", i32 1, i32 1, i32 1, i32 11, i32 0, null}
+!13 = !{i32 4, %"class.Texture2D<vector<float, 4> >"* @"\01?l_DiffuseTexture@@3V?$Texture2D@V?$vector@M$03@@@@A", !"l_DiffuseTexture", i32 1, i32 2, i32 1, i32 2, i32 0, !9}
+!14 = !{i32 5, %"class.Texture2D<vector<float, 4> >"* @"\01?l_NormalTexture@@3V?$Texture2D@V?$vector@M$03@@@@A", !"l_NormalTexture", i32 1, i32 3, i32 1, i32 2, i32 0, !9}
+!15 = !{!16, !17}
+!16 = !{i32 0, %"class.RWTexture2D<vector<float, 4> >"* @"\01?g_OutputDiffuse@@3V?$RWTexture2D@V?$vector@M$03@@@@A", !"g_OutputDiffuse", i32 0, i32 0, i32 1, i32 2, i1 false, i1 false, i1 false, !9}
+!17 = !{i32 1, %"class.RWTexture2D<vector<float, 4> >"* @"\01?g_OutputDepth@@3V?$RWTexture2D@V?$vector@M$03@@@@A", !"g_OutputDepth", i32 0, i32 1, i32 1, i32 2, i1 false, i1 false, i1 false, !9}
+!18 = !{!19, !20, !21}
+!19 = !{i32 0, %l_RayGeomCB* @l_RayGeomCB, !"l_RayGeomCB", i32 0, i32 1, i32 1, i32 48, null}
+!20 = !{i32 1, %hostlayout.CONSTANT_BUFFER_PER_FRAME* @CONSTANT_BUFFER_PER_FRAME_legacy, !"CONSTANT_BUFFER_PER_FRAME", i32 0, i32 0, i32 1, i32 928, null}
+!21 = !{i32 2, %CONSTANT_BUFFER_ATMOS* @CONSTANT_BUFFER_ATMOS, !"CONSTANT_BUFFER_ATMOS", i32 1, i32 0, i32 1, i32 112, null}
+!22 = !{!23, !24, !25}
+!23 = !{i32 0, %struct.SamplerState* @"\01?g_SamplerWrap@@3USamplerState@@A", !"g_SamplerWrap", i32 0, i32 0, i32 1, i32 0, null}
+!24 = !{i32 1, %struct.SamplerState* @"\01?g_SamplerClamp@@3USamplerState@@A", !"g_SamplerClamp", i32 0, i32 1, i32 1, i32 0, null}
+!25 = !{i32 2, %struct.SamplerState* @"\01?g_SamplerPoint@@3USamplerState@@A", !"g_SamplerPoint", i32 0, i32 2, i32 1, i32 0, null}
+!26 = !{i32 1, void ()* @"\01?MyRaygenShader_RadianceRay@@YAXXZ", !27, void (%struct.RadiancePayload*, %struct.BuiltInTriangleIntersectionAttributes*)* @"\01?MyClosestHitShader_RadianceRay@@YAXURadiancePayload@@UBuiltInTriangleIntersectionAttributes@@@Z", !30, void (%struct.RadiancePayload*)* @"\01?MyMissShader_RadianceRay@@YAXURadiancePayload@@@Z", !33, void (%struct.RadiancePayload*, %struct.BuiltInTriangleIntersectionAttributes*)* @"\01?MyAnyHitShader_RadianceRay@@YAXURadiancePayload@@UBuiltInTriangleIntersectionAttributes@@@Z", !30, void (%struct.ShadowPayload*, %struct.BuiltInTriangleIntersectionAttributes*)* @"\01?MyClosestHitShader_ShadowRay@@YAXUShadowPayload@@UBuiltInTriangleIntersectionAttributes@@@Z", !30, void (%struct.ShadowPayload*)* @"\01?MyMissShader_ShadowRay@@YAXUShadowPayload@@@Z", !33, void (%struct.ShadowPayload*, %struct.BuiltInTriangleIntersectionAttributes*)* @"\01?MyAnyHitShader_ShadowRay@@YAXUShadowPayload@@UBuiltInTriangleIntersectionAttributes@@@Z", !30}
+!27 = !{!28}
+!28 = !{i32 1, !29, !29}
+!29 = !{}
+!30 = !{!28, !31, !32}
+!31 = !{i32 2, !29, !29}
+!32 = !{i32 0, !29, !29}
+!33 = !{!28, !31}
+!34 = !{null, !"", null, !4, !35}
+!35 = !{i32 0, i64 16}
+!36 = !{void (%struct.RadiancePayload*, %struct.BuiltInTriangleIntersectionAttributes*)* @"\01?MyAnyHitShader_RadianceRay@@YAXURadiancePayload@@UBuiltInTriangleIntersectionAttributes@@@Z", !"\01?MyAnyHitShader_RadianceRay@@YAXURadiancePayload@@UBuiltInTriangleIntersectionAttributes@@@Z", null, null, !37}
+!37 = !{i32 8, i32 9, i32 6, i32 20, i32 7, i32 8, i32 5, !38}
+!38 = !{i32 0}
+!39 = !{void (%struct.ShadowPayload*, %struct.BuiltInTriangleIntersectionAttributes*)* @"\01?MyAnyHitShader_ShadowRay@@YAXUShadowPayload@@UBuiltInTriangleIntersectionAttributes@@@Z", !"\01?MyAnyHitShader_ShadowRay@@YAXUShadowPayload@@UBuiltInTriangleIntersectionAttributes@@@Z", null, null, !40}
+!40 = !{i32 8, i32 9, i32 6, i32 4, i32 7, i32 8, i32 5, !38}
+!41 = !{void (%struct.RadiancePayload*, %struct.BuiltInTriangleIntersectionAttributes*)* @"\01?MyClosestHitShader_RadianceRay@@YAXURadiancePayload@@UBuiltInTriangleIntersectionAttributes@@@Z", !"\01?MyClosestHitShader_RadianceRay@@YAXURadiancePayload@@UBuiltInTriangleIntersectionAttributes@@@Z", null, null, !42}
+!42 = !{i32 8, i32 10, i32 6, i32 20, i32 7, i32 8, i32 5, !38}
+!43 = !{void (%struct.ShadowPayload*, %struct.BuiltInTriangleIntersectionAttributes*)* @"\01?MyClosestHitShader_ShadowRay@@YAXUShadowPayload@@UBuiltInTriangleIntersectionAttributes@@@Z", !"\01?MyClosestHitShader_ShadowRay@@YAXUShadowPayload@@UBuiltInTriangleIntersectionAttributes@@@Z", null, null, !44}
+!44 = !{i32 8, i32 10, i32 6, i32 4, i32 7, i32 8, i32 5, !38}
+!45 = !{void (%struct.RadiancePayload*)* @"\01?MyMissShader_RadianceRay@@YAXURadiancePayload@@@Z", !"\01?MyMissShader_RadianceRay@@YAXURadiancePayload@@@Z", null, null, !46}
+!46 = !{i32 8, i32 11, i32 6, i32 20, i32 5, !38}
+!47 = !{void (%struct.ShadowPayload*)* @"\01?MyMissShader_ShadowRay@@YAXUShadowPayload@@@Z", !"\01?MyMissShader_ShadowRay@@YAXUShadowPayload@@@Z", null, null, !48}
+!48 = !{i32 8, i32 11, i32 6, i32 4, i32 5, !38}
+!49 = !{void ()* @"\01?MyRaygenShader_RadianceRay@@YAXXZ", !"\01?MyRaygenShader_RadianceRay@@YAXXZ", null, null, !50}
+!50 = !{i32 8, i32 7, i32 5, !38}
+!51 = !{!52}
+!52 = distinct !{!52, !53, !"\01?TraceRadianceRay@@YA?AURadiancePayload@@URay@@IIMM_N1@Z: %agg.result"}
+!53 = distinct !{!53, !"\01?TraceRadianceRay@@YA?AURadiancePayload@@URay@@IIMM_N1@Z"}
+!54 = !{!55, !57}
+!55 = distinct !{!55, !56, !"\01?TraceShadowRayAndReportIfHit@@YA_NAIAMURay@@_NM@Z: %tHit"}
+!56 = distinct !{!56, !"\01?TraceShadowRayAndReportIfHit@@YA_NAIAMURay@@_NM@Z"}
+!57 = distinct !{!57, !58, !"\01?Shade@@YA?AV?$vector@M$02@@URadiancePayload@@V1@1UShadingInfo@@@Z: %rayPayload"}
+!58 = distinct !{!58, !"\01?Shade@@YA?AV?$vector@M$02@@URadiancePayload@@V1@1UShadingInfo@@@Z"}
+!59 = !{!60, !60, i64 0}
+!60 = !{!"float", !61, i64 0}
+!61 = !{!"omnipotent char", !62, i64 0}
+!62 = !{!"Simple C/C++ TBAA"}
+!63 = !{!64, !64, i64 0}
+!64 = !{!"int", !61, i64 0}
+!65 = !{!57}
+!66 = !{!61, !61, i64 0}

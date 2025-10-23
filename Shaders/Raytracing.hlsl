@@ -47,7 +47,7 @@ RadiancePayload TraceRadianceRay(in Ray ray, in uint currRayRecursionDepth, in u
     //      RayDesc Ray,
     //      inout payload_t Payload);
     TraceRay(Scene, rayFlags, ~0, 0, 2, 0, rayDesc, rayPayload);
-
+    
     return rayPayload;
 }
 
@@ -383,8 +383,10 @@ void MyClosestHitShader_RadianceRay(inout RadiancePayload rayPayload, in BuiltIn
 [shader("miss")]
 void MyMissShader_RadianceRay(inout RadiancePayload rayPayload)
 {
-    // TODO: sky diffuse
-    rayPayload.radiance = float3(0, 0, 0);
+    float3 L = SampleSky(normalize(WorldRayDirection()));
+    
+    rayPayload.radiance = L;
+    // rayPayload.radiance = float3(0, 0, 0);
     rayPayload.depth = 1.2;
 }
 
