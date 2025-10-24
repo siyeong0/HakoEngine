@@ -238,5 +238,60 @@ float3 SampleSky(float3 viewDirWorld)
     return L; // linear HDR radiance
 }
 
+float SunDiskMask(float cosTheta, float radius, float feather)
+{
+    float rIn = radius;
+    float rOut = radius + max(feather, 0.0f);
+
+    float cIn = cos(rIn);
+    float cOut = cos(rOut);
+
+    // cosTheta가 cOut→cIn로 갈수록 0→1
+    return saturate(smoothstep(cOut, cIn, cosTheta));
+}
+
+float SunHaloMask(float cosTheta, float radius, float radiusMul, float feather)
+{
+    float rIn = radius * max(radiusMul, 1.0f);
+    float rOut = rIn + max(feather, 0.0f);
+
+    float cIn = cos(rIn);
+    float cOut = cos(rOut);
+
+    // 디스크 바깥쪽에서 부드럽게 깔리는 헤일로
+    return saturate(smoothstep(cOut, cIn, cosTheta));
+}
+
+static const float SUN_DEFAULT_INTENSITY = 15.0f;
+static const float3 SUN_DEFAULT_COLOR = float3(1.0, 0.95, 0.85);
+static const float SUN_DEFAULT_RADIUS = 0.004675f; // ~0.267°
+static const float SUN_DEFAULT_FEATHER = SUN_DEFAULT_RADIUS * 3.0f;
+static const float SUN_DEFAULT_HALO_MUL = 0.15f;
+static const float SUN_DEFAULT_HALO_RMUL = 5.0f;
+
+float3 EvaluateSun(float3 dir)
+{
+    // 파라미터 기본 보정
+    float sunI = SUN_DEFAULT_INTENSITY;
+    float3 sunCol = SUN_DEFAULT_COLOR;
+    float rad = SUN_DEFAULT_RADIUS;
+    float fth = SUN_DEFAULT_FEATHER;
+    float haloM = SUN_DEFAULT_HALO_MUL;
+    float haloRM = SUN_DEFAULT_HALO_RMUL;
+
+    float cosTheta = dot(dir, normalize(-g_SunDir));
+
+    // 디스크(원반) + 헤일로(코로나) 마스크
+    float disk = SunDiskMask(cosTheta, rad, fth);
+    float halo = SunHaloMask(cosTheta, rad, haloRM, fth) * haloM;
+
+    // 간단한 limb-darkening 느낌을 조금 주고 싶다면:
+    // disk *= saturate((cosTheta - cos(rad)) / (1.0 - cos(rad)))^0.25; // 선택사항
+
+    float sunMask = disk + halo;
+
+    // 최종 태양 기여(HDR)
+    return sunCol * sunI * sunMask;
+}
 
 #endif // RAYTRACING_COMMON_HLSL

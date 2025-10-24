@@ -383,10 +383,12 @@ void MyClosestHitShader_RadianceRay(inout RadiancePayload rayPayload, in BuiltIn
 [shader("miss")]
 void MyMissShader_RadianceRay(inout RadiancePayload rayPayload)
 {
-    float3 L = SampleSky(normalize(WorldRayDirection()));
+    float3 worldDir = normalize(WorldRayDirection());
+    float3 skyColor = SampleSky(worldDir);
+    float3 sunColor = EvaluateSun(worldDir);
+    float3 L = skyColor + sunColor;
     
     rayPayload.radiance = Tonemap_ACES(L); // TODO: remove tonemap from here and do it in the composition pass
-    // rayPayload.radiance = float3(0, 0, 0);
     rayPayload.depth = 1.2;
 }
 
