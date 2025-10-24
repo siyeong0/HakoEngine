@@ -713,6 +713,37 @@ void Game::Run()
 	}
 }
 
+static FLOAT3 ComputeSunDir(
+	float timeOfDayHours,
+	float latitudeDeg = 37.6f,     // 서울 근처
+	float declinationDeg = 15.0f)  // 여름 느낌: 15°, 겨울:  -15° 정도
+{
+	// 1) 시각경도 H (정오=0°, 시간당 15°)
+	float H = DegToRad(15.0f * (timeOfDayHours - 12.0f));
+
+	// 2) 고도/방위 계산
+	float phi = DegToRad(latitudeDeg);
+	float dec = DegToRad(declinationDeg);
+
+	float sinAlt = std::sin(phi) * std::sin(dec) + std::cos(phi) * std::cos(dec) * std::cos(H);
+	float alt = std::asin(std::clamp(sinAlt, -1.0f, 1.0f)); // 태양 고도(라디안)
+
+	// 방위: 0=북(+Z), 시계방향으로 증가(동=90°, 남=180°, 서=270°)
+	float cosAz = (std::sin(dec) - std::sin(alt) * std::sin(phi)) / (std::cos(alt) * std::cos(phi) + 1e-6f);
+	cosAz = std::clamp(cosAz, -1.0f, 1.0f);
+	float az = std::acos(cosAz);
+	if (std::sin(H) > 0.0f) az = 2.0f * 3.14159265358979f - az; // 정오 이후 서쪽으로 이동
+
+	// 3) 구면→직교 (+Y=Up, +Z=North, +X=East)
+	float cosAlt = std::cos(alt);
+	FLOAT3 d;
+	d.x = cosAlt * std::sin(az); // East
+	d.y = std::sin(alt);         // Up
+	d.z = cosAlt * std::cos(az); // North
+	return FLOAT3::Normalize(d);
+}
+
+
 bool Game::Update(uint64_t currTick)
 {
 	const uint64_t elapsedMs = currTick - m_PrevUpdateTick;
@@ -725,6 +756,13 @@ bool Game::Update(uint64_t currTick)
 	}
 
 	m_ECSWorld.progress(dt);
+
+	m_TimeOfDay += dt * 0.2f;
+	m_TimeOfDay = fmodf(m_TimeOfDay, 24.0f); // 0 - 24 hours
+
+	FLOAT3 sunDir = ComputeSunDir(m_TimeOfDay, /*latitude*/37.6f, /*declination*/15.0f);
+
+	m_pRenderer->SetSunDir(-sunDir);
 
 	return true;
 }
@@ -772,6 +810,10 @@ void Game::OnKeyDown(uint nChar, uint uiScanCode)
 		break;
 	case 'D':
 		m_CamOffsetX = 0.05f;
+		break;
+	case 'K':
+		m_TimeOfDay += 0.5f;
+		std::cout << "Current Time of Day: " << m_TimeOfDay << " hours\n";
 		break;
 	}
 }

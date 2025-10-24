@@ -27,8 +27,10 @@ public:
 	TextureHandle* GetScatteringTexture() const { return m_pScatteringTex; }
 	TextureHandle* GetIrradianceTexture() const { return m_pIrradianceTex; }
 
-	CONSTANT_BUFFER_ATMOS GetCBData() const;
+	const CONSTANT_BUFFER_ATMOS& GetCBData() const { return m_AtmosCBData; }
 	static void SetAtmosStateFromPreset(CONSTANT_BUFFER_ATMOS* outDst, EAtmosPreset ePreset);
+
+	void SetSunDir(const FLOAT3& dir) { m_AtmosCBData.SunDir = dir; }
 
 	SkyObject() = default;
 	~SkyObject() { Cleanup(); };
@@ -44,6 +46,8 @@ private:
 	ID3D12Resource* m_pIndexBuffer = nullptr;
 	D3D12_INDEX_BUFFER_VIEW m_IndexBufferView = {};
 	PSOHandle* m_pPSOHandle = nullptr;
+
+	CONSTANT_BUFFER_ATMOS m_AtmosCBData = {};
 
 	TextureHandle* m_pTransmittanceTex = nullptr;
 	TextureHandle* m_pScatteringTex = nullptr;

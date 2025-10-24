@@ -64,7 +64,11 @@ public:
 	void ENGINECALL SetCameraRot(float yaw, float pitch, float roll) override;
 	void ENGINECALL MoveCamera(float x, float y, float z) override;
 	FLOAT3 ENGINECALL GetCameraPos() override;
+
+	void ENGINECALL SetSunDir(const FLOAT3& sunDir) override;
+
 	int	ENGINECALL GetCommandListCount() override;
+
 	bool ENGINECALL IsRayTracingEnabled() const override;
 	bool ENGINECALL IsGpuUploadHeapsEnabled() const override;
 

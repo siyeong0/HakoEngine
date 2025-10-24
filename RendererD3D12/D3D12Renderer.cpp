@@ -946,6 +946,11 @@ FLOAT3 ENGINECALL D3D12Renderer::GetCameraPos()
 	return m_CamPos;
 }
 
+void ENGINECALL D3D12Renderer::SetSunDir(const FLOAT3& sunDir)
+{
+	m_pSkyObject->SetSunDir(sunDir);
+}
+
 int ENGINECALL D3D12Renderer::GetCommandListCount()
 {
 	size_t numCmdLists = 0;

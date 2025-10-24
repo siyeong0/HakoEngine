@@ -20,6 +20,8 @@ bool SkyObject::Initialize(D3D12Renderer* pRenderer)
 		return false;
 	}
 
+	SetAtmosStateFromPreset(&m_AtmosCBData, EAtmosPreset::NoonClearSky);
+
 	m_pTransmittanceTex = (TextureHandle*)m_pRenderer->CreateTextureFromFile(L"./Resources/Atmos/Transmittance.dds");
 	m_pScatteringTex = (TextureHandle*)m_pRenderer->CreateTextureFromFile(L"./Resources/Atmos/Scattering.dds");
 	m_pIrradianceTex = (TextureHandle*)m_pRenderer->CreateTextureFromFile(L"./Resources/Atmos/Irradiance.dds");
@@ -98,13 +100,6 @@ void SkyObject::Draw(int threadIndex, ID3D12GraphicsCommandList6* pCommandList)
 	pCommandList->SetGraphicsRootDescriptorTable(2, gpuDescriptorTable);
 
 	pCommandList->DrawInstanced(4, 1, 0, 0);
-}
-
-CONSTANT_BUFFER_ATMOS SkyObject::GetCBData() const
-{
-	CONSTANT_BUFFER_ATMOS cbData = {};
-	SetAtmosStateFromPreset((CONSTANT_BUFFER_ATMOS*)&cbData, EAtmosPreset::NoonClearSky);
-	return cbData;
 }
 
 void SkyObject::SetAtmosStateFromPreset(CONSTANT_BUFFER_ATMOS* outDst, EAtmosPreset ePreset)

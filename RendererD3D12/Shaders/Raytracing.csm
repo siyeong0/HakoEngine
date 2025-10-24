@@ -1,4 +1,4 @@
-; shader hash: 27bbacab566f1702c5fcd751bf9e38a2
+; shader hash: 110b4ed86971511a61accc902f8885ed
 ;
 ; Buffer Definitions:
 ;
@@ -1140,13 +1140,40 @@ define void @"\01?MyMissShader_RadianceRay@@YAXURadiancePayload@@@Z"(%struct.Rad
   %133 = fmul fast float %132, %123
   %134 = fmul fast float %128, %129
   %135 = fmul fast float %134, %124
-  %136 = insertelement <3 x float> undef, float %131, i32 0
-  %137 = insertelement <3 x float> %136, float %133, i32 1
-  %138 = insertelement <3 x float> %137, float %135, i32 2
-  %139 = getelementptr inbounds %struct.RadiancePayload, %struct.RadiancePayload* %rayPayload, i32 0, i32 0
-  store <3 x float> %138, <3 x float>* %139, align 4
-  %140 = getelementptr inbounds %struct.RadiancePayload, %struct.RadiancePayload* %rayPayload, i32 0, i32 1
-  store float 0x3FF3333340000000, float* %140, align 4
+  %136 = fmul fast float %131, 0x4004147AE0000000
+  %137 = fmul fast float %133, 0x4004147AE0000000
+  %138 = fmul fast float %135, 0x4004147AE0000000
+  %139 = fadd fast float %136, 0x3F9EB851E0000000
+  %140 = fadd fast float %137, 0x3F9EB851E0000000
+  %141 = fadd fast float %138, 0x3F9EB851E0000000
+  %142 = fmul fast float %139, %131
+  %143 = fmul fast float %140, %133
+  %144 = fmul fast float %141, %135
+  %145 = fmul fast float %131, 0x400370A3E0000000
+  %146 = fmul fast float %133, 0x400370A3E0000000
+  %147 = fmul fast float %135, 0x400370A3E0000000
+  %148 = fadd fast float %145, 0x3FE2E147A0000000
+  %149 = fadd fast float %146, 0x3FE2E147A0000000
+  %150 = fadd fast float %147, 0x3FE2E147A0000000
+  %151 = fmul fast float %148, %131
+  %152 = fmul fast float %149, %133
+  %153 = fmul fast float %150, %135
+  %154 = fadd fast float %151, 0x3FC1EB8520000000
+  %155 = fadd fast float %152, 0x3FC1EB8520000000
+  %156 = fadd fast float %153, 0x3FC1EB8520000000
+  %157 = fdiv fast float %142, %154
+  %158 = fdiv fast float %143, %155
+  %159 = fdiv fast float %144, %156
+  %160 = call float @dx.op.unary.f32(i32 7, float %157)  ; Saturate(value)
+  %161 = insertelement <3 x float> undef, float %160, i64 0
+  %162 = call float @dx.op.unary.f32(i32 7, float %158)  ; Saturate(value)
+  %163 = insertelement <3 x float> %161, float %162, i64 1
+  %164 = call float @dx.op.unary.f32(i32 7, float %159)  ; Saturate(value)
+  %165 = insertelement <3 x float> %163, float %164, i64 2
+  %166 = getelementptr inbounds %struct.RadiancePayload, %struct.RadiancePayload* %rayPayload, i32 0, i32 0
+  store <3 x float> %165, <3 x float>* %166, align 4
+  %167 = getelementptr inbounds %struct.RadiancePayload, %struct.RadiancePayload* %rayPayload, i32 0, i32 1
+  store float 0x3FF3333340000000, float* %167, align 4
   ret void
 }
 
