@@ -97,7 +97,7 @@ float3 TraceRefractedRay(in float3 hitPosition, in float3 wt, in float3 N, inout
     return rayPayload.radiance;
 }
 
-bool TraceShadowRayAndReportIfHit(out float tHit, in Ray ray, in bool retrieveTHit, in float tMax)
+bool TraceShadowRayAndReportIfHit(out float tHit, in Ray ray, in bool bRetrieveTHit, in float tMax)
 {
 	// Set the ray's extents.
     RayDesc rayDesc;
@@ -112,18 +112,19 @@ bool TraceShadowRayAndReportIfHit(out float tHit, in Ray ray, in bool retrieveTH
 	// This way closest and any hit shaders can be skipped if true tHit is not needed. 
     ShadowPayload shadowPayload = { tMax };
 
-    uint rayFlags = RAY_FLAG_CULL_NON_OPAQUE; // ~skip transparent objects
-    bool acceptFirstHit = !retrieveTHit;
+    uint rayFlags = 0; 
+    bool acceptFirstHit = !bRetrieveTHit;
     if (acceptFirstHit)
     {
-	// Performance TIP: Accept first hit if true hit is not neeeded,
-	// or has minimal to no impact. The peformance gain can
-	// be substantial.
+	    // Performance TIP: Accept first hit if true hit is not neeeded,
+	    // or has minimal to no impact. The peformance gain can
+	    // be substantial.
         rayFlags |= RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH; // hit이벤트가 발생하면 그대로 탐색을 종료한다.
+        rayFlags |= RAY_FLAG_SKIP_CLOSEST_HIT_SHADER;
     }
 
     // Skip closest hit shaders of tHit time is not needed.
-    if (!retrieveTHit)
+    if (!bRetrieveTHit)
     {
         // closest hit shader를 사용하지 않는다. 가깝든 멀든 광원에 사이에 장애물이 있는지만 확인하면 된다. 이는 miss shader에서 확인 가능하다.
         rayFlags |= RAY_FLAG_SKIP_CLOSEST_HIT_SHADER;

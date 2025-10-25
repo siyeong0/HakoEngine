@@ -166,9 +166,9 @@ void SpriteObject::DrawWithTex(int threadIndex, ID3D12GraphicsCommandList6* pCom
 	pCommandList->IASetVertexBuffers(0, 1, &m_VertexBufferView);
 	pCommandList->IASetIndexBuffer(&m_IndexBufferView);
 	// b1: per-draw
-	pCommandList->SetGraphicsRootConstantBufferView(ROOT_SLOT_CBV_PER_DRAW, pCB->pGPUMemAddr);
+	pCommandList->SetGraphicsRootConstantBufferView(2, pCB->pGPUMemAddr);
 	// t0: texture
-	pCommandList->SetGraphicsRootDescriptorTable(ROOT_SLOT_SRV_TABLE, gpuTable);
+	pCommandList->SetGraphicsRootDescriptorTable(3, gpuTable);
 	// Draw
 	pCommandList->DrawIndexedInstanced(6, 1, 0, 0, 0);
 }

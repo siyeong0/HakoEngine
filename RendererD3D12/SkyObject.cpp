@@ -68,7 +68,8 @@ void SkyObject::Draw(int threadIndex, ID3D12GraphicsCommandList6* pCommandList)
 
 	// b1: Atmospheric parameters
 	CONSTANT_BUFFER_ATMOS* atmosCB = reinterpret_cast<CONSTANT_BUFFER_ATMOS*>(cb1->pSystemMemAddr);
-	SetAtmosStateFromPreset(atmosCB, ATMOS_PRESET);
+	CONSTANT_BUFFER_ATMOS srcCBAtmosData = m_pRenderer->GetAtmosCBData();
+	std::memcpy(atmosCB, &srcCBAtmosData, sizeof(CONSTANT_BUFFER_ATMOS));
 
 	// SRV table (t0=Transmittance, t1=Scattering, t2=Irradiance)
 	CD3DX12_CPU_DESCRIPTOR_HANDLE cpuDescriptorTable = {};
@@ -97,7 +98,7 @@ void SkyObject::Draw(int threadIndex, ID3D12GraphicsCommandList6* pCommandList)
 	pCommandList->SetGraphicsRootConstantBufferView(/*slot b1*/1, cb1->pGPUMemAddr);
 
 	// --- SRV (t0, t1, t2)
-	pCommandList->SetGraphicsRootDescriptorTable(2, gpuDescriptorTable);
+	pCommandList->SetGraphicsRootDescriptorTable(3, gpuDescriptorTable);
 
 	pCommandList->DrawInstanced(4, 1, 0, 0);
 }

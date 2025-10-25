@@ -1,41 +1,16 @@
 ﻿#include "HLSL_Common.hlsli"
 #include "BxDF.hlsli"
+#include "Sampler.hlsli"
+#include "ConstantBuffer.hlsli"
 
 Texture2D g_DiffuseTex : register(t0);
 Texture2D g_NormalTex : register(t1);
 
-cbuffer CONSTANT_BUFFER_PER_FRAME : register(b0)
-{
-    matrix g_View;
-    matrix g_Proj;
-    matrix g_ViewProj;
-    matrix g_InvView;
-    matrix g_InvProj;
-    matrix g_InvViewProj;
-    
-    float g_Near;
-    float g_Far;
-    
-    uint g_MaxRadianceRayRecursionDepth;
-    uint g_MaxShadowRayRecursionDepth;
-    uint g_NumLights;
-    uint Reserved0;
-    uint Reserved1;
-    uint Reserved2;
-    
-    Light g_LightList[MAX_LIGHT_COUNT];
-};
-
-cbuffer CONSTANT_BUFFER_PER_OBJECT : register(b1)
+cbuffer CONSTANT_BUFFER_PER_OBJECT : register(b1, space0)
 {
     matrix g_World;
     BasicMaterial g_Material;
 };
-
-SamplerState g_SamplerWrap : register(s0);
-SamplerState g_SamplerClamp : register(s1);
-SamplerState g_SamplerBorder : register(s2);
-SamplerState g_SamplerMirror : register(s3);
 
 struct VSInput
 {

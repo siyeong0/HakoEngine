@@ -5,14 +5,6 @@
 
 static const float ALPHA_TEST_THRESHOLD = 0.01;
 
-struct Light
-{
-    float3 PosOrDir;
-    float Rs;
-    float3 Color;
-    LIGHT_TYPE Type;
-};
-
 struct BasicMaterial
 {
     float3 BaseColor;

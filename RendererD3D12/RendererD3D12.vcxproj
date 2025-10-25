@@ -220,8 +220,10 @@
   <ItemGroup>
     <None Include="..\Shaders\AtmosphericSky.hlsli" />
     <None Include="..\Shaders\BxDF.hlsli" />
+    <None Include="..\Shaders\ConstantBuffer.hlsli" />
     <None Include="..\Shaders\HLSL_Common.hlsli" />
     <None Include="..\Shaders\HLSL_CPP_CommonTypes.h" />
+    <None Include="..\Shaders\Sampler.hlsli" />
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>

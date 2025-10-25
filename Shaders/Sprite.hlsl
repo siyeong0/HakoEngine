@@ -1,9 +1,10 @@
-﻿Texture2D texDiffuse : register(t0);
-SamplerState samplerDiffuse : register(s0);
+﻿#include "Sampler.hlsli"
+
+Texture2D texDiffuse : register(t0);
 
 // CBuffer for frame info : register(b0)
 
-cbuffer CONSTANT_BUFFER_SPRITE : register(b1)
+cbuffer CONSTANT_BUFFER_SPRITE : register(b1, space0)
 {
     float2 g_ScreenRes;
     float2 g_Pos;
@@ -51,6 +52,6 @@ PSInput VSMain(VSInput input)
 
 float4 PSMain(PSInput input) : SV_TARGET
 {
-    float4 texColor = texDiffuse.Sample(samplerDiffuse, input.TexCoord);
+    float4 texColor = texDiffuse.Sample(g_SamplerClamp, input.TexCoord);
     return texColor * input.Color;
 }

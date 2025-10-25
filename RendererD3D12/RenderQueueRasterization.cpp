@@ -78,7 +78,7 @@ int RenderQueueRasterization::Process(
 			pCurrCommandList->SetGraphicsRootSignature(pRootSignatureManage->Query(ERootSignatureType::GraphicsDefault));
 			pCurrCommandList->SetDescriptorHeaps(1, &pSRVDescriptorHeap);
 
-			pCurrCommandList->SetGraphicsRootConstantBufferView(ROOT_SLOT_CBV_PER_FRAME, pCB->pGPUMemAddr);
+			pCurrCommandList->SetGraphicsRootConstantBufferView(0, pCB->pGPUMemAddr);
 		}
 
 		switch (pItem->Type)

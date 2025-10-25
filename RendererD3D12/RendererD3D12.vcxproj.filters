@@ -295,6 +295,12 @@
     <None Include="..\Shaders\AtmosphericSky.hlsli">
       <Filter>Shaders\Common</Filter>
     </None>
+    <None Include="..\Shaders\Sampler.hlsli">
+      <Filter>Shaders\Common</Filter>
+    </None>
+    <None Include="..\Shaders\ConstantBuffer.hlsli">
+      <Filter>Shaders\Common</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <CustomBuild Include="..\Shaders\Raytracing.hlsl">

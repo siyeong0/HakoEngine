@@ -204,10 +204,10 @@ void BasicMeshObject::Draw(int threadIndex, ID3D12GraphicsCommandList6* pCommand
 	for (uint i = 0; i < m_TriGroups.size(); ++i)
 	{
 		pCBPerDraw->Material = m_TriGroups[i].Material;
-		pCommandList->SetGraphicsRootConstantBufferView(ROOT_SLOT_CBV_PER_DRAW, cb->pGPUMemAddr);
+		pCommandList->SetGraphicsRootConstantBufferView(2, cb->pGPUMemAddr);
 
 		// i번째 TriGroup의 SRV 테이블 시작(t0=diffuse, t1=normal)
-		pCommandList->SetGraphicsRootDescriptorTable(ROOT_SLOT_SRV_TABLE, gpuCurrDescHandleAddress);
+		pCommandList->SetGraphicsRootDescriptorTable(3, gpuCurrDescHandleAddress);
 
 		// 인덱스 버퍼/드로우
 		const IndexedTriGroup& tg = m_TriGroups[i];

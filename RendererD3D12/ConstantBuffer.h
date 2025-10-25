@@ -1,10 +1,6 @@
 ﻿#pragma once
 #include <DirectXMath.h>
 
-constexpr uint ROOT_SLOT_CBV_PER_FRAME = 0;
-constexpr uint ROOT_SLOT_CBV_PER_DRAW = 1;
-constexpr uint ROOT_SLOT_SRV_TABLE = 2;
-
 struct Light
 {
 	FLOAT3 PosOrDir;

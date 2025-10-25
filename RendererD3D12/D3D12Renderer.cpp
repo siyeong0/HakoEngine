@@ -420,8 +420,10 @@ void ENGINECALL D3D12Renderer::Update(float dt)
 
 	// Update lights
 	m_PerFrameCB.NumLights = 1;
+
+	// Global sun light
 	m_PerFrameCB.LightList[0].Type = LIGHT_TYPE_DIRECTIONAL;
-	m_PerFrameCB.LightList[0].PosOrDir = FLOAT3::Normalize({ 0.25f, -1.0f, 0.5f });
+	m_PerFrameCB.LightList[0].PosOrDir = m_pSkyObject->GetCBData().SunDir;
 	m_PerFrameCB.LightList[0].Color = FLOAT3(0.5f, 1.0f, 1.0f);
 	m_PerFrameCB.LightList[0].Rs = 1000.0f;
 }
