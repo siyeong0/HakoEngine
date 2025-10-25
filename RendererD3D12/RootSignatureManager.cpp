@@ -69,32 +69,23 @@ bool RootSignatureManager::Initialize(D3D12Renderer* pRenderer)
 	// Graphics Raytracing Global
 	{
 		// This is a root signature that is shared across all raytracing shaders invoked during a DispatchRays() call.
-
-		// root param 0
-		// output-diffuse(uav) | output-depth(uav)
-
-		// root param 1
-		// Acceleration Sturecture
-
-		CD3DX12_DESCRIPTOR_RANGE globalRanges[4] = {};
-		globalRanges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, 1, /*b*/0, /*space*/0); // b0, space0
-		globalRanges[1].Init(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, 1, /*b*/0, /*space*/1); // b0, space1
-		globalRanges[2].Init(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 2, /*u*/0, /*space*/0); // u0 : u0-diffuse | u1 : out-depth
-		globalRanges[3].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 3, /*t*/11, /*space*/0); // t0 : AccelerationStructure
+		CD3DX12_DESCRIPTOR_RANGE viewRanges[2] = {};
+		viewRanges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 2, /*u*/0, /*space*/0); // u0 : u0-diffuse | u1 : out-depth
+		viewRanges[1].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 64, /*t*/0, /*space*/0); // t0..t63
 
 		// b0 : RaytracingCBV | u0 : u0-diffuse | u1 : out-depth | t0 : AccelerationStructure
-		CD3DX12_ROOT_PARAMETER globalRootParameters[2] = {};
-		globalRootParameters[0].InitAsDescriptorTable(_countof(globalRanges), globalRanges, D3D12_SHADER_VISIBILITY_ALL);
-		globalRootParameters[1].InitAsShaderResourceView(0);	// Acceleration Structure
+		CD3DX12_ROOT_PARAMETER globalRootParameters[4] = {};
+		globalRootParameters[0].InitAsConstantBufferView(0, 0, D3D12_SHADER_VISIBILITY_ALL); // Raytracing CBV
+		globalRootParameters[1].InitAsConstantBufferView(0, 1, D3D12_SHADER_VISIBILITY_ALL); // Sky Atmosphere CBV
+		globalRootParameters[2].InitAsDescriptorTable(_countof(viewRanges), viewRanges, D3D12_SHADER_VISIBILITY_ALL);
+		globalRootParameters[3].InitAsShaderResourceView(0, 2);	// Acceleration Structure
 
 		// sampler
 		D3D12_STATIC_SAMPLER_DESC samplers[4] = {};
-		D3DUtil::SetSamplerDesc_Wrap(samplers + 0, 0);	// Wrap Linear
-		D3DUtil::SetSamplerDesc_Clamp(samplers + 1, 1);	// Clamp Linear
-		D3DUtil::SetSamplerDesc_Wrap(samplers + 2, 2);	// Wrap Point
-		samplers[2].Filter = D3D12_FILTER_MIN_MAG_MIP_POINT;
+		D3DUtil::SetSamplerDesc_Wrap(samplers + 0, 0);		// Wrap Linear
+		D3DUtil::SetSamplerDesc_Clamp(samplers + 1, 1);		// Clamp Linear
+		D3DUtil::SetSamplerDesc_Point(samplers + 2, 2);		// Wrap Point
 		D3DUtil::SetSamplerDesc_Mirror(samplers + 3, 3);	// Mirror Linear
-		samplers[3].Filter = D3D12_FILTER_MIN_MAG_MIP_LINEAR;
 		for (uint i = 0; i < (uint)_countof(samplers); ++i)
 		{
 			samplers[i].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;

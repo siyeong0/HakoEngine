@@ -129,58 +129,58 @@ void RayTracingManager::Cleanup()
 
 void RayTracingManager::DoRaytracing(ID3D12GraphicsCommandList6* pCommandList)
 {
-	CD3DX12_CPU_DESCRIPTOR_HANDLE dispatchHeapHandleCPU(m_pShaderVisibleDescriptorHeap->GetCPUDescriptorHandleForHeapStart());
-	RootSignatureManager* pRootSignatureManager = m_pRenderer->GetRootSignatureManager();
-			
-	D3D12_CPU_DESCRIPTOR_HANDLE	cbvHandle = {};
 	SimpleConstantBufferPool* pConstantBufferPool = m_pRenderer->GetConstantBufferPool(CONSTANT_BUFFER_TYPE_PER_FRAME, 0);
 	SimpleConstantBufferPool* pConstantBufferPoolAtmos = m_pRenderer->GetConstantBufferPool(CONSTANT_BUFFER_TYPE_ATMOS, 0);
 	ConstantBufferContainer* pCB = pConstantBufferPool->Alloc();
 	ConstantBufferContainer* pCBAtmos = pConstantBufferPoolAtmos->Alloc();
-	ASSERT(pCB, "Failed to allocate constant buffer.");
-	ASSERT(pCBAtmos, "Failed to allocate constant buffer.");
 
-	CONSTANT_BUFFER_PER_FRAME* pCBPerFrame = (CONSTANT_BUFFER_PER_FRAME*)pCB->pSystemMemAddr;
-	CONSTANT_BUFFER_PER_FRAME srcCBData = m_pRenderer->GetFrameCBData();
-	std::memcpy(pCBPerFrame, &srcCBData, sizeof(CONSTANT_BUFFER_PER_FRAME));
-	pCBPerFrame->MaxRadianceRayRecursionDepth = GetMaxRadianceRecursionDepth();
-	pCBPerFrame->MaxShadowRayRecursionDepth = GetMaxShadowRecursionDepth();
+	CD3DX12_CPU_DESCRIPTOR_HANDLE dispatchHeapHandleCPU(m_pShaderVisibleDescriptorHeap->GetCPUDescriptorHandleForHeapStart());
+	CD3DX12_GPU_DESCRIPTOR_HANDLE dispatchHeapHandleGPU(m_pShaderVisibleDescriptorHeap->GetGPUDescriptorHandleForHeapStart());
 
-	CONSTANT_BUFFER_ATMOS* pCBAtmosData = (CONSTANT_BUFFER_ATMOS*)pCBAtmos->pSystemMemAddr;
-	CONSTANT_BUFFER_ATMOS srcCBAtmosData = m_pRenderer->GetAtmosCBData();
-	std::memcpy(pCBAtmosData, &srcCBAtmosData, sizeof(CONSTANT_BUFFER_ATMOS));
+	// Set up global constant buffers 
+	{
+		ASSERT(pCB, "Failed to allocate constant buffer.");
+		ASSERT(pCBAtmos, "Failed to allocate constant buffer.");
+		CONSTANT_BUFFER_PER_FRAME* pCBPerFrame = (CONSTANT_BUFFER_PER_FRAME*)pCB->pSystemMemAddr;
+		CONSTANT_BUFFER_PER_FRAME srcCBData = m_pRenderer->GetFrameCBData();
+		std::memcpy(pCBPerFrame, &srcCBData, sizeof(CONSTANT_BUFFER_PER_FRAME));
+		pCBPerFrame->MaxRadianceRayRecursionDepth = GetMaxRadianceRecursionDepth();
+		pCBPerFrame->MaxShadowRayRecursionDepth = GetMaxShadowRecursionDepth();
 
-	// (0) CBV - RayTracing
-	m_pD3DDevice->CopyDescriptorsSimple(1, dispatchHeapHandleCPU, pCB->CBVHandle, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
-	dispatchHeapHandleCPU.Offset(1, m_DescriptorSize);
+		CONSTANT_BUFFER_ATMOS* pCBAtmosData = (CONSTANT_BUFFER_ATMOS*)pCBAtmos->pSystemMemAddr;
+		CONSTANT_BUFFER_ATMOS srcCBAtmosData = m_pRenderer->GetAtmosCBData();
+		std::memcpy(pCBAtmosData, &srcCBAtmosData, sizeof(CONSTANT_BUFFER_ATMOS));
+	}
+	// Set up the dispatch descriptor heap
+	{
+		// (1) UAVs - Output Buffers
+		CD3DX12_CPU_DESCRIPTOR_HANDLE uavDiffuse(m_pCommonDescriptorHeap->GetCPUDescriptorHandleForHeapStart(), COMMON_DESCRIPTOR_INDEX_OUTPUT_DIFFUSE_UAV, m_DescriptorSize);
+		CD3DX12_CPU_DESCRIPTOR_HANDLE uavDepth(m_pCommonDescriptorHeap->GetCPUDescriptorHandleForHeapStart(), COMMON_DESCRIPTOR_INDEX_OUTPUT_DEPTH_UAV, m_DescriptorSize);
 
-	// (1) CBV - Atmosphere
-	m_pD3DDevice->CopyDescriptorsSimple(1, dispatchHeapHandleCPU, pCBAtmos->CBVHandle, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
-	dispatchHeapHandleCPU.Offset(1, m_DescriptorSize);
+		CD3DX12_CPU_DESCRIPTOR_HANDLE uavHandle(dispatchHeapHandleCPU, 0, m_DescriptorSize);
+		m_pD3DDevice->CopyDescriptorsSimple(1, uavHandle, uavDiffuse, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+		uavHandle.Offset(1, m_DescriptorSize);
+		m_pD3DDevice->CopyDescriptorsSimple(1, uavHandle, uavDepth, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+		uavHandle.Offset(1, m_DescriptorSize);
 
-	// (2) UAV - output diffuse
-	CD3DX12_CPU_DESCRIPTOR_HANDLE uavDiffuse(m_pCommonDescriptorHeap->GetCPUDescriptorHandleForHeapStart(), COMMON_DESCRIPTOR_INDEX_OUTPUT_DIFFUSE_UAV, m_DescriptorSize);
-	m_pD3DDevice->CopyDescriptorsSimple(1, dispatchHeapHandleCPU, uavDiffuse, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
-	dispatchHeapHandleCPU.Offset(1, m_DescriptorSize);
+		// (2) SRV - 
+		CD3DX12_CPU_DESCRIPTOR_HANDLE srvHandle(dispatchHeapHandleCPU, 2, m_DescriptorSize);
 
-	// (3) UAV - output depth
-	CD3DX12_CPU_DESCRIPTOR_HANDLE uavDepth(m_pCommonDescriptorHeap->GetCPUDescriptorHandleForHeapStart(), COMMON_DESCRIPTOR_INDEX_OUTPUT_DEPTH_UAV, m_DescriptorSize);
-	m_pD3DDevice->CopyDescriptorsSimple(1, dispatchHeapHandleCPU, uavDepth, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
-	dispatchHeapHandleCPU.Offset(1, m_DescriptorSize);
+		// (3) SRV - Sky Textures
+		const TextureHandle* skyTransmittanceTexture = m_pRenderer->GetSkyTransmittanceTexture();
+		const TextureHandle* skyIrradianceTexture = m_pRenderer->GetSkyIrradianceTexture();
+		const TextureHandle* skyScatteringTexture = m_pRenderer->GetSkyScatteringTexture();
 
-	// (4) SRV - Sky Texture
-	const TextureHandle* skyTransmittanceTexture = m_pRenderer->GetSkyTransmittanceTexture();
-	m_pD3DDevice->CopyDescriptorsSimple(1, dispatchHeapHandleCPU, skyTransmittanceTexture->SRV, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
-	dispatchHeapHandleCPU.Offset(1, m_DescriptorSize);
+		CD3DX12_CPU_DESCRIPTOR_HANDLE srvSkyHandle(dispatchHeapHandleCPU, 2 + 10, m_DescriptorSize);
+		m_pD3DDevice->CopyDescriptorsSimple(1, srvSkyHandle, skyTransmittanceTexture->SRV, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+		srvSkyHandle.Offset(1, m_DescriptorSize);
+		m_pD3DDevice->CopyDescriptorsSimple(1, srvSkyHandle, skyScatteringTexture->SRV, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+		srvSkyHandle.Offset(1, m_DescriptorSize);
+		m_pD3DDevice->CopyDescriptorsSimple(1, srvSkyHandle, skyIrradianceTexture->SRV, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+		srvSkyHandle.Offset(1, m_DescriptorSize);
+	}
 
-	const TextureHandle* skyScatteringTexture = m_pRenderer->GetSkyScatteringTexture();
-	m_pD3DDevice->CopyDescriptorsSimple(1, dispatchHeapHandleCPU, skyScatteringTexture->SRV, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
-	dispatchHeapHandleCPU.Offset(1, m_DescriptorSize);
-
-	const TextureHandle* skyIrradianceTexture = m_pRenderer->GetSkyIrradianceTexture();
-	m_pD3DDevice->CopyDescriptorsSimple(1, dispatchHeapHandleCPU, skyIrradianceTexture->SRV, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
-	dispatchHeapHandleCPU.Offset(1, m_DescriptorSize);
-
+	// Transition output buffers to UAV
 	CD3DX12_RESOURCE_BARRIER rcBarrier[] =
 	{
 		CD3DX12_RESOURCE_BARRIER::Transition(m_pOutputDiffuse, D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_UNORDERED_ACCESS),
@@ -188,16 +188,17 @@ void RayTracingManager::DoRaytracing(ID3D12GraphicsCommandList6* pCommandList)
 	};
 	pCommandList->ResourceBarrier((UINT)_countof(rcBarrier), rcBarrier);
 
-	pCommandList->SetComputeRootSignature(pRootSignatureManager->Query(ERootSignatureType::GraphicsRaytracingGlobal));
+	pCommandList->SetComputeRootSignature(m_pRenderer->GetRootSignatureManager()->Query(ERootSignatureType::GraphicsRaytracingGlobal));
 
 	// Bind the heaps, acceleration structure and dispatch rays.    
 	D3D12_DISPATCH_RAYS_DESC dispatchDesc = {};
 	ID3D12DescriptorHeap* ppHeaps[] = { m_pShaderVisibleDescriptorHeap };
 	pCommandList->SetDescriptorHeaps(_countof(ppHeaps), ppHeaps);
 
-	CD3DX12_GPU_DESCRIPTOR_HANDLE dispatchHeapHandleGPU(m_pShaderVisibleDescriptorHeap->GetGPUDescriptorHandleForHeapStart());
-	pCommandList->SetComputeRootDescriptorTable(0, dispatchHeapHandleGPU);
-	pCommandList->SetComputeRootShaderResourceView(1, m_pTLAS->GetGPUVirtualAddress());
+	pCommandList->SetComputeRootConstantBufferView(0, pCB->pGPUMemAddr);
+	pCommandList->SetComputeRootConstantBufferView(1, pCBAtmos->pGPUMemAddr);
+	pCommandList->SetComputeRootDescriptorTable(2, dispatchHeapHandleGPU);
+	pCommandList->SetComputeRootShaderResourceView(3, m_pTLAS->GetGPUVirtualAddress());
 
 	// hit group shader table
 	ID3D12Resource* pHitGroupShaderTableResource = m_pHitGroupShaderTable->GetResource();

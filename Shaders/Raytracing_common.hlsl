@@ -7,16 +7,16 @@
 // Global Root Parameter
 RWTexture2D<float4> g_OutputDiffuse : register(u0);
 RWTexture2D<float4> g_OutputDepth : register(u1);
-RaytracingAccelerationStructure Scene : register(t0, space0);
+RaytracingAccelerationStructure Scene : register(t0, space2);
 
 SamplerState g_SamplerWrap : register(s0);
 SamplerState g_SamplerClamp : register(s1);
 SamplerState g_SamplerPoint : register(s2); // TODO: sync with Standard SamplerState
 SamplerState g_SamplerMirror : register(s3);
 
-Texture2D<float3> g_TransmittanceLUT : register(t11, space0); // R^3
-Texture3D<float4> g_ScatteringLUT : register(t12, space0); // RGBA
-Texture2D<float3> g_IrradianceLUT : register(t13, space0); // optional
+Texture2D<float3> g_TransmittanceLUT : register(t10, space0); // R^3
+Texture3D<float4> g_ScatteringLUT : register(t11, space0); // RGBA
+Texture2D<float3> g_IrradianceLUT : register(t12, space0); // optional
 
 // Local Root Parameter
 ConstantBuffer<CONSTANT_BUFFER_RT_TRIGROUP> l_RayGeomCB : register(b1, space0);

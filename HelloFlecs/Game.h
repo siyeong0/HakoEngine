@@ -53,7 +53,7 @@ private:
 	float m_CamOffsetY = 0.0f;
 	float m_CamOffsetZ = 0.0f;
 
-	float m_TimeOfDay = 0.0f;
+	float m_TimeOfDay = 9.0f;
 
 	bool m_bCamRotMode = false;
 	int m_CurrMouseX = 0;
