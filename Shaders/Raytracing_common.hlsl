@@ -87,13 +87,13 @@ static uint3 Load3x16BitIndices(uint offsetBytes)
 // ==========================================================
 float3 SampleSky(float3 viewDirWorld)
 {
-    // Normalize inputs
-    float3 viewDir = normalize(viewDirWorld);
-    float3 sunDir = -normalize(g_SunDir);
-
     // Planet-centered camera info
     float r = length(g_CameraPosPlanetCoord); // camera radius
     float3 up = GetUp(g_CameraPosPlanetCoord); // local up
+    
+    // Normalize inputs
+    float3 viewDir = normalize(viewDirWorld);
+    float3 sunDir = -normalize(g_SunDir);
 
     // Direction cosines
     float mu = dot(viewDir, up); // angle between view and local up
@@ -178,8 +178,7 @@ float3 EvaluateSun(float3 dir)
     float haloM = SUN_DEFAULT_HALO_MUL;
     float haloRM = SUN_DEFAULT_HALO_RMUL;
 
-    float3 sunDir = reflect(g_SunDir, float3(0.0f, 1.0f, 0.0f));
-    float cosTheta = dot(dir, normalize(sunDir));
+    float cosTheta = dot(dir, -normalize(g_SunDir));
 
     // 디스크(원반) + 헤일로(코로나) 마스크
     float disk = SunDiskMask(cosTheta, rad, fth);
