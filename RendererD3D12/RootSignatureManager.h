@@ -3,6 +3,8 @@
 enum class ERootSignatureType : uint32_t
 {
 	GraphicsDefault = 0,
+	GraphicsRaytracingGlobal,
+	GraphicsRaytracingLocal,
 	GraphicsShadow,
 	Compute,
 	Count

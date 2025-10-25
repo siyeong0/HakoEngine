@@ -8,6 +8,7 @@
 #include "Generic/IndexCreator.h"
 #include "D3D12Renderer.h"
 #include "ShaderTable.h"
+#include "RootSignatureManager.h"
 #include "RayTracingManager.h"
 
 constexpr uint NUM_RAYTRACING_SHADER_TYPES = 2;
@@ -75,7 +76,6 @@ bool RayTracingManager::Initialize(D3D12Renderer* pRenderer, uint width, uint he
 	createOutputDiffuseBuffer(m_Width, m_Height);
 	createOutputDepthBuffer(m_Width, m_Height);
 
-	createRootSignatures();
 	createRaytracingPipelineStateObject();
 
 	buildShaderTables();
@@ -98,8 +98,6 @@ void RayTracingManager::Cleanup()
 	cleanupShaderTables();
 
 	SAFE_RELEASE(m_pDXRStateObject);
-	SAFE_RELEASE(m_pRaytracingGlobalRootSignature);
-	SAFE_RELEASE(m_pRaytracingLocalRootSignature);
 	SAFE_CLEANUP(m_pRayShader, pShaderManager->ReleaseShader);
 
 	for (auto& blasHandle : m_GlobalBLASHandleList)
@@ -132,7 +130,8 @@ void RayTracingManager::Cleanup()
 void RayTracingManager::DoRaytracing(ID3D12GraphicsCommandList6* pCommandList)
 {
 	CD3DX12_CPU_DESCRIPTOR_HANDLE dispatchHeapHandleCPU(m_pShaderVisibleDescriptorHeap->GetCPUDescriptorHandleForHeapStart());
-
+	RootSignatureManager* pRootSignatureManager = m_pRenderer->GetRootSignatureManager();
+			
 	D3D12_CPU_DESCRIPTOR_HANDLE	cbvHandle = {};
 	SimpleConstantBufferPool* pConstantBufferPool = m_pRenderer->GetConstantBufferPool(CONSTANT_BUFFER_TYPE_PER_FRAME, 0);
 	SimpleConstantBufferPool* pConstantBufferPoolAtmos = m_pRenderer->GetConstantBufferPool(CONSTANT_BUFFER_TYPE_ATMOS, 0);
@@ -189,7 +188,7 @@ void RayTracingManager::DoRaytracing(ID3D12GraphicsCommandList6* pCommandList)
 	};
 	pCommandList->ResourceBarrier((UINT)_countof(rcBarrier), rcBarrier);
 
-	pCommandList->SetComputeRootSignature(m_pRaytracingGlobalRootSignature);
+	pCommandList->SetComputeRootSignature(pRootSignatureManager->Query(ERootSignatureType::GraphicsRaytracingGlobal));
 
 	// Bind the heaps, acceleration structure and dispatch rays.    
 	D3D12_DISPATCH_RAYS_DESC dispatchDesc = {};
@@ -762,99 +761,23 @@ void RayTracingManager::cleanupOutputDepthBuffer()
 	SAFE_RELEASE(m_pOutputDepth);
 }
 
-void RayTracingManager::createRootSignatures()
-{
-	// Global Root Signature
-	// This is a root signature that is shared across all raytracing shaders invoked during a DispatchRays() call.
-
-	// root param 0
-	// output-diffuse(uav) | output-depth(uav)
-
-	// root param 1
-	// Acceleration Sturecture
-
-	CD3DX12_DESCRIPTOR_RANGE globalRanges[4] = {};
-	globalRanges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, 1, /*b*/0, /*space*/0); // b0, space0
-	globalRanges[1].Init(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, 1, /*b*/0, /*space*/1); // b0, space1
-	globalRanges[2].Init(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 2, /*u*/0, /*space*/0); // u0 : u0-diffuse | u1 : out-depth
-	globalRanges[3].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 3, /*t*/11, /*space*/0); // t0 : AccelerationStructure
-
-	// b0 : RaytracingCBV | u0 : u0-diffuse | u1 : out-depth | t0 : AccelerationStructure
-	CD3DX12_ROOT_PARAMETER globalRootParameters[2] = {};
-	globalRootParameters[0].InitAsDescriptorTable(_countof(globalRanges), globalRanges, D3D12_SHADER_VISIBILITY_ALL);
-	globalRootParameters[1].InitAsShaderResourceView(0);	// Acceleration Structure
-
-	// sampler
-	D3D12_STATIC_SAMPLER_DESC samplers[4] = {};
-	D3DUtil::SetSamplerDesc_Wrap(samplers + 0, 0);	// Wrap Linear
-	D3DUtil::SetSamplerDesc_Clamp(samplers + 1, 1);	// Clamp Linear
-	D3DUtil::SetSamplerDesc_Wrap(samplers + 2, 2);	// Wrap Point
-	samplers[2].Filter = D3D12_FILTER_MIN_MAG_MIP_POINT;
-	D3DUtil::SetSamplerDesc_Mirror(samplers + 3, 3);	// Mirror Linear
-	samplers[3].Filter = D3D12_FILTER_MIN_MAG_MIP_LINEAR;
-	for (uint i = 0; i < (uint)_countof(samplers); ++i)
-	{
-		samplers[i].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
-	}
-	CD3DX12_ROOT_SIGNATURE_DESC globalRootSignatureDesc(ARRAYSIZE(globalRootParameters), globalRootParameters, (DWORD)_countof(samplers), samplers);
-	D3DUtil::SerializeAndCreateRaytracingRootSignature(m_pD3DDevice, &globalRootSignatureDesc, &m_pRaytracingGlobalRootSignature);
-
-	// Local Root Signature
-	// space1
-	// t0 : vertex buffer, t1 : index buffer, t2 : diffuse texture, t3 : normal texture
-	CD3DX12_DESCRIPTOR_RANGE localRanges[1] = {};
-	localRanges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 4, 0, 1);	// space1
-
-	CD3DX12_ROOT_PARAMETER localRootParameters[2] = {};
-	localRootParameters[0].InitAsConstants(SizeOfInUint32(CONSTANT_BUFFER_RT_TRIGROUP), /*b*/1, /*space*/0, D3D12_SHADER_VISIBILITY_ALL);
-	localRootParameters[1].InitAsDescriptorTable(_countof(localRanges), localRanges, D3D12_SHADER_VISIBILITY_ALL);
-
-	CD3DX12_ROOT_SIGNATURE_DESC localRootSignatureDesc(ARRAYSIZE(localRootParameters), localRootParameters, 0, nullptr);
-	localRootSignatureDesc.Flags = D3D12_ROOT_SIGNATURE_FLAG_LOCAL_ROOT_SIGNATURE;
-	D3DUtil::SerializeAndCreateRaytracingRootSignature(m_pD3DDevice, &localRootSignatureDesc, &m_pRaytracingLocalRootSignature);
-}
-
 void RayTracingManager::createRaytracingPipelineStateObject()
 {
-	// 총 7개의 Subobject를 생성하여 RTPSO(Ray Tracing Pipeline State Object)를 구성
-	// Subobject는 각각의 DXIL export(즉, 쉐이더 엔트리 포인트)에 기본 또는 명시적 방식으로 연결됨
+	RootSignatureManager* pRootSignatureManager = m_pRenderer->GetRootSignatureManager();
 
-	// 구성:
-	// 1 - DXIL(DirectX Intermediate Language) library
-	// 1 - Triangle hit group
-	// 1 - Shader config (payload, attribute 크기)
-	// 2 - Local root signature and association
-	// 1 - Global root signature
-	// 1 - Pipeline config (재귀 깊이 등)
 	CD3DX12_STATE_OBJECT_DESC raytracingPipeline{ D3D12_STATE_OBJECT_TYPE_RAYTRACING_PIPELINE };
-
-
-	// 1) DXIL 라이브러리 Subobject 생성
-	// 셰이더는 서브오브젝트로 간주되지 않으므로 DXIL 라이브러리를 통해서 전달되어야 한다.
-	// DXIL library
-	// This contains the shaders and their entrypoints for the state object.
-	// Since shaders are not considered a subobject, they need to be passed in via DXIL library subobjects.
 	CD3DX12_DXIL_LIBRARY_SUBOBJECT* pLib = raytracingPipeline.CreateSubobject<CD3DX12_DXIL_LIBRARY_SUBOBJECT>();
-
-	// Shader Bytecode 설정 (컴파일된 DXIL)
 	D3D12_SHADER_BYTECODE libdxil = CD3DX12_SHADER_BYTECODE(m_pRayShader->CodeBuffer, m_pRayShader->CodeSize);
+
 	pLib->SetDXILLibrary(&libdxil);
-
-	// DXIL 라이브러리에서 사용할 쉐이더 export들을 정의
 	pLib->DefineExport(g_RaygenShaderName);
-
-	// HitGroup에서 import할 수 있도록 export
-	// 쉐이더 타입별(radiance/shadow)로 Closest Hit, Any Hit, Miss 쉐이더를 export
 	for (uint i = 0; i < NUM_RAYTRACING_SHADER_TYPES; ++i)
 	{
-		pLib->DefineExport(g_ClosestHitShaderNames[i]);	// hit group에서 import할 수 있도록 export
+		pLib->DefineExport(g_ClosestHitShaderNames[i]);
 		pLib->DefineExport(g_AnyHitShaderNames[i]);
 		pLib->DefineExport(g_MissShaderNames[i]);
 	}
 
-	// 2) Triangle hit group
-	// 히트 그룹 Subobject 생성
-	// 히트 그룹은 Geometry에 레이가 교차했을 때 실행할 ClosestHit, AnyHit, Intersection 쉐이더를 정의
 	for (uint i = 0; i < NUM_RAYTRACING_SHADER_TYPES; ++i)
 	{
 		CD3DX12_HIT_GROUP_SUBOBJECT* pHitGroup = raytracingPipeline.CreateSubobject<CD3DX12_HIT_GROUP_SUBOBJECT>();
@@ -864,34 +787,20 @@ void RayTracingManager::createRaytracingPipelineStateObject()
 	}
 	//pHitGroup->SetIntersectionShaderImport(); <- trinagle만 처리하므로 필요없다.
 
-	// 3) Shader config
-	// Defines the maximum sizes in bytes for the ray payload and attribute structure.
-	// Payload와 Attribute 구조의 최대 크기를 설정
 	CD3DX12_RAYTRACING_SHADER_CONFIG_SUBOBJECT* pShaderConfig = raytracingPipeline.CreateSubobject<CD3DX12_RAYTRACING_SHADER_CONFIG_SUBOBJECT>();
 	UINT payloadSize = PAYLOAD_SIZE;
 	UINT attributeSize = 2 * sizeof(float); // float2 barycentrics
 	pShaderConfig->Config(payloadSize, attributeSize);
 
-	// 4,5) Local root signature and shader association
-	// Local Root Signature 및 연결 설정 (명시적 연결 사용)
-	// Shader Table에서 각 쉐이더가 고유한 인자를 받을 수 있도록 해줌
-	//
-	// Raytracing Pipeline State Object에 Local Root Signature 서브오브젝트를 추가
-	//
 	CD3DX12_LOCAL_ROOT_SIGNATURE_SUBOBJECT* pLocalRootSignature = raytracingPipeline.CreateSubobject<CD3DX12_LOCAL_ROOT_SIGNATURE_SUBOBJECT>();
-	pLocalRootSignature->SetRootSignature(m_pRaytracingLocalRootSignature);
+	pLocalRootSignature->SetRootSignature(pRootSignatureManager->Query(ERootSignatureType::GraphicsRaytracingLocal));
 	CD3DX12_SUBOBJECT_TO_EXPORTS_ASSOCIATION_SUBOBJECT* pRootSignatureAssociation = raytracingPipeline.CreateSubobject<CD3DX12_SUBOBJECT_TO_EXPORTS_ASSOCIATION_SUBOBJECT>();
 	pRootSignatureAssociation->SetSubobjectToAssociate(*pLocalRootSignature);
 	pRootSignatureAssociation->AddExports(g_HitGroupNames);
 
-	// 6) Global root signature
-	// Global Root Signature Subobject 생성
-	// DispatchRays() 호출 중 모든 쉐이더가 볼 수 있는 루트 시그니처
 	CD3DX12_GLOBAL_ROOT_SIGNATURE_SUBOBJECT* pGlobalRootSignature = raytracingPipeline.CreateSubobject<CD3DX12_GLOBAL_ROOT_SIGNATURE_SUBOBJECT>();
-	pGlobalRootSignature->SetRootSignature(m_pRaytracingGlobalRootSignature);
+	pGlobalRootSignature->SetRootSignature(pRootSignatureManager->Query(ERootSignatureType::GraphicsRaytracingGlobal));
 
-	// 7) Pipeline config
-	// TraceRay() 함수의 최대 재귀 깊이를 설정
 	CD3DX12_RAYTRACING_PIPELINE_CONFIG_SUBOBJECT* pPipelineConfig = raytracingPipeline.CreateSubobject<CD3DX12_RAYTRACING_PIPELINE_CONFIG_SUBOBJECT>();
 	// PERFOMANCE TIP: Set max recursion depth as low as needed 
 	// as drivers may apply optimization strategies for low recursion depths. 

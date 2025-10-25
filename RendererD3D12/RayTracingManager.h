@@ -46,7 +46,6 @@ private:
 	bool createOutputDepthBuffer(uint width, uint height);
 	void cleanupOutputDepthBuffer();
 
-	void createRootSignatures();
 	void createRaytracingPipelineStateObject();
 
 	void buildShaderTables();
@@ -109,8 +108,6 @@ private:
 	uint m_Height = 0;
 
 	ShaderHandle* m_pRayShader = nullptr;
-	ID3D12RootSignature* m_pRaytracingGlobalRootSignature = nullptr;
-	ID3D12RootSignature* m_pRaytracingLocalRootSignature = nullptr;
 	ID3D12StateObject* m_pDXRStateObject = nullptr;
 
 	ID3D12DescriptorHeap* m_pCommonDescriptorHeap = nullptr;

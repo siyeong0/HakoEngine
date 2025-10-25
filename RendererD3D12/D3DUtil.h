@@ -9,6 +9,7 @@ namespace D3DUtil
 	void SetDefaultSamplerDesc(D3D12_STATIC_SAMPLER_DESC* pOutSamperDesc, uint registerIndex);
 	void SetSamplerDesc_Wrap(D3D12_STATIC_SAMPLER_DESC* pOutSamperDesc, uint RegisterIndex);
 	void SetSamplerDesc_Clamp(D3D12_STATIC_SAMPLER_DESC* pOutSamperDesc, uint RegisterIndex);
+	void SetSamplerDesc_Point(D3D12_STATIC_SAMPLER_DESC* pOutSamperDesc, uint RegisterIndex);
 	void SetSamplerDesc_Border(D3D12_STATIC_SAMPLER_DESC* pOutSamperDesc, uint RegisterIndex);
 	void SetSamplerDesc_Mirror(D3D12_STATIC_SAMPLER_DESC* pOutSamperDesc, uint RegisterIndex);
 	void SerializeAndCreateRaytracingRootSignature(ID3D12Device* pDevice, D3D12_ROOT_SIGNATURE_DESC* pDesc, ID3D12RootSignature** ppOutRootSig);
