@@ -477,8 +477,6 @@ void ENGINECALL D3D12Renderer::EndRender()
 	CD3DX12_CPU_DESCRIPTOR_HANDLE rtvHandle(m_pRTVHeap->GetCPUDescriptorHandleForHeapStart(), m_uiRenderTargetIndex, m_rtvDescriptorSize);
 	CD3DX12_CPU_DESCRIPTOR_HANDLE dsvHandle(m_pDSVHeap->GetCPUDescriptorHandleForHeapStart());
 
-	// TODO: Combine raytracing output and rasterized output.
-
 	// Do raytracing and copy the output to the back buffer.
 	if (IsRayTracingEnabledInl())
 	{
@@ -506,19 +504,35 @@ void ENGINECALL D3D12Renderer::EndRender()
 
 		m_pRayTracingManager->DoRaytracing(pCommandList);
 		ID3D12Resource* pRayTracingOuputResource = m_pRayTracingManager->GetOutputResource();
+		ID3D12Resource* pRayTracingDepthResource = m_pRayTracingManager->GetDepthResource();
 
+		// Copy the raytracing output to the back buffer.
 		D3D12_RESOURCE_BARRIER preCopyBarriers[2] = {};
 		preCopyBarriers[0] = CD3DX12_RESOURCE_BARRIER::Transition(m_pRenderTargets[m_uiRenderTargetIndex], D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_COPY_DEST);
-		preCopyBarriers[1] = CD3DX12_RESOURCE_BARRIER::Transition(pRayTracingOuputResource, D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_COPY_SOURCE);
+		preCopyBarriers[1] = CD3DX12_RESOURCE_BARRIER::Transition(pRayTracingOuputResource, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_COPY_SOURCE);
 		pCommandList->ResourceBarrier(ARRAYSIZE(preCopyBarriers), preCopyBarriers);
 
 		pCommandList->CopyResource(m_pRenderTargets[m_uiRenderTargetIndex], pRayTracingOuputResource);
 
-		D3D12_RESOURCE_BARRIER postCopyBarriers[2] = {};
-		postCopyBarriers[0] = CD3DX12_RESOURCE_BARRIER::Transition(m_pRenderTargets[m_uiRenderTargetIndex], D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_RENDER_TARGET);
-		postCopyBarriers[1] = CD3DX12_RESOURCE_BARRIER::Transition(pRayTracingOuputResource, D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE);
-		pCommandList->ResourceBarrier(ARRAYSIZE(postCopyBarriers), postCopyBarriers);
+		D3D12_RESOURCE_BARRIER postRenderTargetCopyBarriers[2] = {};
+		postRenderTargetCopyBarriers[0] = CD3DX12_RESOURCE_BARRIER::Transition(m_pRenderTargets[m_uiRenderTargetIndex], D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_RENDER_TARGET);
+		postRenderTargetCopyBarriers[1] = CD3DX12_RESOURCE_BARRIER::Transition(pRayTracingOuputResource, D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+		pCommandList->ResourceBarrier(ARRAYSIZE(postRenderTargetCopyBarriers), postRenderTargetCopyBarriers);
 
+		// Copy the raytracing depth to the depth buffer.
+		D3D12_RESOURCE_BARRIER preDepthBufferCopyBarriers[2] = {};
+		preDepthBufferCopyBarriers[0] = CD3DX12_RESOURCE_BARRIER::Transition(m_pDepthStencil, D3D12_RESOURCE_STATE_DEPTH_WRITE, D3D12_RESOURCE_STATE_COPY_DEST);
+		preDepthBufferCopyBarriers[1] = CD3DX12_RESOURCE_BARRIER::Transition(pRayTracingDepthResource, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_COPY_SOURCE);
+		pCommandList->ResourceBarrier(ARRAYSIZE(preDepthBufferCopyBarriers), preDepthBufferCopyBarriers);
+
+		pCommandList->CopyResource(m_pDepthStencil, pRayTracingDepthResource);
+
+		D3D12_RESOURCE_BARRIER depthPostCopy[2] = {};
+		depthPostCopy[0] = CD3DX12_RESOURCE_BARRIER::Transition(m_pDepthStencil, D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_DEPTH_WRITE);
+		depthPostCopy[1] = CD3DX12_RESOURCE_BARRIER::Transition(pRayTracingDepthResource, D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+		pCommandList->ResourceBarrier(2, depthPostCopy);
+
+		// Execute immediately
 		pCommandListPool->CloseAndExecute(m_pCommandQueue);
 	}
 

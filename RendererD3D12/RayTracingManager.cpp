@@ -180,14 +180,6 @@ void RayTracingManager::DoRaytracing(ID3D12GraphicsCommandList6* pCommandList)
 		srvSkyHandle.Offset(1, m_DescriptorSize);
 	}
 
-	// Transition output buffers to UAV
-	CD3DX12_RESOURCE_BARRIER rcBarrier[] =
-	{
-		CD3DX12_RESOURCE_BARRIER::Transition(m_pOutputDiffuse, D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_UNORDERED_ACCESS),
-		CD3DX12_RESOURCE_BARRIER::Transition(m_pOutputDepth, D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_UNORDERED_ACCESS),
-	};
-	pCommandList->ResourceBarrier((UINT)_countof(rcBarrier), rcBarrier);
-
 	pCommandList->SetComputeRootSignature(m_pRenderer->GetRootSignatureManager()->Query(ERootSignatureType::GraphicsRaytracingGlobal));
 
 	// Bind the heaps, acceleration structure and dispatch rays.    
@@ -223,13 +215,6 @@ void RayTracingManager::DoRaytracing(ID3D12GraphicsCommandList6* pCommandList)
 
 	pCommandList->SetPipelineState1(m_pDXRStateObject);
 	pCommandList->DispatchRays(&dispatchDesc);
-
-	CD3DX12_RESOURCE_BARRIER rcBarrierInv[] =
-	{
-		CD3DX12_RESOURCE_BARRIER::Transition(m_pOutputDiffuse, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE),
-		CD3DX12_RESOURCE_BARRIER::Transition(m_pOutputDepth, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE)
-	};
-	pCommandList->ResourceBarrier((UINT)_countof(rcBarrierInv), rcBarrierInv);
 
 	// Clear BLAS instance lists
 	for (uint i = 0; i < MAX_RENDER_THREAD_COUNT; ++i)
@@ -684,21 +669,22 @@ void RayTracingManager::updateHitGroupShaderTable(uint numShaderRecords)
 bool RayTracingManager::createOutputDiffuseBuffer(uint width, uint height)
 {
 	D3D12_RESOURCE_DESC texDesc = {};
-	texDesc.MipLevels = 1;
-	texDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+	texDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
+	texDesc.Alignment = 0;
 	texDesc.Width = width;
 	texDesc.Height = height;
-	texDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
 	texDesc.DepthOrArraySize = 1;
-	texDesc.SampleDesc.Count = 1;
-	texDesc.SampleDesc.Quality = 0;
-	texDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
+	texDesc.MipLevels = 1;
+	texDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+	texDesc.SampleDesc = { 1, 0 };
+	texDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
+	texDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
 
 	HRESULT hr = m_pD3DDevice->CreateCommittedResource(
 		&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
 		D3D12_HEAP_FLAG_NONE,
 		&texDesc,
-		D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE,
+		D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
 		nullptr,
 		IID_PPV_ARGS(&m_pOutputDiffuse));
 	ASSERT(SUCCEEDED(hr), "Failed to create output diffuse texture resource.");
@@ -721,34 +707,35 @@ bool RayTracingManager::createOutputDepthBuffer(uint width, uint height)
 {
 	// Create Output Buffer, Texture, SRV
 	D3D12_RESOURCE_DESC texDesc = {};
-	texDesc.MipLevels = 1;
-	texDesc.Format = DXGI_FORMAT_R32_TYPELESS;
+	texDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
+	texDesc.Alignment = 0;
 	texDesc.Width = width;
 	texDesc.Height = height;
-	texDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
-	//texDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
 	texDesc.DepthOrArraySize = 1;
-	texDesc.SampleDesc.Count = 1;
-	texDesc.SampleDesc.Quality = 0;
-	texDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
+	texDesc.MipLevels = 1;
+	texDesc.Format = DXGI_FORMAT_R32_TYPELESS;
+	texDesc.SampleDesc = { 1, 0 };
+	texDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
+	texDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
 
 	HRESULT hr = m_pD3DDevice->CreateCommittedResource(
 		&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
 		D3D12_HEAP_FLAG_NONE,
 		&texDesc,
-		D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE,
+		D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
 		nullptr,
 		IID_PPV_ARGS(&m_pOutputDepth));
 	ASSERT(SUCCEEDED(hr), "Failed to create output depth texture resource.");
-
 	m_pOutputDepth->SetName(L"CRayTracingManager::m_pOutputDepth");
 
 	// Create UAV
 	D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc = {};
+	uavDesc.Format = DXGI_FORMAT_R32_FLOAT;
 	uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
+	uavDesc.Texture2D.MipSlice = 0;
+	uavDesc.Texture2D.PlaneSlice = 0;
 	uavDesc.Buffer.StructureByteStride = sizeof(float);
 	uavDesc.Buffer.NumElements = width * height;
-	uavDesc.Format = DXGI_FORMAT_R32_FLOAT;
 	uavDesc.Buffer.Flags = D3D12_BUFFER_UAV_FLAG_NONE;
 
 	CD3DX12_CPU_DESCRIPTOR_HANDLE uavHandle(m_pCommonDescriptorHeap->GetCPUDescriptorHandleForHeapStart(), COMMON_DESCRIPTOR_INDEX_OUTPUT_DEPTH_UAV, m_DescriptorSize);
