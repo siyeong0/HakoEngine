@@ -388,7 +388,8 @@ void MyMissShader_RadianceRay(inout RadiancePayload rayPayload)
     float3 sunColor = EvaluateSun(worldDir);
     float3 L = skyColor + sunColor;
     
-    rayPayload.radiance = Tonemap_ACES(L); // TODO: remove tonemap from here and do it in the composition pass
+    rayPayload.radiance = L;
+    // rayPayload.radiance = Tonemap_ACES(L); // TODO: remove tonemap from here and do it in the composition pass
     rayPayload.depth = 1.2;
 }
 

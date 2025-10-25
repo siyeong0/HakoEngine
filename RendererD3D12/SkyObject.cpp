@@ -123,9 +123,9 @@ void SkyObject::SetAtmosStateFromPreset(CONSTANT_BUFFER_ATMOS* outDst, EAtmosPre
 		//	인상 : 채도가 높은 푸른 하늘, 강한 하이라이트
 		outDst->CameraPosPlanetCoord = { 0.0f, 6360005.0f, 0.0f }; // 지상+5m
 		outDst->SunDir = { 0.0f, -0.9397f, -0.3420f }; // Sun→Ground
-		outDst->SunExposure = 14.0f;
+		outDst->SunExposure = 16.0f;
 		outDst->SunIrradiance = { 1.0f, 1.0f, 1.0f };
-		outDst->MieG = 0.80f;
+		outDst->MieG = 0.99f;
 		outDst->MieTint = { 0.92f, 0.92f, 0.98f };
 		break;
 	case EAtmosPreset::AfternoonClearSky:
