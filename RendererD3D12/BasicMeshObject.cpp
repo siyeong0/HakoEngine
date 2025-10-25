@@ -132,10 +132,10 @@ void ENGINECALL BasicMeshObject::EndCreateMesh(bool bUseRayTracingIfSupported)
 	if (bUseRayTracing)
 	{
 		RayTracingManager* pRayTracingManager = m_pRenderer->GetRayTracingManager();
-		m_pBLASHandle = pRayTracingManager->AllocBLAS(
+		m_pBLASHandle = pRayTracingManager->AllocBLASTriangles(
 			m_pVertexBuffer, 
-			sizeof(Vertex), 
 			m_VertexBufferView.SizeInBytes / sizeof(Vertex), 
+			sizeof(Vertex),
 			m_TriGroups, 
 			m_bTriGroupOpaques,
 			false);

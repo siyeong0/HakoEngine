@@ -4,7 +4,46 @@
 #include "Raytracing_common.hlsl"
 #include "BxDF.hlsli"
 
+// Local Root Parameter
+ConstantBuffer<CONSTANT_BUFFER_RT_TRIGROUP> l_RayGeomCB : register(b1, space0);
+StructuredBuffer<Vertex> l_Vertices : register(t0, space1);
+ByteAddressBuffer l_Indices : register(t1, space1);
+Texture2D<float4> l_DiffuseTexture : register(t2, space1);
+Texture2D<float4> l_NormalTexture : register(t3, space1);
+
 static const float T_OFFSET = 0.01;
+
+// Load three 16 bit indices.
+static uint3 Load3x16BitIndices(uint offsetBytes)
+{
+    uint3 indices;
+
+	// ByteAdressBuffer loads must be aligned at a 4 byte boundary.
+	// Since we need to read three 16 bit indices: { 0, 1, 2 } 
+	// aligned at a 4 byte boundary as: { 0 1 } { 2 0 } { 1 2 } { 0 1 } ...
+	// we will load 8 bytes (~ 4 indices { a b | c d }) to handle two possible index triplet layouts,
+	// based on first index's offsetBytes being aligned at the 4 byte boundary or not:
+	//  Aligned:     { 0 1 | 2 - }
+	//  Not aligned: { - 0 | 1 2 }
+    const uint alignedOffset = offsetBytes & ~3;
+    const uint2 four16BitIndices = l_Indices.Load2(alignedOffset);
+
+	// Aligned: { 0 1 | 2 - } => retrieve first three 16bit indices
+    if (alignedOffset == offsetBytes)
+    {
+        indices.x = four16BitIndices.x & 0xffff;
+        indices.y = (four16BitIndices.x >> 16) & 0xffff;
+        indices.z = four16BitIndices.y & 0xffff;
+    }
+    else // Notaligned: { - 0 | 1 2 } => retrieve last three 16bit indices
+    {
+        indices.x = (four16BitIndices.x >> 16) & 0xffff;
+        indices.y = four16BitIndices.y & 0xffff;
+        indices.z = (four16BitIndices.y >> 16) & 0xffff;
+    }
+
+    return indices;
+}
 
 RadiancePayload TraceRadianceRay(in Ray ray, in uint currRayRecursionDepth, in uint maxRecursionDepth, float tMin, float tMax, bool bCullNonOpaque, bool bCullBackFace)
 {
@@ -472,4 +511,5 @@ void MyAnyHitShader_ShadowRay(inout ShadowPayload rayPayload, in BuiltInTriangle
         AcceptHitAndEndSearch();
     }
 }
+
 #endif // RAYTRACING_HLSL

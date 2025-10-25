@@ -30,12 +30,24 @@ const wchar_t* g_AnyHitShaderNames[NUM_RAYTRACING_SHADER_TYPES] =
 	L"MyAnyHitShader_RadianceRay",
 	L"MyAnyHitShader_ShadowRay"
 };
+// Procedural (spheres)
+const wchar_t* g_IntersectionShaderName = L"MyIntersectionShader_Sphere";
+const wchar_t* g_ClosestHitShaderNames_Proc[NUM_RAYTRACING_SHADER_TYPES] =
+{
+	L"MyClosestHitShader_RadianceRay_Proc",
+	L"MyClosestHitShader_ShadowRay_Proc"
+};
 
 // Hit group
 const wchar_t* g_HitGroupNames[NUM_RAYTRACING_SHADER_TYPES] =
 {
 	L"MyHitGroup_Triangle_RadianceRay",
 	L"MyHitGroup_Triangle_ShadowRay"
+};
+const wchar_t* g_HitGroupNames_Proc[NUM_RAYTRACING_SHADER_TYPES] =
+{
+	L"MyHitGroup_Proc_RadianceRay",
+	L"MyHitGroup_Proc_ShadowRay"
 };
 
 bool RayTracingManager::Initialize(D3D12Renderer* pRenderer, uint width, uint height, uint maxNumBLASs)
@@ -72,6 +84,7 @@ bool RayTracingManager::Initialize(D3D12Renderer* pRenderer, uint width, uint he
 	createShaderVisibleHeap(m_MaxNumShaderVisibleHeapDescriptors);
 
 	m_pRayShader = pShaderManager->CreateShaderDXC(L"Raytracing.hlsl", L"", L"lib_6_3", 0);
+	m_pRayProcShader = pShaderManager->CreateShaderDXC(L"Raytracing_Proc.hlsl", L"", L"lib_6_3", 0);
 
 	createOutputDiffuseBuffer(m_Width, m_Height);
 	createOutputDepthBuffer(m_Width, m_Height);
@@ -99,6 +112,7 @@ void RayTracingManager::Cleanup()
 
 	SAFE_RELEASE(m_pDXRStateObject);
 	SAFE_CLEANUP(m_pRayShader, pShaderManager->ReleaseShader);
+	SAFE_CLEANUP(m_pRayProcShader, pShaderManager->ReleaseShader);
 
 	for (auto& blasHandle : m_GlobalBLASHandleList)
 	{
@@ -223,11 +237,11 @@ void RayTracingManager::DoRaytracing(ID3D12GraphicsCommandList6* pCommandList)
 	}
 }
 
-BLASHandle* RayTracingManager::AllocBLAS(
+BLASHandle* RayTracingManager::AllocBLASTriangles(
 	ID3D12Resource* pVertexBuffer,
-	uint vertexSize,
 	uint numVertices,
-	const std::vector<IndexedTriGroup> TriGroups,
+	uint vertexStrideBytes,
+	const std::vector<IndexedTriGroup> triGroups,
 	const std::vector<bool> bTriGroupOpaques,
 	bool bAllowUpdate)
 {
@@ -240,7 +254,7 @@ BLASHandle* RayTracingManager::AllocBLAS(
 		goto lb_return;
 	}
 
-	const uint numTriGroupInfos = static_cast<uint>(TriGroups.size());
+	const uint numTriGroupInfos = static_cast<uint>(triGroups.size());
 	ASSERT(numTriGroupInfos < MAX_TRIGROUP_COUNT_PER_BLAS, "Too many triangle groups in BLAS");
 
 	uint32_t index = m_pIndexCreator->Alloc();
@@ -252,6 +266,7 @@ BLASHandle* RayTracingManager::AllocBLAS(
 	pBLASHandle->ID = index;
 	pBLASHandle->bAllowUpdate = bAllowUpdate;
 	pBLASHandle->ShaderRecordIndex = std::numeric_limits<uint32_t>::max(); // 아직 할당되지 않음.
+	pBLASHandle->Kind = BLASHandle::GeomKind::Triangles;
 	pBLASHandle->NumVertices = numVertices;
 	pBLASHandle->NumTriGroups = numTriGroupInfos;
 
@@ -260,17 +275,17 @@ BLASHandle* RayTracingManager::AllocBLAS(
 	D3D12_GPU_VIRTUAL_ADDRESS VB_GPU_Ptr = pVertexBuffer->GetGPUVirtualAddress();
 	for (uint i = 0; i < numTriGroupInfos; ++i)
 	{
-		D3D12_GPU_VIRTUAL_ADDRESS IB_GPU_Ptr = TriGroups[i].IndexBuffer->GetGPUVirtualAddress();
+		D3D12_GPU_VIRTUAL_ADDRESS IB_GPU_Ptr = triGroups[i].IndexBuffer->GetGPUVirtualAddress();
 
 		pGeomDescList[i].Type = D3D12_RAYTRACING_GEOMETRY_TYPE_TRIANGLES;
 		pGeomDescList[i].Triangles.IndexBuffer = IB_GPU_Ptr;
-		pGeomDescList[i].Triangles.IndexCount = TriGroups[i].NumTriangles * 3;
+		pGeomDescList[i].Triangles.IndexCount = triGroups[i].NumTriangles * 3;
 		pGeomDescList[i].Triangles.IndexFormat = DXGI_FORMAT_R16_UINT;
 		pGeomDescList[i].Triangles.Transform3x4 = 0;
 		pGeomDescList[i].Triangles.VertexFormat = DXGI_FORMAT_R32G32B32_FLOAT;
 		pGeomDescList[i].Triangles.VertexCount = numVertices;
 		pGeomDescList[i].Triangles.VertexBuffer.StartAddress = VB_GPU_Ptr;
-		pGeomDescList[i].Triangles.VertexBuffer.StrideInBytes = vertexSize;
+		pGeomDescList[i].Triangles.VertexBuffer.StrideInBytes = vertexStrideBytes;
 		// Mark the geometry as opaque. 
 		// PERFORMANCE TIP: mark geometry as opaque whenever applicable as it can enable important ray processing optimizations.
 		// Note: When rays encounter opaque geometry an any hit shader will not be executed whether it is present or not.
@@ -281,75 +296,166 @@ BLASHandle* RayTracingManager::AllocBLAS(
 	// Set Local Root Parameters
 	{
 		pBLASHandle->RootArgArray.resize(numTriGroupInfos);
-
 		UINT descriptorIndex = DISPATCH_DESCRIPTOR_INDEX_COUNT + (LOCAL_ROOT_PARAM_DESCRIPTOR_COUNT * pBLASHandle->ID * MAX_TRIGROUP_COUNT_PER_BLAS);
-		CD3DX12_CPU_DESCRIPTOR_HANDLE srvCpu(m_pShaderVisibleDescriptorHeap->GetCPUDescriptorHandleForHeapStart(), descriptorIndex, m_DescriptorSize);
-		CD3DX12_GPU_DESCRIPTOR_HANDLE srvGpu(m_pShaderVisibleDescriptorHeap->GetGPUDescriptorHandleForHeapStart(), descriptorIndex, m_DescriptorSize);
-
-		D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
-		srvDesc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
-		srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
 
 		for (uint i = 0; i < numTriGroupInfos; ++i)
 		{
-			// Set Material
-			pBLASHandle->RootArgArray[i].Cb.Material = TriGroups[i].Material;
+			// ---------- space1: t0..t3 (VB, IB, Diffuse, Normal)
+			CD3DX12_CPU_DESCRIPTOR_HANDLE cpuS1(m_pShaderVisibleDescriptorHeap->GetCPUDescriptorHandleForHeapStart(), descriptorIndex, m_DescriptorSize);
+			CD3DX12_GPU_DESCRIPTOR_HANDLE gpuS1(m_pShaderVisibleDescriptorHeap->GetGPUDescriptorHandleForHeapStart(), descriptorIndex, m_DescriptorSize);
 
-			// Create Shader Resource from Vertex Buffer
+			D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
+			srvDesc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
+			srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+
+			// t0: VB (structured)
 			srvDesc.Buffer.FirstElement = 0;
 			srvDesc.Buffer.NumElements = numVertices;
 			srvDesc.Format = DXGI_FORMAT_UNKNOWN;
 			srvDesc.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_NONE;
-			srvDesc.Buffer.StructureByteStride = vertexSize;
+			srvDesc.Buffer.StructureByteStride = vertexStrideBytes;
+			pD3DDevice->CreateShaderResourceView(pVertexBuffer, &srvDesc, cpuS1);
+			cpuS1.Offset(1, m_DescriptorSize);
 
-			pD3DDevice->CreateShaderResourceView(pVertexBuffer, &srvDesc, srvCpu);
-			pBLASHandle->RootArgArray[i].SrvVB = srvGpu;
-			srvCpu.Offset(1, m_DescriptorSize);
-			srvGpu.Offset(1, m_DescriptorSize);
-
-			// Create Shader Resource from Index Buffer			
-			srvDesc.Buffer.FirstElement = 0;
-			srvDesc.Buffer.NumElements = (TriGroups[i].NumTriangles * 3 * 2) / 4;	// compute shader에서 4bytes 단위로 읽어야 하므로...
+			// t1: IB (RAW, R32_TYPELESS) — ★NumElements 올림!
+			srvDesc = {};
+			srvDesc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
+			srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
 			srvDesc.Format = DXGI_FORMAT_R32_TYPELESS;
-			srvDesc.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_RAW;
+			srvDesc.Buffer.FirstElement = 0;
+			{
+				const uint indexCount = triGroups[i].NumTriangles * 3;  // 16-bit index 개수
+				const uint bytesTotal = indexCount * 2;                  // 총 바이트
+				srvDesc.Buffer.NumElements = (bytesTotal + 3) / 4;       // ← 4바이트 단위 '올림'
+			}
 			srvDesc.Buffer.StructureByteStride = 0;
+			srvDesc.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_RAW;
+			pD3DDevice->CreateShaderResourceView(triGroups[i].IndexBuffer, &srvDesc, cpuS1);
+			cpuS1.Offset(1, m_DescriptorSize);
 
-			m_pD3DDevice->CreateShaderResourceView(TriGroups[i].IndexBuffer, &srvDesc, srvCpu);
-			pBLASHandle->RootArgArray[i].SrvIB = srvGpu;
-			srvCpu.Offset(1, m_DescriptorSize);
-			srvGpu.Offset(1, m_DescriptorSize);
-
-			// Diffuse Texture
-			if (TriGroups[i].DiffuseTexHandle)
+			// t2: Diffuse
+			if (triGroups[i].DiffuseTexHandle && triGroups[i].DiffuseTexHandle->SRV.ptr)
 			{
-				D3D12_CPU_DESCRIPTOR_HANDLE srvTexSrc = TriGroups[i].DiffuseTexHandle->SRV;
-				if (srvTexSrc.ptr)
-				{
-					pD3DDevice->CopyDescriptorsSimple(1, srvCpu, srvTexSrc, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
-				}
+				pD3DDevice->CopyDescriptorsSimple(1, cpuS1, triGroups[i].DiffuseTexHandle->SRV, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 			}
-			pBLASHandle->RootArgArray[i].SrvTexDiffuse = srvGpu;
-			srvCpu.Offset(1, m_DescriptorSize);
-			srvGpu.Offset(1, m_DescriptorSize);
+			cpuS1.Offset(1, m_DescriptorSize);
 
-			// Normal Texture
-			if (TriGroups[i].NormalTexHandle)
+			// t3: Normal
+			if (triGroups[i].NormalTexHandle && triGroups[i].NormalTexHandle->SRV.ptr)\
 			{
-				D3D12_CPU_DESCRIPTOR_HANDLE srvTexSrc = TriGroups[i].NormalTexHandle->SRV;
-				if (srvTexSrc.ptr)
-				{
-					pD3DDevice->CopyDescriptorsSimple(1, srvCpu, srvTexSrc, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
-				}
+				pD3DDevice->CopyDescriptorsSimple(1, cpuS1, triGroups[i].NormalTexHandle->SRV, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 			}
-			pBLASHandle->RootArgArray[i].SrvTexNormal = srvGpu;
-			srvCpu.Offset(1, m_DescriptorSize);
-			srvGpu.Offset(1, m_DescriptorSize);
+			cpuS1.Offset(1, m_DescriptorSize);
+
+			pBLASHandle->RootArgArray[i].SrvTable = gpuS1;
+
+			// Constants
+			pBLASHandle->RootArgArray[i].Constants.Material = triGroups[i].Material;
+
+			descriptorIndex += 4;
 		}
 	}
 
 	m_GlobalBLASHandleList.emplace_back(pBLASHandle);
 	m_UpdateAccelerationStructureFlags = UPDATE_ACCELERATION_STRCTURE_TYPE_HIT_GROUP_SHADER_TABLE | UPDATE_ACCELERATION_STRCTURE_TYPE_TLAS;
 lb_return:
+	return pBLASHandle;
+}
+
+BLASHandle* RayTracingManager::AllocBLASSpheres(
+	ID3D12Resource* pAABBBuffer,
+	uint numAABBs,
+	uint aabbStrideBytes,
+	ID3D12Resource* pSphereDataBuffer,
+	uint numSpheres,
+	uint sphereDataStrideBytes,
+	bool bOpaque,
+	bool bAllowUpdate)
+{
+	// TODO: IndexCreator로
+	static uint s_InstanceIndex = 0;
+
+	BLASHandle* pBLASHandle = nullptr;
+	ID3D12Device5* pD3DDevice = m_pRenderer->GetD3DDevice();
+
+	if (m_GlobalBLASHandleList.size() >= m_MaxNumBLASs)
+	{
+		ASSERT(false, "Exceeded maximum number of BLAS instances.");
+		return nullptr;
+	}
+	ASSERT(numAABBs < MAX_TRIGROUP_COUNT_PER_BLAS, "Too many AABBs in BLAS");
+
+	uint32_t index = m_pIndexCreator->Alloc();
+	ASSERT(index != (uint32_t)-1, "Failed to allocate index for BLAS instance.");
+
+	pBLASHandle = new BLASHandle{};
+	pBLASHandle->pBLAS = nullptr;
+	pBLASHandle->ID = index;
+	pBLASHandle->bAllowUpdate = bAllowUpdate;
+	pBLASHandle->ShaderRecordIndex = std::numeric_limits<uint32_t>::max();
+	pBLASHandle->Kind = BLASHandle::GeomKind::Procedural;
+	pBLASHandle->NumVertices = 0;
+	pBLASHandle->NumTriGroups = numAABBs; // = AABB 개수
+
+	// Fill AABB geometry descs
+	for (uint i = 0; i < numAABBs; ++i) 
+	{
+		auto& g = pBLASHandle->pGeomDescList[i];
+		g.Type = D3D12_RAYTRACING_GEOMETRY_TYPE_PROCEDURAL_PRIMITIVE_AABBS;
+		g.AABBs.AABBCount = 1;
+		g.AABBs.AABBs.StartAddress = pAABBBuffer->GetGPUVirtualAddress() + uint64_t(i) * aabbStrideBytes;
+		g.AABBs.AABBs.StrideInBytes = aabbStrideBytes; // 보통 sizeof(D3D12_RAYTRACING_AABB)=24
+		g.Flags = bOpaque ? D3D12_RAYTRACING_GEOMETRY_FLAG_OPAQUE : D3D12_RAYTRACING_GEOMETRY_FLAG_NONE;
+	}
+
+	// Local root: SRV 테이블(space1) 구성
+	{
+		pBLASHandle->RootArgArray.resize(numAABBs);
+
+		UINT descriptorIndex = DISPATCH_DESCRIPTOR_INDEX_COUNT + (LOCAL_ROOT_PARAM_DESCRIPTOR_COUNT * pBLASHandle->ID * MAX_TRIGROUP_COUNT_PER_BLAS);
+
+		for (uint i = 0; i < numAABBs; ++i)
+		{
+			// ---- space1 (t0..t1): Sphere data buffer, AABB buffer ----
+			CD3DX12_CPU_DESCRIPTOR_HANDLE cpuS1(m_pShaderVisibleDescriptorHeap->GetCPUDescriptorHandleForHeapStart(), descriptorIndex, m_DescriptorSize);
+			CD3DX12_GPU_DESCRIPTOR_HANDLE gpuS1(m_pShaderVisibleDescriptorHeap->GetGPUDescriptorHandleForHeapStart(), descriptorIndex, m_DescriptorSize);
+
+			D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
+			srvDesc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
+			srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+
+			// t0: SphereParamBuffer (structured)
+			srvDesc.Format = DXGI_FORMAT_UNKNOWN;
+			srvDesc.Buffer.FirstElement = 0;
+			srvDesc.Buffer.NumElements = numSpheres;
+			srvDesc.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_NONE;
+			srvDesc.Buffer.StructureByteStride = sphereDataStrideBytes;
+			m_pD3DDevice->CreateShaderResourceView(pSphereDataBuffer, &srvDesc, cpuS1);
+			cpuS1.Offset(1, m_DescriptorSize);
+
+			// t1: AABB buffer (structured)
+			srvDesc = {};
+			srvDesc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
+			srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+			srvDesc.Format = DXGI_FORMAT_UNKNOWN;
+			srvDesc.Buffer.FirstElement = 0;
+			srvDesc.Buffer.NumElements = numAABBs;
+			srvDesc.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_NONE;
+			srvDesc.Buffer.StructureByteStride = aabbStrideBytes;
+			m_pD3DDevice->CreateShaderResourceView(pAABBBuffer, &srvDesc, cpuS1);
+
+			pBLASHandle->RootArgArray[i].SrvTable = gpuS1;
+
+			// 상수(필요시): Proc에 맞는 머티리얼/옵션 세팅
+			// pBLASHandle->RootArgArray[i].Constants.InstanceIndex = s_InstanceIndex++;
+			pBLASHandle->RootArgArray[i].Constants.Material = {};
+			pBLASHandle->RootArgArray[i].Constants.Material.Opacity = (float)s_InstanceIndex++;
+			descriptorIndex += 4;
+		}
+	}
+
+	m_GlobalBLASHandleList.emplace_back(pBLASHandle);
+	m_UpdateAccelerationStructureFlags = UPDATE_ACCELERATION_STRCTURE_TYPE_HIT_GROUP_SHADER_TABLE | UPDATE_ACCELERATION_STRCTURE_TYPE_TLAS;
 	return pBLASHandle;
 }
 
@@ -635,11 +741,20 @@ void RayTracingManager::updateHitGroupShaderTable(uint numShaderRecords)
 	m_pDXRStateObject->QueryInterface(IID_PPV_ARGS(&pStateObjectProperties));
 
 	// hitgroup Shader Table
-	void* pHitGroupShaderIdentifier[NUM_RAYTRACING_SHADER_TYPES] = {};
+	//void* pHitGroupShaderIdentifier[NUM_RAYTRACING_SHADER_TYPES] = {};
+	//for (uint i = 0; i < NUM_RAYTRACING_SHADER_TYPES; ++i)
+	//{
+	//	pHitGroupShaderIdentifier[i] = pStateObjectProperties->GetShaderIdentifier(g_HitGroupNames[i]);
+	//	ASSERT(pHitGroupShaderIdentifier[i], "Failed to get hit group shader identifier.");
+	//}
+	// Tri & Proc hitgroup identifiers
+	void* pHitGroupId_Tri[NUM_RAYTRACING_SHADER_TYPES] = {};
+	void* pHitGroupId_Proc[NUM_RAYTRACING_SHADER_TYPES] = {};
 	for (uint i = 0; i < NUM_RAYTRACING_SHADER_TYPES; ++i)
 	{
-		pHitGroupShaderIdentifier[i] = pStateObjectProperties->GetShaderIdentifier(g_HitGroupNames[i]);
-		ASSERT(pHitGroupShaderIdentifier[i], "Failed to get hit group shader identifier.");
+		pHitGroupId_Tri[i] = pStateObjectProperties->GetShaderIdentifier(g_HitGroupNames[i]);
+		pHitGroupId_Proc[i] = pStateObjectProperties->GetShaderIdentifier(g_HitGroupNames_Proc[i]);
+		ASSERT(pHitGroupId_Tri[i] && pHitGroupId_Proc[i], "Failed to get hit group shader identifier.");
 	}
 	m_pHitGroupShaderTable->CommitResource(numShaderRecords);
 
@@ -653,7 +768,13 @@ void RayTracingManager::updateHitGroupShaderTable(uint numShaderRecords)
 		{
 			for (uint j = 0; j < NUM_RAYTRACING_SHADER_TYPES; ++j)
 			{
-				ShaderRecord record = ShaderRecord(pHitGroupShaderIdentifier[j], m_ShaderIdentifierSize, &curr->RootArgArray[i], sizeof(RootArgument));
+				/*ShaderRecord record = ShaderRecord(pHitGroupShaderIdentifier[j], m_ShaderIdentifierSize, &curr->RootArgArray[i], sizeof(RootArgument));
+				m_pHitGroupShaderTable->InsertShaderRecord(&record);
+				++shaderRecordIndex;*/
+				void* id = (curr->Kind == BLASHandle::GeomKind::Triangles) ? pHitGroupId_Tri[j] : pHitGroupId_Proc[j];
+				void* rootArg = (curr->Kind == BLASHandle::GeomKind::Triangles)? (void*)(&curr->RootArgArray[i]): (void*)(&curr->RootArgArray[i]);
+				size_t rootArgSize = (curr->Kind == BLASHandle::GeomKind::Triangles) ? sizeof(RootArgument) : sizeof(RootArgument);
+				ShaderRecord record = ShaderRecord(id, m_ShaderIdentifierSize, rootArg, rootArgSize);
 				m_pHitGroupShaderTable->InsertShaderRecord(&record);
 				++shaderRecordIndex;
 			}
@@ -754,37 +875,60 @@ void RayTracingManager::createRaytracingPipelineStateObject()
 	RootSignatureManager* pRootSignatureManager = m_pRenderer->GetRootSignatureManager();
 
 	CD3DX12_STATE_OBJECT_DESC raytracingPipeline{ D3D12_STATE_OBJECT_TYPE_RAYTRACING_PIPELINE };
-	CD3DX12_DXIL_LIBRARY_SUBOBJECT* pLib = raytracingPipeline.CreateSubobject<CD3DX12_DXIL_LIBRARY_SUBOBJECT>();
-	D3D12_SHADER_BYTECODE libdxil = CD3DX12_SHADER_BYTECODE(m_pRayShader->CodeBuffer, m_pRayShader->CodeSize);
+	CD3DX12_DXIL_LIBRARY_SUBOBJECT* pLibTri = raytracingPipeline.CreateSubobject<CD3DX12_DXIL_LIBRARY_SUBOBJECT>();
+	D3D12_SHADER_BYTECODE libdxilTri = CD3DX12_SHADER_BYTECODE(m_pRayShader->CodeBuffer, m_pRayShader->CodeSize);
 
-	pLib->SetDXILLibrary(&libdxil);
-	pLib->DefineExport(g_RaygenShaderName);
+	pLibTri->SetDXILLibrary(&libdxilTri);
+	pLibTri->DefineExport(g_RaygenShaderName);
 	for (uint i = 0; i < NUM_RAYTRACING_SHADER_TYPES; ++i)
 	{
-		pLib->DefineExport(g_ClosestHitShaderNames[i]);
-		pLib->DefineExport(g_AnyHitShaderNames[i]);
-		pLib->DefineExport(g_MissShaderNames[i]);
+		pLibTri->DefineExport(g_ClosestHitShaderNames[i]);
+		pLibTri->DefineExport(g_AnyHitShaderNames[i]);
+		pLibTri->DefineExport(g_MissShaderNames[i]);
 	}
 
+	CD3DX12_DXIL_LIBRARY_SUBOBJECT* pLibProc = raytracingPipeline.CreateSubobject<CD3DX12_DXIL_LIBRARY_SUBOBJECT>();
+	D3D12_SHADER_BYTECODE libdxilProc = CD3DX12_SHADER_BYTECODE(m_pRayProcShader->CodeBuffer, m_pRayProcShader->CodeSize);
+
+	pLibProc->SetDXILLibrary(&libdxilProc);
+	pLibProc->DefineExport(g_IntersectionShaderName);
+	for (uint i = 0; i < NUM_RAYTRACING_SHADER_TYPES; ++i)
+	{
+		pLibProc->DefineExport(g_ClosestHitShaderNames_Proc[i]);
+	}
+
+	// Triangle hitgroups (closest + any)
 	for (uint i = 0; i < NUM_RAYTRACING_SHADER_TYPES; ++i)
 	{
 		CD3DX12_HIT_GROUP_SUBOBJECT* pHitGroup = raytracingPipeline.CreateSubobject<CD3DX12_HIT_GROUP_SUBOBJECT>();
 		pHitGroup->SetClosestHitShaderImport(g_ClosestHitShaderNames[i]);
 		pHitGroup->SetAnyHitShaderImport(g_AnyHitShaderNames[i]);
 		pHitGroup->SetHitGroupExport(g_HitGroupNames[i]);
+		pHitGroup->SetHitGroupType(D3D12_HIT_GROUP_TYPE_TRIANGLES);
 	}
-	//pHitGroup->SetIntersectionShaderImport(); <- trinagle만 처리하므로 필요없다.
+	// Procedural hitgroups (intersection + closest)
+	for (uint i = 0; i < NUM_RAYTRACING_SHADER_TYPES; ++i)
+	{
+		CD3DX12_HIT_GROUP_SUBOBJECT* pHitGroup = raytracingPipeline.CreateSubobject<CD3DX12_HIT_GROUP_SUBOBJECT>();
+		pHitGroup->SetClosestHitShaderImport(g_ClosestHitShaderNames_Proc[i]);
+		pHitGroup->SetIntersectionShaderImport(g_IntersectionShaderName);
+		pHitGroup->SetHitGroupExport(g_HitGroupNames_Proc[i]);
+		pHitGroup->SetHitGroupType(D3D12_HIT_GROUP_TYPE_PROCEDURAL_PRIMITIVE);
+	}
 
 	CD3DX12_RAYTRACING_SHADER_CONFIG_SUBOBJECT* pShaderConfig = raytracingPipeline.CreateSubobject<CD3DX12_RAYTRACING_SHADER_CONFIG_SUBOBJECT>();
 	UINT payloadSize = PAYLOAD_SIZE;
-	UINT attributeSize = 2 * sizeof(float); // float2 barycentrics
+	// UINT attributeSize = 2 * sizeof(float); // float2 barycentrics
+	UINT attributeSize = 12;
 	pShaderConfig->Config(payloadSize, attributeSize);
 
 	CD3DX12_LOCAL_ROOT_SIGNATURE_SUBOBJECT* pLocalRootSignature = raytracingPipeline.CreateSubobject<CD3DX12_LOCAL_ROOT_SIGNATURE_SUBOBJECT>();
 	pLocalRootSignature->SetRootSignature(pRootSignatureManager->Query(ERootSignatureType::GraphicsRaytracingLocal));
 	CD3DX12_SUBOBJECT_TO_EXPORTS_ASSOCIATION_SUBOBJECT* pRootSignatureAssociation = raytracingPipeline.CreateSubobject<CD3DX12_SUBOBJECT_TO_EXPORTS_ASSOCIATION_SUBOBJECT>();
 	pRootSignatureAssociation->SetSubobjectToAssociate(*pLocalRootSignature);
-	pRootSignatureAssociation->AddExports(g_HitGroupNames);
+
+	pRootSignatureAssociation->AddExports(g_HitGroupNames); // Tri
+	pRootSignatureAssociation->AddExports(g_HitGroupNames_Proc);  // Proc
 
 	CD3DX12_GLOBAL_ROOT_SIGNATURE_SUBOBJECT* pGlobalRootSignature = raytracingPipeline.CreateSubobject<CD3DX12_GLOBAL_ROOT_SIGNATURE_SUBOBJECT>();
 	pGlobalRootSignature->SetRootSignature(pRootSignatureManager->Query(ERootSignatureType::GraphicsRaytracingGlobal));

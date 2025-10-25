@@ -321,5 +321,8 @@
     <CustomBuild Include="..\Shaders\AtmosphericSky.hlsl">
       <Filter>Shaders\Rasterization</Filter>
     </CustomBuild>
+    <CustomBuild Include="..\Shaders\Raytracing_Proc.hlsl">
+      <Filter>Shaders\Raytracing</Filter>
+    </CustomBuild>
   </ItemGroup>
 </Project>

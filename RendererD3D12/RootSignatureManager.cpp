@@ -66,7 +66,7 @@ bool RootSignatureManager::Initialize(D3D12Renderer* pRenderer)
 		globalRootParameters[0].InitAsConstantBufferView(0, 0, D3D12_SHADER_VISIBILITY_ALL); // Raytracing CBV
 		globalRootParameters[1].InitAsConstantBufferView(0, 1, D3D12_SHADER_VISIBILITY_ALL); // Sky Atmosphere CBV
 		globalRootParameters[2].InitAsDescriptorTable(_countof(viewRanges), viewRanges, D3D12_SHADER_VISIBILITY_ALL);
-		globalRootParameters[3].InitAsShaderResourceView(0, 2);	// Acceleration Structure
+		globalRootParameters[3].InitAsShaderResourceView(0, 3);	// Acceleration Structure
 
 		for (uint i = 0; i < (uint)_countof(samplers); ++i)
 		{
@@ -84,7 +84,7 @@ bool RootSignatureManager::Initialize(D3D12Renderer* pRenderer)
 		// space1
 		// t0 : vertex buffer, t1 : index buffer, t2 : diffuse texture, t3 : normal texture
 		CD3DX12_DESCRIPTOR_RANGE localRanges[1] = {};
-		localRanges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 4, 0, 1);	// space1
+		localRanges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 4, 0, /*space*/1);	// t0..t3, space1
 
 		CD3DX12_ROOT_PARAMETER localRootParameters[2] = {};
 		localRootParameters[0].InitAsConstants(SizeOfInUint32(CONSTANT_BUFFER_RT_TRIGROUP), /*b*/1, /*space*/0, D3D12_SHADER_VISIBILITY_ALL);

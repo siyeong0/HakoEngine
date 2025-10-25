@@ -11,16 +11,25 @@ public:
 	RayTracingManager() = default;
 	~RayTracingManager() { Cleanup(); }
 
-	bool Initialize(D3D12Renderer* pRenderer, uint width, uint height, uint maxNumBLASs = 10000);
+	bool Initialize(D3D12Renderer* pRenderer, uint width, uint height, uint maxNumBLASs = 4096);
 	void Cleanup();
 
 	void DoRaytracing(ID3D12GraphicsCommandList6* pCommandList);
-	BLASHandle* AllocBLAS(
+	BLASHandle* AllocBLASTriangles(
 		ID3D12Resource* pVertexBuffer,
-		uint vertexSize,
 		uint numVertices,
+		uint vertexStrideBytes,
 		const std::vector<IndexedTriGroup> TriGroups,
 		const std::vector<bool> bTriGroupOpaques,
+		bool bAllowUpdate);
+	BLASHandle* AllocBLASSpheres(
+		ID3D12Resource* pAABBBuffer,
+		uint numAABBs,
+		uint aabbStrideBytes,
+		ID3D12Resource* pSphereDataBuffer,
+		uint numSpheres,
+		uint sphereDataStrideBytes,
+		bool bOpaque,
 		bool bAllowUpdate);
 	void FreeBLAS(BLASHandle* pBLASHandle);
 	bool UpdateAccelerationStructure(ID3D12GraphicsCommandList6* pCommandList);
@@ -77,10 +86,11 @@ private:
 	};
 	enum LOCAL_ROOT_PARAM_DESCRIPTOR_INDEX
 	{
-		LOCAL_ROOT_PARAM_DESCRIPTOR_INDEX_VB,
-		LOCAL_ROOT_PARAM_DESCRIPTOR_INDEX_IB,
-		LOCAL_ROOT_PARAM_DESCRIPTOR_INDEX_DIFFUSE,
-		LOCAL_ROOT_PARAM_DESCRIPTOR_INDEX_NORMALL,
+		// LOCAL_ROOT_PARAM_DESCRIPTOR_INDEX_CONSTANTS, // b1, space0
+		LOCAL_ROOT_PARAM_DESCRIPTOR_INDEX_SRV_TABLE_REG0_SPACE1, // Triangles table (t0..t3, space1)
+		LOCAL_ROOT_PARAM_DESCRIPTOR_INDEX_SRV_TABLE_REG1_SPACE1,
+		LOCAL_ROOT_PARAM_DESCRIPTOR_INDEX_SRV_TABLE_REG2_SPACE1,
+		LOCAL_ROOT_PARAM_DESCRIPTOR_INDEX_SRV_TABLE_REG3_SPACE1,
 		LOCAL_ROOT_PARAM_DESCRIPTOR_COUNT,
 	};
 	enum UPDATE_ACCELERATION_STRCTURE_TYPE
@@ -108,6 +118,7 @@ private:
 	uint m_Height = 0;
 
 	ShaderHandle* m_pRayShader = nullptr;
+	ShaderHandle* m_pRayProcShader = nullptr;
 	ID3D12StateObject* m_pDXRStateObject = nullptr;
 
 	ID3D12DescriptorHeap* m_pCommonDescriptorHeap = nullptr;

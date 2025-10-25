@@ -49,6 +49,15 @@ struct CONSTANT_BUFFER_RT_TRIGROUP
     BasicMaterial Material;
 };
 
+struct CONSTANT_BUFFER_RT_PROC
+{
+    //uint InstanceIndex;
+    //uint Reserved0;
+    //uint Reserved1;
+    //uint Reserved2;
+    BasicMaterial Material;
+};
+
 struct ShadingInfo
 {
     float3 Kd;
@@ -57,6 +66,17 @@ struct ShadingInfo
     float3 Kt;
     float Roughness;
     float AmbientOcclusionStrength;
+};
+
+struct SphereAttrib
+{
+    float3 normal;
+};
+
+struct Sphere
+{
+    float3 center;
+    float radius;
 };
 
 #endif
