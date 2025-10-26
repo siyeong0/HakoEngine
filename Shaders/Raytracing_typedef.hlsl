@@ -15,6 +15,8 @@ static const uint g_IndexSizeInBytes = 2;
 static const uint g_IndicesPerTriangle = 3;
 static const uint g_TriangleIndexStride = g_IndicesPerTriangle * g_IndexSizeInBytes;
 
+static const float T_OFFSET = 0.01;
+
 struct Vertex
 {
     float3 Pos;
@@ -68,15 +70,15 @@ struct ShadingInfo
     float AmbientOcclusionStrength;
 };
 
-struct SphereAttrib
+struct MySphereIntersectionAttributes
 {
-    float3 normal;
+    float3 Normal;
 };
 
 struct Sphere
 {
-    float3 center;
-    float radius;
+    float3 Center;
+    float Radius;
 };
 
 #endif

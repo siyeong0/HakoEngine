@@ -213,8 +213,8 @@ static IMeshObject* createMetalTileGridMeshObject(IRenderer* pRenderer)
 	pMeshObj->BeginCreateMesh(vertices.data(), (uint)vertices.size(), (uint)meshData.Sections.size());
 	for (const MeshSection& sec : meshData.Sections)
 	{
-		Material mtl(diffuseTexPath, normalTexPath, nullptr, nullptr, nullptr, MATERIAL_TYPE_MIRROR);
-		mtl.NormalScale = 0.1f;
+		Material mtl(diffuseTexPath, normalTexPath, nullptr, nullptr, nullptr, MATERIAL_TYPE_MATTE);
+		mtl.NormalScale = 0.4f;
 		pMeshObj->InsertTriGroup(sec.Indices.data(), (uint)(sec.Indices.size() / 3), mtl);
 	}
 	pMeshObj->EndCreateMesh();
@@ -299,7 +299,7 @@ static IMeshObject* createMeshFromFile(IRenderer* pRenderer, const char* filenam
 static IProceduralSphereObject* createProceduralSphereObject(IRenderer* pRenderer, FLOAT3 center, float radius)
 {
 	IProceduralSphereObject* pSphereObj = pRenderer->CreateProceduralSphereObject();
-	Material mtl(nullptr, nullptr, nullptr, nullptr, nullptr, MATERIAL_TYPE_MATTE, false);
+	Material mtl(nullptr, nullptr, nullptr, nullptr, nullptr, MATERIAL_TYPE_MIRROR, false);
 	pSphereObj->BeginCreateGeom(2, mtl);
 	Sphere s1 = { center, radius };
 	Sphere s2 = { center + FLOAT3{3.0f, 0.0f, 0.0f}, radius };
