@@ -241,8 +241,8 @@ BLASHandle* RayTracingManager::AllocBLASTriangles(
 	ID3D12Resource* pVertexBuffer,
 	uint numVertices,
 	uint vertexStrideBytes,
-	const std::vector<IndexedTriGroup> triGroups,
-	const std::vector<bool> bTriGroupOpaques,
+	const std::vector<IndexedTriGroup>& triGroups,
+	const std::vector<bool>& bTriGroupOpaques,
 	bool bAllowUpdate)
 {
 	BLASHandle* pBLASHandle = nullptr;
@@ -369,12 +369,10 @@ BLASHandle* RayTracingManager::AllocBLASSpheres(
 	ID3D12Resource* pSphereDataBuffer,
 	uint numSpheres,
 	uint sphereDataStrideBytes,
+	const RenderMaterial& material,
 	bool bOpaque,
 	bool bAllowUpdate)
 {
-	// TODO: IndexCreator로
-	static uint s_InstanceIndex = 0;
-
 	BLASHandle* pBLASHandle = nullptr;
 	ID3D12Device5* pD3DDevice = m_pRenderer->GetD3DDevice();
 
@@ -395,63 +393,55 @@ BLASHandle* RayTracingManager::AllocBLASSpheres(
 	pBLASHandle->ShaderRecordIndex = std::numeric_limits<uint32_t>::max();
 	pBLASHandle->Kind = BLASHandle::GeomKind::Procedural;
 	pBLASHandle->NumVertices = 0;
-	pBLASHandle->NumTriGroups = numAABBs; // = AABB 개수
+	pBLASHandle->NumTriGroups = 1;
 
 	// Fill AABB geometry descs
-	for (uint i = 0; i < numAABBs; ++i) 
-	{
-		auto& g = pBLASHandle->pGeomDescList[i];
-		g.Type = D3D12_RAYTRACING_GEOMETRY_TYPE_PROCEDURAL_PRIMITIVE_AABBS;
-		g.AABBs.AABBCount = 1;
-		g.AABBs.AABBs.StartAddress = pAABBBuffer->GetGPUVirtualAddress() + uint64_t(i) * aabbStrideBytes;
-		g.AABBs.AABBs.StrideInBytes = aabbStrideBytes; // 보통 sizeof(D3D12_RAYTRACING_AABB)=24
-		g.Flags = bOpaque ? D3D12_RAYTRACING_GEOMETRY_FLAG_OPAQUE : D3D12_RAYTRACING_GEOMETRY_FLAG_NONE;
-	}
+	D3D12_RAYTRACING_GEOMETRY_DESC* pGeomDesc = pBLASHandle->pGeomDescList;
+	pGeomDesc->Type = D3D12_RAYTRACING_GEOMETRY_TYPE_PROCEDURAL_PRIMITIVE_AABBS;
+	pGeomDesc->AABBs.AABBCount = numAABBs;
+	pGeomDesc->AABBs.AABBs.StartAddress = pAABBBuffer->GetGPUVirtualAddress();
+	pGeomDesc->AABBs.AABBs.StrideInBytes = aabbStrideBytes; // 보통 sizeof(D3D12_RAYTRACING_AABB)=24
+	pGeomDesc->Flags = bOpaque ? D3D12_RAYTRACING_GEOMETRY_FLAG_OPAQUE : D3D12_RAYTRACING_GEOMETRY_FLAG_NONE;
 
 	// Local root: SRV 테이블(space1) 구성
 	{
-		pBLASHandle->RootArgArray.resize(numAABBs);
+		// pBLASHandle->RootArgArray.resize(numAABBs);
+		pBLASHandle->RootArgArray.resize(1);
 
 		UINT descriptorIndex = DISPATCH_DESCRIPTOR_INDEX_COUNT + (LOCAL_ROOT_PARAM_DESCRIPTOR_COUNT * pBLASHandle->ID * MAX_TRIGROUP_COUNT_PER_BLAS);
 
-		for (uint i = 0; i < numAABBs; ++i)
-		{
-			// ---- space1 (t0..t1): Sphere data buffer, AABB buffer ----
-			CD3DX12_CPU_DESCRIPTOR_HANDLE cpuS1(m_pShaderVisibleDescriptorHeap->GetCPUDescriptorHandleForHeapStart(), descriptorIndex, m_DescriptorSize);
-			CD3DX12_GPU_DESCRIPTOR_HANDLE gpuS1(m_pShaderVisibleDescriptorHeap->GetGPUDescriptorHandleForHeapStart(), descriptorIndex, m_DescriptorSize);
+		// ---- space1 (t0..t1): Sphere data buffer, AABB buffer ----
+		CD3DX12_CPU_DESCRIPTOR_HANDLE cpuS1(m_pShaderVisibleDescriptorHeap->GetCPUDescriptorHandleForHeapStart(), descriptorIndex, m_DescriptorSize);
+		CD3DX12_GPU_DESCRIPTOR_HANDLE gpuS1(m_pShaderVisibleDescriptorHeap->GetGPUDescriptorHandleForHeapStart(), descriptorIndex, m_DescriptorSize);
 
-			D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
-			srvDesc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
-			srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+		D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
+		srvDesc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
+		srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
 
-			// t0: SphereParamBuffer (structured)
-			srvDesc.Format = DXGI_FORMAT_UNKNOWN;
-			srvDesc.Buffer.FirstElement = 0;
-			srvDesc.Buffer.NumElements = numSpheres;
-			srvDesc.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_NONE;
-			srvDesc.Buffer.StructureByteStride = sphereDataStrideBytes;
-			m_pD3DDevice->CreateShaderResourceView(pSphereDataBuffer, &srvDesc, cpuS1);
-			cpuS1.Offset(1, m_DescriptorSize);
+		// t0: SphereParamBuffer (structured)
+		srvDesc.Format = DXGI_FORMAT_UNKNOWN;
+		srvDesc.Buffer.FirstElement = 0;
+		srvDesc.Buffer.NumElements = numSpheres;
+		srvDesc.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_NONE;
+		srvDesc.Buffer.StructureByteStride = sphereDataStrideBytes;
+		m_pD3DDevice->CreateShaderResourceView(pSphereDataBuffer, &srvDesc, cpuS1);
+		cpuS1.Offset(1, m_DescriptorSize);
 
-			// t1: AABB buffer (structured)
-			srvDesc = {};
-			srvDesc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
-			srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-			srvDesc.Format = DXGI_FORMAT_UNKNOWN;
-			srvDesc.Buffer.FirstElement = 0;
-			srvDesc.Buffer.NumElements = numAABBs;
-			srvDesc.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_NONE;
-			srvDesc.Buffer.StructureByteStride = aabbStrideBytes;
-			m_pD3DDevice->CreateShaderResourceView(pAABBBuffer, &srvDesc, cpuS1);
+		// t1: AABB buffer (structured)
+		srvDesc = {};
+		srvDesc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
+		srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+		srvDesc.Format = DXGI_FORMAT_UNKNOWN;
+		srvDesc.Buffer.FirstElement = 0;
+		srvDesc.Buffer.NumElements = numAABBs;
+		srvDesc.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_NONE;
+		srvDesc.Buffer.StructureByteStride = aabbStrideBytes;
+		m_pD3DDevice->CreateShaderResourceView(pAABBBuffer, &srvDesc, cpuS1);
 
-			pBLASHandle->RootArgArray[i].SrvTable = gpuS1;
+		pBLASHandle->RootArgArray[0].SrvTable = gpuS1;
 
-			// 상수(필요시): Proc에 맞는 머티리얼/옵션 세팅
-			// pBLASHandle->RootArgArray[i].Constants.InstanceIndex = s_InstanceIndex++;
-			pBLASHandle->RootArgArray[i].Constants.Material = {};
-			pBLASHandle->RootArgArray[i].Constants.Material.Opacity = (float)s_InstanceIndex++;
-			descriptorIndex += 4;
-		}
+		// 상수(필요시): Proc에 맞는 머티리얼/옵션 세팅
+		pBLASHandle->RootArgArray[0].Constants.Material = material;
 	}
 
 	m_GlobalBLASHandleList.emplace_back(pBLASHandle);
@@ -772,7 +762,7 @@ void RayTracingManager::updateHitGroupShaderTable(uint numShaderRecords)
 				m_pHitGroupShaderTable->InsertShaderRecord(&record);
 				++shaderRecordIndex;*/
 				void* id = (curr->Kind == BLASHandle::GeomKind::Triangles) ? pHitGroupId_Tri[j] : pHitGroupId_Proc[j];
-				void* rootArg = (curr->Kind == BLASHandle::GeomKind::Triangles)? (void*)(&curr->RootArgArray[i]): (void*)(&curr->RootArgArray[i]);
+				void* rootArg = (curr->Kind == BLASHandle::GeomKind::Triangles) ? (void*)(&curr->RootArgArray[i]) : (void*)(&curr->RootArgArray[i]);
 				size_t rootArgSize = (curr->Kind == BLASHandle::GeomKind::Triangles) ? sizeof(RootArgument) : sizeof(RootArgument);
 				ShaderRecord record = ShaderRecord(id, m_ShaderIdentifierSize, rootArg, rootArgSize);
 				m_pHitGroupShaderTable->InsertShaderRecord(&record);

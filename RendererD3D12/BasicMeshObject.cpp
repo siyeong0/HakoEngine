@@ -106,10 +106,9 @@ void ENGINECALL BasicMeshObject::EndCreateMesh(bool bUseRayTracingIfSupported)
 {
 	bool bUseRayTracing = bUseRayTracingIfSupported && m_pRenderer->IsRayTracingEnabledInl();
 	bool bOpaque = true;
-	for (uint i = 0; i < m_TriGroups.size(); ++i)
+	for (bool bOpaqueTG : m_bTriGroupOpaques)
 	{
-		const IndexedTriGroup& tg = m_TriGroups[i];
-		if (tg.Material.Opacity < Material::OPACITY_THRESHOLD)
+		if (!bOpaqueTG)
 		{
 			bOpaque = false;
 			break;

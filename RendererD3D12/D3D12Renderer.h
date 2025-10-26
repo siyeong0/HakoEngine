@@ -40,10 +40,13 @@ public:
 	void ENGINECALL Present() override;
 
 	void ENGINECALL RenderMeshObject(IMeshObject* pMeshObj, const Matrix4x4* pMatWorld) override;
+	void ENGINECALL RenderProceduralSphereObject(IProceduralSphereObject* pProceduralObj, const Matrix4x4* pMatWorld) override;
 	void ENGINECALL RenderSpriteWithTex(void* pSprObjHandle, int posX, int posY, float scaleX, float scaleY, const RECT* pRect, float z, void* pTexHandle) override;
 	void ENGINECALL RenderSprite(void* pSprObjHandle, int posX, int posY, float scaleX, float scaleY, float z) override;
 
 	IMeshObject* ENGINECALL CreateBasicMeshObject() override;
+	IProceduralSphereObject* ENGINECALL CreateProceduralSphereObject() override;
+
 	ISprite* ENGINECALL CreateSpriteObject() override;
 	ISprite* ENGINECALL CreateSpriteObject(const wchar_t* wchTexFileName) override;
 	ISprite* ENGINECALL CreateSpriteObject(const wchar_t* wchTexFileName, int posX, int posY, int width, int height) override;

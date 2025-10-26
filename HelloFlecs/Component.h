@@ -40,6 +40,11 @@ struct MeshRenderer
 	IMeshObject* Mesh = nullptr;
 };
 
+struct ProceduralSphereRenderer
+{
+	IProceduralSphereObject* Sphere = nullptr;
+};
+
 struct SpriteRenderer
 {
 	std::wstring SpriteFileName;

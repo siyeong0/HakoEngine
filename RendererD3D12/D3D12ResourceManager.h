@@ -7,6 +7,7 @@ public:
 	~D3D12ResourceManager() { Cleanup(); }
 
 	bool Initialize(ID3D12Device5* pD3DDevice);
+	HRESULT CreateStructuredBuffer(size_t elementStride, size_t numElements, ID3D12Resource** ppOutBuffer, void* pInitData, bool bUseGpuUploadHeaps);
 	HRESULT CreateVertexBuffer(size_t sizePerVertex, size_t numVertices, D3D12_VERTEX_BUFFER_VIEW* pOutVertexBufferView, ID3D12Resource **ppOutBuffer, void* pInitData, bool bUseGpuUploadHeaps);
 	HRESULT CreateIndexBuffer(size_t numIndices, D3D12_INDEX_BUFFER_VIEW* pOutIndexBufferView, ID3D12Resource **ppOutBuffer, void* pInitData, bool bUseGpuUploadHeaps);
 	void UpdateTextureForWrite(ID3D12Resource* pDestTexResource, ID3D12Resource* pSrcTexResource);

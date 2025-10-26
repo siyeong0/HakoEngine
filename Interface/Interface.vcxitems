@@ -18,6 +18,7 @@
     <ClInclude Include="$(MSBuildThisFileDirectory)IGeometry.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)IPrelight.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)IMeshObject.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)IProceduralSphereObject.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)IRenderer.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)ISpriteObject.h" />
   </ItemGroup>

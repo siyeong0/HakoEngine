@@ -19,6 +19,7 @@
 #include "SingleDescriptorAllocator.h"
 #include "SkyObject.h"
 #include "SpriteObject.h"
+#include "ProceduralSphereObject.h"
 #include "TextureManager.h"
 
 #include "D3D12Renderer.h"
@@ -663,6 +664,38 @@ void ENGINECALL D3D12Renderer::RenderMeshObject(
 	m_CurrThreadIndex = m_CurrThreadIndex % m_NumRenderThreads;
 }
 
+void ENGINECALL D3D12Renderer::RenderProceduralSphereObject(
+	IProceduralSphereObject* pProceduralObj,
+	const Matrix4x4* pMatWorld)
+{
+	RenderItem item = {};
+	item.Type = RENDER_ITEM_TYPE_PROCEDURAL_SPHERE_OBJ;
+	item.pObjHandle = pProceduralObj;
+	item.MeshObjParam.WorldMatrix = *pMatWorld;
+
+	bool bAdded = false;
+	switch (pProceduralObj->GetRenderPass())
+	{
+	case RENDER_PASS_OPAQUE:
+		ASSERT(false, "Procedural Sphere Object does not support Rasterization Opaque render pass.");
+		break;
+	case RENDER_PASS_TRANSPARENT:
+		ASSERT(false, "Procedural Sphere Object does not support Rasterization Transparent render pass.");
+		break;
+	case RENDER_PASS_RAYTRACING:
+		bAdded = m_ppRenderQueueRayTracing[m_CurrThreadIndex]->Add(&item);
+		ASSERT(bAdded, "Render Queue is full.");
+		break;
+	default:
+		ASSERT(false, "Invalid render pass.");
+		break;
+	}
+	ASSERT(bAdded, "Render Queue is full. or Invalid render pass.");
+
+	m_CurrThreadIndex++;
+	m_CurrThreadIndex = m_CurrThreadIndex % m_NumRenderThreads;
+}
+
 void ENGINECALL D3D12Renderer::RenderSpriteWithTex(
 	void* pSprObjHandle,
 	int posX, int posY,
@@ -715,6 +748,14 @@ IMeshObject* ENGINECALL D3D12Renderer::CreateBasicMeshObject()
 	pMeshObj->Initialize(this);
 
 	return pMeshObj;
+}
+
+IProceduralSphereObject* ENGINECALL D3D12Renderer::CreateProceduralSphereObject()
+{
+	ProceduralSphereObject* pSphereObj = new ProceduralSphereObject;
+	pSphereObj->Initialize(this);
+
+	return pSphereObj;
 }
 
 ISprite* ENGINECALL D3D12Renderer::CreateSpriteObject()

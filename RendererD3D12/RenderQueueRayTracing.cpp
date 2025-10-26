@@ -2,6 +2,7 @@
 #include "D3D12Renderer.h"
 #include "CommandListPool.h"
 #include "BasicMeshObject.h"
+#include "ProceduralSphereObject.h"
 #include "SpriteObject.h"
 #include "RootSignatureManager.h"
 #include "SimpleConstantBufferPool.h"
@@ -59,6 +60,11 @@ int RenderQueueRayTracing::Process(
 			meshObj->UpdateBLAS(threadIndex, pCurrCommandList, pItem->MeshObjParam.WorldMatrix);
 		}
 		break;
+		case RENDER_ITEM_TYPE_PROCEDURAL_SPHERE_OBJ:
+		{
+			ProceduralSphereObject* proceduralObj = reinterpret_cast<ProceduralSphereObject*>(pItem->pObjHandle);
+			proceduralObj->UpdateBLAS(threadIndex, pCurrCommandList, pItem->MeshObjParam.WorldMatrix);
+		}
 		case RENDER_ITEM_TYPE_SPRITE:
 		{
 			// Sprites are not supported in ray tracing queue.

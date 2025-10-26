@@ -296,6 +296,19 @@ static IMeshObject* createMeshFromFile(IRenderer* pRenderer, const char* filenam
 	return pMeshObj;
 }
 
+static IProceduralSphereObject* createProceduralSphereObject(IRenderer* pRenderer, FLOAT3 center, float radius)
+{
+	IProceduralSphereObject* pSphereObj = pRenderer->CreateProceduralSphereObject();
+	Material mtl(nullptr, nullptr, nullptr, nullptr, nullptr, MATERIAL_TYPE_MATTE, false);
+	pSphereObj->BeginCreateGeom(2, mtl);
+	Sphere s1 = { center, radius };
+	Sphere s2 = { center + FLOAT3{3.0f, 0.0f, 0.0f}, radius };
+	pSphereObj->InsertSphere(s1);
+	pSphereObj->InsertSphere(s2);
+	pSphereObj->EndCreateGeom();
+	return pSphereObj;
+}
+
 bool Game::Initialize(
 	HWND hWnd,
 	bool bEnableRayTracing,
@@ -402,6 +415,13 @@ bool Game::Initialize(
 
 				});
 
+		m_ECSWorld.observer<ProceduralSphereRenderer>("Init ProceduralSphereRenderer")
+			.event(flecs::OnSet)
+			.each([this](ProceduralSphereRenderer& m)
+				{
+
+				});
+
 		m_ECSWorld.observer<SpriteRenderer>("Init SpriteRenderer")
 			.event(flecs::OnSet)
 			.each([this](SpriteRenderer& s)
@@ -462,6 +482,21 @@ bool Game::Initialize(
 					if (mesh.Mesh)
 					{
 						m_pRenderer->RenderMeshObject(mesh.Mesh, &worldMat);
+					}
+				});
+
+		m_ECSWorld.system<const Position, const Rotation, const Scale, const ProceduralSphereRenderer>("Render Procedural")
+			.kind(phaseRender)
+			.multi_threaded(false)	// TODO: test multi threading
+			.each([this](const Position& p, const Rotation& r, const Scale& s, const ProceduralSphereRenderer& proc)
+				{
+					Matrix4x4 matScale = DirectX::XMMatrixScaling(s.x, s.y, s.z);
+					Matrix4x4 matRot = DirectX::XMMatrixRotationRollPitchYaw(r.Pitch, r.Yaw, r.Roll);
+					Matrix4x4 matTrans = DirectX::XMMatrixTranslation(p.x, p.y, p.z);
+					Matrix4x4 worldMat = matScale * matRot * matTrans;
+					if (proc.Sphere)
+					{
+						m_pRenderer->RenderProceduralSphereObject(proc.Sphere, &worldMat);
 					}
 				});
 
@@ -638,6 +673,34 @@ bool Game::Initialize(
 				.set<Rotation>({ rx, ry, rz })
 				.set<Scale>({ s, s, s })
 				.set<MeshRenderer>({ createKannaSphereMeshObject(m_pRenderer) });
+			m_Entities.emplace_back(e.id());
+		}
+
+		// Create procedural sphere entities
+		const uint PROC_SPHERE_OBJECT_COUNT = 5;
+		for (uint i = 0; i < PROC_SPHERE_OBJECT_COUNT; i++)
+		{
+			float x = (float)((rand() % 41) - 20);
+			float y = (float)((rand() % 7) - 3);
+			float z = (float)((rand() % 41) - 20);
+			float rx = DegToRad(static_cast<float>(rand() % 181));
+			float ry = DegToRad(static_cast<float>(rand() % 181));
+			float rz = DegToRad(static_cast<float>(rand() % 181));
+			float vx = (float)((rand() % 3) - 1);
+			float vz = (float)((rand() % 3) - 1);
+
+			float cx = (float)((rand() % 5) - 2);
+			float cy = (float)((rand() % 5) - 2);
+			float cz = (float)((rand() % 5) - 2);
+			float radius = (float)((rand() % 10) + 1);
+
+			flecs::entity e = m_ECSWorld.entity()
+				.set<Position>({ x, y, z })
+				.set<Velocity>({ vx, 0.0f, vz })
+				.set<Force>({ 0.0f, 0.0f, 0.0f })
+				.set<Rotation>({ rx, ry, rz })
+				.set<Scale>({ 1.0, 1.0, 1.0 })
+				.set<ProceduralSphereRenderer>({ createProceduralSphereObject(m_pRenderer, {cx, cy, cz}, radius) });
 			m_Entities.emplace_back(e.id());
 		}
 

@@ -19,8 +19,8 @@ public:
 		ID3D12Resource* pVertexBuffer,
 		uint numVertices,
 		uint vertexStrideBytes,
-		const std::vector<IndexedTriGroup> TriGroups,
-		const std::vector<bool> bTriGroupOpaques,
+		const std::vector<IndexedTriGroup>& TriGroups,
+		const std::vector<bool>& bTriGroupOpaques,
 		bool bAllowUpdate);
 	BLASHandle* AllocBLASSpheres(
 		ID3D12Resource* pAABBBuffer,
@@ -29,6 +29,7 @@ public:
 		ID3D12Resource* pSphereDataBuffer,
 		uint numSpheres,
 		uint sphereDataStrideBytes,
+		const RenderMaterial& material,
 		bool bOpaque,
 		bool bAllowUpdate);
 	void FreeBLAS(BLASHandle* pBLASHandle);

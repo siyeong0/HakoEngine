@@ -30,5 +30,8 @@
     <ClInclude Include="$(MSBuildThisFileDirectory)AtmosStruct.h">
       <Filter>Prelight</Filter>
     </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)IProceduralSphereObject.h">
+      <Filter>Renderer</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

@@ -164,6 +164,7 @@
     <ClInclude Include="FontManager.h" />
     <ClInclude Include="IRenderQueue.h" />
     <ClInclude Include="pch.h" />
+    <ClInclude Include="ProceduralSphereObject.h" />
     <ClInclude Include="PSOManager.h" />
     <ClInclude Include="RayTracingManager.h" />
     <ClInclude Include="RenderQueueRayTracing.h" />
@@ -202,6 +203,7 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="ProceduralSphereObject.cpp" />
     <ClCompile Include="PSOManager.cpp" />
     <ClCompile Include="RayTracingManager.cpp" />
     <ClCompile Include="RenderQueueRasterization.cpp" />

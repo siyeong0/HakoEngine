@@ -19,20 +19,162 @@ bool D3D12ResourceManager::Initialize(ID3D12Device5* pD3DDevice)
 	}
 
 	createCommandList();
-	
+
 	// Create synchronization objects.
 	createFence();
 
 	return true;
 }
 
-HRESULT D3D12ResourceManager::CreateVertexBuffer(size_t sizePerVertex, size_t numVertices, D3D12_VERTEX_BUFFER_VIEW* pOutVertexBufferView, ID3D12Resource** ppOutBuffer, void* pInitData, bool bUseGpuUploadHeaps)
+#include <d3dx12.h>
+
+HRESULT D3D12ResourceManager::CreateStructuredBuffer(
+	size_t elementStride,
+	size_t numElements,
+	ID3D12Resource** ppOutBuffer,
+	void* pInitData,
+	bool bUseGpuUploadHeaps)
+{
+	HRESULT hr = S_OK;
+
+	// Argument validation
+	ASSERT(m_pD3DDevice, "D3D device must be initialized.");
+	ASSERT(ppOutBuffer, "ppOutBuffer must not be null.");
+	ASSERT(elementStride > 0, "elementStride must be greater than zero.");
+	ASSERT((elementStride % 4) == 0, "elementStride must be a multiple of 4.");
+	ASSERT(numElements > 0, "numElements must be greater than zero.");
+	ASSERT(pInitData, "pInitData must not be null.");
+
+	*ppOutBuffer = nullptr;
+
+	ID3D12Resource* pBuffer = nullptr; // Final resource to return
+	ID3D12Resource* pUploadBuffer = nullptr; // Staging buffer when using DEFAULT heap
+	const UINT64 bufferSize = static_cast<UINT64>(elementStride) * static_cast<UINT64>(numElements);
+
+	if (bUseGpuUploadHeaps)
+	{
+		// UPLOAD-heap resident buffer (CPU-writable, convenient for frequent updates).
+		// Note: This can be bound as SRV/UAV but is generally slower than DEFAULT.
+		hr = m_pD3DDevice->CreateCommittedResource(
+			&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD),
+			D3D12_HEAP_FLAG_NONE,
+			&CD3DX12_RESOURCE_DESC::Buffer(bufferSize),
+			D3D12_RESOURCE_STATE_GENERIC_READ,   // Required state for UPLOAD heap resources
+			nullptr,
+			IID_PPV_ARGS(&pBuffer));
+
+		if (FAILED(hr))
+		{
+			ASSERT(false, "Failed to create UPLOAD structured buffer.");
+			goto lb_return;
+		}
+
+		void* mapped = nullptr;
+		CD3DX12_RANGE noRead(0, 0); // CPU won't read
+		hr = pBuffer->Map(0, &noRead, &mapped);
+		if (FAILED(hr))
+		{
+			ASSERT(false, "Failed to Map() UPLOAD buffer.");
+			goto lb_return;
+		}
+		std::memcpy(mapped, pInitData, static_cast<size_t>(bufferSize));
+		pBuffer->Unmap(0, nullptr);
+	}
+	else
+	{
+		// DEFAULT-heap resident buffer (GPU local, recommended for read on GPU).
+		// We'll upload via a transient UPLOAD buffer and transition to SRV-readable state.
+
+		// Create DEFAULT buffer in COMMON state
+		hr = m_pD3DDevice->CreateCommittedResource(
+			&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
+			D3D12_HEAP_FLAG_NONE,
+			&CD3DX12_RESOURCE_DESC::Buffer(bufferSize),
+			D3D12_RESOURCE_STATE_COMMON,
+			nullptr,
+			IID_PPV_ARGS(&pBuffer));
+
+		if (FAILED(hr))
+		{
+			ASSERT(false, "Failed to create DEFAULT structured buffer.");
+			goto lb_return;
+		}
+
+		// Create UPLOAD buffer and copy CPU data into it
+		hr = m_pD3DDevice->CreateCommittedResource(
+			&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD),
+			D3D12_HEAP_FLAG_NONE,
+			&CD3DX12_RESOURCE_DESC::Buffer(bufferSize),
+			D3D12_RESOURCE_STATE_GENERIC_READ,
+			nullptr,
+			IID_PPV_ARGS(&pUploadBuffer));
+
+		if (FAILED(hr))
+		{
+			ASSERT(false, "Failed to create UPLOAD buffer for staging.");
+			goto lb_return;
+		}
+
+		void* mapped = nullptr;
+		CD3DX12_RANGE noRead(0, 0); // CPU won't read
+		hr = pUploadBuffer->Map(0, &noRead, &mapped);
+		if (FAILED(hr))
+		{
+			ASSERT(false, "Failed to Map() UPLOAD staging buffer.");
+			goto lb_return;
+		}
+		std::memcpy(mapped, pInitData, static_cast<size_t>(bufferSize));
+		pUploadBuffer->Unmap(0, nullptr);
+
+		hr = m_pCommandAllocator->Reset();
+		ASSERT(SUCCEEDED(hr), "Failed to Reset CommandAllocator.");
+		hr = m_pCommandList->Reset(m_pCommandAllocator, nullptr);
+		ASSERT(SUCCEEDED(hr), "Failed to Reset CommandList.");
+
+		m_pCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(pBuffer, D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST));
+		m_pCommandList->CopyBufferRegion(pBuffer, 0, pUploadBuffer, 0, bufferSize);
+		m_pCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(pBuffer, D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE));
+
+		hr = m_pCommandList->Close();
+		ASSERT(SUCCEEDED(hr), "Failed to Close CommandList.");
+
+		ID3D12CommandList* lists[] = { m_pCommandList };
+		m_pCommandQueue->ExecuteCommandLists(_countof(lists), lists);
+
+		// GPU sync to ensure upload finishes before we destroy the staging buffer
+		fence();
+		waitForFenceValue();
+	}
+
+	// Output
+	*ppOutBuffer = pBuffer;
+
+lb_return:
+	// Release staging buffer if any (safe to pass nullptr)
+	SAFE_RELEASE(pUploadBuffer);
+
+	// On failure, release created resource and null the out param
+	if (FAILED(hr))
+	{
+		SAFE_RELEASE(pBuffer);
+		if (ppOutBuffer) *ppOutBuffer = nullptr;
+	}
+
+	return hr;
+}
+HRESULT D3D12ResourceManager::CreateVertexBuffer(
+	size_t sizePerVertex,
+	size_t numVertices,
+	D3D12_VERTEX_BUFFER_VIEW* pOutVertexBufferView,
+	ID3D12Resource** ppOutBuffer,
+	void* pInitData,
+	bool bUseGpuUploadHeaps)
 {
 	HRESULT hr = S_OK;
 
 	D3D12_VERTEX_BUFFER_VIEW vertexBufferView = {};
-	ID3D12Resource*	pVertexBuffer = nullptr;
-	ID3D12Resource*	pUploadBuffer = nullptr;
+	ID3D12Resource* pVertexBuffer = nullptr;
+	ID3D12Resource* pUploadBuffer = nullptr;
 	size_t vertexBufferSize = sizePerVertex * numVertices;
 
 	D3D12_HEAP_PROPERTIES heapProp = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT);
@@ -86,8 +228,8 @@ HRESULT D3D12ResourceManager::CreateVertexBuffer(size_t sizePerVertex, size_t nu
 			{
 				ASSERT(false, "Failed to CreateCommittedResource.");
 				goto lb_return;
-			}	
-		
+			}
+
 			// Copy the triangle data to the vertex buffer(UploadBuffer on System Memory).
 			UINT8* pVertexDataBegin = nullptr;
 			CD3DX12_RANGE readRange(0, 0);        // We do not intend to read from this resource on the CPU.
@@ -114,7 +256,7 @@ HRESULT D3D12ResourceManager::CreateVertexBuffer(size_t sizePerVertex, size_t nu
 			waitForFenceValue();
 		}
 	}
-	
+
 	// Initialize the vertex buffer view.
 	vertexBufferView.BufferLocation = pVertexBuffer->GetGPUVirtualAddress();
 	vertexBufferView.StrideInBytes = static_cast<uint>(sizePerVertex);
@@ -128,15 +270,20 @@ lb_return:
 	return hr;
 }
 
-HRESULT D3D12ResourceManager::CreateIndexBuffer(size_t numIndices, D3D12_INDEX_BUFFER_VIEW* pOutIndexBufferView, ID3D12Resource **ppOutBuffer, void* pInitData, bool bUseGpuUploadHeaps)
+HRESULT D3D12ResourceManager::CreateIndexBuffer(
+	size_t numIndices,
+	D3D12_INDEX_BUFFER_VIEW* pOutIndexBufferView,
+	ID3D12Resource** ppOutBuffer,
+	void* pInitData,
+	bool bUseGpuUploadHeaps)
 {
 	HRESULT hr = S_OK;
 
 	D3D12_INDEX_BUFFER_VIEW	indexBufferView = {};
-	ID3D12Resource*	pIndexBuffer = nullptr;
-	ID3D12Resource*	pUploadBuffer = nullptr;
+	ID3D12Resource* pIndexBuffer = nullptr;
+	ID3D12Resource* pUploadBuffer = nullptr;
 	size_t indexBufferSize = sizeof(WORD) * numIndices;
-	
+
 	D3D12_HEAP_PROPERTIES heapProp = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT);
 	if (bUseGpuUploadHeaps)
 	{
@@ -221,7 +368,7 @@ HRESULT D3D12ResourceManager::CreateIndexBuffer(size_t numIndices, D3D12_INDEX_B
 			waitForFenceValue();
 		}
 	}
-	
+
 
 	// Initialize the vertex buffer view.
 	indexBufferView.BufferLocation = pIndexBuffer->GetGPUVirtualAddress();
@@ -236,12 +383,16 @@ lb_return:
 	return hr;
 }
 
-bool D3D12ResourceManager::CreateTexture(ID3D12Resource** ppOutResource, uint width, uint height, DXGI_FORMAT format, const uint8_t* pInitImage)
+bool D3D12ResourceManager::CreateTexture(
+	ID3D12Resource** ppOutResource,
+	uint width, uint height,
+	DXGI_FORMAT format,
+	const uint8_t* pInitImage)
 {
 	HRESULT hr = S_OK;
 
-	ID3D12Resource*	pTexResource = nullptr;
-	ID3D12Resource*	pUploadBuffer = nullptr;
+	ID3D12Resource* pTexResource = nullptr;
+	ID3D12Resource* pUploadBuffer = nullptr;
 
 	D3D12_RESOURCE_DESC textureDesc = {};
 	textureDesc.MipLevels = 1;
@@ -286,7 +437,7 @@ bool D3D12ResourceManager::CreateTexture(ID3D12Resource** ppOutResource, uint wi
 			nullptr,
 			IID_PPV_ARGS(&pUploadBuffer));
 		ASSERT(SUCCEEDED(hr), "Failed to CreateCommittedResource.");
-		
+
 		HRESULT hr = pUploadBuffer->Map(0, &readRange, reinterpret_cast<void**>(&pMappedPtr));
 		ASSERT(SUCCEEDED(hr), "Failed to Map.");
 
@@ -296,7 +447,7 @@ bool D3D12ResourceManager::CreateTexture(ID3D12Resource** ppOutResource, uint wi
 		{
 			memcpy(pDest, pSrc, static_cast<size_t>(width) * 4);
 			pSrc += (width * 4);
-			pDest += footprint.Footprint.RowPitch;			
+			pDest += footprint.Footprint.RowPitch;
 		}
 		// Unmap
 		pUploadBuffer->Unmap(0, nullptr);
@@ -304,24 +455,28 @@ bool D3D12ResourceManager::CreateTexture(ID3D12Resource** ppOutResource, uint wi
 		UpdateTextureForWrite(pTexResource, pUploadBuffer);
 
 		SAFE_RELEASE(pUploadBuffer);
-		
+
 	}
 	*ppOutResource = pTexResource;
 
 	return true;
 }
 
-bool D3D12ResourceManager::CreateTexturePair(ID3D12Resource** ppOutResource, ID3D12Resource** ppOutUploadBuffer, uint Width, uint Height, DXGI_FORMAT format)
+bool D3D12ResourceManager::CreateTexturePair(
+	ID3D12Resource** ppOutResource,
+	ID3D12Resource** ppOutUploadBuffer,
+	uint width, uint height,
+	DXGI_FORMAT format)
 {
 	HRESULT hr = S_OK;
-	ID3D12Resource*	pTexResource = nullptr;
-	ID3D12Resource*	pUploadBuffer = nullptr;
+	ID3D12Resource* pTexResource = nullptr;
+	ID3D12Resource* pUploadBuffer = nullptr;
 
 	D3D12_RESOURCE_DESC textureDesc = {};
 	textureDesc.MipLevels = 1;
 	textureDesc.Format = format;	// ex) DXGI_FORMAT_R8G8B8A8_UNORM, etc...
-	textureDesc.Width = Width;
-	textureDesc.Height = Height;
+	textureDesc.Width = width;
+	textureDesc.Height = height;
 	textureDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
 	textureDesc.DepthOrArraySize = 1;
 	textureDesc.SampleDesc.Count = 1;
@@ -347,19 +502,23 @@ bool D3D12ResourceManager::CreateTexturePair(ID3D12Resource** ppOutResource, ID3
 		nullptr,
 		IID_PPV_ARGS(&pUploadBuffer));
 	ASSERT(SUCCEEDED(hr), "Failed to CreateCommittedResource.");
-	
+
 	*ppOutResource = pTexResource;
 	*ppOutUploadBuffer = pUploadBuffer;
 
 	return true;
 }
 
-bool D3D12ResourceManager::CreateTextureFromFile(ID3D12Resource** ppOutResource, D3D12_RESOURCE_DESC* pOutDesc, const wchar_t* wchFileName, bool bUseGpuUploadHeaps)
+bool D3D12ResourceManager::CreateTextureFromFile(
+	ID3D12Resource** ppOutResource,
+	D3D12_RESOURCE_DESC* pOutDesc,
+	const wchar_t* wchFileName,
+	bool bUseGpuUploadHeaps)
 {
 	HRESULT hr = S_OK;
 
-	ID3D12Resource*	pTexResource = nullptr;
-	ID3D12Resource*	pUploadBuffer = nullptr;
+	ID3D12Resource* pTexResource = nullptr;
+	ID3D12Resource* pUploadBuffer = nullptr;
 
 	D3D12_HEAP_PROPERTIES heapProp = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT);
 	if (bUseGpuUploadHeaps)
@@ -382,8 +541,9 @@ bool D3D12ResourceManager::CreateTextureFromFile(ID3D12Resource** ppOutResource,
 	{
 		for (uint i = 0; i < subresoucesize; i++)
 		{
-			pTexResource->WriteToSubresource(i, nullptr, subresouceData[i].pData, 
-				static_cast<uint>(subresouceData[i].RowPitch), static_cast<uint>(subresouceData[i].SlicePitch));		}
+			pTexResource->WriteToSubresource(i, nullptr, subresouceData[i].pData,
+				static_cast<uint>(subresouceData[i].RowPitch), static_cast<uint>(subresouceData[i].SlicePitch));
+		}
 	}
 	else
 	{
@@ -398,7 +558,7 @@ bool D3D12ResourceManager::CreateTextureFromFile(ID3D12Resource** ppOutResource,
 		ASSERT(SUCCEEDED(hr), "Failed to CreateCommittedResource.");
 
 		hr = m_pCommandAllocator->Reset();
-		ASSERT(SUCCEEDED(hr), "Failed to Reset CommandAllocator.");	
+		ASSERT(SUCCEEDED(hr), "Failed to Reset CommandAllocator.");
 
 		hr = m_pCommandList->Reset(m_pCommandAllocator, nullptr);
 		ASSERT(SUCCEEDED(hr), "Failed to Reset CommandList.");
@@ -438,7 +598,7 @@ void D3D12ResourceManager::UpdateTextureForWrite(ID3D12Resource* pDestTexResourc
 	ASSERT(Desc.MipLevels <= (uint)_countof(footprint));
 
 	m_pD3DDevice->GetCopyableFootprints(&Desc, 0, Desc.MipLevels, 0, footprint, rows, rowSizes, &totalBytes);
-	
+
 	hr = m_pCommandAllocator->Reset();
 	ASSERT(SUCCEEDED(hr), "Failed to Reset CommandAllocator.");
 
