@@ -1047,7 +1047,6 @@ void RayTracingManager::createRaytracingPipelineStateObject()
 
 	CD3DX12_RAYTRACING_SHADER_CONFIG_SUBOBJECT* pShaderConfig = raytracingPipeline.CreateSubobject<CD3DX12_RAYTRACING_SHADER_CONFIG_SUBOBJECT>();
 	UINT payloadSize = PAYLOAD_SIZE;
-	// UINT attributeSize = 2 * sizeof(float); // float2 barycentrics
 	UINT attributeSize = 12;
 	pShaderConfig->Config(payloadSize, attributeSize);
 

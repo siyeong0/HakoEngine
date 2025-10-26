@@ -715,7 +715,7 @@ bool Game::Initialize(
 		}
 
 		// Create procedural sphere entities
-		const uint PROC_SPHERE_OBJECT_COUNT = 0;
+		const uint PROC_SPHERE_OBJECT_COUNT = 1;
 		for (uint i = 0; i < PROC_SPHERE_OBJECT_COUNT; i++)
 		{
 			float x = (float)((rand() % 41) - 20);
