@@ -490,7 +490,8 @@ bool Game::Initialize(
 			.multi_threaded(false)	// TODO: test multi threading
 			.each([this](const Position& p, const Rotation& r, const Scale& s, const ProceduralSphereRenderer& proc)
 				{
-					Matrix4x4 matScale = DirectX::XMMatrixScaling(s.x, s.y, s.z);
+					// Matrix4x4 matScale = DirectX::XMMatrixScaling(s.x, s.y, s.z);
+					Matrix4x4 matScale = DirectX::XMMatrixIdentity(); // Procedural sphere already has radius
 					Matrix4x4 matRot = DirectX::XMMatrixRotationRollPitchYaw(r.Pitch, r.Yaw, r.Roll);
 					Matrix4x4 matTrans = DirectX::XMMatrixTranslation(p.x, p.y, p.z);
 					Matrix4x4 worldMat = matScale * matRot * matTrans;
@@ -607,7 +608,7 @@ bool Game::Initialize(
 			m_Entities.emplace_back(e.id());
 		}
 		// Create kitty box entities
-		const uint KITTY_BOX_OBJECT_COUNT = 30;
+		const uint KITTY_BOX_OBJECT_COUNT = 0;
 		for (uint i = 0; i < KITTY_BOX_OBJECT_COUNT; i++)
 		{
 			float x = (float)((rand() % 41) - 20);
@@ -630,7 +631,7 @@ bool Game::Initialize(
 			m_Entities.emplace_back(e.id());
 		}
 		// Create megayuchi box entities
-		const uint MEGA_BOX_OBJECT_COUNT = 30;
+		const uint MEGA_BOX_OBJECT_COUNT = 0;
 		for (uint i = 0; i < MEGA_BOX_OBJECT_COUNT; i++)
 		{
 			float x = (float)((rand() % 41) - 20);
@@ -653,7 +654,7 @@ bool Game::Initialize(
 			m_Entities.emplace_back(e.id());
 		}
 		// Create sphere entities
-		const uint SPHERE_OBJECT_COUNT = 30;
+		const uint SPHERE_OBJECT_COUNT = 1;
 		for (uint i = 0; i < SPHERE_OBJECT_COUNT; i++)
 		{
 			float x = (float)((rand() % 41) - 20);
@@ -671,13 +672,13 @@ bool Game::Initialize(
 				.set<Velocity>({ vx, 0.0f, vz })
 				.set<Force>({ 0.0f, 0.0f, 0.0f })
 				.set<Rotation>({ rx, ry, rz })
-				.set<Scale>({ s, s, s })
+				.set<Scale>({ 1.0f, 1.0f, 1.0f })
 				.set<MeshRenderer>({ createKannaSphereMeshObject(m_pRenderer) });
 			m_Entities.emplace_back(e.id());
 		}
 
 		// Create procedural sphere entities
-		const uint PROC_SPHERE_OBJECT_COUNT = 5;
+		const uint PROC_SPHERE_OBJECT_COUNT = 1;
 		for (uint i = 0; i < PROC_SPHERE_OBJECT_COUNT; i++)
 		{
 			float x = (float)((rand() % 41) - 20);
@@ -688,7 +689,7 @@ bool Game::Initialize(
 			float rz = DegToRad(static_cast<float>(rand() % 181));
 			float vx = (float)((rand() % 3) - 1);
 			float vz = (float)((rand() % 3) - 1);
-
+			float s = (float)((rand() % 4) + 1) * 0.5f;
 			float cx = (float)((rand() % 5) - 2);
 			float cy = (float)((rand() % 5) - 2);
 			float cz = (float)((rand() % 5) - 2);
@@ -696,10 +697,10 @@ bool Game::Initialize(
 
 			flecs::entity e = m_ECSWorld.entity()
 				.set<Position>({ x, y, z })
-				.set<Velocity>({ vx, 0.0f, vz })
-				.set<Force>({ 0.0f, 0.0f, 0.0f })
+				// .set<Velocity>({ vx, 0.0f, vz })
+				// .set<Force>({ 0.0f, 0.0f, 0.0f })
 				.set<Rotation>({ rx, ry, rz })
-				.set<Scale>({ 1.0, 1.0, 1.0 })
+				.set<Scale>({ 2, 2, 2 })
 				.set<ProceduralSphereRenderer>({ createProceduralSphereObject(m_pRenderer, {cx, cy, cz}, radius) });
 			m_Entities.emplace_back(e.id());
 		}
@@ -810,7 +811,7 @@ static FLOAT3 ComputeSunDir(
 bool Game::Update(uint64_t currTick)
 {
 	const uint64_t elapsedMs = currTick - m_PrevUpdateTick;
-	const float dt = (float)elapsedMs * 0.001f; // ms -> s
+	const float dt = (float)elapsedMs * 0.001f / 3600.0f; // ms -> h
 	m_PrevUpdateTick = currTick;
 
 	if (m_CamOffsetX || m_CamOffsetY || m_CamOffsetZ)
@@ -820,13 +821,13 @@ bool Game::Update(uint64_t currTick)
 
 	m_ECSWorld.progress(dt);
 
-	m_TimeOfDay += dt * 0.2f;
+	m_TimeOfDay += dt * 10.0f;
 	m_TimeOfDay = fmodf(m_TimeOfDay, 24.0f); // 0 - 24 hours
 
 	FLOAT3 sunDir = ComputeSunDir(m_TimeOfDay, /*latitude*/37.6f, /*declination*/15.0f);
 
 	m_pRenderer->SetSunDir(-sunDir);
-
+	std::cout << m_TimeOfDay << std::endl;
 	return true;
 }
 
