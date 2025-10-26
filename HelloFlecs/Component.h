@@ -45,6 +45,11 @@ struct ProceduralSphereRenderer
 	IProceduralSphereObject* Sphere = nullptr;
 };
 
+struct CasperRenderer
+{
+	ICasperObject* Casper = nullptr;
+};
+
 struct SpriteRenderer
 {
 	std::wstring SpriteFileName;

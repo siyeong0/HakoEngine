@@ -114,6 +114,9 @@
     <Filter Include="RenderObject\ProceduralSphereObject">
       <UniqueIdentifier>{e1703ffa-d85d-482a-8279-dfea5815d6fd}</UniqueIdentifier>
     </Filter>
+    <Filter Include="RenderObject\CasperObject">
+      <UniqueIdentifier>{d46a6d39-1545-44da-ac5c-cca4a03ad98f}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h">
@@ -206,6 +209,9 @@
     <ClInclude Include="ProceduralSphereObject.h">
       <Filter>RenderObject\ProceduralSphereObject</Filter>
     </ClInclude>
+    <ClInclude Include="CasperObject.h">
+      <Filter>RenderObject\CasperObject</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="dllmain.cpp">
@@ -289,6 +295,9 @@
     <ClCompile Include="ProceduralSphereObject.cpp">
       <Filter>RenderObject\ProceduralSphereObject</Filter>
     </ClCompile>
+    <ClCompile Include="CasperObject.cpp">
+      <Filter>RenderObject\CasperObject</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
@@ -331,6 +340,9 @@
       <Filter>Shaders\Rasterization</Filter>
     </CustomBuild>
     <CustomBuild Include="..\Shaders\Raytracing_Proc.hlsl">
+      <Filter>Shaders\Raytracing</Filter>
+    </CustomBuild>
+    <CustomBuild Include="..\Shaders\Raytracing_Casper.hlsl">
       <Filter>Shaders\Raytracing</Filter>
     </CustomBuild>
   </ItemGroup>

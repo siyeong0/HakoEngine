@@ -31,7 +31,7 @@ bool ENGINECALL ProceduralSphereObject::BeginCreateGeom(uint numSpheres, const M
 {
 	m_MaxNumSpheres = numSpheres;
 	m_SphereDataArray.reserve(m_MaxNumSpheres);
-	
+
 	m_Material.BaseColor = material.BaseColor;
 	m_Material.Opacity = material.Opacity;
 	m_Material.SpecularColor = material.SpecularColor;

@@ -30,12 +30,19 @@ const wchar_t* g_AnyHitShaderNames[NUM_RAYTRACING_SHADER_TYPES] =
 	L"MyAnyHitShader_RadianceRay",
 	L"MyAnyHitShader_ShadowRay"
 };
-// Procedural (spheres)
-const wchar_t* g_IntersectionShaderName = L"MyIntersectionShader_Sphere";
+// Procedural (sphere)
+const wchar_t* g_IntersectionShaderName_Proc = L"MyIntersectionShader_Sphere";
 const wchar_t* g_ClosestHitShaderNames_Proc[NUM_RAYTRACING_SHADER_TYPES] =
 {
 	L"MyClosestHitShader_RadianceRay_Proc",
 	L"MyClosestHitShader_ShadowRay_Proc"
+};
+// Procedural (casper)
+const wchar_t* g_IntersectionShaderName_Casper = L"MyIntersectionShader_Casper";
+const wchar_t* g_ClosestHitShaderNames_Casper[NUM_RAYTRACING_SHADER_TYPES] =
+{
+	L"MyClosestHitShader_RadianceRay_Casper",
+	L"MyClosestHitShader_ShadowRay_Casper"
 };
 
 // Hit group
@@ -48,6 +55,11 @@ const wchar_t* g_HitGroupNames_Proc[NUM_RAYTRACING_SHADER_TYPES] =
 {
 	L"MyHitGroup_Proc_RadianceRay",
 	L"MyHitGroup_Proc_ShadowRay"
+};
+const wchar_t* g_HitGroupNames_Casper[NUM_RAYTRACING_SHADER_TYPES] =
+{
+	L"MyHitGroup_Casper_RadianceRay",
+	L"MyHitGroup_Casper_ShadowRay"
 };
 
 bool RayTracingManager::Initialize(D3D12Renderer* pRenderer, uint width, uint height, uint maxNumBLASs)
@@ -85,6 +97,7 @@ bool RayTracingManager::Initialize(D3D12Renderer* pRenderer, uint width, uint he
 
 	m_pRayShader = pShaderManager->CreateShaderDXC(L"Raytracing.hlsl", L"", L"lib_6_3", 0);
 	m_pRayProcShader = pShaderManager->CreateShaderDXC(L"Raytracing_Proc.hlsl", L"", L"lib_6_3", 0);
+	m_pRayCasperShader = pShaderManager->CreateShaderDXC(L"Raytracing_Casper.hlsl", L"", L"lib_6_3", 0);
 
 	createOutputDiffuseBuffer(m_Width, m_Height);
 	createOutputDepthBuffer(m_Width, m_Height);
@@ -414,11 +427,11 @@ BLASHandle* RayTracingManager::AllocBLASSpheres(
 		CD3DX12_CPU_DESCRIPTOR_HANDLE cpuS1(m_pShaderVisibleDescriptorHeap->GetCPUDescriptorHandleForHeapStart(), descriptorIndex, m_DescriptorSize);
 		CD3DX12_GPU_DESCRIPTOR_HANDLE gpuS1(m_pShaderVisibleDescriptorHeap->GetGPUDescriptorHandleForHeapStart(), descriptorIndex, m_DescriptorSize);
 
-		D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
-		srvDesc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
-		srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+		D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
 
 		// t0: SphereParamBuffer (structured)
+		srvDesc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
+		srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
 		srvDesc.Format = DXGI_FORMAT_UNKNOWN;
 		srvDesc.Buffer.FirstElement = 0;
 		srvDesc.Buffer.NumElements = numSpheres;
@@ -442,6 +455,91 @@ BLASHandle* RayTracingManager::AllocBLASSpheres(
 
 		// 상수(필요시): Proc에 맞는 머티리얼/옵션 세팅
 		pBLASHandle->RootArgArray[0].Constants.Material = material;
+	}
+
+	m_GlobalBLASHandleList.emplace_back(pBLASHandle);
+	m_UpdateAccelerationStructureFlags = UPDATE_ACCELERATION_STRCTURE_TYPE_HIT_GROUP_SHADER_TABLE | UPDATE_ACCELERATION_STRCTURE_TYPE_TLAS;
+	return pBLASHandle;
+}
+
+BLASHandle* RayTracingManager::AllocBLASCasper(
+	ID3D12Resource* pAABBBuffer,
+	uint numAABBs,
+	uint aabbStrideBytes,
+	const std::vector<std::pair<TextureHandle*, TextureHandle*>>& atlases,
+	const RenderMaterial& material,
+	bool bOpaque,
+	bool bAllowUpdate)
+{
+	BLASHandle* pBLASHandle = nullptr;
+	ID3D12Device5* pD3DDevice = m_pRenderer->GetD3DDevice();
+
+	if (m_GlobalBLASHandleList.size() >= m_MaxNumBLASs)
+	{
+		ASSERT(false, "Exceeded maximum number of BLAS instances.");
+		return nullptr;
+	}
+	ASSERT(numAABBs < MAX_TRIGROUP_COUNT_PER_BLAS, "Too many AABBs in BLAS");
+
+	uint32_t index = m_pIndexCreator->Alloc();
+	ASSERT(index != (uint32_t)-1, "Failed to allocate index for BLAS instance.");
+
+	pBLASHandle = new BLASHandle{};
+	pBLASHandle->pBLAS = nullptr;
+	pBLASHandle->ID = index;
+	pBLASHandle->bAllowUpdate = bAllowUpdate;
+	pBLASHandle->ShaderRecordIndex = std::numeric_limits<uint32_t>::max();
+	pBLASHandle->Kind = BLASHandle::GeomKind::Casper;
+	pBLASHandle->NumVertices = 0;
+	pBLASHandle->NumTriGroups = 1;
+
+	// Fill AABB geometry descs
+	D3D12_RAYTRACING_GEOMETRY_DESC* pGeomDesc = pBLASHandle->pGeomDescList;
+	pGeomDesc->Type = D3D12_RAYTRACING_GEOMETRY_TYPE_PROCEDURAL_PRIMITIVE_AABBS;
+	pGeomDesc->AABBs.AABBCount = numAABBs;
+	pGeomDesc->AABBs.AABBs.StartAddress = pAABBBuffer->GetGPUVirtualAddress();
+	pGeomDesc->AABBs.AABBs.StrideInBytes = aabbStrideBytes; // 보통 sizeof(D3D12_RAYTRACING_AABB)=24
+	pGeomDesc->Flags = bOpaque ? D3D12_RAYTRACING_GEOMETRY_FLAG_OPAQUE : D3D12_RAYTRACING_GEOMETRY_FLAG_NONE;
+
+	// Local root: SRV 테이블(space1) 구성
+	{
+		// pBLASHandle->RootArgArray.resize(numAABBs);
+		pBLASHandle->RootArgArray.resize(1);
+
+		UINT descriptorIndex = DISPATCH_DESCRIPTOR_INDEX_COUNT + (LOCAL_ROOT_PARAM_DESCRIPTOR_COUNT * pBLASHandle->ID * MAX_TRIGROUP_COUNT_PER_BLAS);
+
+		// ---- space1 (t0..t2): CASPER atlas textures, AABB buffer ----
+		for (size_t i = 0; i < atlases.size(); ++i)
+		{
+			CD3DX12_CPU_DESCRIPTOR_HANDLE cpuS1(m_pShaderVisibleDescriptorHeap->GetCPUDescriptorHandleForHeapStart(), descriptorIndex, m_DescriptorSize);
+			CD3DX12_GPU_DESCRIPTOR_HANDLE gpuS1(m_pShaderVisibleDescriptorHeap->GetGPUDescriptorHandleForHeapStart(), descriptorIndex, m_DescriptorSize);
+
+			auto [pDiffuse, pDepth] = atlases[i];
+			// t0: Diffuse
+			pD3DDevice->CopyDescriptorsSimple(1, cpuS1, pDiffuse->SRV, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+			cpuS1.Offset(1, m_DescriptorSize);
+			// t1: Depth
+			pD3DDevice->CopyDescriptorsSimple(1, cpuS1, pDepth->SRV, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+			cpuS1.Offset(1, m_DescriptorSize);
+
+			// t2: AABB buffer (structured)
+			D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
+			srvDesc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
+			srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+			srvDesc.Format = DXGI_FORMAT_UNKNOWN;
+			srvDesc.Buffer.FirstElement = 0;
+			srvDesc.Buffer.NumElements = numAABBs;
+			srvDesc.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_NONE;
+			srvDesc.Buffer.StructureByteStride = aabbStrideBytes;
+			m_pD3DDevice->CreateShaderResourceView(pAABBBuffer, &srvDesc, cpuS1);
+			cpuS1.Offset(1, m_DescriptorSize);
+
+			pBLASHandle->RootArgArray[i].SrvTable = gpuS1;
+
+			pBLASHandle->RootArgArray[i].Constants.Material = material;
+
+			descriptorIndex += 4;
+		}
 	}
 
 	m_GlobalBLASHandleList.emplace_back(pBLASHandle);
@@ -740,11 +838,15 @@ void RayTracingManager::updateHitGroupShaderTable(uint numShaderRecords)
 	// Tri & Proc hitgroup identifiers
 	void* pHitGroupId_Tri[NUM_RAYTRACING_SHADER_TYPES] = {};
 	void* pHitGroupId_Proc[NUM_RAYTRACING_SHADER_TYPES] = {};
+	void* pHitGroupId_Casper[NUM_RAYTRACING_SHADER_TYPES] = {};
 	for (uint i = 0; i < NUM_RAYTRACING_SHADER_TYPES; ++i)
 	{
 		pHitGroupId_Tri[i] = pStateObjectProperties->GetShaderIdentifier(g_HitGroupNames[i]);
 		pHitGroupId_Proc[i] = pStateObjectProperties->GetShaderIdentifier(g_HitGroupNames_Proc[i]);
-		ASSERT(pHitGroupId_Tri[i] && pHitGroupId_Proc[i], "Failed to get hit group shader identifier.");
+		pHitGroupId_Casper[i] = pStateObjectProperties->GetShaderIdentifier(g_HitGroupNames_Casper[i]);
+		ASSERT(pHitGroupId_Tri[i], "Failed to get hit group shader identifier.");
+		ASSERT(pHitGroupId_Proc[i], "Failed to get hit group shader identifier.");
+		ASSERT(pHitGroupId_Casper[i], "Failed to get hit group shader identifier.");
 	}
 	m_pHitGroupShaderTable->CommitResource(numShaderRecords);
 
@@ -758,12 +860,30 @@ void RayTracingManager::updateHitGroupShaderTable(uint numShaderRecords)
 		{
 			for (uint j = 0; j < NUM_RAYTRACING_SHADER_TYPES; ++j)
 			{
-				/*ShaderRecord record = ShaderRecord(pHitGroupShaderIdentifier[j], m_ShaderIdentifierSize, &curr->RootArgArray[i], sizeof(RootArgument));
-				m_pHitGroupShaderTable->InsertShaderRecord(&record);
-				++shaderRecordIndex;*/
-				void* id = (curr->Kind == BLASHandle::GeomKind::Triangles) ? pHitGroupId_Tri[j] : pHitGroupId_Proc[j];
-				void* rootArg = (curr->Kind == BLASHandle::GeomKind::Triangles) ? (void*)(&curr->RootArgArray[i]) : (void*)(&curr->RootArgArray[i]);
-				size_t rootArgSize = (curr->Kind == BLASHandle::GeomKind::Triangles) ? sizeof(RootArgument) : sizeof(RootArgument);
+				void* id = nullptr;
+				void* rootArg = nullptr;
+				size_t rootArgSize = 0;
+				switch (curr->Kind)
+				{
+				case BLASHandle::GeomKind::Triangles:
+					id = pHitGroupId_Tri[j];
+					rootArg = (void*)(&curr->RootArgArray[i]);
+					rootArgSize = sizeof(RootArgument);
+					break;
+				case BLASHandle::GeomKind::Procedural:
+					id = pHitGroupId_Proc[j];
+					rootArg = (void*)(&curr->RootArgArray[i]);
+					rootArgSize = sizeof(RootArgument);
+					break;
+				case BLASHandle::GeomKind::Casper:
+					id = pHitGroupId_Casper[j];
+					rootArg = (void*)(&curr->RootArgArray[i]);
+					rootArgSize = sizeof(RootArgument);
+					break;
+				default:
+					ASSERT(false, "Unknown BLAS geometry kind.");
+					break;
+				}
 				ShaderRecord record = ShaderRecord(id, m_ShaderIdentifierSize, rootArg, rootArgSize);
 				m_pHitGroupShaderTable->InsertShaderRecord(&record);
 				++shaderRecordIndex;
@@ -881,10 +1001,20 @@ void RayTracingManager::createRaytracingPipelineStateObject()
 	D3D12_SHADER_BYTECODE libdxilProc = CD3DX12_SHADER_BYTECODE(m_pRayProcShader->CodeBuffer, m_pRayProcShader->CodeSize);
 
 	pLibProc->SetDXILLibrary(&libdxilProc);
-	pLibProc->DefineExport(g_IntersectionShaderName);
+	pLibProc->DefineExport(g_IntersectionShaderName_Proc);
 	for (uint i = 0; i < NUM_RAYTRACING_SHADER_TYPES; ++i)
 	{
 		pLibProc->DefineExport(g_ClosestHitShaderNames_Proc[i]);
+	}
+
+	CD3DX12_DXIL_LIBRARY_SUBOBJECT* pLibCasper = raytracingPipeline.CreateSubobject<CD3DX12_DXIL_LIBRARY_SUBOBJECT>();
+	D3D12_SHADER_BYTECODE libdxilCasper = CD3DX12_SHADER_BYTECODE(m_pRayCasperShader->CodeBuffer, m_pRayCasperShader->CodeSize);
+
+	pLibCasper->SetDXILLibrary(&libdxilCasper);
+	pLibCasper->DefineExport(g_IntersectionShaderName_Casper);
+	for (uint i = 0; i < NUM_RAYTRACING_SHADER_TYPES; ++i)
+	{
+		pLibCasper->DefineExport(g_ClosestHitShaderNames_Casper[i]);
 	}
 
 	// Triangle hitgroups (closest + any)
@@ -901,8 +1031,17 @@ void RayTracingManager::createRaytracingPipelineStateObject()
 	{
 		CD3DX12_HIT_GROUP_SUBOBJECT* pHitGroup = raytracingPipeline.CreateSubobject<CD3DX12_HIT_GROUP_SUBOBJECT>();
 		pHitGroup->SetClosestHitShaderImport(g_ClosestHitShaderNames_Proc[i]);
-		pHitGroup->SetIntersectionShaderImport(g_IntersectionShaderName);
+		pHitGroup->SetIntersectionShaderImport(g_IntersectionShaderName_Proc);
 		pHitGroup->SetHitGroupExport(g_HitGroupNames_Proc[i]);
+		pHitGroup->SetHitGroupType(D3D12_HIT_GROUP_TYPE_PROCEDURAL_PRIMITIVE);
+	}
+	// Casper hitgroups (intersection + closest)
+	for (uint i = 0; i < NUM_RAYTRACING_SHADER_TYPES; ++i)
+	{
+		CD3DX12_HIT_GROUP_SUBOBJECT* pHitGroup = raytracingPipeline.CreateSubobject<CD3DX12_HIT_GROUP_SUBOBJECT>();
+		pHitGroup->SetClosestHitShaderImport(g_ClosestHitShaderNames_Casper[i]);
+		pHitGroup->SetIntersectionShaderImport(g_IntersectionShaderName_Casper);
+		pHitGroup->SetHitGroupExport(g_HitGroupNames_Casper[i]);
 		pHitGroup->SetHitGroupType(D3D12_HIT_GROUP_TYPE_PROCEDURAL_PRIMITIVE);
 	}
 
@@ -919,6 +1058,7 @@ void RayTracingManager::createRaytracingPipelineStateObject()
 
 	pRootSignatureAssociation->AddExports(g_HitGroupNames); // Tri
 	pRootSignatureAssociation->AddExports(g_HitGroupNames_Proc);  // Proc
+	pRootSignatureAssociation->AddExports(g_HitGroupNames_Casper);  // Casper
 
 	CD3DX12_GLOBAL_ROOT_SIGNATURE_SUBOBJECT* pGlobalRootSignature = raytracingPipeline.CreateSubobject<CD3DX12_GLOBAL_ROOT_SIGNATURE_SUBOBJECT>();
 	pGlobalRootSignature->SetRootSignature(pRootSignatureManager->Query(ERootSignatureType::GraphicsRaytracingGlobal));

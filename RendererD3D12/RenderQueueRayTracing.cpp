@@ -1,6 +1,7 @@
 ﻿#include "pch.h"
 #include "D3D12Renderer.h"
 #include "CommandListPool.h"
+#include "CasperObject.h"
 #include "BasicMeshObject.h"
 #include "ProceduralSphereObject.h"
 #include "SpriteObject.h"
@@ -65,6 +66,13 @@ int RenderQueueRayTracing::Process(
 			ProceduralSphereObject* proceduralObj = reinterpret_cast<ProceduralSphereObject*>(pItem->pObjHandle);
 			proceduralObj->UpdateBLAS(threadIndex, pCurrCommandList, pItem->MeshObjParam.WorldMatrix);
 		}
+		break;
+		case RENDER_ITEM_TYPE_CASPER_OBJ:
+		{
+			CasperObject* casperObj = reinterpret_cast<CasperObject*>(pItem->pObjHandle);
+			casperObj->UpdateBLAS(threadIndex, pCurrCommandList, pItem->MeshObjParam.WorldMatrix);
+		}
+		break;
 		case RENDER_ITEM_TYPE_SPRITE:
 		{
 			// Sprites are not supported in ray tracing queue.

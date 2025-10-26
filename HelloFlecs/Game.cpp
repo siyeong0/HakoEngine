@@ -309,6 +309,20 @@ static IProceduralSphereObject* createProceduralSphereObject(IRenderer* pRendere
 	return pSphereObj;
 }
 
+static ICasperObject* createCasperObject(IRenderer* pRenderer, const wchar_t* casperDiffusePath, const wchar_t* casperDepthPath)
+{
+	ICasperObject* pCasperObj = pRenderer->CreateCasperObject();
+	Material mtl(nullptr, nullptr, nullptr, nullptr, nullptr, MATERIAL_TYPE_GLASS, false);
+	pCasperObj->BeginCreateCasper(1, mtl);
+	CasperAtlas atlas = {};
+	atlas.AtlasBounds = Bounds(FLOAT3(-1.0f, -1.0f, -1.0f), FLOAT3(1.0f, 1.0f, 1.0f));
+	atlas.DiffuseAtlas = casperDiffusePath;
+	atlas.DepthAtlas = casperDepthPath;
+	pCasperObj->InsertCasperAtlas(atlas);
+	pCasperObj->EndCreateCasper(true);
+	return pCasperObj;
+}
+
 bool Game::Initialize(
 	HWND hWnd,
 	bool bEnableRayTracing,
@@ -422,6 +436,13 @@ bool Game::Initialize(
 
 				});
 
+		m_ECSWorld.observer<CasperRenderer>("Init CasperRenderer")
+			.event(flecs::OnSet)
+			.each([this](CasperRenderer& m)
+				{
+
+				});
+
 		m_ECSWorld.observer<SpriteRenderer>("Init SpriteRenderer")
 			.event(flecs::OnSet)
 			.each([this](SpriteRenderer& s)
@@ -498,6 +519,22 @@ bool Game::Initialize(
 					if (proc.Sphere)
 					{
 						m_pRenderer->RenderProceduralSphereObject(proc.Sphere, &worldMat);
+					}
+				});
+
+		m_ECSWorld.system<const Position, const Rotation, const Scale, const CasperRenderer>("Render CASPER")
+			.kind(phaseRender)
+			.multi_threaded(false)	// TODO: test multi threading
+			.each([this](const Position& p, const Rotation& r, const Scale& s, const CasperRenderer& casper)
+				{
+					// Matrix4x4 matScale = DirectX::XMMatrixScaling(s.x, s.y, s.z);
+					Matrix4x4 matScale = DirectX::XMMatrixIdentity(); // Procedural sphere already has radius
+					Matrix4x4 matRot = DirectX::XMMatrixRotationRollPitchYaw(r.Pitch, r.Yaw, r.Roll);
+					Matrix4x4 matTrans = DirectX::XMMatrixTranslation(p.x, p.y, p.z);
+					Matrix4x4 worldMat = matScale * matRot * matTrans;
+					if (casper.Casper)
+					{
+						m_pRenderer->RenderCasperObject(casper.Casper, &worldMat);
 					}
 				});
 
@@ -601,7 +638,7 @@ bool Game::Initialize(
 		// wire fence
 		{
 			flecs::entity e = m_ECSWorld.entity()
-				.set<Position>({ 0.0f, 0.0f, 25.0f })
+				.set<Position>({ 10.0f, 0.0f, 25.0f })
 				.set<Rotation>({ PI / 2.0f, 0.0f, 0.0f })
 				.set<Scale>({ 10.0f, 10.0f, 10.0f })
 				.set<MeshRenderer>({ createWireWall(m_pRenderer) });
@@ -631,7 +668,7 @@ bool Game::Initialize(
 			m_Entities.emplace_back(e.id());
 		}
 		// Create megayuchi box entities
-		const uint MEGA_BOX_OBJECT_COUNT = 0;
+		const uint MEGA_BOX_OBJECT_COUNT = 5;
 		for (uint i = 0; i < MEGA_BOX_OBJECT_COUNT; i++)
 		{
 			float x = (float)((rand() % 41) - 20);
@@ -678,7 +715,7 @@ bool Game::Initialize(
 		}
 
 		// Create procedural sphere entities
-		const uint PROC_SPHERE_OBJECT_COUNT = 1;
+		const uint PROC_SPHERE_OBJECT_COUNT = 0;
 		for (uint i = 0; i < PROC_SPHERE_OBJECT_COUNT; i++)
 		{
 			float x = (float)((rand() % 41) - 20);
@@ -702,6 +739,16 @@ bool Game::Initialize(
 				.set<Rotation>({ rx, ry, rz })
 				.set<Scale>({ 2, 2, 2 })
 				.set<ProceduralSphereRenderer>({ createProceduralSphereObject(m_pRenderer, {cx, cy, cz}, radius) });
+			m_Entities.emplace_back(e.id());
+		}
+
+		// Create CASPER entity
+		{
+			flecs::entity e = m_ECSWorld.entity()
+				.set<Position>({ 0.0f, 0.0f, 5.0f })
+				.set<Rotation>({ 0.0f, 0.0f, 0.0f })
+				.set<Scale>({ 1.0f, 1.0f, 1.0f })
+				.set<CasperRenderer>({ createCasperObject(m_pRenderer, L"./Resources/megayuchi/skycube.dds", L"./Resources/megayuchi/skycube.dds") });
 			m_Entities.emplace_back(e.id());
 		}
 

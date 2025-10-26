@@ -70,11 +70,6 @@ struct ShadingInfo
     float AmbientOcclusionStrength;
 };
 
-struct MySphereIntersectionAttributes
-{
-    float3 Normal;
-};
-
 struct Sphere
 {
     float3 Center;

@@ -19,7 +19,7 @@ public:
 		ID3D12Resource* pVertexBuffer,
 		uint numVertices,
 		uint vertexStrideBytes,
-		const std::vector<IndexedTriGroup>& TriGroups,
+		const std::vector<IndexedTriGroup>& triGroups,
 		const std::vector<bool>& bTriGroupOpaques,
 		bool bAllowUpdate);
 	BLASHandle* AllocBLASSpheres(
@@ -29,6 +29,14 @@ public:
 		ID3D12Resource* pSphereDataBuffer,
 		uint numSpheres,
 		uint sphereDataStrideBytes,
+		const RenderMaterial& material,
+		bool bOpaque,
+		bool bAllowUpdate);
+	BLASHandle* AllocBLASCasper(
+		ID3D12Resource* pAABBBuffer,
+		uint numAABBs,
+		uint aabbStrideBytes,
+		const std::vector<std::pair<TextureHandle*, TextureHandle*>>& atlases,
 		const RenderMaterial& material,
 		bool bOpaque,
 		bool bAllowUpdate);
@@ -120,6 +128,7 @@ private:
 
 	ShaderHandle* m_pRayShader = nullptr;
 	ShaderHandle* m_pRayProcShader = nullptr;
+	ShaderHandle* m_pRayCasperShader = nullptr;
 	ID3D12StateObject* m_pDXRStateObject = nullptr;
 
 	ID3D12DescriptorHeap* m_pCommonDescriptorHeap = nullptr;

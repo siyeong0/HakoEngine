@@ -89,12 +89,6 @@ struct RootArgument
 	D3D12_GPU_DESCRIPTOR_HANDLE SrvTable = {}; // (t0..t3, space1)
 };
 
-struct RootArgumentProc
-{
-	CONSTANT_BUFFER_RT_PROC Constants = {};
-	D3D12_GPU_DESCRIPTOR_HANDLE SrvTable = {}; // (t0..t3, space1)
-};
-
 struct BLASHandle
 {
 	ID3D12Resource* pBLAS;
@@ -102,7 +96,7 @@ struct BLASHandle
 	uint32_t ID;
 	bool bAllowUpdate;
 	uint ShaderRecordIndex;
-	enum class GeomKind : uint32_t { Triangles, Procedural };
+	enum class GeomKind : uint32_t { Triangles, Procedural, Casper };
 	GeomKind Kind = GeomKind::Triangles;
 	uint NumVertices;
 	uint NumTriGroups; // Tri: triGroup 수 / Proc: AABB 개수
@@ -134,6 +128,7 @@ enum RENDER_ITEM_TYPE
 {
 	RENDER_ITEM_TYPE_MESH_OBJ,
 	RENDER_ITEM_TYPE_PROCEDURAL_SPHERE_OBJ,
+	RENDER_ITEM_TYPE_CASPER_OBJ,
 	RENDER_ITEM_TYPE_SPRITE
 };
 

@@ -4,6 +4,7 @@
 #include "Generic/ProcessorInfo.h"
 #include "BasicMeshObject.h"
 #include "CommandListPool.h"
+#include "CasperObject.h"
 #include "ConstantBufferManager.h"
 #include "D3D12ResourceManager.h"
 #include "DescriptorPool.h"
@@ -664,6 +665,38 @@ void ENGINECALL D3D12Renderer::RenderMeshObject(
 	m_CurrThreadIndex = m_CurrThreadIndex % m_NumRenderThreads;
 }
 
+void ENGINECALL D3D12Renderer::RenderCasperObject(
+	ICasperObject* pCasperObj,
+	const Matrix4x4* pMatWorld)
+{
+	RenderItem item = {};
+	item.Type = RENDER_ITEM_TYPE_CASPER_OBJ;
+	item.pObjHandle = pCasperObj;
+	item.MeshObjParam.WorldMatrix = *pMatWorld;
+
+	bool bAdded = false;
+	switch (pCasperObj->GetRenderPass())
+	{
+	case RENDER_PASS_OPAQUE:
+		ASSERT(false, "Procedural Sphere Object does not support Rasterization Opaque render pass.");
+		break;
+	case RENDER_PASS_TRANSPARENT:
+		ASSERT(false, "Procedural Sphere Object does not support Rasterization Transparent render pass.");
+		break;
+	case RENDER_PASS_RAYTRACING:
+		bAdded = m_ppRenderQueueRayTracing[m_CurrThreadIndex]->Add(&item);
+		ASSERT(bAdded, "Render Queue is full.");
+		break;
+	default:
+		ASSERT(false, "Invalid render pass.");
+		break;
+	}
+	ASSERT(bAdded, "Render Queue is full. or Invalid render pass.");
+
+	m_CurrThreadIndex++;
+	m_CurrThreadIndex = m_CurrThreadIndex % m_NumRenderThreads;
+}
+
 void ENGINECALL D3D12Renderer::RenderProceduralSphereObject(
 	IProceduralSphereObject* pProceduralObj,
 	const Matrix4x4* pMatWorld)
@@ -756,6 +789,14 @@ IProceduralSphereObject* ENGINECALL D3D12Renderer::CreateProceduralSphereObject(
 	pSphereObj->Initialize(this);
 
 	return pSphereObj;
+}
+
+ICasperObject* ENGINECALL D3D12Renderer::CreateCasperObject()
+{
+	CasperObject* pCasperObj = new CasperObject;
+	pCasperObj->Initialize(this);
+
+	return pCasperObj;
 }
 
 ISprite* ENGINECALL D3D12Renderer::CreateSpriteObject()

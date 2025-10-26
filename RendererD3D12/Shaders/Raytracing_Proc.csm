@@ -1,4 +1,4 @@
-; shader hash: 019f5cf832b9dfef25691f334e2aec6b
+; shader hash: fb78d693c1f2ae52435ed28decb448b2
 ;
 ; Buffer Definitions:
 ;
@@ -204,29 +204,29 @@ define void @"\01?MyClosestHitShader_RadianceRay_Proc@@YAXURadiancePayload@@UMyS
   %19 = fadd fast float %16, %9
   %20 = fadd fast float %17, %10
   %21 = fadd fast float %18, %11
-  %22 = call float @dx.op.worldToObject.f32(i32 152, i32 0, i8 0)  ; WorldToObject(row,col)
-  %23 = call float @dx.op.worldToObject.f32(i32 152, i32 0, i8 1)  ; WorldToObject(row,col)
-  %24 = call float @dx.op.worldToObject.f32(i32 152, i32 0, i8 2)  ; WorldToObject(row,col)
-  %25 = call float @dx.op.worldToObject.f32(i32 152, i32 1, i8 0)  ; WorldToObject(row,col)
-  %26 = call float @dx.op.worldToObject.f32(i32 152, i32 1, i8 1)  ; WorldToObject(row,col)
-  %27 = call float @dx.op.worldToObject.f32(i32 152, i32 1, i8 2)  ; WorldToObject(row,col)
-  %28 = call float @dx.op.worldToObject.f32(i32 152, i32 2, i8 0)  ; WorldToObject(row,col)
-  %29 = call float @dx.op.worldToObject.f32(i32 152, i32 2, i8 1)  ; WorldToObject(row,col)
-  %30 = call float @dx.op.worldToObject.f32(i32 152, i32 2, i8 2)  ; WorldToObject(row,col)
-  %31 = getelementptr inbounds %struct.MySphereIntersectionAttributes, %struct.MySphereIntersectionAttributes* %attr, i32 0, i32 0
-  %32 = load <3 x float>, <3 x float>* %31, align 4, !tbaa !34
-  %33 = extractelement <3 x float> %32, i64 0
-  %34 = fmul fast float %33, %22
-  %35 = extractelement <3 x float> %32, i64 1
-  %36 = call float @dx.op.tertiary.f32(i32 46, float %35, float %25, float %34)  ; FMad(a,b,c)
-  %37 = extractelement <3 x float> %32, i64 2
-  %38 = call float @dx.op.tertiary.f32(i32 46, float %37, float %28, float %36)  ; FMad(a,b,c)
-  %39 = fmul fast float %33, %23
-  %40 = call float @dx.op.tertiary.f32(i32 46, float %35, float %26, float %39)  ; FMad(a,b,c)
-  %41 = call float @dx.op.tertiary.f32(i32 46, float %37, float %29, float %40)  ; FMad(a,b,c)
-  %42 = fmul fast float %33, %24
-  %43 = call float @dx.op.tertiary.f32(i32 46, float %35, float %27, float %42)  ; FMad(a,b,c)
-  %44 = call float @dx.op.tertiary.f32(i32 46, float %37, float %30, float %43)  ; FMad(a,b,c)
+  %22 = getelementptr inbounds %struct.MySphereIntersectionAttributes, %struct.MySphereIntersectionAttributes* %attr, i32 0, i32 0
+  %23 = load <3 x float>, <3 x float>* %22, align 4, !tbaa !34
+  %24 = call float @dx.op.objectToWorld.f32(i32 151, i32 0, i8 0)  ; ObjectToWorld(row,col)
+  %25 = call float @dx.op.objectToWorld.f32(i32 151, i32 0, i8 1)  ; ObjectToWorld(row,col)
+  %26 = call float @dx.op.objectToWorld.f32(i32 151, i32 0, i8 2)  ; ObjectToWorld(row,col)
+  %27 = call float @dx.op.objectToWorld.f32(i32 151, i32 1, i8 0)  ; ObjectToWorld(row,col)
+  %28 = call float @dx.op.objectToWorld.f32(i32 151, i32 1, i8 1)  ; ObjectToWorld(row,col)
+  %29 = call float @dx.op.objectToWorld.f32(i32 151, i32 1, i8 2)  ; ObjectToWorld(row,col)
+  %30 = call float @dx.op.objectToWorld.f32(i32 151, i32 2, i8 0)  ; ObjectToWorld(row,col)
+  %31 = call float @dx.op.objectToWorld.f32(i32 151, i32 2, i8 1)  ; ObjectToWorld(row,col)
+  %32 = call float @dx.op.objectToWorld.f32(i32 151, i32 2, i8 2)  ; ObjectToWorld(row,col)
+  %33 = extractelement <3 x float> %23, i64 0
+  %34 = fmul fast float %24, %33
+  %35 = extractelement <3 x float> %23, i64 1
+  %36 = call float @dx.op.tertiary.f32(i32 46, float %25, float %35, float %34)  ; FMad(a,b,c)
+  %37 = extractelement <3 x float> %23, i64 2
+  %38 = call float @dx.op.tertiary.f32(i32 46, float %26, float %37, float %36)  ; FMad(a,b,c)
+  %39 = fmul fast float %27, %33
+  %40 = call float @dx.op.tertiary.f32(i32 46, float %28, float %35, float %39)  ; FMad(a,b,c)
+  %41 = call float @dx.op.tertiary.f32(i32 46, float %29, float %37, float %40)  ; FMad(a,b,c)
+  %42 = fmul fast float %30, %33
+  %43 = call float @dx.op.tertiary.f32(i32 46, float %31, float %35, float %42)  ; FMad(a,b,c)
+  %44 = call float @dx.op.tertiary.f32(i32 46, float %32, float %37, float %43)  ; FMad(a,b,c)
   %45 = call float @dx.op.dot3.f32(i32 55, float %38, float %41, float %44, float %38, float %41, float %44)  ; Dot3(ax,ay,az,bx,by,bz)
   %46 = call float @dx.op.unary.f32(i32 25, float %45)  ; Rsqrt(value)
   %47 = fmul fast float %46, %38
@@ -798,7 +798,7 @@ declare void @dx.op.traceRay.struct.ShadowPayload(i32, %dx.types.Handle, i32, i3
 declare void @dx.op.traceRay.struct.RadiancePayload(i32, %dx.types.Handle, i32, i32, i32, i32, i32, float, float, float, float, float, float, float, float, %struct.RadiancePayload*) #0
 
 ; Function Attrs: nounwind readnone
-declare float @dx.op.worldToObject.f32(i32, i32, i8) #1
+declare float @dx.op.objectToWorld.f32(i32, i32, i8) #1
 
 ; Function Attrs: nounwind readnone
 declare float @dx.op.tertiary.f32(i32, float, float, float) #1

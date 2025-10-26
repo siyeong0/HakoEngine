@@ -7,6 +7,7 @@
 
 #include "IMeshObject.h"
 #include "IProceduralSphereObject.h"
+#include "ICasperObject.h"
 #include "ISpriteObject.h"
 
 interface IRenderer : public IUnknown
@@ -21,12 +22,13 @@ interface IRenderer : public IUnknown
 
 	virtual void ENGINECALL RenderMeshObject(IMeshObject* pMeshObj, const Matrix4x4* pMatWorld) = 0;
 	virtual void ENGINECALL RenderProceduralSphereObject(IProceduralSphereObject* pProceduralObj, const Matrix4x4* pMatWorld) = 0;
+	virtual void ENGINECALL RenderCasperObject(ICasperObject* pCasperObj, const Matrix4x4* pMatWorld) = 0;
 	virtual void ENGINECALL RenderSpriteWithTex(void* pSprObjHandle, int posX, int posY, float scaleX, float scaleY, const RECT* pRect, float z, void* pTexHandle) = 0;
 	virtual void ENGINECALL RenderSprite(void* pSprObjHandle, int posX, int posY, float scaleX, float scaleY, float z) = 0;
 
 	virtual IMeshObject* ENGINECALL CreateBasicMeshObject() = 0;
 	virtual IProceduralSphereObject* ENGINECALL CreateProceduralSphereObject() = 0;
-
+	virtual ICasperObject* ENGINECALL CreateCasperObject() = 0;
 	virtual ISprite* ENGINECALL CreateSpriteObject() = 0;
 	virtual ISprite* ENGINECALL CreateSpriteObject(const wchar_t* wchTexFileName) = 0;
 	virtual ISprite* ENGINECALL CreateSpriteObject(const wchar_t* wchTexFileName, int posX, int posY, int width, int height) = 0;
