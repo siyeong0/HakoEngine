@@ -49,6 +49,9 @@
     <ClInclude Include="WriteDebugString.h">
       <Filter>Util\WriteDebugString</Filter>
     </ClInclude>
+    <ClInclude Include="lodepng.h">
+      <Filter>Image</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="pch.cpp">
@@ -68,6 +71,9 @@
     </ClCompile>
     <ClCompile Include="WriteDebugString.cpp">
       <Filter>Util\WriteDebugString</Filter>
+    </ClCompile>
+    <ClCompile Include="lodepng.cpp">
+      <Filter>Image</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

@@ -302,7 +302,8 @@ static void ProjectFace(
 				if (grid.GetVoxel(coord[0], coord[1], coord[2]))
 				{
 					hit = true;
-					depth16 = (uint16_t)std::min(65535, s);
+					float depthFloat = s / float(len - 1); // [0,1]
+					depth16 = static_cast<uint16_t>(depthFloat * 65535.0f);
 					color = RGBA{ 200, 200, 255, 255 };
 					break;
 				}
@@ -356,22 +357,8 @@ bool SparseBinaryGrid::SaveAsCasper(const std::string& path) const
 
 		// Depth 저장: RG = hi/lo
 		{
-			Image depthImg;
-			depthImg.Width = W;
-			depthImg.Height = H;
-			depthImg.Channels = 4;
-			depthImg.Data.resize((size_t)W * (size_t)H);
-
-			for (size_t i = 0; i < depthBuf.size(); ++i)
-			{
-				uint16_t d = depthBuf[i];
-				uint8_t hi = uint8_t((d >> 8) & 0xFF);
-				uint8_t lo = uint8_t(d & 0xFF);
-				depthImg.Data[i] = RGBA{ hi, lo, 0, 255 };
-			}
-
 			fs::path depthPath = base / std::format("{}_depth.png", faceNames[f]);
-			if (!SaveImageToFile(depthPath, depthImg, IMAGE_FORMAT_RGBA8))
+			if (!SaveGray16PNG(depthPath, depthBuf.data(), W, H))
 				std::cerr << "[SaveAsCasper] Failed to save " << depthPath << "\n";
 		}
 	}

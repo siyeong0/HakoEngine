@@ -10,7 +10,7 @@ struct MyCasperIntersectionAttributes
 
 ConstantBuffer<CONSTANT_BUFFER_RT_PROC> l_ProcGeomCB : register(b1, space0);
 TextureCube<float4> l_DiffuseAtlasTexture : register(t0, space1);
-TextureCube<float4> l_DepthAtlasTexture : register(t1, space1);
+TextureCube<float> l_DepthAtlasTexture : register(t1, space1);
 
 float SafeRcp(float x)
 {
@@ -70,6 +70,7 @@ void MyClosestHitShader_RadianceRay_Casper(inout RadiancePayload rayPayload, in 
     
     float3 hitObjectPosition = ObjectRayOrigin() + RayTCurrent() * ObjectRayDirection();
     float4 texDiffuse = l_DiffuseAtlasTexture.SampleLevel(g_SamplerClamp, normalize(hitObjectPosition), 0);
+    float texDepth = l_DepthAtlasTexture.SampleLevel(g_SamplerClamp, normalize(hitObjectPosition), 0).x;
     
     float3 surfaceNormal = normalize(mul((float3x3) ObjectToWorld3x4(), attr.Normal));
     
@@ -77,6 +78,9 @@ void MyClosestHitShader_RadianceRay_Casper(inout RadiancePayload rayPayload, in 
     float4 projPos = mul(float4(hitPosition, 1.0), g_ViewProj);
     projPos /= projPos.w;
     rayPayload.depth = saturate(projPos.z);
+    
+    rayPayload.radiance = texDepth.xxx;
+    return;
     
     // Compute radiance
     BasicMaterial mtl = l_ProcGeomCB.Material;

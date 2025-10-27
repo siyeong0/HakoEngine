@@ -8,6 +8,7 @@ enum IMAGE_FORMAT
 	IMAGE_FORMAT_RGBA8,
 	IMAGE_FORMAT_RGB8,
 	IMAGE_FORMAT_R8,
+	IMAGE_FORMAT_R16_UNORM,
 	IMAGE_FORMAT_BC1, // DXT1
 	IMAGE_FORMAT_BC3, // DXT5
 	IMAGE_FORMAT_BC4, // ATI1
@@ -43,3 +44,7 @@ bool SaveImageToFile(
 	const std::filesystem::path& path,
 	const Image& img,
 	IMAGE_FORMAT format = IMAGE_FORMAT_RGBA8);
+
+bool SaveGray16PNG(const std::filesystem::path& path,
+	const uint16_t* gray16,
+	uint32_t width, uint32_t height);
