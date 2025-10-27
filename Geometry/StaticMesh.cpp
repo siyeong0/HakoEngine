@@ -1,8 +1,10 @@
 ﻿#include "pch.h"
+#include <fstream>
 
 #include <assimp/Importer.hpp>
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
+#include <assimp/material.h>
 
 #include "Vertex.h"
 #include "Generic/Image.h"
@@ -137,6 +139,9 @@ void StaticMesh::EndCreate()
 // -----------------------------
 // StaticMesh::LoadFromFile
 // -----------------------------
+
+static std::filesystem::path dumpEmbeddedTextureToCache(const aiTexture* atex, std::wstring key);
+
 bool StaticMesh::LoadFromFile(const char* filename, float scale)
 {
 	if (!filename || !*filename)
@@ -150,7 +155,7 @@ bool StaticMesh::LoadFromFile(const char* filename, float scale)
 	const unsigned flags =
 		aiProcess_Triangulate |
 		aiProcess_GenUVCoords |
-		aiProcess_GenSmoothNormals | 
+		aiProcess_GenSmoothNormals |
 		aiProcess_CalcTangentSpace |
 		aiProcess_JoinIdenticalVertices |
 		aiProcess_SortByPType;
@@ -302,7 +307,7 @@ bool StaticMesh::LoadFromFile(const char* filename, float scale)
 
 				t = t - n * FVector3::Dot(n, t);
 				float len2 = FVector3::Dot(t, t);
-				if (len2 < 1e-20f) 
+				if (len2 < 1e-20f)
 				{
 					FVector3 up = (std::fabs(n.z) < 0.999f) ? FVector3{ 0,0,1 } : FVector3{ 0,1,0 };
 					Tangents[base + i] = FVector3::Normalize(FVector3::Cross(up, n));
@@ -324,7 +329,7 @@ bool StaticMesh::LoadFromFile(const char* filename, float scale)
 		}
 
 		// Create section (indices + material)
-		MeshSection sec = {};
+		MeshSection sec;
 		sec.Indices.resize(size_t(nf) * 3u);
 
 		sec.LocalBounds.Min = FVector3::FMaxValue();
@@ -350,52 +355,160 @@ bool StaticMesh::LoadFromFile(const char* filename, float scale)
 
 		// Load material. if possible
 		const aiMaterial* aimat = scene->mMaterials[m->mMaterialIndex];
-		if (aimat->GetTextureCount(aiTextureType_DIFFUSE) > 0)
-		{
-			aiString texPath;
-			if (aimat->GetTexture(aiTextureType_DIFFUSE, 0, &texPath) == aiReturn_SUCCESS)
+		// Helper: resolve external/embedded texture into a real file path (uses dumpEmbeddedTextureToCache)
+		auto isEmbeddedUri = [](const aiString& s) -> bool
 			{
-				std::filesystem::path fullTexPath = modelDir / std::filesystem::path(texPath.C_Str());
-				sec.Material.DiffuseTexturePath = fullTexPath.wstring();
-			}
-		}
-		if (aimat->GetTextureCount(aiTextureType_NORMALS) > 0)
-		{
-			aiString texPath;
-			if (aimat->GetTexture(aiTextureType_NORMALS, 0, &texPath) == aiReturn_SUCCESS)
+				if (s.length == 0) return false;
+				const char* u = s.C_Str();
+				return (u[0] == '*') || (std::strncmp(u, "data:", 5) == 0);
+			};
+
+		auto resolveTexturePath = [&](const aiMaterial* mat, aiTextureType type, std::wstring& outPathW) -> bool
 			{
-				std::filesystem::path fullTexPath = modelDir / std::filesystem::path(texPath.C_Str());
-				sec.Material.NormalTexturePath = fullTexPath.wstring();
-			}
-		}
-		if (aimat->GetTextureCount(aiTextureType_SPECULAR) > 0)
-		{
-			aiString texPath;
-			if (aimat->GetTexture(aiTextureType_SPECULAR, 0, &texPath) == aiReturn_SUCCESS)
+				static int callCount = 0;
+				if (mat->GetTextureCount(type) == 0) return false;
+
+				aiString uri;
+				if (mat->GetTexture(type, 0, &uri) != aiReturn_SUCCESS) return false;
+
+				if (isEmbeddedUri(uri))
+				{
+					const aiTexture* atex = scene->GetEmbeddedTexture(uri.C_Str());
+					if (!atex) return false;
+
+					std::wstring texTypeStr = L"";
+					switch (type)
+					{
+					case aiTextureType_DIFFUSE:    texTypeStr = L"diffuse"; break;
+					case aiTextureType_SPECULAR:   texTypeStr = L"specular"; break;
+					case aiTextureType_NORMALS:    texTypeStr = L"normal"; break;
+					case aiTextureType_HEIGHT:     texTypeStr = L"height"; break;
+					case aiTextureType_EMISSIVE:   texTypeStr = L"emissive"; break;
+					case aiTextureType_AMBIENT:    texTypeStr = L"ambient"; break;
+					case aiTextureType_METALNESS:  texTypeStr = L"metalness"; break;
+					default:                       texTypeStr = L"X"; break;
+					}
+
+					std::filesystem::path abspath = std::filesystem::absolute(std::filesystem::path(filename));
+					std::wstring key = texTypeStr + L"_" + std::to_wstring(std::hash<std::filesystem::path>{}(abspath));
+
+					std::filesystem::path dumped = dumpEmbeddedTextureToCache(atex, key);
+					if (dumped.empty()) return false;
+
+					outPathW = dumped.wstring();
+					return true;
+				}
+				else
+				{
+					std::filesystem::path full = modelDir / std::filesystem::path(uri.C_Str());
+					outPathW = full.wstring();
+					return true;
+				}
+			};
+
+		auto resolveAny = [&](std::initializer_list<aiTextureType> types, std::wstring& outPathW) -> bool
 			{
-				std::filesystem::path fullTexPath = modelDir / std::filesystem::path(texPath.C_Str());
-				sec.Material.SpecularTexturePath = fullTexPath.wstring();
-			}
-		}
-		if (aimat->GetTextureCount(aiTextureType_METALNESS) > 0)
-		{
-			aiString texPath;
-			if (aimat->GetTexture(aiTextureType_METALNESS, 0, &texPath) == aiReturn_SUCCESS)
+				for (aiTextureType t : types)
+				{
+					if (resolveTexturePath(aimat, t, outPathW))
+					{
+						return true;
+					}
+				}
+				return false;
+			};
+
+		// glTF2 우선 + 구형(DIFFUSE 등) 폴백
+		resolveAny({ aiTextureType_BASE_COLOR, aiTextureType_DIFFUSE }, sec.Material.DiffuseTexturePath);
+		resolveAny({ aiTextureType_NORMALS }, sec.Material.NormalTexturePath);
+		resolveAny({ aiTextureType_SPECULAR }, sec.Material.SpecularTexturePath);
+		resolveAny({ aiTextureType_METALNESS }, sec.Material.MetallicTexturePath);
+		resolveAny({ aiTextureType_DIFFUSE_ROUGHNESS }, sec.Material.RoughnessTexturePath);
+		// 필요 시: Occlusion/Emissive 등
+		// ResolveAny({ aiTextureType_LIGHTMAP /*AO*/ },                               sec.Material.AmbientOcclusionTexturePath);
+		// ResolveAny({ aiTextureType_EMISSIVE },                                      sec.Material.EmissiveTexturePath);
+
+		auto clamp01 = [](float v) { return (v < 0.f) ? 0.f : (v > 1.f ? 1.f : v); };
+
+		// glTF property keys (Assimp 내부 키 문자열)
+		static constexpr const char* K_BASECOLOR = "$mat.gltf.pbrMetallicRoughness.baseColorFactor"; // aiColor4D
+		static constexpr const char* K_METALLIC = "$mat.gltf.pbrMetallicRoughness.metallicFactor";  // float
+		static constexpr const char* K_ROUGHNESS = "$mat.gltf.pbrMetallicRoughness.roughnessFactor"; // float
+		static constexpr const char* K_TEX_SCALE = "$mat.gltf.texture.scale";                        // float (per texture slot)
+		static constexpr const char* K_TEX_STRENGTH = "$mat.gltf.texture.strength";                     // float (occlusion strength)
+
+		auto getF = [&](const char* key, unsigned type, unsigned idx, float& out) -> bool
 			{
-				std::filesystem::path fullTexPath = modelDir / std::filesystem::path(texPath.C_Str());
-				sec.Material.MetallicTexturePath = fullTexPath.wstring();
-			}
-		}
-		if (aimat->GetTextureCount(aiTextureType_DIFFUSE_ROUGHNESS) > 0)
-		{
-			aiString texPath;
-			if (aimat->GetTexture(aiTextureType_DIFFUSE_ROUGHNESS, 0, &texPath) == aiReturn_SUCCESS)
+				return aimat->Get(key, type, idx, out) == aiReturn_SUCCESS;
+			};
+		auto getC4 = [&](const char* key, unsigned type, unsigned idx, aiColor4D& out) -> bool
 			{
-				std::filesystem::path fullTexPath = modelDir / std::filesystem::path(texPath.C_Str());
-				sec.Material.RoughnessTexturePath = fullTexPath.wstring();
-			}
+				return aimat->Get(key, type, idx, out) == aiReturn_SUCCESS;
+			};
+
+		aiColor4D c4{};
+		float f = 0.0f;
+
+		// BaseColor & Opacity (glTF 우선 → 전통 키 폴백)
+		if (getC4(K_BASECOLOR, /*type*/0, /*idx*/0, c4))
+		{
+			sec.Material.BaseColor = FLOAT3{ c4.r, c4.g, c4.b };
+			sec.Material.Opacity = clamp01(c4.a);
 		}
-		
+		else if (aimat->Get(AI_MATKEY_COLOR_DIFFUSE, c4) == aiReturn_SUCCESS)
+		{
+			sec.Material.BaseColor = FLOAT3{ c4.r, c4.g, c4.b };
+			if (c4.a > 0.0f) sec.Material.Opacity = clamp01(c4.a);
+		}
+
+		if (aimat->Get(AI_MATKEY_OPACITY, f) == aiReturn_SUCCESS)
+			sec.Material.Opacity = clamp01(f);
+		else if (aimat->Get(AI_MATKEY_TRANSPARENCYFACTOR, f) == aiReturn_SUCCESS)
+			sec.Material.Opacity = clamp01(1.0f - f);
+
+		// MetallicFactor (glTF 키만 사용; 폴백 없음)
+		if (getF(K_METALLIC, 0, 0, f))
+		{
+			sec.Material.MetallicFactor = clamp01(f);
+		}
+
+		// RoughnessFactor (glTF 우선, 폴백: Phong shininess→roughness 근사)
+		if (getF(K_ROUGHNESS, 0, 0, f))
+		{
+			sec.Material.RoughnessFactor = clamp01(f);
+		}
+		else if (aimat->Get(AI_MATKEY_SHININESS, f) == aiReturn_SUCCESS)
+		{
+			float n = std::max(0.0f, f);
+			float rough = std::sqrt(2.0f / (n + 2.0f));
+			sec.Material.RoughnessFactor = clamp01(rough);
+		}
+
+		// SpecularColor
+		if (aimat->Get(AI_MATKEY_COLOR_SPECULAR, c4) == aiReturn_SUCCESS)
+		{
+			sec.Material.SpecularColor = FLOAT3{ c4.r, c4.g, c4.b };
+		}
+
+		// SpecularFactor (있으면 적용: SHININESS_STRENGTH 또는 SPECULAR_FACTOR)
+		if (aimat->Get(AI_MATKEY_SHININESS_STRENGTH, f) == aiReturn_SUCCESS ||
+			aimat->Get(AI_MATKEY_SPECULAR_FACTOR, f) == aiReturn_SUCCESS)
+		{
+			sec.Material.SpecularFactor = clamp01(f);
+		}
+
+		// NormalScale (glTF normalTexture.scale)
+		if (getF(K_TEX_SCALE, aiTextureType_NORMALS, 0, f))
+		{
+			sec.Material.NormalScale = f;
+		}
+
+		// Ambient Occlusion Strength (glTF occlusionTexture.strength → LIGHTMAP 슬롯)
+		if (getF(K_TEX_STRENGTH, aiTextureType_LIGHTMAP, 0, f))
+		{
+			sec.Material.AmbientOcclusionStrength = clamp01(f);
+		}
+
 
 		Sections.emplace_back(std::move(sec));
 
@@ -429,6 +542,56 @@ std::vector<Vertex> StaticMesh::GetVertexArray() const
 
 	return out;
 }
+
+void StaticMesh::FlipYAxis()
+{
+	// 1) Flip geometry along Y
+	for (FVector3& p : Positions)
+	{
+		p.y = -p.y;
+	}
+
+	// 2) Flip vertex frames (if present)
+	if (!Normals.empty())
+	{
+		ASSERT(Normals.size() == Positions.size(), "Normals/Positions size mismatch.");
+		for (FVector3& n : Normals) { n.y = -n.y; }
+	}
+	if (!Tangents.empty())
+	{
+		ASSERT(Tangents.size() == Positions.size(), "Tangents/Positions size mismatch.");
+		for (FVector3& t : Tangents) { t.y = -t.y; }
+	}
+
+	// 3) Reverse triangle winding to preserve facing after mirror
+	for (MeshSection& sec : Sections)
+	{
+		ASSERT(sec.Indices.size() % 3 == 0, "Indices are not a multiple of 3.");
+		for (size_t i = 0; i + 2 < sec.Indices.size(); i += 3)
+		{
+			std::swap(sec.Indices[i + 1], sec.Indices[i + 2]);
+		}
+
+		// Recompute section bounds
+		sec.LocalBounds.Min = FVector3::FMaxValue();
+		sec.LocalBounds.Max = FVector3::FMinValue();
+		for (uint16_t idx : sec.Indices)
+		{
+			if (idx < Positions.size())
+			{
+				sec.LocalBounds.Encapsulate(Positions[idx]);
+			}
+		}
+	}
+
+	// 4) Recompute mesh bounds
+	MeshBounds = Bounds();
+	for (const FVector3& v : Positions)
+	{
+		MeshBounds.Encapsulate(v);
+	}
+}
+
 
 // Predefined mesh creation static functions
 StaticMesh StaticMesh::CreateUnitCubeMesh()
@@ -878,4 +1041,58 @@ StaticMesh StaticMesh::CreatePlaneMesh(float width, float height)
 	m.EndCreate();
 
 	return m;
+}
+
+static std::filesystem::path dumpEmbeddedTextureToCache(const aiTexture* atex, std::wstring key)
+{
+	ASSERT(atex, "Null aiTexture");
+
+	// Cross-platform cache dir: <temp>/HakoEngine/texcache
+	std::filesystem::path cacheDir = L"./Resources/cache";
+	std::error_code ec;
+	std::filesystem::create_directories(cacheDir, ec);
+
+	const std::wstring stem = key;
+
+	// We always dump as dds. TODO: use png and modify renderer texture loader (platform-agnostic)
+	const std::filesystem::path outPath = cacheDir / (stem + L".dds");
+	if (std::filesystem::exists(outPath))
+	{
+		return outPath;
+	}
+
+	Image img = {};
+
+	if (atex->mHeight == 0)
+	{
+		// Compressed blob (e.g., png/jpg/ktx embedded). Decode via Image::LoadFromMemory (stb_image 기반).
+		const unsigned char* blob = reinterpret_cast<const unsigned char*>(atex->pcData);
+		const size_t sizeBytes = static_cast<size_t>(atex->mWidth); // Assimp: mWidth = byte length for blobs
+		img = Image::LoadFromMemory(blob, sizeBytes);
+		ASSERT(img.IsValid(), "Failed to decode embedded texture blob.");
+		if (!img.IsValid()) return {};
+	}
+	else
+	{
+		// Raw RGBA (aiTexel). Convert to our Image RGBA.
+		const uint32_t w = static_cast<uint32_t>(atex->mWidth);
+		const uint32_t h = static_cast<uint32_t>(atex->mHeight);
+		img.Width = w; img.Height = h; img.Channels = 4;
+		img.Data.resize(static_cast<size_t>(w) * static_cast<size_t>(h));
+
+		const aiTexel* src = reinterpret_cast<const aiTexel*>(atex->pcData);
+		for (size_t i = 0, N = img.Data.size(); i < N; ++i)
+		{
+			// aiTexel is RGBA (8-bit each)
+			img.Data[i] = RGBA{ src[i].r, src[i].g, src[i].b, src[i].a };
+		}
+	}
+	img.FlipY(); // Flip Y to match texture coord convention
+
+	// Save as DDS using your Image utils (stb_image_write 기반 가정)
+	const bool ok = SaveImageToFile(outPath, img, IMAGE_FORMAT_BC3);
+	ASSERT(ok, "Failed to write embedded texture to cache.");
+	if (!ok) return {};
+
+	return outPath;
 }

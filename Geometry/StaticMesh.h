@@ -34,6 +34,7 @@ struct StaticMesh
 	bool LoadFromFile(const char* filename, float scale = 1.0f);
 
 	std::vector<Vertex> GetVertexArray() const;
+	void FlipYAxis();
 
 	static StaticMesh CreateUnitCubeMesh();
 	static StaticMesh CreateBoxMesh(float width, float height, float depth);

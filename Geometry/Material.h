@@ -161,8 +161,8 @@ private:
 	// Physically-plausible defaults (dielectric, mid-roughness)
 	static inline constexpr FLOAT3 DEFAULT_BASE_COLOR = { 0.8f, 0.8f, 0.8f };
 	static inline constexpr float  DEFAULT_OPACITY = 1.0f;
-	// static inline constexpr FLOAT3 DEFAULT_SPECULAR_COLOR = { 0.04f, 0.04f, 0.04f };
-	static inline constexpr FLOAT3 DEFAULT_SPECULAR_COLOR = { 0.5f, 0.5f, 0.5f };
+	static inline constexpr FLOAT3 DEFAULT_SPECULAR_COLOR = { 0.04f, 0.04f, 0.04f };
+	//static inline constexpr FLOAT3 DEFAULT_SPECULAR_COLOR = { 0.5f, 0.5f, 0.5f };
 	static inline constexpr float  DEFAULT_SPECULAR_INTENSITY = 1.0f;
 	static inline constexpr float  DEFAULT_METALLIC_INTENSITY = 0.0f;
 	// static inline constexpr float  DEFAULT_ROUGHNESS_INTENSITY = 0.5f;

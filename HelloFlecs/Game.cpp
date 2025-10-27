@@ -279,11 +279,12 @@ static IMeshObject* createMeshFromFile(IRenderer* pRenderer, const char* filenam
 	}
 
 	StaticMesh meshData;
-	if (!meshData.LoadFromFile(filename, 10.0f))
+	if (!meshData.LoadFromFile(filename, 1.0f))
 	{
 		std::cout << std::format("Failed to load model from file: {}\n", filename);
 		return nullptr;
 	}
+	// meshData.FlipYAxis();
 
 	std::vector<Vertex> vertices = meshData.GetVertexArray();
 	pMeshObj = pRenderer->CreateBasicMeshObject();
@@ -636,131 +637,131 @@ bool Game::Initialize(
 			m_Entities.emplace_back(e.id());
 		}
 		// wire fence
-		{
-			flecs::entity e = m_ECSWorld.entity()
-				.set<Position>({ 10.0f, 0.0f, 25.0f })
-				.set<Rotation>({ PI / 2.0f, 0.0f, 0.0f })
-				.set<Scale>({ 10.0f, 10.0f, 10.0f })
-				.set<MeshRenderer>({ createWireWall(m_pRenderer) });
-			m_Entities.emplace_back(e.id());
-		}
-		// Create kitty box entities
-		const uint KITTY_BOX_OBJECT_COUNT = 0;
-		for (uint i = 0; i < KITTY_BOX_OBJECT_COUNT; i++)
-		{
-			float x = (float)((rand() % 41) - 20);
-			float y = (float)((rand() % 7) - 3);
-			float z = (float)((rand() % 41) - 20);
-			float rx = DegToRad(static_cast<float>(rand() % 181));
-			float ry = DegToRad(static_cast<float>(rand() % 181));
-			float rz = DegToRad(static_cast<float>(rand() % 181));
-			float s = (float)((rand() % 4) + 1) * 0.5f;	// 1 - 3
-			float vx = (float)((rand() % 3) - 1);
-			float vz = (float)((rand() % 3) - 1);
+		//{
+		//	flecs::entity e = m_ECSWorld.entity()
+		//		.set<Position>({ 10.0f, 0.0f, 25.0f })
+		//		.set<Rotation>({ PI / 2.0f, 0.0f, 0.0f })
+		//		.set<Scale>({ 10.0f, 10.0f, 10.0f })
+		//		.set<MeshRenderer>({ createWireWall(m_pRenderer) });
+		//	m_Entities.emplace_back(e.id());
+		//}
+		//// Create kitty box entities
+		//const uint KITTY_BOX_OBJECT_COUNT = 0;
+		//for (uint i = 0; i < KITTY_BOX_OBJECT_COUNT; i++)
+		//{
+		//	float x = (float)((rand() % 41) - 20);
+		//	float y = (float)((rand() % 7) - 3);
+		//	float z = (float)((rand() % 41) - 20);
+		//	float rx = DegToRad(static_cast<float>(rand() % 181));
+		//	float ry = DegToRad(static_cast<float>(rand() % 181));
+		//	float rz = DegToRad(static_cast<float>(rand() % 181));
+		//	float s = (float)((rand() % 4) + 1) * 0.5f;	// 1 - 3
+		//	float vx = (float)((rand() % 3) - 1);
+		//	float vz = (float)((rand() % 3) - 1);
 
-			flecs::entity e = m_ECSWorld.entity()
-				.set<Position>({ x, y, z })
-				.set<Velocity>({ vx, 0.0f, vz })
-				.set<Force>({ 0.0f, 0.0f, 0.0f })
-				.set<Rotation>({ rx, ry, rz })
-				.set<Scale>({ s, s, s })
-				.set<MeshRenderer>({ createKittyBoxMeshObject(m_pRenderer) });
-			m_Entities.emplace_back(e.id());
-		}
-		// Create megayuchi box entities
-		const uint MEGA_BOX_OBJECT_COUNT = 5;
-		for (uint i = 0; i < MEGA_BOX_OBJECT_COUNT; i++)
-		{
-			float x = (float)((rand() % 41) - 20);
-			float y = (float)((rand() % 7) - 3);
-			float z = (float)((rand() % 41) - 20);
-			float rx = DegToRad(static_cast<float>(rand() % 181));
-			float ry = DegToRad(static_cast<float>(rand() % 181));
-			float rz = DegToRad(static_cast<float>(rand() % 181));
-			float s = (float)((rand() % 4) + 1) * 0.5f;	// 1 - 3
-			// float vx = (float)((rand() % 3) - 1);
-			// float vz = (float)((rand() % 3) - 1);
+		//	flecs::entity e = m_ECSWorld.entity()
+		//		.set<Position>({ x, y, z })
+		//		.set<Velocity>({ vx, 0.0f, vz })
+		//		.set<Force>({ 0.0f, 0.0f, 0.0f })
+		//		.set<Rotation>({ rx, ry, rz })
+		//		.set<Scale>({ s, s, s })
+		//		.set<MeshRenderer>({ createKittyBoxMeshObject(m_pRenderer) });
+		//	m_Entities.emplace_back(e.id());
+		//}
+		//// Create megayuchi box entities
+		//const uint MEGA_BOX_OBJECT_COUNT = 5;
+		//for (uint i = 0; i < MEGA_BOX_OBJECT_COUNT; i++)
+		//{
+		//	float x = (float)((rand() % 41) - 20);
+		//	float y = (float)((rand() % 7) - 3);
+		//	float z = (float)((rand() % 41) - 20);
+		//	float rx = DegToRad(static_cast<float>(rand() % 181));
+		//	float ry = DegToRad(static_cast<float>(rand() % 181));
+		//	float rz = DegToRad(static_cast<float>(rand() % 181));
+		//	float s = (float)((rand() % 4) + 1) * 0.5f;	// 1 - 3
+		//	// float vx = (float)((rand() % 3) - 1);
+		//	// float vz = (float)((rand() % 3) - 1);
 
-			flecs::entity e = m_ECSWorld.entity()
-				.set<Position>({ x, y, z })
-				// .set<Velocity>({ vx, 0.0f, vz })
-				.set<Force>({ 0.0f, 0.0f, 0.0f })
-				.set<Rotation>({ rx, ry, rz })
-				.set<Scale>({ s, s, s })
-				.set<MeshRenderer>({ createMegayuchiBoxMeshObject(m_pRenderer) });
-			m_Entities.emplace_back(e.id());
-		}
+		//	flecs::entity e = m_ECSWorld.entity()
+		//		.set<Position>({ x, y, z })
+		//		// .set<Velocity>({ vx, 0.0f, vz })
+		//		.set<Force>({ 0.0f, 0.0f, 0.0f })
+		//		.set<Rotation>({ rx, ry, rz })
+		//		.set<Scale>({ s, s, s })
+		//		.set<MeshRenderer>({ createMegayuchiBoxMeshObject(m_pRenderer) });
+		//	m_Entities.emplace_back(e.id());
+		//}
 		// Create sphere entities
-		const uint SPHERE_OBJECT_COUNT = 1;
-		for (uint i = 0; i < SPHERE_OBJECT_COUNT; i++)
-		{
-			float x = (float)((rand() % 41) - 20);
-			float y = (float)((rand() % 7) - 3);
-			float z = (float)((rand() % 41) - 20);
-			float rx = DegToRad(static_cast<float>(rand() % 181));
-			float ry = DegToRad(static_cast<float>(rand() % 181));
-			float rz = DegToRad(static_cast<float>(rand() % 181));
-			float s = (float)((rand() % 4) + 1) * 0.5f;
-			float vx = (float)((rand() % 3) - 1);
-			float vz = (float)((rand() % 3) - 1);
+		//const uint SPHERE_OBJECT_COUNT = 1;
+		//for (uint i = 0; i < SPHERE_OBJECT_COUNT; i++)
+		//{
+		//	float x = (float)((rand() % 41) - 20);
+		//	float y = (float)((rand() % 7) - 3);
+		//	float z = (float)((rand() % 41) - 20);
+		//	float rx = DegToRad(static_cast<float>(rand() % 181));
+		//	float ry = DegToRad(static_cast<float>(rand() % 181));
+		//	float rz = DegToRad(static_cast<float>(rand() % 181));
+		//	float s = (float)((rand() % 4) + 1) * 0.5f;
+		//	float vx = (float)((rand() % 3) - 1);
+		//	float vz = (float)((rand() % 3) - 1);
 
-			flecs::entity e = m_ECSWorld.entity()
-				.set<Position>({ x, y, z })
-				.set<Velocity>({ vx, 0.0f, vz })
-				.set<Force>({ 0.0f, 0.0f, 0.0f })
-				.set<Rotation>({ rx, ry, rz })
-				.set<Scale>({ 1.0f, 1.0f, 1.0f })
-				.set<MeshRenderer>({ createKannaSphereMeshObject(m_pRenderer) });
-			m_Entities.emplace_back(e.id());
-		}
+		//	flecs::entity e = m_ECSWorld.entity()
+		//		.set<Position>({ x, y, z })
+		//		.set<Velocity>({ vx, 0.0f, vz })
+		//		.set<Force>({ 0.0f, 0.0f, 0.0f })
+		//		.set<Rotation>({ rx, ry, rz })
+		//		.set<Scale>({ 1.0f, 1.0f, 1.0f })
+		//		.set<MeshRenderer>({ createKannaSphereMeshObject(m_pRenderer) });
+		//	m_Entities.emplace_back(e.id());
+		//}
 
-		// Create procedural sphere entities
-		const uint PROC_SPHERE_OBJECT_COUNT = 1;
-		for (uint i = 0; i < PROC_SPHERE_OBJECT_COUNT; i++)
-		{
-			float x = (float)((rand() % 41) - 20);
-			float y = (float)((rand() % 7) - 3);
-			float z = (float)((rand() % 41) - 20);
-			float rx = DegToRad(static_cast<float>(rand() % 181));
-			float ry = DegToRad(static_cast<float>(rand() % 181));
-			float rz = DegToRad(static_cast<float>(rand() % 181));
-			float vx = (float)((rand() % 3) - 1);
-			float vz = (float)((rand() % 3) - 1);
-			float s = (float)((rand() % 4) + 1) * 0.5f;
-			float cx = (float)((rand() % 5) - 2);
-			float cy = (float)((rand() % 5) - 2);
-			float cz = (float)((rand() % 5) - 2);
-			float radius = (float)((rand() % 10) + 1);
+		//// Create procedural sphere entities
+		//const uint PROC_SPHERE_OBJECT_COUNT = 1;
+		//for (uint i = 0; i < PROC_SPHERE_OBJECT_COUNT; i++)
+		//{
+		//	float x = (float)((rand() % 41) - 20);
+		//	float y = (float)((rand() % 7) - 3);
+		//	float z = (float)((rand() % 41) - 20);
+		//	float rx = DegToRad(static_cast<float>(rand() % 181));
+		//	float ry = DegToRad(static_cast<float>(rand() % 181));
+		//	float rz = DegToRad(static_cast<float>(rand() % 181));
+		//	float vx = (float)((rand() % 3) - 1);
+		//	float vz = (float)((rand() % 3) - 1);
+		//	float s = (float)((rand() % 4) + 1) * 0.5f;
+		//	float cx = (float)((rand() % 5) - 2);
+		//	float cy = (float)((rand() % 5) - 2);
+		//	float cz = (float)((rand() % 5) - 2);
+		//	float radius = (float)((rand() % 10) + 1);
 
-			flecs::entity e = m_ECSWorld.entity()
-				.set<Position>({ x, y, z })
-				// .set<Velocity>({ vx, 0.0f, vz })
-				// .set<Force>({ 0.0f, 0.0f, 0.0f })
-				.set<Rotation>({ rx, ry, rz })
-				.set<Scale>({ 2, 2, 2 })
-				.set<ProceduralSphereRenderer>({ createProceduralSphereObject(m_pRenderer, {cx, cy, cz}, radius) });
-			m_Entities.emplace_back(e.id());
-		}
+		//	flecs::entity e = m_ECSWorld.entity()
+		//		.set<Position>({ x, y, z })
+		//		// .set<Velocity>({ vx, 0.0f, vz })
+		//		// .set<Force>({ 0.0f, 0.0f, 0.0f })
+		//		.set<Rotation>({ rx, ry, rz })
+		//		.set<Scale>({ 2, 2, 2 })
+		//		.set<ProceduralSphereRenderer>({ createProceduralSphereObject(m_pRenderer, {cx, cy, cz}, radius) });
+		//	m_Entities.emplace_back(e.id());
+		//}
 
 		// Create CASPER entity
 		{
 			flecs::entity e = m_ECSWorld.entity()
 				.set<Position>({ 0.0f, 0.0f, 5.0f })
-				.set<Rotation>({ 0.0f, 0.0f, 0.0f })
+				.set<Rotation>({ 0.0f, DegToRad(180.0f), 0.0f })
 				.set<Scale>({ 1.0f, 1.0f, 1.0f })
 				.set<CasperRenderer>({ createCasperObject(m_pRenderer, L"./Resources/temp/casper_color.dds", L"./Resources/temp/casper_depth.dds") });
 			m_Entities.emplace_back(e.id());
 		}
 
 		// Create from file (bunny)
-		//{
-		//	flecs::entity e = m_ECSWorld.entity()
-		//		.set<Position>({ 15.0f, 10.0f, 0.0f })
-		//		.set<Rotation>({ 0.0f, 0.0f, 0.0f })
-		//		.set<Scale>({ 3.0f, 3.0f, 3.0f })
-		//		.set<MeshRenderer>({ createMeshFromFile(m_pRenderer, "./Resources/Decomp/bunny.off") });
-		//	m_Entities.emplace_back(e.id());
-		//}
+		{
+			flecs::entity e = m_ECSWorld.entity()
+				.set<Position>({ 2.5f, -1.0f, 5.0f })
+				.set<Rotation>({ 0.0f, DegToRad(180.0f), 0.0f })
+				.set<Scale>({ 0.02f, 0.02f, 0.02f })
+				.set<MeshRenderer>({ createMeshFromFile(m_pRenderer, "./Resources/stanford_bunny_pbr.glb") });
+			m_Entities.emplace_back(e.id());
+		}
 
 		// Create sprite entity
 		{
@@ -858,8 +859,9 @@ static FLOAT3 ComputeSunDir(
 bool Game::Update(uint64_t currTick)
 {
 	const uint64_t elapsedMs = currTick - m_PrevUpdateTick;
-	const float dt = (float)elapsedMs * 0.001f / 3600.0f; // ms -> h
 	m_PrevUpdateTick = currTick;
+	if (elapsedMs > 1000) return true;
+	const float dt = (float)elapsedMs * 0.001f / 3600.0f; // ms -> h
 
 	if (m_CamOffsetX || m_CamOffsetY || m_CamOffsetZ)
 	{

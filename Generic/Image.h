@@ -30,6 +30,7 @@ struct Image
 	static Image LoadFromMemory(const unsigned char* fileData, size_t dataSize);
 
 	bool IsValid() const { return Width > 0 && Height > 0 && !Data.empty(); }
+	void FlipY();
 };
 
 void FillImageRGBA(Image* outImg, uint w, uint h, const unsigned char* rgba8);
