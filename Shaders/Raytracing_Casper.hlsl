@@ -5,7 +5,7 @@
 
 struct MyCasperIntersectionAttributes
 {
-    float3 Normal;
+    float3 UnitSpaceHitPosition;
 };
 
 ConstantBuffer<CONSTANT_BUFFER_RT_PROC> l_ProcGeomCB : register(b1, space0);
@@ -19,372 +19,141 @@ struct AABB
 };
 StructuredBuffer<AABB> l_AABBBuffer : register(t2, space1);
 
-// --------- 유틸: 레이 vs AABB slab 교차 (object space) ----------
-bool RayBoxTSlab(float3 ro, float3 rd, float3 bmin, float3 bmax, out float tEnter, out float tExit)
+// =======================================================
+// Unit-space helpers
+// =======================================================
+
+float RayTEnter()
 {
-    // rd 성분 0이어도 1/0=INF 로 min/max가 정리해줌
-    float3 inv = 1.0 / rd;
-    float3 t0 = (bmin - ro) * inv;
-    float3 t1 = (bmax - ro) * inv;
-
-    float3 tmin3 = min(t0, t1);
-    float3 tmax3 = max(t0, t1);
-
-    float tmin = max(max(tmin3.x, tmin3.y), tmin3.z);
-    float tmax = min(min(tmax3.x, tmax3.y), tmax3.z);
-
-    // 레이 시작 클램프 (다른 히트가 앞서 있으면 RayTMin가 올라있을 수 있음)
-    tEnter = max(tmin, RayTMin());
-    tExit = tmax;
-    return (tEnter <= tExit);
+    AABB aabb = l_AABBBuffer[PrimitiveIndex()];
+    float3 origin = ObjectRayOrigin();
+    float3 invDir = 1.0 / ObjectRayDirection();
+    
+    float3 t0 = (aabb.Min - origin) * invDir;
+    float3 t1 = (aabb.Max - origin) * invDir;
+    float3 tMin3 = min(t0, t1);
+    
+    return max(max(tMin3.x, tMin3.y), tMin3.z);
 }
 
-// 0..1 depth → [aabb.Min, aabb.Max] 좌표 한계로 복원
-float2 DecodeAxisLimitsAABB(float3 pOS, int axis, AABB aabb)
+float RayTExit()
 {
-    float3 c = 0.5 * (aabb.Min + aabb.Max); // center
-    float3 he = 0.5 * (aabb.Max - aabb.Min); // half extents
-    he = max(he, 1e-6.xxx); // degenerate guard
-
-    // 오브젝트 → 박스 로컬([-1,1]) 좌표
-    float3 q = (pOS - c) / he;
-    q = clamp(q, -1.0, 1.0);
-
-    // 해당 축의 +face/-face 방향으로 큐브맵 샘플
-    float3 dirP = q;
-    dirP[axis] = 1.0;
-    dirP = normalize(dirP);
-    float3 dirN = q;
-    dirN[axis] = -1.0;
-    dirN = normalize(dirN);
-
-    float dP = l_DepthAtlasTexture.SampleLevel(g_SamplerClamp, dirP, 0).x; // +face inward
-    float dN = l_DepthAtlasTexture.SampleLevel(g_SamplerClamp, dirN, 0).x; // -face inward
-
-    // [-1,1] 로 복원한 한계를 다시 오브젝트 좌표로 변환
-    float minC = -1.0 + 2.0 * dN; // -face에서 들어온 만큼
-    float maxC = 1.0 - 2.0 * dP; // +face에서 들어온 만큼
-    float minObj = c[axis] + minC * he[axis];
-    float maxObj = c[axis] + maxC * he[axis];
-
-    return float2(minObj, maxObj);
+    AABB aabb = l_AABBBuffer[PrimitiveIndex()];
+    float3 origin = ObjectRayOrigin();
+    float3 invDir = 1.0 / ObjectRayDirection();
+    
+    float3 t0 = (aabb.Min - origin) * invDir;
+    float3 t1 = (aabb.Max - origin) * invDir;
+    float3 tMax3 = max(t0, t1);
+    
+    return min(min(tMax3.x, tMax3.y), tMax3.z);
 }
 
-// --------- 유틸: 내부 판정 ----------
-bool InsideLimits(float3 p, float2 L[3])
+float3 UnitRayDirection()
 {
-    return (p.x >= L[0].x && p.x <= L[0].y) &&
-           (p.y >= L[1].x && p.y <= L[1].y) &&
-           (p.z >= L[2].x && p.z <= L[2].y);
+    AABB aabb = l_AABBBuffer[PrimitiveIndex()];
+    float3 extent = aabb.Max - aabb.Min;
+    float3 invExtent = 1.0 / extent;
+    return ObjectRayDirection() * invExtent;
 }
 
-// -------------------------------------------------------
-// Occupancy 샘플 (주변이 fill돼있는지: inside=1, outside=0)
-// -------------------------------------------------------
-float OccupancyAt(float3 p, AABB aabb)
+float3 UnitSpaceHitPosition()
 {
-    float2 Lx = DecodeAxisLimitsAABB(p, 0, aabb);
-    float2 Ly = DecodeAxisLimitsAABB(p, 1, aabb);
-    float2 Lz = DecodeAxisLimitsAABB(p, 2, aabb);
-    return (p.x >= Lx.x && p.x <= Lx.y) &&
-           (p.y >= Ly.x && p.y <= Ly.y) &&
-           (p.z >= Lz.x && p.z <= Lz.y) ? 1.0 : 0.0;
+    AABB aabb = l_AABBBuffer[PrimitiveIndex()];
+    float3 objectHitPosition = ObjectRayOrigin() + RayTEnter() * ObjectRayDirection();
+    float3 extent = aabb.Max - aabb.Min;
+    float3 invExtent = 1.0 / extent;
+    return (objectHitPosition - aabb.Min) * invExtent;
 }
 
-// --------- 유틸: 축 노멀 근사 (경계까지 여유거리 최소 축) ----------
-float3 EstimateAxisNormal(float3 p, float2 L[3])
+float3 UnitSpaceExitPosition()
 {
-    // 여유거리 6개 중 최솟값의 축/부호 선택
-    float dx0 = p.x - L[0].x; // -X 경계까지
-    float dx1 = L[0].y - p.x; // +X 경계까지
-    float dy0 = p.y - L[1].x;
-    float dy1 = L[1].y - p.y;
-    float dz0 = p.z - L[2].x;
-    float dz1 = L[2].y - p.z;
-
-    float m = dx0;
-    float3 n = float3(+1, 0, 0); // -X면 노멀은 +X
-    if (dx1 < m)
-    {
-        m = dx1;
-        n = float3(-1, 0, 0);
-    } // +X면 노멀은 -X
-    if (dy0 < m)
-    {
-        m = dy0;
-        n = float3(0, +1, 0);
-    }
-    if (dy1 < m)
-    {
-        m = dy1;
-        n = float3(0, -1, 0);
-    }
-    if (dz0 < m)
-    {
-        m = dz0;
-        n = float3(0, 0, +1);
-    }
-    if (dz1 < m)
-    {
-        m = dz1;
-        n = float3(0, 0, -1);
-    }
-    return n; // 이미 단위벡터
+    AABB aabb = l_AABBBuffer[PrimitiveIndex()];
+    float3 objectExitPosition = ObjectRayOrigin() + RayTExit() * ObjectRayDirection();
+    float3 extent = aabb.Max - aabb.Min;
+    float3 invExtent = 1.0 / extent;
+    return (objectExitPosition - aabb.Min) * invExtent;
 }
 
-// -------------------------------------------------------
-// 점유 기반 노멀: central differences on occupancy
-//  n ≈ [ O(p-εx)-O(p+εx), O(p-εy)-O(p+εy), O(p-εz)-O(p+εz) ]
-//  - ε는 [-1,1] 오브젝트 공간에서 "한 픽셀" 정도로 설정
-//  - 실패 시 축 노멀로 폴백
-// -------------------------------------------------------
-float3 NormalFromFill(float3 p, float epsObj, AABB aabb)
+float ComputeTHit(float3 unitSpacePos)
 {
-    float3 ex = float3(epsObj, 0, 0);
-    float3 ey = float3(0, epsObj, 0);
-    float3 ez = float3(0, 0, epsObj);
+    AABB aabb = l_AABBBuffer[PrimitiveIndex()];
+    float3 extent = aabb.Max - aabb.Min;
+    float3 objectSpacePos = aabb.Min + unitSpacePos * extent;
+    
+    float3 rayOrigin = ObjectRayOrigin();
+    float3 rayDir = ObjectRayDirection();
+    
+    float3 toPos = objectSpacePos - rayOrigin;
+    float tHit = dot(toPos, rayDir) / dot(rayDir, rayDir);
+    return tHit;
+}
 
-    float nx = OccupancyAt(p - ex, aabb) - OccupancyAt(p + ex, aabb);
-    float ny = OccupancyAt(p - ey, aabb) - OccupancyAt(p + ey, aabb);
-    float nz = OccupancyAt(p - ez, aabb) - OccupancyAt(p + ez, aabb);
+float2 GetLimits(float3 unitPos, int axis)
+{
+    float3 ndcPos = unitPos * 2.0f - 1.0f; // [0,1] -> [-1,1]
+    
+    float3 sampleDirNegative = ndcPos;
+    sampleDirNegative[axis] = -1.0f;
+    float negativeLimit = l_DepthAtlasTexture.SampleLevel(g_SamplerClamp, normalize(sampleDirNegative), 0);
+    
+    float3 sampleDirPositive = ndcPos;
+    sampleDirPositive[axis] = 1.0f;
+    float positiveLimit = l_DepthAtlasTexture.SampleLevel(g_SamplerClamp, normalize(sampleDirPositive), 0);
+    
+    return float2(negativeLimit, 1.0 - positiveLimit);
+}
 
-    float3 n = float3(nx, ny, nz);
-    float len = length(n);
-
-    if (len > 1e-5)
-        return n / len;
-
-    // 폴백: 경계가 너무 얇거나 판정이 애매할 때 축 노멀 근사
-    float2 Lx = DecodeAxisLimitsAABB(p, 0, aabb);
-    float2 Ly = DecodeAxisLimitsAABB(p, 1, aabb);
-    float2 Lz = DecodeAxisLimitsAABB(p, 2, aabb);
-    float2 Lhit[3] = { Lx, Ly, Lz };
-    return EstimateAxisNormal(p, Lhit);
+bool IsInsideGeometry(float3 unitPos)
+{
+    float2 limits[3];
+    limits[0] = GetLimits(unitPos, 0);
+    limits[1] = GetLimits(unitPos, 1);
+    limits[2] = GetLimits(unitPos, 2);
+    
+    bool bInsideX = (limits[0].x <= unitPos.x) && (unitPos.x <= limits[0].y);
+    bool bInsideY = (limits[1].x <= unitPos.y) && (unitPos.y <= limits[1].y);
+    bool bInsideZ = (limits[2].x <= unitPos.z) && (unitPos.z <= limits[2].y);
+    
+    return bInsideX && bInsideY && bInsideZ;
 }
 
 // =======================================================
 // Intersection Shader
 // =======================================================
+
 [shader("intersection")]
 void MyIntersectionShader_Casper()
 {
-    // 레이 (object space)
-    float3 ro = ObjectRayOrigin();
-    float3 rd = ObjectRayDirection(); // 정규화 안되었을 수 있음
-    float rdLen = max(length(rd), 1e-6);
-    float3 rdn = rd / rdLen;
-
-    // AABB 상한 계산
-    float tEnter, tExit;
-    AABB aabb = l_AABBBuffer[PrimitiveIndex()];
-    if (!RayBoxTSlab(ro, rd, aabb.Min, aabb.Max, tEnter, tExit))
-        return; // 박스와 교차 없음
-
-    // t 진행 보폭(파라미터 공간). 구간을 균등 분할 + 안전한 상한
+    float3 rayDir = UnitRayDirection();
+    float3 enter = UnitSpaceHitPosition();
+    float3 exit = UnitSpaceExitPosition();
+    
+    float tEnter = 0.0f;
+    float tExit = length(exit - enter) / max(length(rayDir), 1e-8);
+    
     const int MAX_STEPS = 128;
     float dt = max((tExit - tEnter) / MAX_STEPS, 1e-5);
-
-    // 시작점
-    float t0 = tEnter;
-    float3 p0 = ro + rd * t0;
-
-    // 초기 한계 계산
-    float2 L0[3];
-    L0[0] = DecodeAxisLimitsAABB(p0, 0, aabb);
-    L0[1] = DecodeAxisLimitsAABB(p0, 1, aabb);
-    L0[2] = DecodeAxisLimitsAABB(p0, 2, aabb);
-
-    // 만약 시작이 이미 내부(박스 내부에서 시작한 경우 등)
-    if (InsideLimits(p0, L0))
+    
+    float tCurr = 0.0;
+    float3 currPos = enter + tCurr * rayDir;
+    
+    for (int stepCount = 0; stepCount < MAX_STEPS; ++stepCount)
     {
-        // 바로 이분탐색으로 경계 정밀화 (tEnter와 t0 사이는 동일하므로 tEnter~t0)
-        float ta = tEnter, tb = t0;
-        [unroll(6)]
-        for (int k = 0; k < 6; ++k)
+        if (IsInsideGeometry(currPos))
         {
-            float tm = 0.5 * (ta + tb);
-            float3 pm = ro + rd * tm;
-            float2 Lm[3] = { DecodeAxisLimitsAABB(pm, 0, aabb), DecodeAxisLimitsAABB(pm, 1, aabb), DecodeAxisLimitsAABB(pm, 2, aabb) };
-            if (InsideLimits(pm, Lm))
-                tb = tm;
-            else
-                ta = tm;
-        }
-        float tHit = tb;
-        float3 pHit = ro + rd * tHit;
-        float2 Lhit[3] = { DecodeAxisLimitsAABB(pHit, 0, aabb), DecodeAxisLimitsAABB(pHit, 1, aabb), DecodeAxisLimitsAABB(pHit, 2, aabb) };
-
-        const float epsObj = 2.0 / 512.0;
-            
-        MyCasperIntersectionAttributes attr;
-        attr.Normal = NormalFromFill(pHit, epsObj, aabb);
-        ReportHit(tHit, /*hitKind*/0, attr);
-        return;
-    }
-
-    // 밖에서 안으로 들어가는 첫 지점 찾기
-    float tPrev = t0;
-    float3 pPrev = p0;
-    float2 LPrev[3] = { L0[0], L0[1], L0[2] };
-
-    bool found = false;
-    float t = tPrev;
-    float3 p = pPrev;
-
-    [loop]
-    for (int i = 0; i < MAX_STEPS && t <= tExit; ++i)
-    {
-        t += dt;
-        p = ro + rd * t;
-
-        float2 L[3];
-        L[0] = DecodeAxisLimitsAABB(p, 0, aabb);
-        L[1] = DecodeAxisLimitsAABB(p, 1, aabb);
-        L[2] = DecodeAxisLimitsAABB(p, 2, aabb);
-
-        if (InsideLimits(p, L))
-        {
-            found = true;
-            // tPrev(밖) ~ t(안) 사이 이분탐색으로 경계 정밀화
-            float ta = tPrev, tb = t;
-            [unroll(6)]
-            for (int k = 0; k < 6; ++k)
-            {
-                float tm = 0.5 * (ta + tb);
-                float3 pm = ro + rd * tm;
-                float2 Lm[3] = { DecodeAxisLimitsAABB(pm, 0, aabb), DecodeAxisLimitsAABB(pm, 1, aabb), DecodeAxisLimitsAABB(pm, 2, aabb) };
-                if (InsideLimits(pm, Lm))
-                    tb = tm;
-                else
-                    ta = tm;
-            }
-            float tHit = tb;
-            float3 pHit = ro + rd * tHit;
-            float2 Lhit[3] = { DecodeAxisLimitsAABB(pHit, 0, aabb), DecodeAxisLimitsAABB(pHit, 1, aabb), DecodeAxisLimitsAABB(pHit, 2, aabb) };
-
-            const float epsObj = 2.0 / 512.0;
-            
             MyCasperIntersectionAttributes attr;
-            attr.Normal = NormalFromFill(pHit, epsObj, aabb);
+            attr.UnitSpaceHitPosition = currPos;
+            float tHit = ComputeTHit(currPos);
+    
             ReportHit(tHit, /*hitKind*/0, attr);
             return;
         }
 
-        // 다음 루프 위해 저장
-        tPrev = t;
-        pPrev = p;
-        LPrev[0] = L[0];
-        LPrev[1] = L[1];
-        LPrev[2] = L[2];
+        tCurr += dt;
+        currPos = enter + tCurr * rayDir;
     }
-
-    // 못 찾았으면 히트 없음
-    return;
 }
-
-//float2 calcLimit(float3 localPos, int axis)
-//{
-//    float3 sampleLocationPositive = localPos;
-//    sampleLocationPositive[axis] = 1.0f;
-//    float3 sampleLocationNegative = localPos;
-//    sampleLocationNegative[axis] = -1.0f;
-    
-//    float dominantAxisLimitPositive = l_DepthAtlasTexture.SampleLevel(g_SamplerClamp, normalize(sampleLocationPositive), 0);
-//    float dominantAxisLimitNegative = l_DepthAtlasTexture.SampleLevel(g_SamplerClamp, normalize(sampleLocationNegative), 0);
-    
-//    return float2(dominantAxisLimitPositive, 1.0f - dominantAxisLimitNegative);
-//}
-
-//bool isWithinLimits(float3 localPos, float2 limits[3])
-//{
-//    bool bWithinX = (localPos.x >= limits[0].x) && (localPos.x <= limits[0].y);
-//    bool bWithinY = (localPos.y >= limits[1].x) && (localPos.y <= limits[1].y);
-//    bool bWithinZ = (localPos.z >= limits[2].x) && (localPos.z <= limits[2].y);
-    
-//    return bWithinX && bWithinY && bWithinZ;
-//}
-
-//bool doIntersect(float3 pos, float3 bmin, float3 bmax)
-//{
-//    return all(pos >= bmin) && all(pos <= bmax);
-//}
-
-//[shader("intersection")]
-//void MyIntersectionShader_Casper()
-//{
-//    float3 hitObjectPosition = ObjectRayOrigin() + RayTCurrent() * ObjectRayDirection();
-//    float3 rayDir = normalize(ObjectRayDirection());
-//    float3 absDir = abs(rayDir);
-//    int dominantAxis = absDir.x > absDir.y ? (absDir.x > absDir.z ? 0 : 2) : (absDir.y > absDir.z ? 1 : 2);
-    
-//    float2 limits[3];
-//    limits[0] = calcLimit(hitObjectPosition, 0);
-//    limits[1] = calcLimit(hitObjectPosition, 1);
-//    limits[2] = calcLimit(hitObjectPosition, 2);
-   
-//    int stepCount = 0;
-//    const int LOOP_STEP_LIMIT = 512;
-//    float tHit = 0.0f;
-    
-//    while (!isWithinLimits(rayDir * tHit, limits) && doIntersect(hitObjectPosition + rayDir * tHit, float3(-1.0f, -1.0f, -1.0f), float3(1.0f, 1.0f, 1.0f)))
-//    {
-//        if (stepCount >= LOOP_STEP_LIMIT)
-//        {
-//            break;
-//        }
-//        ++stepCount;
-        
-//        tHit += 0.01f; // 스텝 크기 조절 가능
-           
-//        limits[0] = calcLimit(hitObjectPosition, 0);
-//        limits[1] = calcLimit(hitObjectPosition, 1);
-//        limits[2] = calcLimit(hitObjectPosition, 2);
-//    }
-    
-//    float tHit = length(endPoint - hitObjectPosition);
-//    MyCasperIntersectionAttributes attr;
-//    attr.Normal = float3(0, 0, 1); // 임시값
-//    ReportHit(tHit, /*hitKind*/0, attr);
-//    return;
-    
-    //Ray rayObject;
-    //rayObject.origin = ObjectRayOrigin();
-    //rayObject.direction = ObjectRayDirection();
-
-    //float tminRay = max(RayTMin(), 1e-5);
-    //float tmaxRay = RayTCurrent();
-
-    //const float3 bmin = float3(-1.0, -1.0, -1.0);
-    //const float3 bmax = float3(1.0, 1.0, 1.0);
-
-    //float3 invRd = float3(rcp(rayObject.direction.x), rcp(rayObject.direction.y), rcp(rayObject.direction.z));
-    //float3 t0 = (bmin - rayObject.origin) * invRd;
-    //float3 t1 = (bmax - rayObject.origin) * invRd;
-    //float3 tmin3 = min(t0, t1);
-    //float tEnter = max(max(tmin3.x, tmin3.y), tmin3.z);
-
-    //float tHit = max(tEnter, tminRay);
-    //float3 enterPoint = rayObject.origin + rayObject.direction * tEnter;
-    
-    //uint axisEnter = 0;
-    //if (abs(enterPoint.x) > 0.99 && abs(enterPoint.x) < 1.01)
-    //    axisEnter = 0;
-    //if (abs(enterPoint.y) > 0.99 && abs(enterPoint.y) < 1.01)
-    //    axisEnter = 1;
-    //if (abs(enterPoint.z) > 0.99 && abs(enterPoint.z) < 1.01)
-    //    axisEnter = 2;
-    
-    //uint axis = axisEnter;
-
-    //float3 n = float3(0, 0, 0);
-    //n[axis] = (rayObject.direction[axis] >= 0.0f) ? -1.0f : 1.0f;
-
-    //// 리포트
-    //MyCasperIntersectionAttributes attr;
-    //attr.Normal = n; // object-space
-    //ReportHit(tHit, /*hitKind*/0, attr);
-// }
-
 
 [shader("closesthit")]
 void MyClosestHitShader_RadianceRay_Casper(inout RadiancePayload rayPayload, in MyCasperIntersectionAttributes attr)
@@ -393,19 +162,22 @@ void MyClosestHitShader_RadianceRay_Casper(inout RadiancePayload rayPayload, in 
     uint instanceID = InstanceID(); // The instance ID as specified in the instance desc.
     uint systemInstanceIndex = InstanceIndex(); // The autogenerated index of the current instance in the top-level structure.
     
-    float3 hitObjectPosition = ObjectRayOrigin() + RayTCurrent() * ObjectRayDirection();
-    float4 texDiffuse = l_DiffuseAtlasTexture.SampleLevel(g_SamplerClamp, normalize(hitObjectPosition), 0);
-    float texDepth = l_DepthAtlasTexture.SampleLevel(g_SamplerClamp, normalize(hitObjectPosition), 0).x;
-    
-    float3 surfaceNormal = normalize(mul((float3x3) ObjectToWorld3x4(), attr.Normal));
-    
     // Compute depth
     float4 projPos = mul(float4(hitPosition, 1.0), g_ViewProj);
     projPos /= projPos.w;
     rayPayload.depth = saturate(projPos.z);
     
-    //rayPayload.radiance = texDepth.xxx;
-    //return;
+    float tt = RayTCurrent().xxx / 20.0;
+    rayPayload.radiance = tt * tt;
+    return;
+    
+    float3 hitObjectPosition = ObjectRayOrigin() + RayTCurrent() * ObjectRayDirection();
+    float3 localtion = attr.UnitSpaceHitPosition * 2.0f - 1.0f; // [0,1] -> [-1,1]
+    float4 texDiffuse = l_DiffuseAtlasTexture.SampleLevel(g_SamplerClamp, localtion, 0);
+    float texDepth = l_DepthAtlasTexture.SampleLevel(g_SamplerClamp, localtion, 0);
+    
+    float3 objectNormal = float3(0, 0, 1); // TODO: Compute proper normal 
+    float3 surfaceNormal = normalize(mul((float3x3) ObjectToWorld3x4(), objectNormal));
     
     // Compute radiance
     BasicMaterial mtl = l_ProcGeomCB.Material;

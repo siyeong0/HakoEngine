@@ -563,8 +563,7 @@ bool Game::Initialize(
 			.multi_threaded(false)	// TODO: test multi threading
 			.each([this](const Position& p, const Rotation& r, const Scale& s, const CasperRenderer& casper)
 				{
-					// Matrix4x4 matScale = DirectX::XMMatrixScaling(s.x, s.y, s.z);
-					Matrix4x4 matScale = DirectX::XMMatrixIdentity(); // Procedural sphere already has radius
+					Matrix4x4 matScale = DirectX::XMMatrixScaling(s.x, s.y, s.z);
 					Matrix4x4 matRot = DirectX::XMMatrixRotationRollPitchYaw(r.Pitch, r.Yaw, r.Roll);
 					Matrix4x4 matTrans = DirectX::XMMatrixTranslation(p.x, p.y, p.z);
 					Matrix4x4 worldMat = matScale * matRot * matTrans;
@@ -781,7 +780,7 @@ bool Game::Initialize(
 		// Create CASPER entity
 		{
 			flecs::entity e = m_ECSWorld.entity()
-				.set<Position>({ -2.5f, 0.0f, 5.0f })
+				.set<Position>({ -2.5f, -2.0f, 12.0f })
 				.set<Rotation>({ 0.0f, DegToRad(180.0f), 0.0f })
 				.set<Scale>({ 1.0f, 1.0f, 1.0f })
 				.set<CasperRenderer>({ createCasperObject(m_pRenderer, L"./Resources/temp/metadata.txt", L"./Resources/temp/casper_color.dds", L"./Resources/temp/casper_depth.dds") });
@@ -791,7 +790,7 @@ bool Game::Initialize(
 		// Create from file (bunny)
 		{
 			flecs::entity e = m_ECSWorld.entity()
-				.set<Position>({ 2.5f, 0.0f, 5.0f })
+				.set<Position>({ 2.5f, -2.0f, 12.0f })
 				.set<Rotation>({ 0.0f, DegToRad(180.0f), 0.0f })
 				.set<Scale>({ 0.05f, 0.05f, 0.05f })
 				.set<MeshRenderer>({ createMeshFromFile(m_pRenderer, "./Resources/stanford_bunny_pbr.glb") });
