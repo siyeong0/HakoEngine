@@ -22,6 +22,7 @@ public:
 	inline size_t Capacity() const { return m_Capacity; }  // hash table slots
 	inline size_t GetNumBricks() const { return m_Bricks.size(); }
 	inline uint3 GetDim() const { return m_Dim; }
+	inline Bounds GetBounds() const;
 
 	inline const Brick& GetBrick(size_t index) const { return m_Bricks[index]; }
 	inline const Brick& GetBrick(int tx, int ty, int tz) const { return m_Bricks[findTile(tx, ty, tz)]; }
@@ -95,6 +96,12 @@ private:
 	std::vector<int>      m_Values; // EMPTY sentinel = -1 (brick index)
 	std::vector<Brick>    m_Bricks; // contiguous brick storage
 };
+
+inline Bounds SparseBinaryGrid::GetBounds() const
+{
+	FLOAT3 max = m_Origin + FLOAT3(m_Dim.x * m_CellSize, m_Dim.y * m_CellSize, m_Dim.z * m_CellSize);
+	return Bounds(m_Origin, max);
+}
 
 inline int SparseBinaryGrid::GetLocalIndex(int x, int y, int z) // x-major
 {

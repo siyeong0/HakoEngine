@@ -12,6 +12,13 @@ ConstantBuffer<CONSTANT_BUFFER_RT_PROC> l_ProcGeomCB : register(b1, space0);
 TextureCube<float4> l_DiffuseAtlasTexture : register(t0, space1);
 TextureCube<float> l_DepthAtlasTexture : register(t1, space1);
 
+struct AABB
+{
+    float3 Min;
+    float3 Max;
+};
+StructuredBuffer<AABB> l_AABBBuffer : register(t2, space1);
+
 // --------- 유틸: 레이 vs AABB slab 교차 (object space) ----------
 bool RayBoxTSlab(float3 ro, float3 rd, float3 bmin, float3 bmax, out float tEnter, out float tExit)
 {
@@ -32,24 +39,35 @@ bool RayBoxTSlab(float3 ro, float3 rd, float3 bmin, float3 bmax, out float tEnte
     return (tEnter <= tExit);
 }
 
-// --------- 유틸: 0..1 depth → [-1,1] 좌표 한계로 복원 ----------
-float2 DecodeAxisLimits(float3 pOS, int axis)
+// 0..1 depth → [aabb.Min, aabb.Max] 좌표 한계로 복원
+float2 DecodeAxisLimitsAABB(float3 pOS, int axis, AABB aabb)
 {
-    // pOS의 (u,v)에 해당하는 +axis, -axis 얼굴을 샘플
-    float3 dirP = pOS;
+    float3 c = 0.5 * (aabb.Min + aabb.Max); // center
+    float3 he = 0.5 * (aabb.Max - aabb.Min); // half extents
+    he = max(he, 1e-6.xxx); // degenerate guard
+
+    // 오브젝트 → 박스 로컬([-1,1]) 좌표
+    float3 q = (pOS - c) / he;
+    q = clamp(q, -1.0, 1.0);
+
+    // 해당 축의 +face/-face 방향으로 큐브맵 샘플
+    float3 dirP = q;
     dirP[axis] = 1.0;
     dirP = normalize(dirP);
-    float3 dirN = pOS;
+    float3 dirN = q;
     dirN[axis] = -1.0;
     dirN = normalize(dirN);
 
     float dP = l_DepthAtlasTexture.SampleLevel(g_SamplerClamp, dirP, 0).x; // +face inward
     float dN = l_DepthAtlasTexture.SampleLevel(g_SamplerClamp, dirN, 0).x; // -face inward
 
-    // 좌표 한계로 변환
+    // [-1,1] 로 복원한 한계를 다시 오브젝트 좌표로 변환
     float minC = -1.0 + 2.0 * dN; // -face에서 들어온 만큼
     float maxC = 1.0 - 2.0 * dP; // +face에서 들어온 만큼
-    return float2(minC, maxC);
+    float minObj = c[axis] + minC * he[axis];
+    float maxObj = c[axis] + maxC * he[axis];
+
+    return float2(minObj, maxObj);
 }
 
 // --------- 유틸: 내부 판정 ----------
@@ -63,11 +81,11 @@ bool InsideLimits(float3 p, float2 L[3])
 // -------------------------------------------------------
 // Occupancy 샘플 (주변이 fill돼있는지: inside=1, outside=0)
 // -------------------------------------------------------
-float OccupancyAt(float3 p)
+float OccupancyAt(float3 p, AABB aabb)
 {
-    float2 Lx = DecodeAxisLimits(p, 0);
-    float2 Ly = DecodeAxisLimits(p, 1);
-    float2 Lz = DecodeAxisLimits(p, 2);
+    float2 Lx = DecodeAxisLimitsAABB(p, 0, aabb);
+    float2 Ly = DecodeAxisLimitsAABB(p, 1, aabb);
+    float2 Lz = DecodeAxisLimitsAABB(p, 2, aabb);
     return (p.x >= Lx.x && p.x <= Lx.y) &&
            (p.y >= Ly.x && p.y <= Ly.y) &&
            (p.z >= Lz.x && p.z <= Lz.y) ? 1.0 : 0.0;
@@ -120,15 +138,15 @@ float3 EstimateAxisNormal(float3 p, float2 L[3])
 //  - ε는 [-1,1] 오브젝트 공간에서 "한 픽셀" 정도로 설정
 //  - 실패 시 축 노멀로 폴백
 // -------------------------------------------------------
-float3 NormalFromFill(float3 p, float epsObj)
+float3 NormalFromFill(float3 p, float epsObj, AABB aabb)
 {
     float3 ex = float3(epsObj, 0, 0);
     float3 ey = float3(0, epsObj, 0);
     float3 ez = float3(0, 0, epsObj);
 
-    float nx = OccupancyAt(p - ex) - OccupancyAt(p + ex);
-    float ny = OccupancyAt(p - ey) - OccupancyAt(p + ey);
-    float nz = OccupancyAt(p - ez) - OccupancyAt(p + ez);
+    float nx = OccupancyAt(p - ex, aabb) - OccupancyAt(p + ex, aabb);
+    float ny = OccupancyAt(p - ey, aabb) - OccupancyAt(p + ey, aabb);
+    float nz = OccupancyAt(p - ez, aabb) - OccupancyAt(p + ez, aabb);
 
     float3 n = float3(nx, ny, nz);
     float len = length(n);
@@ -137,9 +155,9 @@ float3 NormalFromFill(float3 p, float epsObj)
         return n / len;
 
     // 폴백: 경계가 너무 얇거나 판정이 애매할 때 축 노멀 근사
-    float2 Lx = DecodeAxisLimits(p, 0);
-    float2 Ly = DecodeAxisLimits(p, 1);
-    float2 Lz = DecodeAxisLimits(p, 2);
+    float2 Lx = DecodeAxisLimitsAABB(p, 0, aabb);
+    float2 Ly = DecodeAxisLimitsAABB(p, 1, aabb);
+    float2 Lz = DecodeAxisLimitsAABB(p, 2, aabb);
     float2 Lhit[3] = { Lx, Ly, Lz };
     return EstimateAxisNormal(p, Lhit);
 }
@@ -158,7 +176,8 @@ void MyIntersectionShader_Casper()
 
     // AABB 상한 계산
     float tEnter, tExit;
-    if (!RayBoxTSlab(ro, rd, float3(-1, -1, -1), float3(1, 1, 1), tEnter, tExit))
+    AABB aabb = l_AABBBuffer[PrimitiveIndex()];
+    if (!RayBoxTSlab(ro, rd, aabb.Min, aabb.Max, tEnter, tExit))
         return; // 박스와 교차 없음
 
     // t 진행 보폭(파라미터 공간). 구간을 균등 분할 + 안전한 상한
@@ -171,9 +190,9 @@ void MyIntersectionShader_Casper()
 
     // 초기 한계 계산
     float2 L0[3];
-    L0[0] = DecodeAxisLimits(p0, 0);
-    L0[1] = DecodeAxisLimits(p0, 1);
-    L0[2] = DecodeAxisLimits(p0, 2);
+    L0[0] = DecodeAxisLimitsAABB(p0, 0, aabb);
+    L0[1] = DecodeAxisLimitsAABB(p0, 1, aabb);
+    L0[2] = DecodeAxisLimitsAABB(p0, 2, aabb);
 
     // 만약 시작이 이미 내부(박스 내부에서 시작한 경우 등)
     if (InsideLimits(p0, L0))
@@ -185,7 +204,7 @@ void MyIntersectionShader_Casper()
         {
             float tm = 0.5 * (ta + tb);
             float3 pm = ro + rd * tm;
-            float2 Lm[3] = { DecodeAxisLimits(pm, 0), DecodeAxisLimits(pm, 1), DecodeAxisLimits(pm, 2) };
+            float2 Lm[3] = { DecodeAxisLimitsAABB(pm, 0, aabb), DecodeAxisLimitsAABB(pm, 1, aabb), DecodeAxisLimitsAABB(pm, 2, aabb) };
             if (InsideLimits(pm, Lm))
                 tb = tm;
             else
@@ -193,12 +212,12 @@ void MyIntersectionShader_Casper()
         }
         float tHit = tb;
         float3 pHit = ro + rd * tHit;
-        float2 Lhit[3] = { DecodeAxisLimits(pHit, 0), DecodeAxisLimits(pHit, 1), DecodeAxisLimits(pHit, 2) };
+        float2 Lhit[3] = { DecodeAxisLimitsAABB(pHit, 0, aabb), DecodeAxisLimitsAABB(pHit, 1, aabb), DecodeAxisLimitsAABB(pHit, 2, aabb) };
 
         const float epsObj = 2.0 / 512.0;
             
         MyCasperIntersectionAttributes attr;
-        attr.Normal = NormalFromFill(pHit, epsObj);
+        attr.Normal = NormalFromFill(pHit, epsObj, aabb);
         ReportHit(tHit, /*hitKind*/0, attr);
         return;
     }
@@ -219,9 +238,9 @@ void MyIntersectionShader_Casper()
         p = ro + rd * t;
 
         float2 L[3];
-        L[0] = DecodeAxisLimits(p, 0);
-        L[1] = DecodeAxisLimits(p, 1);
-        L[2] = DecodeAxisLimits(p, 2);
+        L[0] = DecodeAxisLimitsAABB(p, 0, aabb);
+        L[1] = DecodeAxisLimitsAABB(p, 1, aabb);
+        L[2] = DecodeAxisLimitsAABB(p, 2, aabb);
 
         if (InsideLimits(p, L))
         {
@@ -233,7 +252,7 @@ void MyIntersectionShader_Casper()
             {
                 float tm = 0.5 * (ta + tb);
                 float3 pm = ro + rd * tm;
-                float2 Lm[3] = { DecodeAxisLimits(pm, 0), DecodeAxisLimits(pm, 1), DecodeAxisLimits(pm, 2) };
+                float2 Lm[3] = { DecodeAxisLimitsAABB(pm, 0, aabb), DecodeAxisLimitsAABB(pm, 1, aabb), DecodeAxisLimitsAABB(pm, 2, aabb) };
                 if (InsideLimits(pm, Lm))
                     tb = tm;
                 else
@@ -241,12 +260,12 @@ void MyIntersectionShader_Casper()
             }
             float tHit = tb;
             float3 pHit = ro + rd * tHit;
-            float2 Lhit[3] = { DecodeAxisLimits(pHit, 0), DecodeAxisLimits(pHit, 1), DecodeAxisLimits(pHit, 2) };
+            float2 Lhit[3] = { DecodeAxisLimitsAABB(pHit, 0, aabb), DecodeAxisLimitsAABB(pHit, 1, aabb), DecodeAxisLimitsAABB(pHit, 2, aabb) };
 
             const float epsObj = 2.0 / 512.0;
             
             MyCasperIntersectionAttributes attr;
-            attr.Normal = NormalFromFill(pHit, epsObj); 
+            attr.Normal = NormalFromFill(pHit, epsObj, aabb);
             ReportHit(tHit, /*hitKind*/0, attr);
             return;
         }

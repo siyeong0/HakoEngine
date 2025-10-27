@@ -1,5 +1,6 @@
 ﻿#include "pch.h"
 #include <filesystem>
+#include <fstream>
 #include "Generic/Image.h"
 #include "Brick.h"
 #include "FaceLayer1024.h"
@@ -352,6 +353,20 @@ bool SparseBinaryGrid::SaveAsCasper(const std::string& path) const
 	fs::path base = fs::path(path);
 	std::error_code ec;
 	fs::create_directories(base, ec);
+
+	Bounds bounds = GetBounds();
+	{
+		fs::path metaPath = base / "metadata.txt";
+		std::ofstream ofs(metaPath);
+		if (!ofs)
+		{
+			std::cerr << "[SaveAsCasper] Failed to open metadata: " << metaPath << "\n";
+			return false;
+		}
+
+		ofs << "Min" << " " << bounds.Min.x << " " << bounds.Min.y << " " << bounds.Min.z << "\n";
+		ofs << "Max" << " " << bounds.Max.x << " " << bounds.Max.y << " " << bounds.Max.z << "\n";
+	}
 
 	const char* faceNames[6] = { "NX", "PX", "NY", "PY", "NZ", "PZ" };
 

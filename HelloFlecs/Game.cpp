@@ -1,6 +1,7 @@
 ﻿#include <iostream>
 #include <format>
 #include <filesystem>
+#include <fstream>
 #include <Windows.h>
 #include <DirectXMath.h>
 #include <shlwapi.h>
@@ -310,13 +311,47 @@ static IProceduralSphereObject* createProceduralSphereObject(IRenderer* pRendere
 	return pSphereObj;
 }
 
-static ICasperObject* createCasperObject(IRenderer* pRenderer, const wchar_t* casperDiffusePath, const wchar_t* casperDepthPath)
+static ICasperObject* createCasperObject(IRenderer* pRenderer, const wchar_t* metadataPath, const wchar_t* casperDiffusePath, const wchar_t* casperDepthPath)
 {
+	std::ifstream ifs(metadataPath);
+	ASSERT(ifs.is_open(), "Failed to open casper metadata file");
+	Bounds casperBounds;
+	std::string line;
+	while (std::getline(ifs, line))
+	{
+		std::istringstream iss(line);
+		std::string key;
+		if (!(iss >> key))
+			continue;
+		if (key == "Min")
+		{
+			float x, y, z;
+			if (iss >> x >> y >> z)
+			{
+				casperBounds.Min = FLOAT3(x, y, z);
+			}
+		}
+		else if (key == "Max")
+		{
+			float x, y, z;
+			if (iss >> x >> y >> z)
+			{
+				casperBounds.Max = FLOAT3(x, y, z);
+			}
+		}
+	}
+	
+	float maxLength = std::max({ casperBounds.Max.x - casperBounds.Min.x,
+		casperBounds.Max.y - casperBounds.Min.y,
+		casperBounds.Max.z - casperBounds.Min.z });
+
 	ICasperObject* pCasperObj = pRenderer->CreateCasperObject();
 	Material mtl(nullptr, nullptr, nullptr, nullptr, nullptr, MATERIAL_TYPE_GLASS, false);
 	pCasperObj->BeginCreateCasper(1, mtl);
 	CasperAtlas atlas = {};
-	atlas.AtlasBounds = Bounds(FLOAT3(-1.0f, -1.0f, -1.0f), FLOAT3(1.0f, 1.0f, 1.0f));
+	atlas.AtlasBounds = casperBounds;
+	// atlas.AtlasBounds = Bounds(casperBounds.Min, casperBounds.Min + FLOAT3(maxLength, maxLength, maxLength));
+	// atlas.AtlasBounds = Bounds(casperBounds.Max - FLOAT3(maxLength, maxLength, maxLength), casperBounds.Max);
 	atlas.DiffuseAtlas = casperDiffusePath;
 	atlas.DepthAtlas = casperDepthPath;
 	pCasperObj->InsertCasperAtlas(atlas);
@@ -746,19 +781,19 @@ bool Game::Initialize(
 		// Create CASPER entity
 		{
 			flecs::entity e = m_ECSWorld.entity()
-				.set<Position>({ 0.0f, 0.0f, 5.0f })
+				.set<Position>({ -2.5f, 0.0f, 5.0f })
 				.set<Rotation>({ 0.0f, DegToRad(180.0f), 0.0f })
 				.set<Scale>({ 1.0f, 1.0f, 1.0f })
-				.set<CasperRenderer>({ createCasperObject(m_pRenderer, L"./Resources/temp/casper_color.dds", L"./Resources/temp/casper_depth.dds") });
+				.set<CasperRenderer>({ createCasperObject(m_pRenderer, L"./Resources/temp/metadata.txt", L"./Resources/temp/casper_color.dds", L"./Resources/temp/casper_depth.dds") });
 			m_Entities.emplace_back(e.id());
 		}
 
 		// Create from file (bunny)
 		{
 			flecs::entity e = m_ECSWorld.entity()
-				.set<Position>({ 2.5f, -1.0f, 5.0f })
+				.set<Position>({ 2.5f, 0.0f, 5.0f })
 				.set<Rotation>({ 0.0f, DegToRad(180.0f), 0.0f })
-				.set<Scale>({ 0.02f, 0.02f, 0.02f })
+				.set<Scale>({ 0.05f, 0.05f, 0.05f })
 				.set<MeshRenderer>({ createMeshFromFile(m_pRenderer, "./Resources/stanford_bunny_pbr.glb") });
 			m_Entities.emplace_back(e.id());
 		}
@@ -861,16 +896,20 @@ bool Game::Update(uint64_t currTick)
 	const uint64_t elapsedMs = currTick - m_PrevUpdateTick;
 	m_PrevUpdateTick = currTick;
 	if (elapsedMs > 1000) return true;
-	const float dt = (float)elapsedMs * 0.001f / 3600.0f; // ms -> h
-
+	const float dt = (float)elapsedMs * 0.001f; // ms -> h
+	
+	const float SPEED = 100.0f;
 	if (m_CamOffsetX || m_CamOffsetY || m_CamOffsetZ)
 	{
-		m_pRenderer->MoveCamera(m_CamOffsetX, m_CamOffsetY, m_CamOffsetZ);
+		m_pRenderer->MoveCamera(
+			m_CamOffsetX * SPEED * dt,
+			m_CamOffsetY * SPEED * dt,
+			m_CamOffsetZ * SPEED * dt);
 	}
 
 	m_ECSWorld.progress(dt);
 
-	m_TimeOfDay += dt * 10.0f;
+	m_TimeOfDay += dt * 10.0f / 3600.0f;
 	m_TimeOfDay = fmodf(m_TimeOfDay, 24.0f); // 0 - 24 hours
 
 	FLOAT3 sunDir = ComputeSunDir(m_TimeOfDay, /*latitude*/37.6f, /*declination*/15.0f);
