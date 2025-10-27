@@ -233,14 +233,14 @@ static void ProjectFace(
 	outColor.Width = W;
 	outColor.Height = H;
 	outColor.Channels = 4;
-	outColor.Data.resize(W * H);
-	outDepth16.assign(W * H, 0xFFFF); // far = white
+	outColor.Data.resize((size_t)W * (size_t)H);
+	outDepth16.assign((size_t)W * (size_t)H, 0xFFFF); // far = white
 
 	auto toIdx = [&](int x, int y) { return y * (int)W + x; };
 
 	const uint3 dim = grid.GetDim();
 
-	// face별 투영축/이미지 평면 축/진행방향
+	// face별 투영축/이미지 평면 축/진행방향 + 출력 플립
 	int projAxis = 0;
 	int axisU = 0, axisV = 1;
 	int stepSign = +1;
@@ -275,42 +275,68 @@ static void ProjectFace(
 		break;
 	}
 
-	// 각 face의 이미지 해상도는 SaveAsCasper에서 넘어온 W,H 사용 (axisU/axisV에 맞춰져 있어야 함)
+	// 그리드 차원
+	const int dimS = (projAxis == 0) ? (int)dim.x : (projAxis == 1) ? (int)dim.y : (int)dim.z; // 진행축 길이
+	const int dimU = (axisU == 0) ? (int)dim.x : (axisU == 1) ? (int)dim.y : (int)dim.z;
+	const int dimV = (axisV == 0) ? (int)dim.x : (axisV == 1) ? (int)dim.y : (int)dim.z;
+
+	// 안전 가드
+	if (dimS <= 0 || dimU <= 0 || dimV <= 0) return;
+
+	// 최근접 리샘플: (u,v 픽셀) → (gridU,gridV) 인덱스
+	auto mapToGrid = [](uint p, uint P, int D) -> int {
+		// 중심 샘플: (p+0.5)/P ∈ (0,1] → [0..D-1]
+		float t = (float(p) + 0.5f) / float(P);
+		int idx = (int)floor(t * D);
+		if (idx < 0) idx = 0;
+		if (idx > D - 1) idx = D - 1;
+		return idx;
+		};
+
 	for (uint v = 0; v < H; ++v)
 	{
+		// 출력 위치(플립 적용)
+		int vv = flipV ? (int)H - 1 - (int)v : (int)v;
+
+		// 이 줄 전체에서 gridV는 동일
+		const int gridV = mapToGrid(v, H, dimV);
+
 		for (uint u = 0; u < W; ++u)
 		{
+			int uu = flipU ? (int)W - 1 - (int)u : (int)u;
+
+			// 대응하는 그리드의 (axisU, axisV) 인덱스
+			const int gridU = mapToGrid(u, W, dimU);
+
 			bool hit = false;
 			uint16_t depth16 = 0xFFFF;
 			RGBA color{ 255,255,255,255 };
 
-			// face의 진행축 길이
-			int len = (projAxis == 0) ? (int)dim.x : (projAxis == 1) ? (int)dim.y : (int)dim.z;
-
-			for (int s = 0; s < len; ++s)
+			// 진행축으로 앞에서부터(혹은 뒤에서부터) 스캔
+			for (int s = 0; s < dimS; ++s)
 			{
 				int coord[3];
-				coord[projAxis] = startCoord + s * stepSign;
-				coord[axisU] = (int)u;
-				coord[axisV] = (int)v;
+				coord[projAxis] = startCoord + s * stepSign; // 진행축
+				coord[axisU] = gridU;
+				coord[axisV] = gridV;
 
-				// 범위 가드 (보수적)
-				if (coord[0] < 0 || coord[1] < 0 || coord[2] < 0
-					|| coord[0] >= (int)dim.x || coord[1] >= (int)dim.y || coord[2] >= (int)dim.z)
+				// 보수적 범위 가드
+				if (coord[0] < 0 || coord[1] < 0 || coord[2] < 0 ||
+					coord[0] >= (int)dim.x || coord[1] >= (int)dim.y || coord[2] >= (int)dim.z)
 					break;
 
 				if (grid.GetVoxel(coord[0], coord[1], coord[2]))
 				{
 					hit = true;
-					float depthFloat = s / float(len - 1); // [0,1]
-					depth16 = static_cast<uint16_t>(depthFloat * 65535.0f);
+					// [0,1] 정규화 깊이 (s는 0..dimS-1)
+					float depthFloat = (dimS > 1) ? (float)s / float(dimS - 1) : 0.0f;
+					uint32_t d = (uint32_t)round(depthFloat * 65535.0f);
+					depth16 = (uint16_t)std::min(d, 65535u);
 					color = RGBA{ 200, 200, 255, 255 };
 					break;
 				}
 			}
 
-			int uu = flipU ? (int)W - 1 - (int)u : (int)u;
-			int vv = flipV ? (int)H - 1 - (int)v : (int)v;
 			outDepth16[toIdx(uu, vv)] = depth16;
 			outColor.Data[toIdx(uu, vv)] = color;
 		}
