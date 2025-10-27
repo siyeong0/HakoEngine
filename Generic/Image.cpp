@@ -184,65 +184,86 @@ static bool saveDDS_BC1_BC3(const std::filesystem::path& path, const Image& img,
 
 bool SaveImageToFile(const std::filesystem::path& path, const Image& img, IMAGE_FORMAT format)
 {
-	if (img.Data.empty() || img.Width == 0 || img.Height == 0)
+	if (img.Data.empty() || img.Width == 0 || img.Height == 0) return false;
+
+	// BC1/BC3은 DDS 경로로 처리
+	if (format == IMAGE_FORMAT_BC1 || format == IMAGE_FORMAT_BC3)
 	{
+		const bool ok = saveDDS_BC1_BC3(path, img, /*useBC3*/ format == IMAGE_FORMAT_BC3);
+		if (!ok)
+		{
+			std::cerr << "[SaveImageToFile] " << (format == IMAGE_FORMAT_BC3 ? "BC3" : "BC1") << " save failed.\n";
+		}
+		return ok;
+	}
+	if (format == IMAGE_FORMAT_BC4 || format == IMAGE_FORMAT_BC5 ||
+		format == IMAGE_FORMAT_BC6H || format == IMAGE_FORMAT_BC7)
+	{
+		std::cerr <<
+			"[SaveImageToFile] BC4/BC5/BC6H/BC7 encoders are not integrated.\n"
+			"  → Use texconv/DirectXTex or integrate an encoder.\n";
 		return false;
 	}
 
-	int comp = 4;
-	const void* dataPtr = img.Data.data();
+	// PNG로 쓰기 (R8 / RGB8 / RGBA8)
+	std::vector<uint8_t> staging;      // R8 또는 RGB8일 때 사용
+	const void* dataPtr = nullptr;
+	int comp = 4;                       // 채널 개수
+	int stride = 0;                     // 한 줄 바이트 수
+
+	const int W = static_cast<int>(img.Width);
+	const int H = static_cast<int>(img.Height);
 
 	switch (format)
 	{
-	case IMAGE_FORMAT_R8:   comp = 1; break;
-	case IMAGE_FORMAT_RGB8: comp = 3; break;
-	case IMAGE_FORMAT_RGBA8: comp = 4; break;
-
-	case IMAGE_FORMAT_BC1:
+	case IMAGE_FORMAT_R8:
 	{
-		// DXT1
-		if (!saveDDS_BC1_BC3(path, img, /*useBC3*/false))
+		comp = 1;
+		staging.resize(static_cast<size_t>(W) * H);
+		for (size_t i = 0; i < staging.size(); ++i)
 		{
-			std::cerr << "[SaveImageToFile] BC1 save failed.\n";
-			return false;
+			staging[i] = img.Data[i].r;
 		}
-		return true;
-	}
-	case IMAGE_FORMAT_BC3:
-	{
-		// DXT5
-		if (!saveDDS_BC1_BC3(path, img, /*useBC3*/true))
-		{
-			std::cerr << "[SaveImageToFile] BC3 save failed.\n";
-			return false;
-		}
-		return true;
-	}
-
-	case IMAGE_FORMAT_BC4:
-	case IMAGE_FORMAT_BC5:
-	case IMAGE_FORMAT_BC6H:
-	case IMAGE_FORMAT_BC7:
-		std::cerr <<
-			"[SaveImageToFile] BC4/BC5/BC6H/BC7 encoders are not integrated.\n"
-			"  → Use texconv/DirectXTex or integrate an encoder (ISPC Texture Compressor, DirectXTex) for these formats.\n";
-		return false;
-
-	default:
-		std::cout << "[SaveImageToFile] Unknown image format, defaulting to RGBA8 PNG.\n";
-		comp = 4;
+		dataPtr = staging.data();
+		stride = W * comp;
 		break;
 	}
+	case IMAGE_FORMAT_RGB8:
+	{
+		comp = 3;
+		staging.resize(static_cast<size_t>(W) * H * 3);
+		size_t j = 0;
+		for (size_t i = 0; i < img.Data.size(); ++i)
+		{
+			staging[j++] = img.Data[i].r;
+			staging[j++] = img.Data[i].g;
+			staging[j++] = img.Data[i].b;
+		}
+		dataPtr = staging.data();
+		stride = W * comp;
+		break;
+	}
+	case IMAGE_FORMAT_RGBA8:
+	default:
+	{
+		comp = 4;
+		dataPtr = img.Data.data();
+		stride = W * comp;
+		if (format != IMAGE_FORMAT_RGBA8)
+		{
+			std::cout << "[SaveImageToFile] Unknown image format; writing as RGBA8 PNG.\n";
+		}
+		break;
+	}
+	}
 
-	// PNG (R8/RGB8/RGBA8)
-	const int stride = int(img.Width) * comp;
 	const int ok = stbi_write_png(
 		path.string().c_str(),
-		int(img.Width),
-		int(img.Height),
+		W, H,
 		comp,
 		dataPtr,
-		stride);
+		stride
+	);
 
 	if (ok == 0)
 	{
