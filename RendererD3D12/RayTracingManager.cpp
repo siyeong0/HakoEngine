@@ -829,12 +829,6 @@ void RayTracingManager::updateHitGroupShaderTable(uint numShaderRecords)
 	m_pDXRStateObject->QueryInterface(IID_PPV_ARGS(&pStateObjectProperties));
 
 	// hitgroup Shader Table
-	//void* pHitGroupShaderIdentifier[NUM_RAYTRACING_SHADER_TYPES] = {};
-	//for (uint i = 0; i < NUM_RAYTRACING_SHADER_TYPES; ++i)
-	//{
-	//	pHitGroupShaderIdentifier[i] = pStateObjectProperties->GetShaderIdentifier(g_HitGroupNames[i]);
-	//	ASSERT(pHitGroupShaderIdentifier[i], "Failed to get hit group shader identifier.");
-	//}
 	// Tri & Proc hitgroup identifiers
 	void* pHitGroupId_Tri[NUM_RAYTRACING_SHADER_TYPES] = {};
 	void* pHitGroupId_Proc[NUM_RAYTRACING_SHADER_TYPES] = {};

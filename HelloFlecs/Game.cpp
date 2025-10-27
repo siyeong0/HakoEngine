@@ -748,7 +748,7 @@ bool Game::Initialize(
 				.set<Position>({ 0.0f, 0.0f, 5.0f })
 				.set<Rotation>({ 0.0f, 0.0f, 0.0f })
 				.set<Scale>({ 1.0f, 1.0f, 1.0f })
-				.set<CasperRenderer>({ createCasperObject(m_pRenderer, L"./Resources/megayuchi/skycube.dds", L"./Resources/megayuchi/skycube.dds") });
+				.set<CasperRenderer>({ createCasperObject(m_pRenderer, L"./Resources/temp/casper_color.dds", L"./Resources/megayuchi/skycube.dds") });
 			m_Entities.emplace_back(e.id());
 		}
 

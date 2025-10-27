@@ -58,6 +58,7 @@ bool ENGINECALL Prelight::PrecomputeAtmos(const AtmosParams& in, AtmosResult* ou
 #include "SparseBinaryGrid.h"
 #include "Voxelize.h"
 #include "QuickHull.h"
+#include "Generic/Color.h"
 #include <functional>
 #include <filesystem>
 #include <fstream>
@@ -812,12 +813,17 @@ static Bounds BoundsFromGrid(const SparseBinaryGrid& g)
 // -----------------------------------------------------------------------------
 bool ENGINECALL Prelight::DecomposeToConvex(const StaticMesh& m) const
 {
+	SparseBinaryGrid surfaceGrid;
+	VoxelizeToSparse(m.Positions, m.Sections[0].Indices, m.MeshBounds, 0.01f, &surfaceGrid);
+
+	surfaceGrid.SaveAsCasper("Resources/temp/surface.cpr");
+    return true;
     // ===== 파라미터 =====
     constexpr float  kVoxelSize = 0.01f;  // 출력 복셀 해상도(기존 파이프라인과 동일)
 
     // V-HACD 파라미터 (필요시 취향껏 조정)
     VHACD::IVHACD::Parameters par;
-    par.m_maxConvexHulls = 64;        // 많으면 512
+    par.m_maxConvexHulls = 16;        // 많으면 512
     par.m_resolution = 200000;     // 100k~400k 사이에서 시작
     par.m_minimumVolumePercentErrorAllowed = 10.0;        // 1~3%
     par.m_maxRecursionDepth = 8;         // 12~20 권장

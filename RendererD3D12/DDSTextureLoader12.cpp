@@ -1298,7 +1298,7 @@ namespace
         if (SUCCEEDED(hr))
         {
             assert(ppTexture != nullptr && *ppTexture != nullptr);
-            _Analysis_assume_(texture != nullptr && *texture != nullptr);
+            _Analysis_assume_(ppTexture != nullptr && *ppTexture != nullptr);
 
             SetDebugObjectName(*ppTexture, L"DDSTextureLoader");
         }

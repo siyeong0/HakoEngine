@@ -245,15 +245,34 @@ static void ProjectFace(
 	int axisU = 0, axisV = 1;
 	int stepSign = +1;
 	int startCoord = 0;
+	bool flipU = false, flipV = false;
 
 	switch (face)
 	{
-	case NEGX: projAxis = 0; axisU = 2; axisV = 1; stepSign = +1; startCoord = 0;         break;
-	case POSX: projAxis = 0; axisU = 2; axisV = 1; stepSign = -1; startCoord = (int)dim.x - 1; break;
-	case NEGY: projAxis = 1; axisU = 0; axisV = 2; stepSign = +1; startCoord = 0;         break;
-	case POSY: projAxis = 1; axisU = 0; axisV = 2; stepSign = -1; startCoord = (int)dim.y - 1; break;
-	case NEGZ: projAxis = 2; axisU = 0; axisV = 1; stepSign = +1; startCoord = 0;         break;
-	case POSZ: projAxis = 2; axisU = 0; axisV = 1; stepSign = -1; startCoord = (int)dim.z - 1; break;
+	case NEGX: // U=z, V=y, v뒤집기
+		projAxis = 0; axisU = 2; axisV = 1; stepSign = +1; startCoord = 0;
+		flipU = false; flipV = true;
+		break;
+	case POSX: // U=z, V=y, u/v 모두 뒤집기
+		projAxis = 0; axisU = 2; axisV = 1; stepSign = -1; startCoord = (int)dim.x - 1;
+		flipU = true;  flipV = true;
+		break;
+	case NEGY: // U=x, V=z, v뒤집기
+		projAxis = 1; axisU = 0; axisV = 2; stepSign = +1; startCoord = 0;
+		flipU = false; flipV = true;
+		break;
+	case POSY: // U=x, V=z, 뒤집기 없음
+		projAxis = 1; axisU = 0; axisV = 2; stepSign = -1; startCoord = (int)dim.y - 1;
+		flipU = false; flipV = false;
+		break;
+	case NEGZ: // U=x, V=y, u/v 모두 뒤집기
+		projAxis = 2; axisU = 0; axisV = 1; stepSign = +1; startCoord = 0;
+		flipU = true;  flipV = true;
+		break;
+	case POSZ: // U=x, V=y, v뒤집기
+		projAxis = 2; axisU = 0; axisV = 1; stepSign = -1; startCoord = (int)dim.z - 1;
+		flipU = false; flipV = true;
+		break;
 	}
 
 	// 각 face의 이미지 해상도는 SaveAsCasper에서 넘어온 W,H 사용 (axisU/axisV에 맞춰져 있어야 함)
@@ -289,8 +308,10 @@ static void ProjectFace(
 				}
 			}
 
-			outDepth16[toIdx((int)u, (int)v)] = depth16;
-			outColor.Data[toIdx((int)u, (int)v)] = color;
+			int uu = flipU ? (int)W - 1 - (int)u : (int)u;
+			int vv = flipV ? (int)H - 1 - (int)v : (int)v;
+			outDepth16[toIdx(uu, vv)] = depth16;
+			outColor.Data[toIdx(uu, vv)] = color;
 		}
 	}
 }
@@ -317,6 +338,10 @@ bool SparseBinaryGrid::SaveAsCasper(const std::string& path) const
 		case NEGY: case POSY: W = m_Dim.x; H = m_Dim.z; break; // (u,v)=(x,z)
 		case NEGZ: case POSZ: W = m_Dim.x; H = m_Dim.y; break; // (u,v)=(x,y)
 		}
+
+		uint cubeSize = std::max(W, H);
+		W = cubeSize;
+		H = cubeSize;
 
 		Image colorImg;
 		std::vector<uint16_t> depthBuf;
