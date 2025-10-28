@@ -89,27 +89,36 @@ float ComputeTHit(float3 unitSpacePos)
     return tHit;
 }
 
-float2 GetLimits(float3 unitPos, int axis)
+float GetEmpty(float3 unitPos, int axis, int sign)
 {
-    float3 ndcPos = unitPos * 2.0f - 1.0f; // [0,1] -> [-1,1]
-    
-    float3 sampleDirNegative = ndcPos;
-    sampleDirNegative[axis] = -1.0f;
-    float negativeLimit = l_DepthAtlasTexture.SampleLevel(g_SamplerClamp, normalize(sampleDirNegative), 0);
-    
-    float3 sampleDirPositive = ndcPos;
-    sampleDirPositive[axis] = 1.0f;
-    float positiveLimit = l_DepthAtlasTexture.SampleLevel(g_SamplerClamp, normalize(sampleDirPositive), 0);
-    
-    return float2(negativeLimit, 1.0 - positiveLimit);
+    float3 sampleDir = unitPos * 2.0f - 1.0f; // [0,1] -> [-1,1]
+    sampleDir[axis] = sign;
+    return l_DepthAtlasTexture.SampleLevel(g_SamplerClamp, normalize(sampleDir), 0);
+}
+
+void GetEmpties(float3 unitPos, out float outEmpties[6])
+{
+    outEmpties[0] = GetEmpty(unitPos, 0, -1.0);
+    outEmpties[1] = GetEmpty(unitPos, 0, 1.0);
+    outEmpties[2] = GetEmpty(unitPos, 1, -1.0);
+    outEmpties[3] = GetEmpty(unitPos, 1, 1.0);
+    outEmpties[4] = GetEmpty(unitPos, 2, -1.0);
+    outEmpties[5] = GetEmpty(unitPos, 2, 1.0);
+}
+
+void GetLimits(float3 unitPos, out float2 outLimits[3])
+{
+    float empties[6];
+    GetEmpties(unitPos, empties);
+    outLimits[0] = float2(empties[0], 1.0 - empties[1]);
+    outLimits[1] = float2(empties[2], 1.0 - empties[3]);
+    outLimits[2] = float2(empties[4], 1.0 - empties[5]);
 }
 
 bool IsInsideGeometry(float3 unitPos)
 {
     float2 limits[3];
-    limits[0] = GetLimits(unitPos, 0);
-    limits[1] = GetLimits(unitPos, 1);
-    limits[2] = GetLimits(unitPos, 2);
+    GetLimits(unitPos, limits);
     
     bool bInsideX = (limits[0].x <= unitPos.x) && (unitPos.x <= limits[0].y);
     bool bInsideY = (limits[1].x <= unitPos.y) && (unitPos.y <= limits[1].y);
@@ -122,38 +131,106 @@ bool IsInsideGeometry(float3 unitPos)
 // Intersection Shader
 // =======================================================
 
+float FracInSlice(float x, float slice)
+{
+    float q = x / slice;
+    return (q - floor(q)) * slice;
+}
+
 [shader("intersection")]
 void MyIntersectionShader_Casper()
 {
-    float3 rayDir = UnitRayDirection();
+    const float EPS = 1e-4f;
+    const int MAX_STEPS = 512;
+    
+    float3 rayDir = normalize(UnitRayDirection());
     float3 enter = UnitSpaceHitPosition();
     float3 exit = UnitSpaceExitPosition();
     
     float tEnter = 0.0f;
-    float tExit = length(exit - enter) / max(length(rayDir), 1e-8);
+    float tExit = length(exit - enter) / length(rayDir);
     
-    const int MAX_STEPS = 128;
-    float dt = max((tExit - tEnter) / MAX_STEPS, 1e-5);
+    uint width, height, mipCount;
+    l_DepthAtlasTexture.GetDimensions(0, width, height, mipCount);
+    width = 256;
+    float slice = 1.0 / (float) width; // Assert square textures
     
-    float tCurr = 0.0;
-    float3 currPos = enter + tCurr * rayDir;
+    float3 absDir = abs(rayDir);
+    int zax = absDir.x > absDir.y ? (absDir.x > absDir.z ? 0 : 2) : (absDir.y > absDir.z ? 1 : 2);
+    int zsign = rayDir[zax] < 0.0 ? 1.0 : -1.0;
+    int uax = (zax + 1) % 3;
+    int vax = (zax + 2) % 3;
     
-    for (int stepCount = 0; stepCount < MAX_STEPS; ++stepCount)
+    float tCurr = tEnter + EPS;
+    float3 currPos = enter; //    +tCurr * rayDir;
+    
+    for (int stepCount = 0; stepCount < MAX_STEPS && tCurr < tExit; ++stepCount)
     {
         if (IsInsideGeometry(currPos))
         {
             MyCasperIntersectionAttributes attr;
-            attr.UnitSpaceHitPosition = currPos;
-            float tHit = ComputeTHit(currPos);
-    
-            ReportHit(tHit, /*hitKind*/0, attr);
+            attr.UnitSpaceHitPosition = currPos * 2.0 - 1.0;
+            attr.UnitSpaceHitPosition[zax] = zsign;
+            float tReport = ComputeTHit(currPos);
+            ReportHit(tReport, /*hitKind*/0, attr);
             return;
         }
 
-        tCurr += dt;
+        float tStep = 0.0;
+        
+        float fracU = FracInSlice(currPos[uax], slice);
+        float fracV = FracInSlice(currPos[vax], slice);
+        float fracZ = FracInSlice(currPos[zax], slice);
+        
+        float du = rayDir[uax] > 0.0 ? slice - fracU : fracU;
+        float dv = rayDir[vax] > 0.0 ? slice - fracV : fracV;
+        float dz = rayDir[zax] > 0.0 ? slice - fracZ : fracZ;
+        
+        float tu = du / max(absDir[uax], EPS);
+        float tv = dv / max(absDir[vax], EPS);
+        float tz = dz / max(absDir[zax], EPS);
+        float tuvz = min(min(tu, tv), tz);
+        
+        float emptySpace = GetEmpty(currPos, zax, zsign);
+        float reamin = (zsign > 0) ? (emptySpace - (1.0 - currPos[zax])) : (emptySpace - currPos[zax]);
+        float te = reamin / absDir[zax];
+        
+            // tStep = tz < 0.0 ? tuv : min(tuv, tz);
+        tStep = te < EPS ? tuvz : min(tuvz, te);
+        
+        tCurr += tStep + EPS;
         currPos = enter + tCurr * rayDir;
     }
 }
+
+//[shader("intersection")]
+//void MyIntersectionShader_Casper()
+//{
+//    const int MAX_STEPS = 128;
+    
+//    float3 rayDir = UnitRayDirection();
+//    float3 enter = UnitSpaceHitPosition();
+//    float3 exit = UnitSpaceExitPosition();
+    
+//    float tEnter = 0.0f;
+//    float tExit = length(exit - enter) / length(rayDir);
+    
+//    float tCurr = tEnter;
+//    float3 currPos = enter;
+//    float dt = (tExit - tEnter) / MAX_STEPS;
+//    for (int stepCount = 0; stepCount < MAX_STEPS; ++stepCount)
+//    {
+//        if (IsInsideGeometry(currPos))
+//        {
+//            MyCasperIntersectionAttributes attr;
+//            attr.UnitSpaceHitPosition = currPos;
+//            float tHit = ComputeTHit(currPos);
+//            ReportHit(tHit, /*hitKind*/0, attr);
+//        }
+//        tCurr += dt;
+//        currPos = enter + tCurr * normalize(rayDir);
+//    }
+//}
 
 [shader("closesthit")]
 void MyClosestHitShader_RadianceRay_Casper(inout RadiancePayload rayPayload, in MyCasperIntersectionAttributes attr)
@@ -167,14 +244,17 @@ void MyClosestHitShader_RadianceRay_Casper(inout RadiancePayload rayPayload, in 
     projPos /= projPos.w;
     rayPayload.depth = saturate(projPos.z);
     
-    float tt = RayTCurrent().xxx / 20.0;
-    rayPayload.radiance = tt * tt;
-    return;
-    
     float3 hitObjectPosition = ObjectRayOrigin() + RayTCurrent() * ObjectRayDirection();
-    float3 localtion = attr.UnitSpaceHitPosition * 2.0f - 1.0f; // [0,1] -> [-1,1]
+    float3 localtion = attr.UnitSpaceHitPosition;
     float4 texDiffuse = l_DiffuseAtlasTexture.SampleLevel(g_SamplerClamp, localtion, 0);
     float texDepth = l_DepthAtlasTexture.SampleLevel(g_SamplerClamp, localtion, 0);
+    
+    float tt = RayTCurrent() / 25.0;
+    rayPayload.radiance = (tt * tt).xxx;
+    return;
+    
+    rayPayload.radiance = texDiffuse.xyz;
+    return;
     
     float3 objectNormal = float3(0, 0, 1); // TODO: Compute proper normal 
     float3 surfaceNormal = normalize(mul((float3x3) ObjectToWorld3x4(), objectNormal));

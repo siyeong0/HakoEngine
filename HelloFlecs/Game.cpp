@@ -797,6 +797,30 @@ bool Game::Initialize(
 			m_Entities.emplace_back(e.id());
 		}
 
+		// Create kitty box entities
+		const uint BUNNY_CASPER_OBJECT_COUNT = 10;
+		for (uint i = 0; i < BUNNY_CASPER_OBJECT_COUNT; i++)
+		{
+			float x = (float)((rand() % 41) - 20);
+			float y = (float)((rand() % 7) - 3);
+			float z = (float)((rand() % 41) - 20);
+			float rx = DegToRad(static_cast<float>(rand() % 181));
+			float ry = DegToRad(static_cast<float>(rand() % 181));
+			float rz = DegToRad(static_cast<float>(rand() % 181));
+			float s = (float)((rand() % 4) + 1) * 0.5f;	// 1 - 3
+			float vx = (float)((rand() % 3) - 1);
+			float vz = (float)((rand() % 3) - 1);
+
+			flecs::entity e = m_ECSWorld.entity()
+				.set<Position>({ x, y, z })
+				//.set<Velocity>({ vx, 0.0f, vz })
+				//.set<Force>({ 0.0f, 0.0f, 0.0f })
+				.set<Rotation>({ rx, ry, rz })
+				.set<Scale>({ s, s, s })
+				.set<CasperRenderer>({ createCasperObject(m_pRenderer, L"./Resources/temp/metadata.txt", L"./Resources/temp/casper_color.dds", L"./Resources/temp/casper_depth.dds") });
+			m_Entities.emplace_back(e.id());
+		}
+
 		// Create sprite entity
 		{
 			flecs::entity e = m_ECSWorld.entity()
