@@ -1,4 +1,4 @@
-; shader hash: 9cd79fe0dd75c71ba1897da4a48aa8d8
+; shader hash: d976e7aefbc55f91e6e8dd0b5c664d50
 ;
 ; Buffer Definitions:
 ;
@@ -56,7 +56,7 @@
 ; Name                                 Type  Format         Dim      ID      HLSL Bind  Count
 ; ------------------------------ ---------- ------- ----------- ------- -------------- ------
 ; CONSTANT_BUFFER_PER_FRAME         cbuffer      NA          NA     CB0            cb0     1
-; g_SamplerClamp                    sampler      NA          NA      S0             s1     1
+; g_SamplerPoint                    sampler      NA          NA      S0             s2     1
 ; l_DepthAtlasTexture               texture     f32        cube      T0      t1,space1     1
 ; l_AABBBuffer                      texture  struct         r/o      T1      t2,space1     1
 ;
@@ -76,14 +76,14 @@ target triple = "dxil-ms-dx"
 %dx.types.CBufRet.f32 = type { float, float, float, float }
 %struct.ShadowPayload = type { float }
 
-@"\01?g_SamplerClamp@@3USamplerState@@A" = external constant %struct.SamplerState, align 4
+@"\01?g_SamplerPoint@@3USamplerState@@A" = external constant %struct.SamplerState, align 4
 @"\01?l_DepthAtlasTexture@@3V?$TextureCube@M@@A" = external constant %"class.TextureCube<float>", align 4
 @"\01?l_AABBBuffer@@3V?$StructuredBuffer@UAABB@@@@A" = external constant %"class.StructuredBuffer<AABB>", align 4
 @CONSTANT_BUFFER_PER_FRAME_legacy = external global %hostlayout.CONSTANT_BUFFER_PER_FRAME
 
 ; Function Attrs: nounwind
 define void @"\01?MyIntersectionShader_Casper@@YAXXZ"() #0 {
-  %1 = load %struct.SamplerState, %struct.SamplerState* @"\01?g_SamplerClamp@@3USamplerState@@A", align 4
+  %1 = load %struct.SamplerState, %struct.SamplerState* @"\01?g_SamplerPoint@@3USamplerState@@A", align 4
   %2 = load %"class.StructuredBuffer<AABB>", %"class.StructuredBuffer<AABB>"* @"\01?l_AABBBuffer@@3V?$StructuredBuffer@UAABB@@@@A", align 4
   %3 = load %"class.TextureCube<float>", %"class.TextureCube<float>"* @"\01?l_DepthAtlasTexture@@3V?$TextureCube@M@@A", align 4
   %4 = alloca [3 x float], align 4
@@ -560,7 +560,7 @@ attributes #2 = { nounwind readonly }
 !10 = !{!11}
 !11 = !{i32 0, %hostlayout.CONSTANT_BUFFER_PER_FRAME* @CONSTANT_BUFFER_PER_FRAME_legacy, !"CONSTANT_BUFFER_PER_FRAME", i32 0, i32 0, i32 1, i32 928, null}
 !12 = !{!13}
-!13 = !{i32 0, %struct.SamplerState* @"\01?g_SamplerClamp@@3USamplerState@@A", !"g_SamplerClamp", i32 0, i32 1, i32 1, i32 0, null}
+!13 = !{i32 0, %struct.SamplerState* @"\01?g_SamplerPoint@@3USamplerState@@A", !"g_SamplerPoint", i32 0, i32 2, i32 1, i32 0, null}
 !14 = !{i32 1, void ()* @"\01?MyIntersectionShader_Casper@@YAXXZ", !15, void (%struct.RadiancePayload*, %struct.MyCasperIntersectionAttributes*)* @"\01?MyClosestHitShader_RadianceRay_Casper@@YAXURadiancePayload@@UMyCasperIntersectionAttributes@@@Z", !18, void (%struct.ShadowPayload*, %struct.MyCasperIntersectionAttributes*)* @"\01?MyClosestHitShader_ShadowRay_Casper@@YAXUShadowPayload@@UMyCasperIntersectionAttributes@@@Z", !18}
 !15 = !{!16}
 !16 = !{i32 1, !17, !17}

@@ -93,7 +93,7 @@ float GetEmpty(float3 unitPos, int axis, int sign)
 {
     float3 sampleDir = unitPos * 2.0f - 1.0f; // [0,1] -> [-1,1]
     sampleDir[axis] = sign;
-    return l_DepthAtlasTexture.SampleLevel(g_SamplerClamp, normalize(sampleDir), 0);
+    return l_DepthAtlasTexture.SampleLevel(g_SamplerPoint, normalize(sampleDir), 0);
 }
 
 void GetEmpties(float3 unitPos, out float outEmpties[6])
