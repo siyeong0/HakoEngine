@@ -10,8 +10,7 @@
 #include "Generic/QueryPerfCounter.h"
 #include "Interface/IRenderer.h"
 #include "Game.h"
-#include "Component.h"
-
+#include "HakoFlecs/Components.h"
 
 // #define USE_GPU_UPLOAD_HEAPS
 
@@ -340,7 +339,7 @@ static ICasperObject* createCasperObject(IRenderer* pRenderer, const wchar_t* me
 			}
 		}
 	}
-	
+
 	float maxLength = std::max({ casperBounds.Max.x - casperBounds.Min.x,
 		casperBounds.Max.y - casperBounds.Min.y,
 		casperBounds.Max.z - casperBounds.Min.z });
@@ -427,14 +426,16 @@ bool Game::Initialize(
 	m_ECSWorld = flecs::world();
 
 	// Register components
-	m_ECSWorld.component<Position>();
-	m_ECSWorld.component<Velocity>();
-	m_ECSWorld.component<Force>();
-	m_ECSWorld.component<Rotation>();
-	m_ECSWorld.component<Scale>();
-	m_ECSWorld.component<MeshRenderer>();
-	m_ECSWorld.component<SpriteRenderer>();
-	m_ECSWorld.component<TextRenderer>();
+	m_ECSWorld.component<comp::Position>();
+	m_ECSWorld.component<comp::Rotation>();
+	m_ECSWorld.component<comp::Scale>();
+	m_ECSWorld.component<comp::Transform>();
+	m_ECSWorld.component<comp::RigidBody>();
+	m_ECSWorld.component<comp::MeshRenderer>();
+	m_ECSWorld.component<comp::ProceduralSphereRenderer>();
+	m_ECSWorld.component<comp::CasperRenderer>();
+	m_ECSWorld.component<comp::SpriteRenderer>();
+	m_ECSWorld.component<comp::TextRenderer>();
 
 	// Create phases
 	static flecs::entity phaseUpdate;
@@ -458,30 +459,30 @@ bool Game::Initialize(
 
 	// Initialize components when they are added
 	{
-		m_ECSWorld.observer<MeshRenderer>("Init MeshRenderer")
+		m_ECSWorld.observer<comp::MeshRenderer>("Init MeshRenderer")
 			.event(flecs::OnSet)
-			.each([this](MeshRenderer& m)
+			.each([this](comp::MeshRenderer& m)
 				{
 
 				});
 
-		m_ECSWorld.observer<ProceduralSphereRenderer>("Init ProceduralSphereRenderer")
+		m_ECSWorld.observer<comp::ProceduralSphereRenderer>("Init ProceduralSphereRenderer")
 			.event(flecs::OnSet)
-			.each([this](ProceduralSphereRenderer& m)
+			.each([this](comp::ProceduralSphereRenderer& m)
 				{
 
 				});
 
-		m_ECSWorld.observer<CasperRenderer>("Init CasperRenderer")
+		m_ECSWorld.observer<comp::CasperRenderer>("Init CasperRenderer")
 			.event(flecs::OnSet)
-			.each([this](CasperRenderer& m)
+			.each([this](comp::CasperRenderer& m)
 				{
 
 				});
 
-		m_ECSWorld.observer<SpriteRenderer>("Init SpriteRenderer")
+		m_ECSWorld.observer<comp::SpriteRenderer>("Init SpriteRenderer")
 			.event(flecs::OnSet)
-			.each([this](SpriteRenderer& s)
+			.each([this](comp::SpriteRenderer& s)
 				{
 					if (!s.SpriteFileName.empty())
 					{
@@ -489,9 +490,9 @@ bool Game::Initialize(
 					}
 				});
 
-		m_ECSWorld.observer<TextRenderer>("Init TextRenderer")
+		m_ECSWorld.observer<comp::TextRenderer>("Init TextRenderer")
 			.event(flecs::OnSet)
-			.each([this](TextRenderer& t)
+			.each([this](comp::TextRenderer& t)
 				{
 					t.Width = 512;
 					t.Height = 64;
@@ -505,17 +506,33 @@ bool Game::Initialize(
 	}
 	// Register systems
 	{
-		m_ECSWorld.system<Position, Velocity, const Force>("Physics")
+		m_ECSWorld
+			.system<comp::Transform, const comp::Position, const comp::Rotation, const comp::Scale>("Transform.Update")
+			.kind(phaseUpdate)
+			.each([](
+				comp::Transform& t,
+				const comp::Position& p,
+				const comp::Rotation& r,
+				const comp::Scale& s)
+				{
+					FLOAT3 translation = &p ? FLOAT3{ p.x, p.y, p.z } : FLOAT3{ 0.0f, 0.0f, 0.0f };
+					FLOAT3 rotation = &r ? FLOAT3{ r.x, r.y, r.z } : FLOAT3{ 0.0f, 0.0f, 0.0f };
+					FLOAT3 scale = &s ? FLOAT3{ s.x, s.y, s.z } : FLOAT3{ 1.0f, 1.0f, 1.0f };
+
+					t.LocalToWorld = DirectX::XMMatrixScaling(scale.x, scale.y, scale.z) *
+						DirectX::XMMatrixRotationRollPitchYaw(rotation.x, rotation.y, rotation.z) *
+						DirectX::XMMatrixTranslation(translation.x, translation.y, translation.z);
+				});
+
+		m_ECSWorld.system < comp::Position, comp::RigidBody >("Physics")
 			.kind(phasePhysics)
-			.each([](Position& p, Velocity& v, const Force& f)
+			.each([](comp::Position& p, comp::RigidBody& rb)
 				{
 					const float dt = 1.0f / 60.0f;
-					v.x += f.x * dt;
-					v.y += f.y * dt;
-					v.z += f.z * dt;
+					FLOAT3& v = rb.Velocity;
+					FLOAT3& f = rb.Force;
+					v += f * dt;
 					p.x += v.x * dt;
-					p.y += v.y * dt;
-					p.z += v.z * dt;
 				});
 
 		m_ECSWorld.system<>()
@@ -527,56 +544,43 @@ bool Game::Initialize(
 					m_pRenderer->BeginRender();
 				});
 
-		m_ECSWorld.system<const Position, const Rotation, const Scale, const MeshRenderer>("Render Mesh")
+		m_ECSWorld.system<const comp::Transform, const comp::MeshRenderer>("Render Mesh")
 			.kind(phaseRender)
 			.multi_threaded(false)	// TODO: test multi threading
-			.each([this](const Position& p, const Rotation& r, const Scale& s, const MeshRenderer& mesh)
+			.each([this](const comp::Transform& t, const comp::MeshRenderer& mesh)
 				{
-					Matrix4x4 matScale = DirectX::XMMatrixScaling(s.x, s.y, s.z);
-					Matrix4x4 matRot = DirectX::XMMatrixRotationRollPitchYaw(r.Pitch, r.Yaw, r.Roll);
-					Matrix4x4 matTrans = DirectX::XMMatrixTranslation(p.x, p.y, p.z);
-					Matrix4x4 worldMat = matScale * matRot * matTrans;
 					if (mesh.Mesh)
 					{
-						m_pRenderer->RenderMeshObject(mesh.Mesh, &worldMat);
+						m_pRenderer->RenderMeshObject(mesh.Mesh, &t.LocalToWorld);
 					}
 				});
 
-		m_ECSWorld.system<const Position, const Rotation, const Scale, const ProceduralSphereRenderer>("Render Procedural")
+		m_ECSWorld.system<const comp::Transform, const comp::ProceduralSphereRenderer>("Render Procedural")
 			.kind(phaseRender)
 			.multi_threaded(false)	// TODO: test multi threading
-			.each([this](const Position& p, const Rotation& r, const Scale& s, const ProceduralSphereRenderer& proc)
+			.each([this](const comp::Transform& t, const comp::ProceduralSphereRenderer& proc)
 				{
-					// Matrix4x4 matScale = DirectX::XMMatrixScaling(s.x, s.y, s.z);
-					Matrix4x4 matScale = DirectX::XMMatrixIdentity(); // Procedural sphere already has radius
-					Matrix4x4 matRot = DirectX::XMMatrixRotationRollPitchYaw(r.Pitch, r.Yaw, r.Roll);
-					Matrix4x4 matTrans = DirectX::XMMatrixTranslation(p.x, p.y, p.z);
-					Matrix4x4 worldMat = matScale * matRot * matTrans;
 					if (proc.Sphere)
 					{
-						m_pRenderer->RenderProceduralSphereObject(proc.Sphere, &worldMat);
+						m_pRenderer->RenderProceduralSphereObject(proc.Sphere, &t.LocalToWorld);
 					}
 				});
 
-		m_ECSWorld.system<const Position, const Rotation, const Scale, const CasperRenderer>("Render CASPER")
+		m_ECSWorld.system<const comp::Transform, const comp::CasperRenderer>("Render CASPER")
 			.kind(phaseRender)
 			.multi_threaded(false)	// TODO: test multi threading
-			.each([this](const Position& p, const Rotation& r, const Scale& s, const CasperRenderer& casper)
+			.each([this](const comp::Transform& t, const comp::CasperRenderer& casper)
 				{
-					Matrix4x4 matScale = DirectX::XMMatrixScaling(s.x, s.y, s.z);
-					Matrix4x4 matRot = DirectX::XMMatrixRotationRollPitchYaw(r.Pitch, r.Yaw, r.Roll);
-					Matrix4x4 matTrans = DirectX::XMMatrixTranslation(p.x, p.y, p.z);
-					Matrix4x4 worldMat = matScale * matRot * matTrans;
 					if (casper.Casper)
 					{
-						m_pRenderer->RenderCasperObject(casper.Casper, &worldMat);
+						m_pRenderer->RenderCasperObject(casper.Casper, &t.LocalToWorld);
 					}
 				});
 
-		m_ECSWorld.system<const Position, const Rotation, const Scale, const SpriteRenderer>("Render Sprite")
+		m_ECSWorld.system<const comp::Position, const comp::Rotation, const comp::Scale, const comp::SpriteRenderer>("Render Sprite")
 			.kind(phaseRender)
 			.multi_threaded(false)	// TODO: test multi threading
-			.each([this](const Position& p, const Rotation& r, const Scale& s, const SpriteRenderer& sprite)
+			.each([this](const comp::Position& p, const comp::Rotation& r, const comp::Scale& s, const comp::SpriteRenderer& sprite)
 				{
 					ASSERT(sprite.Sprite, "SpriteRenderer. Sprite is null");
 					if (sprite.Sprite)
@@ -585,10 +589,10 @@ bool Game::Initialize(
 					}
 				});
 
-		m_ECSWorld.system<const Position, const Rotation, const Scale, TextRenderer>("Render Text")
+		m_ECSWorld.system<const comp::Position, const comp::Rotation, const comp::Scale, comp::TextRenderer>("Render Text")
 			.kind(phaseRender)
 			.multi_threaded(false)	// TODO: test multi threading
-			.each([this](const Position& p, const Rotation& r, const Scale& s, TextRenderer& text)
+			.each([this](const comp::Position& p, const comp::Rotation& r, const comp::Scale& s, comp::TextRenderer& text)
 				{
 					ASSERT(text.Sprite, "TextRenderer. Sprite is null");
 					if (!text.Text.empty())
@@ -622,23 +626,23 @@ bool Game::Initialize(
 	}
 	// Cleanup when components are removed
 	{
-		m_ECSWorld.observer<MeshRenderer>()
+		m_ECSWorld.observer<comp::MeshRenderer>()
 			.event(flecs::OnRemove)
-			.each([this](MeshRenderer& m)
+			.each([this](comp::MeshRenderer& m)
 				{
 					SAFE_RELEASE(m.Mesh);
 				});
 
-		m_ECSWorld.observer<SpriteRenderer>()
+		m_ECSWorld.observer<comp::SpriteRenderer>()
 			.event(flecs::OnRemove)
-			.each([this](SpriteRenderer& s)
+			.each([this](comp::SpriteRenderer& s)
 				{
 					SAFE_RELEASE(s.Sprite);
 				});
 
-		m_ECSWorld.observer<TextRenderer>()
+		m_ECSWorld.observer<comp::TextRenderer>()
 			.event(flecs::OnRemove)
-			.each([this](TextRenderer& t)
+			.each([this](comp::TextRenderer& t)
 				{
 					if (t.pFontObject)
 					{
@@ -664,10 +668,11 @@ bool Game::Initialize(
 		// Create grid
 		{
 			flecs::entity e = m_ECSWorld.entity()
-				.set<Position>({ 0.0f, -5.0f, 0.0f })
-				.set<Rotation>({ 0.0f, 0.0f, 0.0f })
-				.set<Scale>({ 100.0f, 100.0f, 100.0f })
-				.set<MeshRenderer>({ createMetalTileGridMeshObject(m_pRenderer) });
+				.set<comp::Position>({ 0.0f, -5.0f, 0.0f })
+				.set<comp::Rotation>({ 0.0f, 0.0f, 0.0f })
+				.set<comp::Scale>({ 100.0f, 100.0f, 100.0f })
+				.set<comp::Transform>({})
+				.set<comp::MeshRenderer>({ createMetalTileGridMeshObject(m_pRenderer) });
 			m_Entities.emplace_back(e.id());
 		}
 		// wire fence
@@ -780,20 +785,22 @@ bool Game::Initialize(
 		// Create CASPER entity
 		{
 			flecs::entity e = m_ECSWorld.entity()
-				.set<Position>({ -2.5f, -2.0f, 12.0f })
-				.set<Rotation>({ 0.0f, DegToRad(180.0f), 0.0f })
-				.set<Scale>({ 1.0f, 1.0f, 1.0f })
-				.set<CasperRenderer>({ createCasperObject(m_pRenderer, L"./Resources/temp/metadata.txt", L"./Resources/temp/casper_color.dds", L"./Resources/temp/casper_depth.dds") });
+				.set<comp::Position>({ -2.5f, -2.0f, 12.0f })
+				.set<comp::Rotation>({ 0.0f, DegToRad(180.0f), 0.0f })
+				.set<comp::Scale>({ 1.0f, 1.0f, 1.0f })
+				.set<comp::Transform>({})
+				.set<comp::CasperRenderer>({ createCasperObject(m_pRenderer, L"./Resources/temp/metadata.txt", L"./Resources/temp/casper_color.dds", L"./Resources/temp/casper_depth.dds") });
 			m_Entities.emplace_back(e.id());
 		}
 
 		// Create from file (bunny)
 		{
 			flecs::entity e = m_ECSWorld.entity()
-				.set<Position>({ 2.5f, -2.0f, 12.0f })
-				.set<Rotation>({ 0.0f, DegToRad(180.0f), 0.0f })
-				.set<Scale>({ 0.05f, 0.05f, 0.05f })
-				.set<MeshRenderer>({ createMeshFromFile(m_pRenderer, "./Resources/stanford_bunny_pbr.glb") });
+				.set<comp::Position>({ 2.5f, -2.0f, 12.0f })
+				.set<comp::Rotation>({ 0.0f, DegToRad(180.0f), 0.0f })
+				.set<comp::Scale>({ 0.05f, 0.05f, 0.05f })
+				.set<comp::Transform>({})
+				.set<comp::MeshRenderer>({ createMeshFromFile(m_pRenderer, "./Resources/stanford_bunny_pbr.glb") });
 			m_Entities.emplace_back(e.id());
 		}
 
@@ -812,32 +819,31 @@ bool Game::Initialize(
 			float vz = (float)((rand() % 3) - 1);
 
 			flecs::entity e = m_ECSWorld.entity()
-				.set<Position>({ x, y, z })
-				//.set<Velocity>({ vx, 0.0f, vz })
-				//.set<Force>({ 0.0f, 0.0f, 0.0f })
-				.set<Rotation>({ rx, ry, rz })
-				.set<Scale>({ s, s, s })
-				.set<CasperRenderer>({ createCasperObject(m_pRenderer, L"./Resources/temp/metadata.txt", L"./Resources/temp/casper_color.dds", L"./Resources/temp/casper_depth.dds") });
+				.set<comp::Position>({ x, y, z })
+				.set<comp::Rotation>({ rx, ry, rz })
+				.set<comp::Scale>({ s, s, s })
+				.set<comp::Transform>({})
+				.set<comp::CasperRenderer>({ createCasperObject(m_pRenderer, L"./Resources/temp/metadata.txt", L"./Resources/temp/casper_color.dds", L"./Resources/temp/casper_depth.dds") });
 			m_Entities.emplace_back(e.id());
 		}
 
 		// Create sprite entity
 		{
 			flecs::entity e = m_ECSWorld.entity()
-				.set<Position>({ 100.0f, 100.0f, 0.0f })
-				.set<Rotation>({ 0.0f, 0.0f, 0.0f })
-				.set<Scale>({ 0.1f, 0.1f, 0.1f })
-				.set<SpriteRenderer>({ L"./Resources/Kanna.dds" });
+				.set<comp::Position>({ 100.0f, 100.0f, 0.0f })
+				.set<comp::Rotation>({ 0.0f, 0.0f, 0.0f })
+				.set<comp::Scale>({ 0.1f, 0.1f, 0.1f })
+				.set<comp::SpriteRenderer>({ L"./Resources/Kanna.dds" });
 
 			m_Entities.emplace_back(e.id());
 		}
 		// Create text entity
 		{
 			flecs::entity e = m_ECSWorld.entity()
-				.set<Position>({ 500.0f, 100.0f, 0.0f })
-				.set<Rotation>({ 0.0f, 0.0f, 0.0f })
-				.set<Scale>({ 1.0f, 1.0f, 1.0f })
-				.set<TextRenderer>(TextRenderer(L"Hello"));
+				.set<comp::Position>({ 500.0f, 100.0f, 0.0f })
+				.set<comp::Rotation>({ 0.0f, 0.0f, 0.0f })
+				.set<comp::Scale>({ 1.0f, 1.0f, 1.0f })
+				.set<comp::TextRenderer>(comp::TextRenderer(L"Hello"));
 
 			m_Entities.emplace_back(e.id());
 		}
@@ -920,7 +926,7 @@ bool Game::Update(uint64_t currTick)
 	m_PrevUpdateTick = currTick;
 	if (elapsedMs > 1000) return true;
 	const float dt = (float)elapsedMs * 0.001f; // ms -> h
-	
+
 	const float SPEED = 100.0f;
 	if (m_CamOffsetX || m_CamOffsetY || m_CamOffsetZ)
 	{

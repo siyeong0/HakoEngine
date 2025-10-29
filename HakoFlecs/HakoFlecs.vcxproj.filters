@@ -5,42 +5,38 @@
       <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
       <Extensions>h;hh;hpp;hxx;h++;hm;inl;inc;ipp;xsd</Extensions>
     </Filter>
-    <Filter Include="FVector">
+    <Filter Include="MainEntry">
       <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
       <Extensions>cpp;c;cc;cxx;c++;cppm;ixx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
     </Filter>
-    <Filter Include="Bounds">
-      <UniqueIdentifier>{d739bbd2-221a-4c13-b995-a4b369afe83e}</UniqueIdentifier>
+    <Filter Include="Component">
+      <UniqueIdentifier>{9b8d9a28-bb61-4fb7-be29-3acb814a00bc}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Plane">
-      <UniqueIdentifier>{51941420-1f53-4bdc-b04c-a91375a17955}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Matrix">
-      <UniqueIdentifier>{5421bd35-06b6-4d41-b837-b1d1709ea432}</UniqueIdentifier>
+    <Filter Include="Include">
+      <UniqueIdentifier>{af32b7af-9d1a-47d0-b56a-b5eb478e011d}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h">
       <Filter>pch</Filter>
     </ClInclude>
-    <ClInclude Include="FVector2.h">
-      <Filter>FVector</Filter>
+    <ClInclude Include="Transform.h">
+      <Filter>Component</Filter>
     </ClInclude>
-    <ClInclude Include="FVector3.h">
-      <Filter>FVector</Filter>
+    <ClInclude Include="Physics.h">
+      <Filter>Component</Filter>
     </ClInclude>
-    <ClInclude Include="Bounds.h">
-      <Filter>Bounds</Filter>
+    <ClInclude Include="Renderer.h">
+      <Filter>Component</Filter>
     </ClInclude>
-    <ClInclude Include="Plane.h">
-      <Filter>Plane</Filter>
-    </ClInclude>
-    <ClInclude Include="Math.h" />
-    <ClInclude Include="Matrix.h">
-      <Filter>Matrix</Filter>
+    <ClInclude Include="Components.h">
+      <Filter>Include</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="dllmain.cpp">
+      <Filter>MainEntry</Filter>
+    </ClCompile>
     <ClCompile Include="pch.cpp">
       <Filter>pch</Filter>
     </ClCompile>

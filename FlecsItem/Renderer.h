@@ -1,41 +1,10 @@
-﻿#pragma once
+#pragma once
+#include "../Interface/IMeshObject.h"
+#include "../Interface/IProceduralSphereObject.h"
+#include "../Interface/ICasperObject.h"
+#include "../Interface/ISpriteObject.h"
 
-struct Position
-{
-	float x;
-	float y;
-	float z;
-};
-
-struct Velocity
-{
-	float x;
-	float y;
-	float z;
-};
-
-struct Force
-{
-	float x;
-	float y;
-	float z;
-};
-
-struct Rotation
-{
-	float Pitch;
-	float Yaw;
-	float Roll;
-};
-
-struct Scale
-{
-	float x;
-	float y;
-	float z;
-};
-
-struct MeshRenderer
+struct CMeshRenderer
 {
 	IMeshObject* Mesh = nullptr;
 };

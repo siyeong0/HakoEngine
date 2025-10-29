@@ -19,6 +19,7 @@ struct FLOAT4
 	float z;
 	float w;
 };
+using Matrix4x4 = Matrix;
 
 static_assert(sizeof(FLOAT2) == 8, "FLOAT2 size mismatch");
 static_assert(sizeof(FLOAT3) == 12, "FLOAT3 size mismatch");

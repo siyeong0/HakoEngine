@@ -112,7 +112,7 @@ struct BLASHandle
 struct BLASInstance
 {
 	BLASHandle* pBLASHandle;
-	Matrix4x4 Transform;
+	Matrix Transform;
 	uint8_t InstanceMask = 0xFF;
 	D3D12_RAYTRACING_INSTANCE_FLAGS Flags = D3D12_RAYTRACING_INSTANCE_FLAG_NONE;
 };

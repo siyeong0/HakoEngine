@@ -16,8 +16,7 @@ constexpr float RadToDeg(float radians) { return radians * (180.0f / PI); }
 
 #include "FVector2.h"
 #include "FVector3.h"
+#include "Matrix.h"
 
 #include "Bounds.h"
 #include "Plane.h"
-
-using Matrix4x4 = DirectX::XMMATRIX;
