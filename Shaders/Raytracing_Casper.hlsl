@@ -89,36 +89,36 @@ float ComputeTHit(float3 unitSpacePos)
     return tHit;
 }
 
-float GetEmpty(float3 unitPos, int axis, int sign)
+float GetEmpty(float3 unitPos, int axis, int sign, int mip)
 {
     float3 sampleDir = unitPos * 2.0f - 1.0f; // [0,1] -> [-1,1]
     sampleDir[axis] = sign;
-    return l_DepthAtlasTexture.SampleLevel(g_SamplerPoint, normalize(sampleDir), 0);
+    return l_DepthAtlasTexture.SampleLevel(g_SamplerPoint, normalize(sampleDir), mip);
 }
 
-void GetEmpties(float3 unitPos, out float outEmpties[6])
+void GetEmpties(float3 unitPos, out float outEmpties[6], int mip)
 {
-    outEmpties[0] = GetEmpty(unitPos, 0, -1.0);
-    outEmpties[1] = GetEmpty(unitPos, 0, 1.0);
-    outEmpties[2] = GetEmpty(unitPos, 1, -1.0);
-    outEmpties[3] = GetEmpty(unitPos, 1, 1.0);
-    outEmpties[4] = GetEmpty(unitPos, 2, -1.0);
-    outEmpties[5] = GetEmpty(unitPos, 2, 1.0);
+    outEmpties[0] = GetEmpty(unitPos, 0, -1.0, mip);
+    outEmpties[1] = GetEmpty(unitPos, 0, 1.0, mip);
+    outEmpties[2] = GetEmpty(unitPos, 1, -1.0, mip);
+    outEmpties[3] = GetEmpty(unitPos, 1, 1.0, mip);
+    outEmpties[4] = GetEmpty(unitPos, 2, -1.0, mip);
+    outEmpties[5] = GetEmpty(unitPos, 2, 1.0, mip);
 }
 
-void GetLimits(float3 unitPos, out float2 outLimits[3])
+void GetLimits(float3 unitPos, out float2 outLimits[3], int mip)
 {
     float empties[6];
-    GetEmpties(unitPos, empties);
+    GetEmpties(unitPos, empties, mip);
     outLimits[0] = float2(empties[0], 1.0 - empties[1]);
     outLimits[1] = float2(empties[2], 1.0 - empties[3]);
     outLimits[2] = float2(empties[4], 1.0 - empties[5]);
 }
 
-bool IsInsideGeometry(float3 unitPos)
+bool IsInsideGeometry(float3 unitPos, int mip)
 {
     float2 limits[3];
-    GetLimits(unitPos, limits);
+    GetLimits(unitPos, limits, mip);
     
     bool bInsideX = (limits[0].x <= unitPos.x) && (unitPos.x <= limits[0].y);
     bool bInsideY = (limits[1].x <= unitPos.y) && (unitPos.y <= limits[1].y);
@@ -141,7 +141,7 @@ float FracInSlice(float x, float slice)
 void MyIntersectionShader_Casper()
 {
     const float EPS = 1e-4f;
-    const int MAX_STEPS = 512;
+    const int MAX_STEPS = 1024;
     
     float3 rayDir = normalize(UnitRayDirection());
     float3 enter = UnitSpaceHitPosition();
@@ -152,8 +152,8 @@ void MyIntersectionShader_Casper()
     
     uint width, height, mipCount;
     l_DepthAtlasTexture.GetDimensions(0, width, height, mipCount);
-    width = 256;
-    float slice = 1.0 / (float) width; // Assert square textures
+    // uint baseDim = width;
+    uint baseDim = min(width, 256); // Limit max resolution to 256x256 for performance.
     
     float3 absDir = abs(rayDir);
     int zax = absDir.x > absDir.y ? (absDir.x > absDir.z ? 0 : 2) : (absDir.y > absDir.z ? 1 : 2);
@@ -162,45 +162,57 @@ void MyIntersectionShader_Casper()
     int vax = (zax + 2) % 3;
     
     float tCurr = tEnter + EPS;
-    float3 currPos = enter; //    +tCurr * rayDir;
+    float3 currPos = enter; // +tCurr * rayDir;
     
-    for (int stepCount = 0; stepCount < MAX_STEPS && tCurr < tExit; ++stepCount)
+    mipCount = 1; // TODO: 깊이 큐브맵은 평균 다운샘플로 하면 안됨. 최솟값 기반 전용 MipMap 생성 필요.
+    for (int mip = mipCount - 1; mip >= 0; --mip)
     {
-        if (IsInsideGeometry(currPos))
+        float slice = 1.0 / (baseDim >> mip); // Assert square textures
+        
+        for (int stepCount = 0; stepCount < MAX_STEPS && tCurr < tExit; ++stepCount)
         {
-            MyCasperIntersectionAttributes attr;
-            attr.UnitSpaceHitPosition = currPos * 2.0 - 1.0;
-            attr.UnitSpaceHitPosition[zax] = zsign;
-            float tReport = ComputeTHit(currPos);
-            ReportHit(tReport, /*hitKind*/0, attr);
-            return;
-        }
+            if (IsInsideGeometry(currPos, mip))
+            {
+                break;
+            }
 
-        float tStep = 0.0;
+            float tStep = 0.0;
         
-        float fracU = FracInSlice(currPos[uax], slice);
-        float fracV = FracInSlice(currPos[vax], slice);
-        float fracZ = FracInSlice(currPos[zax], slice);
+            float fracU = FracInSlice(currPos[uax], slice);
+            float fracV = FracInSlice(currPos[vax], slice);
+            float fracZ = FracInSlice(currPos[zax], slice);
         
-        float du = rayDir[uax] > 0.0 ? slice - fracU : fracU;
-        float dv = rayDir[vax] > 0.0 ? slice - fracV : fracV;
-        float dz = rayDir[zax] > 0.0 ? slice - fracZ : fracZ;
+            float du = rayDir[uax] > 0.0 ? slice - fracU : fracU;
+            float dv = rayDir[vax] > 0.0 ? slice - fracV : fracV;
+            float dz = rayDir[zax] > 0.0 ? slice - fracZ : fracZ;
         
-        float tu = du / max(absDir[uax], EPS);
-        float tv = dv / max(absDir[vax], EPS);
-        float tz = dz / max(absDir[zax], EPS);
-        float tuvz = min(min(tu, tv), tz);
+            float tu = du / max(absDir[uax], EPS);
+            float tv = dv / max(absDir[vax], EPS);
+            float tz = dz / max(absDir[zax], EPS);
+            float tuvz = min(min(tu, tv), tz);
         
-        float emptySpace = GetEmpty(currPos, zax, zsign);
-        float reamin = (zsign > 0) ? (emptySpace - (1.0 - currPos[zax])) : (emptySpace - currPos[zax]);
-        float te = reamin / absDir[zax];
+            float emptySpace = GetEmpty(currPos, zax, zsign, mip);
+            float reamin = (zsign > 0) ? (emptySpace - (1.0 - currPos[zax])) : (emptySpace - currPos[zax]);
+            float te = reamin / absDir[zax];
         
             // tStep = tz < 0.0 ? tuv : min(tuv, tz);
-        tStep = te < EPS ? tuvz : min(tuvz, te);
+            tStep = te < EPS ? tuvz : min(tuvz, te);
         
-        tCurr += tStep + EPS;
-        currPos = enter + tCurr * rayDir;
+            tCurr += tStep + EPS;
+            currPos = enter + tCurr * rayDir;
+        }
     }
+    
+    if (tCurr >= tExit)
+    {
+        return;
+    }
+    
+    MyCasperIntersectionAttributes attr;
+    attr.UnitSpaceHitPosition = currPos * 2.0 - 1.0;
+    attr.UnitSpaceHitPosition[zax] = zsign;
+    float tReport = ComputeTHit(currPos);
+    ReportHit(tReport, /*hitKind*/0, attr);
 }
 
 //[shader("intersection")]
