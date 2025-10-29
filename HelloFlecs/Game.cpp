@@ -310,8 +310,12 @@ static IProceduralSphereObject* createProceduralSphereObject(IRenderer* pRendere
 	return pSphereObj;
 }
 
-static ICasperObject* createCasperObject(IRenderer* pRenderer, const wchar_t* metadataPath, const wchar_t* casperDiffusePath, const wchar_t* casperDepthPath)
+static ICasperObject* createCasperObject(IRenderer* pRenderer, const std::wstring& path)
 {
+	const std::wstring metadataPath = path + L"/metadata.txt";
+	const std::wstring casperDiffusePath = path + L"/casper_color.dds";
+	const std::wstring casperDepthPath = path + L"/casper_depth.dds";
+
 	std::ifstream ifs(metadataPath);
 	ASSERT(ifs.is_open(), "Failed to open casper metadata file");
 	Bounds casperBounds;
@@ -789,7 +793,16 @@ bool Game::Initialize(
 				.set<comp::Rotation>({ 0.0f, DegToRad(180.0f), 0.0f })
 				.set<comp::Scale>({ 1.0f, 1.0f, 1.0f })
 				.set<comp::Transform>({})
-				.set<comp::CasperRenderer>({ createCasperObject(m_pRenderer, L"./Resources/temp/metadata.txt", L"./Resources/temp/casper_color.dds", L"./Resources/temp/casper_depth.dds") });
+				.set<comp::CasperRenderer>({ createCasperObject(m_pRenderer, L"./Resources/temp/bunny") });
+			m_Entities.emplace_back(e.id());
+		}
+		{
+			flecs::entity e = m_ECSWorld.entity()
+				.set<comp::Position>({ 10.5f, -2.0f, 12.0f })
+				.set<comp::Rotation>({ 0.0f, DegToRad(180.0f), 0.0f })
+				.set<comp::Scale>({ 5.0f, 5.0f, 5.0f })
+				.set<comp::Transform>({})
+				.set<comp::CasperRenderer>({ createCasperObject(m_pRenderer, L"./Resources/temp/carmel") });
 			m_Entities.emplace_back(e.id());
 		}
 
@@ -803,6 +816,7 @@ bool Game::Initialize(
 				.set<comp::MeshRenderer>({ createMeshFromFile(m_pRenderer, "./Resources/stanford_bunny_pbr.glb") });
 			m_Entities.emplace_back(e.id());
 		}
+
 
 		// Create kitty box entities
 		const uint BUNNY_CASPER_OBJECT_COUNT = 10;
@@ -823,7 +837,7 @@ bool Game::Initialize(
 				.set<comp::Rotation>({ rx, ry, rz })
 				.set<comp::Scale>({ s, s, s })
 				.set<comp::Transform>({})
-				.set<comp::CasperRenderer>({ createCasperObject(m_pRenderer, L"./Resources/temp/metadata.txt", L"./Resources/temp/casper_color.dds", L"./Resources/temp/casper_depth.dds") });
+				.set<comp::CasperRenderer>({ createCasperObject(m_pRenderer, L"./Resources/temp/bunny") });
 			m_Entities.emplace_back(e.id());
 		}
 
