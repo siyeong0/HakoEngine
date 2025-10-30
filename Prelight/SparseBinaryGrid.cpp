@@ -222,22 +222,36 @@ bool SparseBinaryGrid::SaveAsObj(const std::string& path) const
 }
 
 // =============================================================
-// Helper: get orthogonal projection (color+depth) for one face
+// Helper: get orthogonal projection (color + depthRG) for one face
+//  - outColor   : RGBA8
+//  - outDepthRG : RG(hi/lo) packed, B=0, A=255
 // =============================================================
 static void ProjectFace(
 	const SparseBinaryGrid& grid,
 	FACE_DIR face,
 	Image& outColor,
-	std::vector<uint16_t>& outDepth16,
+	Image& outDepthRG,
 	uint W, uint H)
 {
-	outColor.Width = W;
-	outColor.Height = H;
-	outColor.Channels = 4;
-	outColor.Data.resize((size_t)W * (size_t)H);
-	outDepth16.assign((size_t)W * (size_t)H, 0xFFFF); // far = white
+	// Create blank RGBA8 targets (1 mip)
+	outColor = Image::CreateBlank(W, H, Image::FORMAT_RGBA8_UNORM, 1, 1, false);
+	outDepthRG = Image::CreateBlank(W, H, Image::FORMAT_RGBA8_UNORM, 1, 1, false);
 
-	auto toIdx = [&](int x, int y) { return y * (int)W + x; };
+	ASSERT(outColor.IsValid(), "outColor image creation failed");
+	ASSERT(outDepthRG.IsValid(), "outDepthRG image creation failed");
+
+	// Get writable pointers (cast away const for authoring)
+	uint8_t* colorBase = const_cast<uint8_t*>(
+		static_cast<const uint8_t*>(outColor.GetDataPtr(0, 0, 0)));
+	uint8_t* depthBase = const_cast<uint8_t*>(
+		static_cast<const uint8_t*>(outDepthRG.GetDataPtr(0, 0, 0)));
+	const size_t colorRowPitch = outColor.GetRowPitch(0, 0, 0);
+	const size_t depthRowPitch = outDepthRG.GetRowPitch(0, 0, 0);
+
+	ASSERT(colorBase && depthBase, "Failed to map Image pixel buffers");
+	ASSERT(colorRowPitch >= W * 4 && depthRowPitch >= W * 4, "RowPitch too small");
+
+	auto toIdx4 = [&](uint x) { return static_cast<size_t>(x) * 4; };
 
 	const uint3 dim = grid.GetDim();
 
@@ -281,14 +295,12 @@ static void ProjectFace(
 	const int dimU = (axisU == 0) ? (int)dim.x : (axisU == 1) ? (int)dim.y : (int)dim.z;
 	const int dimV = (axisV == 0) ? (int)dim.x : (axisV == 1) ? (int)dim.y : (int)dim.z;
 
-	// 안전 가드
 	if (dimS <= 0 || dimU <= 0 || dimV <= 0) return;
 
 	// 최근접 리샘플: (u,v 픽셀) → (gridU,gridV) 인덱스
 	auto mapToGrid = [](uint p, uint P, int D) -> int {
-		// 중심 샘플: (p+0.5)/P ∈ (0,1] → [0..D-1]
 		float t = (float(p) + 0.5f) / float(P);
-		int idx = (int)floor(t * D);
+		int idx = (int)floorf(t * (float)D);
 		if (idx < 0) idx = 0;
 		if (idx > D - 1) idx = D - 1;
 		return idx;
@@ -296,22 +308,21 @@ static void ProjectFace(
 
 	for (uint v = 0; v < H; ++v)
 	{
-		// 출력 위치(플립 적용)
-		int vv = flipV ? (int)H - 1 - (int)v : (int)v;
+		const uint vv = flipV ? (H - 1 - v) : v;
 
-		// 이 줄 전체에서 gridV는 동일
 		const int gridV = mapToGrid(v, H, dimV);
+
+		uint8_t* rowC = colorBase + vv * colorRowPitch;
+		uint8_t* rowD = depthBase + vv * depthRowPitch;
 
 		for (uint u = 0; u < W; ++u)
 		{
-			int uu = flipU ? (int)W - 1 - (int)u : (int)u;
-
-			// 대응하는 그리드의 (axisU, axisV) 인덱스
+			const uint uu = flipU ? (W - 1 - u) : u;
 			const int gridU = mapToGrid(u, W, dimU);
 
 			bool hit = false;
 			uint16_t depth16 = 0xFFFF;
-			RGBA color{ 255,255,255,255 };
+			uint8_t cr = 255, cg = 255, cb = 255, ca = 255; // default white
 
 			// 진행축으로 앞에서부터(혹은 뒤에서부터) 스캔
 			for (int s = 0; s < dimS; ++s)
@@ -321,7 +332,6 @@ static void ProjectFace(
 				coord[axisU] = gridU;
 				coord[axisV] = gridV;
 
-				// 보수적 범위 가드
 				if (coord[0] < 0 || coord[1] < 0 || coord[2] < 0 ||
 					coord[0] >= (int)dim.x || coord[1] >= (int)dim.y || coord[2] >= (int)dim.z)
 					break;
@@ -329,17 +339,27 @@ static void ProjectFace(
 				if (grid.GetVoxel(coord[0], coord[1], coord[2]))
 				{
 					hit = true;
-					// [0,1] 정규화 깊이 (s는 0..dimS-1)
 					float depthFloat = (dimS > 1) ? (float)s / float(dimS - 1) : 0.0f;
-					uint32_t d = (uint32_t)round(depthFloat * 65535.0f);
+					uint32_t d = (uint32_t)lroundf(depthFloat * 65535.0f);
 					depth16 = (uint16_t)std::min(d, 65535u);
-					color = RGBA{ 200, 200, 255, 255 };
+					cr = 200; cg = 200; cb = 255; ca = 255; // light-blue
 					break;
 				}
 			}
 
-			outDepth16[toIdx(uu, vv)] = depth16;
-			outColor.Data[toIdx(uu, vv)] = color;
+			const size_t i4 = toIdx4(uu);
+
+			// write color
+			rowC[i4 + 0] = cr;
+			rowC[i4 + 1] = cg;
+			rowC[i4 + 2] = cb;
+			rowC[i4 + 3] = ca;
+
+			// write depth as RG (hi/lo), B=0, A=255
+			rowD[i4 + 0] = static_cast<uint8_t>((depth16 >> 8) & 0xFF);
+			rowD[i4 + 1] = static_cast<uint8_t>(depth16 & 0xFF);
+			rowD[i4 + 2] = 0;
+			rowD[i4 + 3] = 255;
 		}
 	}
 }
@@ -368,40 +388,60 @@ bool SparseBinaryGrid::SaveAsCasper(const std::string& path) const
 		ofs << "Max" << " " << bounds.Max.x << " " << bounds.Max.y << " " << bounds.Max.z << "\n";
 	}
 
-	const char* faceNames[6] = { "NX", "PX", "NY", "PY", "NZ", "PZ" };
+	const char* faceTag[6] = { "NX", "PX", "NY", "PY", "NZ", "PZ" };
 
+	Image colorFacesByDir[6];
+	Image depthFacesByDir[6];
+
+	const uint cubeSize = std::max(std::max(m_Dim.x, m_Dim.y), m_Dim.z);
 	for (int f = 0; f < 6; ++f)
 	{
-		// Face별 이미지 해상도: 투영축 제외 두 축
-		uint W = 0, H = 0;
-		switch ((FACE_DIR)f)
+		// Create face images
+		Image colorImg, depthRG;
+		ProjectFace(*this, (FACE_DIR)f, colorImg, depthRG, cubeSize, cubeSize);
+
+		// Save PNGs (color / depthRG)
 		{
-		case NEGX: case POSX: W = m_Dim.z; H = m_Dim.y; break; // (u,v)=(z,y)
-		case NEGY: case POSY: W = m_Dim.x; H = m_Dim.z; break; // (u,v)=(x,z)
-		case NEGZ: case POSZ: W = m_Dim.x; H = m_Dim.y; break; // (u,v)=(x,y)
+			fs::path colorPath = base / std::format("{}_color.png", faceTag[f]);
+			bool ok = colorImg.Save(colorPath, Image::EImageFormat::PNG);
+			if (!ok) std::cerr << "[SaveAsCasper] Failed to save " << colorPath << "\n";
+		}
+		{
+			fs::path depthPath = base / std::format("{}_depth.png", faceTag[f]);
+			bool ok = depthRG.Save(depthPath, Image::EImageFormat::PNG);
+			if (!ok) std::cerr << "[SaveAsCasper] Failed to save " << depthPath << "\n";
 		}
 
-		uint cubeSize = std::max(W, H);
-		W = cubeSize;
-		H = cubeSize;
+		colorFacesByDir[f] = std::move(colorImg);
+		depthFacesByDir[f] = std::move(depthRG);
+	}
 
-		Image colorImg;
-		std::vector<uint16_t> depthBuf;
-		ProjectFace(*this, (FACE_DIR)f, colorImg, depthBuf, W, H);
+	// DDS cubemap 저장 (컬러)
+	// DirectX 표준 순서: +X, -X, +Y, -Y, +Z, -Z
+	{
+		Image cubeFaces[6];
+		cubeFaces[0] = colorFacesByDir[POSX]; // +X
+		cubeFaces[1] = colorFacesByDir[NEGX]; // -X
+		cubeFaces[2] = colorFacesByDir[POSY]; // +Y
+		cubeFaces[3] = colorFacesByDir[NEGY]; // -Y
+		cubeFaces[4] = colorFacesByDir[POSZ]; // +Z
+		cubeFaces[5] = colorFacesByDir[NEGZ]; // -Z
+		fs::path ddsPath = base / "casper_color.dds";
+		bool ok = Image::SaveToCubeMapDDS(ddsPath, cubeFaces, /*bGenerateMips*/true, /*mipLevels*/0);
+		if (!ok) std::cerr << "[SaveAsCasper] Failed to save cubemap DDS: " << ddsPath << "\n";
+	}
 
-		// Color 저장 (RGBA8)
-		{
-			fs::path colorPath = base / std::format("{}_color.png", faceNames[f]);
-			if (!SaveImageToFile(colorPath, colorImg, IMAGE_FORMAT_RGBA8))
-				std::cerr << "[SaveAsCasper] Failed to save " << colorPath << "\n";
-		}
-
-		// Depth 저장: RG = hi/lo
-		{
-			fs::path depthPath = base / std::format("{}_depth.png", faceNames[f]);
-			if (!SaveGray16PNG(depthPath, depthBuf.data(), W, H))
-				std::cerr << "[SaveAsCasper] Failed to save " << depthPath << "\n";
-		}
+	{
+		Image depthCube[6];
+		depthCube[0] = depthFacesByDir[POSX];
+		depthCube[1] = depthFacesByDir[NEGX];
+		depthCube[2] = depthFacesByDir[POSY];
+		depthCube[3] = depthFacesByDir[NEGY];
+		depthCube[4] = depthFacesByDir[POSZ];
+		depthCube[5] = depthFacesByDir[NEGZ];
+		fs::path ddsDepthPath = base / "casper_depth.dds";
+		bool ok = Image::SaveToCubeMapDDS(ddsDepthPath, depthCube, /*bGenerateMips*/false, 0);
+		if (!ok) std::cerr << "[SaveAsCasper] Failed to save depth cubemap DDS: " << ddsDepthPath << "\n";
 	}
 
 	return true;

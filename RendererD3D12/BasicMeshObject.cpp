@@ -85,10 +85,10 @@ bool ENGINECALL BasicMeshObject::InsertTriGroup(const uint16_t* indices, uint nu
 	pTriGroup.NumTriangles = static_cast<uint>(numTriangles);
 	pTriGroup.DiffuseTexHandle = material.HasDiffuseTexture()
 		? (TextureHandle*)m_pRenderer->CreateTextureFromFile(material.DiffuseTexturePath.c_str())
-		: (TextureHandle*)m_pRenderer->CreateImmutableTexture(CreateSolidColorImageRGBA(128, 128, Color::White()));
+		: (TextureHandle*)m_pRenderer->CreateImmutableTexture(Image::CreateSolidColor(128, 128, Color::White()));
 	pTriGroup.NormalTexHandle = material.HasNormalTexture()
 		? (TextureHandle*)m_pRenderer->CreateTextureFromFile(material.NormalTexturePath.c_str())
-		: (TextureHandle*)m_pRenderer->CreateImmutableTexture(CreateSolidColorImageRGBA(128, 128, Color{ 0.5f, 0.5f, 1.0f }));
+		: (TextureHandle*)m_pRenderer->CreateImmutableTexture(Image::CreateSolidColor(128, 128, Color{ 0.5f, 0.5f, 1.0f }));
 	pTriGroup.Material.BaseColor = material.BaseColor;
 	pTriGroup.Material.Opacity = material.Opacity;
 	pTriGroup.Material.SpecularColor = material.SpecularColor;

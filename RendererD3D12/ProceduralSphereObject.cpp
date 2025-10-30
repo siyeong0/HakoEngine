@@ -63,7 +63,7 @@ void ENGINECALL ProceduralSphereObject::EndCreateGeom(bool bUseRayTracingIfSuppo
 	}
 	else
 	{
-		// Procedural sphere supports only raytracing rendering path.
+		ASSERT(false, " Procedural sphere supports only raytracing rendering path.");
 	}
 
 

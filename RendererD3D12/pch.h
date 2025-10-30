@@ -46,6 +46,7 @@
 #include <list>
 #include <mutex>
 #include <unordered_map>
+#include <filesystem>
 
 #include "RenderTypes.h"
 #include "ConstantBuffer.h"
@@ -53,6 +54,7 @@
 #include "Interface/IMeshObject.h"
 #include "Interface/ISpriteObject.h"
 #include "Common/Common.h"
+#include "Generic/Color.h"
 #include "Generic/IndexCreator.h"
 #include "Generic/WriteDebugString.h"
 #include "D3DUtil.h"

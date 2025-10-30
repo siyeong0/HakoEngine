@@ -21,9 +21,6 @@
       <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
       <Extensions>cpp;c;cc;cxx;c++;cppm;ixx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
     </Filter>
-    <Filter Include="DirectXTex">
-      <UniqueIdentifier>{1e677dd7-69c8-4960-8ff8-68752ee4517f}</UniqueIdentifier>
-    </Filter>
     <Filter Include="RenderObject">
       <UniqueIdentifier>{d0eee5bf-99e9-4935-ac63-82ea9abbf95e}</UniqueIdentifier>
     </Filter>
@@ -122,9 +119,6 @@
     <ClInclude Include="pch.h">
       <Filter>pch</Filter>
     </ClInclude>
-    <ClInclude Include="DDSTextureLoader12.h">
-      <Filter>DirectXTex</Filter>
-    </ClInclude>
     <ClInclude Include="BasicMeshObject.h">
       <Filter>RenderObject\BasicMeshObject</Filter>
     </ClInclude>
@@ -219,9 +213,6 @@
     </ClCompile>
     <ClCompile Include="pch.cpp">
       <Filter>pch</Filter>
-    </ClCompile>
-    <ClCompile Include="DDSTextureLoader12.cpp">
-      <Filter>DirectXTex</Filter>
     </ClCompile>
     <ClCompile Include="BasicMeshObject.cpp">
       <Filter>RenderObject\BasicMeshObject</Filter>

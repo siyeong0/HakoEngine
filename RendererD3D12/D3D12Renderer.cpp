@@ -866,9 +866,9 @@ void* ENGINECALL D3D12Renderer::CreateDynamicTexture(uint texWidth, uint texHeig
 void* ENGINECALL D3D12Renderer::CreateImmutableTexture(const Image& image)
 {
 	TextureHandle* pTexHandle = m_pTextureManager->CreateImmutableTexture(
-		image.Width, image.Height,
+		image.GetWidth(), image.GetHeight(),
 		DXGI_FORMAT_R8G8B8A8_UNORM,
-		reinterpret_cast<const uint8_t*>(image.Data.data()));
+		reinterpret_cast<const uint8_t*>(image.GetDataPtr()));
 	return pTexHandle;
 }
 

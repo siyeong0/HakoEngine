@@ -68,7 +68,7 @@ void ENGINECALL CasperObject::EndCreateCasper(bool bUseRayTracingIfSupported)
 	}
 	else
 	{
-		// Procedural sphere supports only raytracing rendering path.
+		ASSERT(false, "CASPER supports only raytracing rendering path.");
 	}
 
 

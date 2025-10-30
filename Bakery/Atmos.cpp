@@ -91,6 +91,7 @@ static AtmosParams MakeEarthLikeParams()
 }
 
 // ---------------- DDS Save util ----------------
+// TODO: Use Generic/Image
 // 2D RGB(float*) -> RGBA32F DDS
 static bool Save2DRGBasDDS(const float* srcRGB, int W, int H, const std::wstring& path)
 {

@@ -1063,34 +1063,17 @@ static std::filesystem::path dumpEmbeddedTextureToCache(const aiTexture* atex, s
 
 	Image img = {};
 
-	if (atex->mHeight == 0)
-	{
-		// Compressed blob (e.g., png/jpg/ktx embedded). Decode via Image::LoadFromMemory (stb_image 기반).
-		const unsigned char* blob = reinterpret_cast<const unsigned char*>(atex->pcData);
-		const size_t sizeBytes = static_cast<size_t>(atex->mWidth); // Assimp: mWidth = byte length for blobs
-		img = Image::LoadFromMemory(blob, sizeBytes);
-		ASSERT(img.IsValid(), "Failed to decode embedded texture blob.");
-		if (!img.IsValid()) return {};
-	}
-	else
-	{
-		// Raw RGBA (aiTexel). Convert to our Image RGBA.
-		const uint32_t w = static_cast<uint32_t>(atex->mWidth);
-		const uint32_t h = static_cast<uint32_t>(atex->mHeight);
-		img.Width = w; img.Height = h; img.Channels = 4;
-		img.Data.resize(static_cast<size_t>(w) * static_cast<size_t>(h));
+	const void* blob = reinterpret_cast<const void*>(atex->pcData);
+	const size_t sizeBytes = static_cast<size_t>(atex->mWidth); // Assimp: mWidth = byte length for blobs
 
-		const aiTexel* src = reinterpret_cast<const aiTexel*>(atex->pcData);
-		for (size_t i = 0, N = img.Data.size(); i < N; ++i)
-		{
-			// aiTexel is RGBA (8-bit each)
-			img.Data[i] = RGBA{ src[i].r, src[i].g, src[i].b, src[i].a };
-		}
-	}
+	bool bLoaded = img.LoadFromMemory(blob, sizeBytes);
+	ASSERT(bLoaded, "Failed to decode embedded texture blob.");
+
+	if (!img.IsValid()) return {};
 	img.FlipY(); // Flip Y to match texture coord convention
 
 	// Save as DDS using your Image utils (stb_image_write 기반 가정)
-	const bool ok = SaveImageToFile(outPath, img, IMAGE_FORMAT_BC3);
+	const bool ok = img.Save(outPath, Image::EImageFormat::DDS);
 	ASSERT(ok, "Failed to write embedded texture to cache.");
 	if (!ok) return {};
 

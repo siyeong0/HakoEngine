@@ -71,7 +71,7 @@ int main()
 	if (true)
 	{
 		StaticMesh mesh;
-		// bool bLoaded = mesh.LoadFromFile("./Resources/stanford_bunny_pbr.glb", 0.05f);
+		//bool bLoaded = mesh.LoadFromFile("./Resources/stanford_bunny_pbr.glb", 0.05f);
 		bool bLoaded = mesh.LoadFromFile("./Resources/Decomp/camel.off", 1.0f);
 		if (bLoaded == false)
 		{
