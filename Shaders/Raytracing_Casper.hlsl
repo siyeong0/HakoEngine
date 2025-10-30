@@ -152,8 +152,7 @@ void MyIntersectionShader_Casper()
     
     uint width, height, mipCount;
     l_DepthAtlasTexture.GetDimensions(0, width, height, mipCount);
-    // uint baseDim = width;
-    uint baseDim = min(width, 256); // Limit max resolution to 256x256 for performance.
+    uint baseDim = width; // Limit max resolution to 256x256 for performance.
     
     float3 absDir = abs(rayDir);
     int zax = absDir.x > absDir.y ? (absDir.x > absDir.z ? 0 : 2) : (absDir.y > absDir.z ? 1 : 2);
@@ -163,24 +162,30 @@ void MyIntersectionShader_Casper()
     
     float tCurr = tEnter + EPS;
     float3 currPos = enter; // +tCurr * rayDir;
-    
-    mipCount = 1; // TODO: 깊이 큐브맵은 평균 다운샘플로 하면 안됨. 최솟값 기반 전용 MipMap 생성 필요.
     for (int mip = mipCount - 1; mip >= 0; --mip)
     {
-        float slice = 1.0 / (baseDim >> mip); // Assert square textures
+        uint dimL = max(1u, baseDim >> mip); // Assert square textures
+        float slice = 1.0 / dimL;
         
         for (int stepCount = 0; stepCount < MAX_STEPS && tCurr < tExit; ++stepCount)
         {
-            if (IsInsideGeometry(currPos, mip))
+            float fracU = FracInSlice(currPos[uax], slice);
+            float fracV = FracInSlice(currPos[vax], slice);
+            float fracZ = FracInSlice(currPos[zax], slice);
+            
+            float3 frac3 = 0.xxx;
+            frac3[uax] = fracU;
+            frac3[vax] = fracV;
+            frac3[zax] = fracZ;
+            
+            float3 samplePos = currPos - frac3 + (slice * 0.5).xxx;
+            samplePos = clamp(samplePos, (slice * 0.5).xxx, (1.0 - slice * 0.5).xxx);
+            if (IsInsideGeometry(samplePos, mip))
             {
                 break;
             }
 
             float tStep = 0.0;
-        
-            float fracU = FracInSlice(currPos[uax], slice);
-            float fracV = FracInSlice(currPos[vax], slice);
-            float fracZ = FracInSlice(currPos[zax], slice);
         
             float du = rayDir[uax] > 0.0 ? slice - fracU : fracU;
             float dv = rayDir[vax] > 0.0 ? slice - fracV : fracV;
@@ -189,15 +194,18 @@ void MyIntersectionShader_Casper()
             float tu = du / max(absDir[uax], EPS);
             float tv = dv / max(absDir[vax], EPS);
             float tz = dz / max(absDir[zax], EPS);
+            
             float tuvz = min(min(tu, tv), tz);
         
-            float emptySpace = GetEmpty(currPos, zax, zsign, mip);
-            float reamin = (zsign > 0) ? (emptySpace - (1.0 - currPos[zax])) : (emptySpace - currPos[zax]);
-            float te = reamin / absDir[zax];
+            //float emptySpace = GetEmpty(currPos, zax, zsign, mip);
+            //float reamin = (zsign > 0) ? (emptySpace - (1.0 - currPos[zax])) : (emptySpace - currPos[zax]);
+            //float te = reamin / absDir[zax];
         
-            // tStep = tz < 0.0 ? tuv : min(tuv, tz);
-            tStep = te < EPS ? tuvz : min(tuvz, te);
+            //// tStep = tz < 0.0 ? tuv : min(tuv, tz);
+            //tStep = te < EPS ? tuvz : min(tuvz, te);
         
+            tStep = tuvz;
+            
             tCurr += tStep + EPS;
             currPos = enter + tCurr * rayDir;
         }

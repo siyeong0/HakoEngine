@@ -11,9 +11,9 @@ public:
 	HRESULT CreateVertexBuffer(size_t sizePerVertex, size_t numVertices, D3D12_VERTEX_BUFFER_VIEW* pOutVertexBufferView, ID3D12Resource **ppOutBuffer, void* pInitData, bool bUseGpuUploadHeaps);
 	HRESULT CreateIndexBuffer(size_t numIndices, D3D12_INDEX_BUFFER_VIEW* pOutIndexBufferView, ID3D12Resource **ppOutBuffer, void* pInitData, bool bUseGpuUploadHeaps);
 	void UpdateTextureForWrite(ID3D12Resource* pDestTexResource, ID3D12Resource* pSrcTexResource);
-	bool CreateTexture(ID3D12Resource** ppOutResource, uint width, uint height, DXGI_FORMAT format, const uint8_t* pInitImage);
-	bool CreateTextureFromFile(ID3D12Resource** ppOutResource, D3D12_RESOURCE_DESC* pOutDesc, const wchar_t* wchFileName, bool bUseGpuUploadHeaps, bool bDynamicMips = false);
+	bool CreateTexture(ID3D12Resource** ppOutResource, uint width, uint height, DXGI_FORMAT format, const uint8_t* pInitImage, uint arraySize = 1, uint mipLevels = 1);
 	bool CreateTexturePair(ID3D12Resource** ppOutResource, ID3D12Resource** ppOutUploadBuffer, uint width, uint height, DXGI_FORMAT format);
+	bool CreateTextureFromFile(ID3D12Resource** ppOutResource, D3D12_RESOURCE_DESC* pOutDesc, const wchar_t* wchFileName, bool bUseGpuUploadHeaps);
 	void Cleanup();
 
 private:

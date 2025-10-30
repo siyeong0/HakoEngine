@@ -715,85 +715,74 @@ bool Game::Initialize(
 				.set<comp::MeshRenderer>({ createMetalTileGridMeshObject(m_pRenderer) });
 			m_Entities.emplace_back(e.id());
 		}
-		// wire fence
-		{
-			flecs::entity e = m_ECSWorld.entity()
-				.set<comp::Position>({ 10.0f, 0.0f, 25.0f })
-				.set<comp::Rotation>({ PI / 2.0f, 0.0f, 0.0f })
-				.set<comp::Scale>({ 10.0f, 10.0f, 10.0f })
-				.set<comp::Transform>({})
-				.set<comp::MeshRenderer>({ createWireWall(m_pRenderer) });
-			m_Entities.emplace_back(e.id());
-		}
-		// Create kitty box entities
-		const uint KITTY_BOX_OBJECT_COUNT = 10;
-		for (uint i = 0; i < KITTY_BOX_OBJECT_COUNT; i++)
-		{
-			flecs::entity e = m_ECSWorld.entity()
-				.set<comp::Position>(randPosition({ -25, 25 }))
-				.set<comp::Rotation>(randRotation({ -60, 60 }))
-				.set<comp::Scale>(randScale({ 1,3 }))
-				.set<comp::Transform>({})
-				.set<comp::MeshRenderer>({ createKittyBoxMeshObject(m_pRenderer) });
-			m_Entities.emplace_back(e.id());
-		}
-		// Create megayuchi box entities
-		const uint MEGA_BOX_OBJECT_COUNT = 5;
-		for (uint i = 0; i < MEGA_BOX_OBJECT_COUNT; i++)
-		{
-			flecs::entity e = m_ECSWorld.entity()
-				.set<comp::Position>(randPosition({ -25, 25 }))
-				.set<comp::Rotation>(randRotation({ -60, 60 }))
-				.set<comp::Scale>(randScale({ 1,3 }))
-				.set<comp::Transform>({})
-				.set<comp::MeshRenderer>({ createMegayuchiBoxMeshObject(m_pRenderer) });
-			m_Entities.emplace_back(e.id());
-		}
-		// Create sphere entities
-		const uint SPHERE_OBJECT_COUNT = 1;
-		for (uint i = 0; i < SPHERE_OBJECT_COUNT; i++)
-		{
-			flecs::entity e = m_ECSWorld.entity()
-				.set<comp::Position>(randPosition({ -15, 15 }))
-				.set<comp::Rotation>(randRotation({ -60, 60 }))
-				.set<comp::Scale>({ 1.0f, 1.0f, 1.0f })
-				.set<comp::Transform>({})
-				.set<comp::RigidBody>(randRigidBody())
-				.set<comp::MeshRenderer>({ createKannaSphereMeshObject(m_pRenderer) });
-			m_Entities.emplace_back(e.id());
-		}
+		//// wire fence
+		//{
+		//	flecs::entity e = m_ECSWorld.entity()
+		//		.set<comp::Position>({ 10.0f, 0.0f, 25.0f })
+		//		.set<comp::Rotation>({ PI / 2.0f, 0.0f, 0.0f })
+		//		.set<comp::Scale>({ 10.0f, 10.0f, 10.0f })
+		//		.set<comp::Transform>({})
+		//		.set<comp::MeshRenderer>({ createWireWall(m_pRenderer) });
+		//	m_Entities.emplace_back(e.id());
+		//}
+		//// Create kitty box entities
+		//const uint KITTY_BOX_OBJECT_COUNT = 10;
+		//for (uint i = 0; i < KITTY_BOX_OBJECT_COUNT; i++)
+		//{
+		//	flecs::entity e = m_ECSWorld.entity()
+		//		.set<comp::Position>(randPosition({ -25, 25 }))
+		//		.set<comp::Rotation>(randRotation({ -60, 60 }))
+		//		.set<comp::Scale>(randScale({ 1,3 }))
+		//		.set<comp::Transform>({})
+		//		.set<comp::MeshRenderer>({ createKittyBoxMeshObject(m_pRenderer) });
+		//	m_Entities.emplace_back(e.id());
+		//}
+		//// Create megayuchi box entities
+		//const uint MEGA_BOX_OBJECT_COUNT = 5;
+		//for (uint i = 0; i < MEGA_BOX_OBJECT_COUNT; i++)
+		//{
+		//	flecs::entity e = m_ECSWorld.entity()
+		//		.set<comp::Position>(randPosition({ -25, 25 }))
+		//		.set<comp::Rotation>(randRotation({ -60, 60 }))
+		//		.set<comp::Scale>(randScale({ 1,3 }))
+		//		.set<comp::Transform>({})
+		//		.set<comp::MeshRenderer>({ createMegayuchiBoxMeshObject(m_pRenderer) });
+		//	m_Entities.emplace_back(e.id());
+		//}
+		//// Create sphere entities
+		//const uint SPHERE_OBJECT_COUNT = 1;
+		//for (uint i = 0; i < SPHERE_OBJECT_COUNT; i++)
+		//{
+		//	flecs::entity e = m_ECSWorld.entity()
+		//		.set<comp::Position>(randPosition({ -15, 15 }))
+		//		.set<comp::Rotation>(randRotation({ -60, 60 }))
+		//		.set<comp::Scale>({ 1.0f, 1.0f, 1.0f })
+		//		.set<comp::Transform>({})
+		//		.set<comp::RigidBody>(randRigidBody())
+		//		.set<comp::MeshRenderer>({ createKannaSphereMeshObject(m_pRenderer) });
+		//	m_Entities.emplace_back(e.id());
+		//}
 
-		// Create from file (bunny)
-		{
-			flecs::entity e = m_ECSWorld.entity()
-				.set<comp::Position>({ 2.5f, -2.0f, 12.0f })
-				.set<comp::Rotation>({ 0.0f, DegToRad(180.0f), 0.0f })
-				.set<comp::Scale>({ 0.05f, 0.05f, 0.05f })
-				.set<comp::Transform>({})
-				.set<comp::MeshRenderer>({ createMeshFromFile(m_pRenderer, "./Resources/stanford_bunny_pbr.glb") });
-			m_Entities.emplace_back(e.id());
-		}
+		//// Create sprite entity
+		//{
+		//	flecs::entity e = m_ECSWorld.entity()
+		//		.set<comp::Position>({ 100.0f, 100.0f, 0.0f })
+		//		.set<comp::Rotation>({ 0.0f, 0.0f, 0.0f })
+		//		.set<comp::Scale>({ 0.1f, 0.1f, 0.1f })
+		//		.set<comp::SpriteRenderer>({ L"./Resources/Kanna.dds" });
 
-		// Create sprite entity
-		{
-			flecs::entity e = m_ECSWorld.entity()
-				.set<comp::Position>({ 100.0f, 100.0f, 0.0f })
-				.set<comp::Rotation>({ 0.0f, 0.0f, 0.0f })
-				.set<comp::Scale>({ 0.1f, 0.1f, 0.1f })
-				.set<comp::SpriteRenderer>({ L"./Resources/Kanna.dds" });
+		//	m_Entities.emplace_back(e.id());
+		//}
+		//// Create text entity
+		//{
+		//	flecs::entity e = m_ECSWorld.entity()
+		//		.set<comp::Position>({ 500.0f, 100.0f, 0.0f })
+		//		.set<comp::Rotation>({ 0.0f, 0.0f, 0.0f })
+		//		.set<comp::Scale>({ 1.0f, 1.0f, 1.0f })
+		//		.set<comp::TextRenderer>(comp::TextRenderer(L"Hello"));
 
-			m_Entities.emplace_back(e.id());
-		}
-		// Create text entity
-		{
-			flecs::entity e = m_ECSWorld.entity()
-				.set<comp::Position>({ 500.0f, 100.0f, 0.0f })
-				.set<comp::Rotation>({ 0.0f, 0.0f, 0.0f })
-				.set<comp::Scale>({ 1.0f, 1.0f, 1.0f })
-				.set<comp::TextRenderer>(comp::TextRenderer(L"Hello"));
-
-			m_Entities.emplace_back(e.id());
-		}
+		//	m_Entities.emplace_back(e.id());
+		//}
 
 		if (m_pRenderer->IsRayTracingEnabled())
 		{
@@ -812,6 +801,15 @@ bool Game::Initialize(
 			}
 
 			// Create CASPER entity
+			{
+				flecs::entity e = m_ECSWorld.entity()
+					.set<comp::Position>({ -2.5f, -2.0f, 12.0f })
+					.set<comp::Rotation>({ 0.0f, DegToRad(180.0f), 0.0f })
+					.set<comp::Scale>({ 0.05f, 0.05f, 0.05f })
+					.set<comp::Transform>({})
+					.set<comp::MeshRenderer>({ createMeshFromFile(m_pRenderer, "./Resources/stanford_bunny_pbr.glb") });
+				m_Entities.emplace_back(e.id());
+			}
 			{
 				flecs::entity e = m_ECSWorld.entity()
 					.set<comp::Position>({ -2.5f, -2.0f, 12.0f })

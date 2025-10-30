@@ -17,7 +17,7 @@ bool RootSignatureManager::Initialize(D3D12Renderer* pRenderer)
 	D3D12_STATIC_SAMPLER_DESC samplers[4] = {};
 	D3DUtil::SetSamplerDesc_Wrap(samplers + 0, 0);		// Wrap Linear
 	D3DUtil::SetSamplerDesc_Clamp(samplers + 1, 1);		// Clamp Linear
-	D3DUtil::SetSamplerDesc_Point(samplers + 2, 2);		// Wrap Point
+	D3DUtil::SetSamplerDesc_Point(samplers + 2, 2);		// Clamp Point
 	D3DUtil::SetSamplerDesc_Mirror(samplers + 3, 3);	// Mirror Linear
 
 	// Graphics Default

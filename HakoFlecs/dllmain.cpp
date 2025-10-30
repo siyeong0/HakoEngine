@@ -1,4 +1,4 @@
-// dllmain.cpp : Defines the entry point for the DLL application.
+﻿// dllmain.cpp : Defines the entry point for the DLL application.
 #include "pch.h"
 
 BOOL APIENTRY DllMain( HMODULE hModule,
@@ -20,7 +20,7 @@ BOOL APIENTRY DllMain( HMODULE hModule,
 extern "C" __declspec(dllexport)
 HRESULT WINAPI DllCreateInstance(void** ppv)
 {
-    HRESULT hr;
+    /*HRESULT hr;
     IRenderer* pRenderer = new D3D12Renderer;
 
     if (!pRenderer)
@@ -32,5 +32,5 @@ HRESULT WINAPI DllCreateInstance(void** ppv)
     *ppv = pRenderer;
 
 lb_return:
-    return hr;
+    return hr;*/
 }

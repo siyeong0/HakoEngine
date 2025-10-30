@@ -383,84 +383,287 @@ lb_return:
 	return hr;
 }
 
+//bool D3D12ResourceManager::CreateTexture(
+//	ID3D12Resource** ppOutResource,
+//	uint width, uint height,
+//	DXGI_FORMAT format,
+//	const uint8_t* pInitImage)
+//{
+//	HRESULT hr = S_OK;
+//
+//	ID3D12Resource* pTexResource = nullptr;
+//	ID3D12Resource* pUploadBuffer = nullptr;
+//
+//	D3D12_RESOURCE_DESC textureDesc = {};
+//	textureDesc.MipLevels = 1;
+//	textureDesc.Format = format;	// ex) DXGI_FORMAT_R8G8B8A8_UNORM, etc...
+//	textureDesc.Width = width;
+//	textureDesc.Height = height;
+//	textureDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
+//	textureDesc.DepthOrArraySize = 1;
+//	textureDesc.SampleDesc.Count = 1;
+//	textureDesc.SampleDesc.Quality = 0;
+//	textureDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
+//
+//	hr = m_pD3DDevice->CreateCommittedResource(
+//		&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
+//		D3D12_HEAP_FLAG_NONE,
+//		&textureDesc,
+//		D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE,
+//		nullptr,
+//		IID_PPV_ARGS(&pTexResource));
+//	ASSERT(SUCCEEDED(hr), "Failed to CreateCommittedResource.");
+//
+//	if (pInitImage)
+//	{
+//		D3D12_RESOURCE_DESC desc = pTexResource->GetDesc();
+//		D3D12_PLACED_SUBRESOURCE_FOOTPRINT footprint;
+//		uint rows = 0;
+//		uint64_t rowSize = 0;
+//		uint64_t totalBytes = 0;
+//
+//		m_pD3DDevice->GetCopyableFootprints(&desc, 0, 1, 0, &footprint, &rows, &rowSize, &totalBytes);
+//
+//		uint8_t* pMappedPtr = nullptr;
+//		CD3DX12_RANGE readRange(0, 0);
+//
+//		uint64_t uploadBufferSize = GetRequiredIntermediateSize(pTexResource, 0, 1);
+//
+//		hr = m_pD3DDevice->CreateCommittedResource(
+//			&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD),
+//			D3D12_HEAP_FLAG_NONE,
+//			&CD3DX12_RESOURCE_DESC::Buffer(uploadBufferSize),
+//			D3D12_RESOURCE_STATE_COMMON,
+//			nullptr,
+//			IID_PPV_ARGS(&pUploadBuffer));
+//		ASSERT(SUCCEEDED(hr), "Failed to CreateCommittedResource.");
+//
+//		HRESULT hr = pUploadBuffer->Map(0, &readRange, reinterpret_cast<void**>(&pMappedPtr));
+//		ASSERT(SUCCEEDED(hr), "Failed to Map.");
+//
+//		const uint8_t* pSrc = pInitImage;
+//		uint8_t* pDest = pMappedPtr;
+//		for (uint y = 0; y < height; y++)
+//		{
+//			memcpy(pDest, pSrc, static_cast<size_t>(width) * 4);
+//			pSrc += (width * 4);
+//			pDest += footprint.Footprint.RowPitch;
+//		}
+//		// Unmap
+//		pUploadBuffer->Unmap(0, nullptr);
+//
+//		UpdateTextureForWrite(pTexResource, pUploadBuffer);
+//
+//		SAFE_RELEASE(pUploadBuffer);
+//
+//	}
+//	*ppOutResource = pTexResource;
+//
+//	return true;
+//}
+
 bool D3D12ResourceManager::CreateTexture(
 	ID3D12Resource** ppOutResource,
 	uint width, uint height,
 	DXGI_FORMAT format,
-	const uint8_t* pInitImage)
+	const uint8_t* pInitImage,
+	uint arraySize,
+	uint mipLevels)
 {
+	ASSERT(m_pD3DDevice, "D3D device must be initialized.");
+	ASSERT(ppOutResource, "ppOutResource must not be null.");
+	*ppOutResource = nullptr;
+
+	// --- Validate & defaults ---
+	ASSERT(width > 0 && height > 0, "Invalid size.");
+	mipLevels = std::max<uint>(1, mipLevels);
+	arraySize = std::max<uint>(1, arraySize);
+
+	// Bytes-per-pixel for common uncompressed formats (extend as needed).
+	auto bytesPerPixel = [](DXGI_FORMAT f) -> uint
+		{
+			switch (f)
+			{
+			case DXGI_FORMAT_R8_UNORM:                return 1;
+			case DXGI_FORMAT_R8G8_UNORM:              return 2;
+			case DXGI_FORMAT_R16_UNORM:               return 2;
+			case DXGI_FORMAT_R16_FLOAT:               return 2;
+			case DXGI_FORMAT_R8G8B8A8_UNORM:
+			case DXGI_FORMAT_R8G8B8A8_UNORM_SRGB:     return 4;
+			case DXGI_FORMAT_R8G8B8A8_UINT:           return 4;
+			case DXGI_FORMAT_R10G10B10A2_UNORM:       return 4;
+			case DXGI_FORMAT_R11G11B10_FLOAT:         return 4;
+			case DXGI_FORMAT_R16G16_UNORM:            return 4;
+			case DXGI_FORMAT_R16G16_FLOAT:            return 4;
+			case DXGI_FORMAT_R32_FLOAT:               return 4;
+			case DXGI_FORMAT_R32G32_FLOAT:            return 8;
+			case DXGI_FORMAT_R16G16B16A16_FLOAT:      return 8;
+			default: break;
+			}
+			ASSERT(false, "Unsupported DXGI_FORMAT in CreateTexture.");
+			return 0;
+		};
+	const uint bpp = bytesPerPixel(format);
+	ASSERT(bpp != 0, "Invalid bytes-per-pixel.");
+
 	HRESULT hr = S_OK;
-
 	ID3D12Resource* pTexResource = nullptr;
-	ID3D12Resource* pUploadBuffer = nullptr;
 
+	// --- Create destination texture (DEFAULT heap) ---
 	D3D12_RESOURCE_DESC textureDesc = {};
-	textureDesc.MipLevels = 1;
-	textureDesc.Format = format;	// ex) DXGI_FORMAT_R8G8B8A8_UNORM, etc...
+	textureDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
+	textureDesc.Alignment = 0;
 	textureDesc.Width = width;
 	textureDesc.Height = height;
-	textureDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
-	textureDesc.DepthOrArraySize = 1;
+	textureDesc.DepthOrArraySize = static_cast<UINT16>(arraySize);
+	textureDesc.MipLevels = static_cast<UINT16>(mipLevels);
+	textureDesc.Format = format;
 	textureDesc.SampleDesc.Count = 1;
 	textureDesc.SampleDesc.Quality = 0;
-	textureDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
+	textureDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
+	textureDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
+
+	D3D12_RESOURCE_STATES initState = pInitImage ? D3D12_RESOURCE_STATE_COMMON : D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE;
 
 	hr = m_pD3DDevice->CreateCommittedResource(
 		&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
 		D3D12_HEAP_FLAG_NONE,
 		&textureDesc,
-		D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE,
+		initState,
 		nullptr,
 		IID_PPV_ARGS(&pTexResource));
 	ASSERT(SUCCEEDED(hr), "Failed to CreateCommittedResource.");
-
-	if (pInitImage)
+	if (FAILED(hr))
 	{
-		D3D12_RESOURCE_DESC desc = pTexResource->GetDesc();
-		D3D12_PLACED_SUBRESOURCE_FOOTPRINT footprint;
-		uint rows = 0;
-		uint64_t rowSize = 0;
-		uint64_t totalBytes = 0;
-
-		m_pD3DDevice->GetCopyableFootprints(&desc, 0, 1, 0, &footprint, &rows, &rowSize, &totalBytes);
-
-		uint8_t* pMappedPtr = nullptr;
-		CD3DX12_RANGE readRange(0, 0);
-
-		uint64_t uploadBufferSize = GetRequiredIntermediateSize(pTexResource, 0, 1);
-
-		hr = m_pD3DDevice->CreateCommittedResource(
-			&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD),
-			D3D12_HEAP_FLAG_NONE,
-			&CD3DX12_RESOURCE_DESC::Buffer(uploadBufferSize),
-			D3D12_RESOURCE_STATE_COMMON,
-			nullptr,
-			IID_PPV_ARGS(&pUploadBuffer));
-		ASSERT(SUCCEEDED(hr), "Failed to CreateCommittedResource.");
-
-		HRESULT hr = pUploadBuffer->Map(0, &readRange, reinterpret_cast<void**>(&pMappedPtr));
-		ASSERT(SUCCEEDED(hr), "Failed to Map.");
-
-		const uint8_t* pSrc = pInitImage;
-		uint8_t* pDest = pMappedPtr;
-		for (uint y = 0; y < height; y++)
-		{
-			memcpy(pDest, pSrc, static_cast<size_t>(width) * 4);
-			pSrc += (width * 4);
-			pDest += footprint.Footprint.RowPitch;
-		}
-		// Unmap
-		pUploadBuffer->Unmap(0, nullptr);
-
-		UpdateTextureForWrite(pTexResource, pUploadBuffer);
-
-		SAFE_RELEASE(pUploadBuffer);
-
+		return false;
 	}
-	*ppOutResource = pTexResource;
 
+	// --- Early out if no initial data requested ---
+	if (!pInitImage)
+	{
+		*ppOutResource = pTexResource;
+		return true;
+	}
+
+	// --- Build upload buffer using copyable footprints (robust for tight source) ---
+	const UINT subCount = mipLevels * arraySize;
+
+	std::vector<D3D12_PLACED_SUBRESOURCE_FOOTPRINT> footprints(subCount);
+	std::vector<UINT> rows(subCount);
+	std::vector<UINT64> rowSizes(subCount);
+	UINT64 totalBytes = 0;
+
+	m_pD3DDevice->GetCopyableFootprints(
+		&textureDesc, 0, subCount, 0,
+		footprints.data(), rows.data(), rowSizes.data(), &totalBytes);
+
+	ID3D12Resource* pUploadBuffer = nullptr;
+	hr = m_pD3DDevice->CreateCommittedResource(
+		&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD),
+		D3D12_HEAP_FLAG_NONE,
+		&CD3DX12_RESOURCE_DESC::Buffer(totalBytes),
+		D3D12_RESOURCE_STATE_GENERIC_READ,
+		nullptr,
+		IID_PPV_ARGS(&pUploadBuffer));
+	ASSERT(SUCCEEDED(hr), "Failed to CreateCommittedResource (upload).");
+	if (FAILED(hr))
+	{
+		SAFE_RELEASE(pTexResource);
+		return false;
+	}
+
+	// Map once and write each subresource row-by-row into the padded upload buffer
+	uint8_t* pUploadBase = nullptr;
+	CD3DX12_RANGE readRange(0, 0);
+	hr = pUploadBuffer->Map(0, &readRange, reinterpret_cast<void**>(&pUploadBase));
+	ASSERT(SUCCEEDED(hr), "Map(upload) failed.");
+	if (FAILED(hr))
+	{
+		SAFE_RELEASE(pUploadBuffer);
+		SAFE_RELEASE(pTexResource);
+		return false;
+	}
+
+	// Source layout is tight-packed: [array0 mip0..mipN][array1 mip0..]...
+	const uint8_t* pSrc = pInitImage;
+
+	for (uint item = 0; item < arraySize; ++item)
+	{
+		for (uint mip = 0; mip < mipLevels; ++mip)
+		{
+			const UINT s = mip + item * mipLevels; // subresource index
+			const UINT mipW = std::max<UINT>(1, (UINT)width >> mip);
+			const UINT mipH = std::max<UINT>(1, (UINT)height >> mip);
+
+			const size_t srcRowPitch = size_t(mipW) * bpp;    // tight source
+			const size_t srcSlicePitch = srcRowPitch * mipH;    // 2D: one slice per subresource
+
+			const auto& fp = footprints[s];
+			uint8_t* pDstSub = pUploadBase + fp.Offset;
+
+			const size_t dstRowPitch = size_t(fp.Footprint.RowPitch);
+			const size_t dstRowCopyable = size_t(rowSizes[s]);   // D3D12-reported valid bytes per row
+			const size_t copyBytes = std::min(srcRowPitch, dstRowCopyable);
+
+			ASSERT(rows[s] == mipH, "Unexpected rows count for subresource");
+			ASSERT(dstRowPitch >= copyBytes, "Upload footprint row too small");
+
+			// row-by-row copy with padding clear
+			for (UINT y = 0; y < rows[s]; ++y)
+			{
+				const uint8_t* srcRow = pSrc + y * srcRowPitch;
+				uint8_t* dstRow = pDstSub + y * dstRowPitch;
+
+				// copy only as much as both sides guarantee to be valid
+				std::memcpy(dstRow, srcRow, copyBytes);
+			}
+
+			// advance tight source pointer
+			pSrc += srcSlicePitch;
+		}
+	}
+
+	pUploadBuffer->Unmap(0, nullptr);
+
+	// --- Record copy + transitions ---
+	hr = m_pCommandAllocator->Reset();  ASSERT(SUCCEEDED(hr), "CA Reset failed.");
+	hr = m_pCommandList->Reset(m_pCommandAllocator, nullptr); ASSERT(SUCCEEDED(hr), "CL Reset failed.");
+
+	// COMMON -> COPY_DEST
+	m_pCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(pTexResource, D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST));
+
+	// Per-subresource copy (CopyTextureRegion with placed footprints)
+	for (UINT s = 0; s < subCount; ++s)
+	{
+		D3D12_TEXTURE_COPY_LOCATION dst = {};
+		dst.pResource = pTexResource;
+		dst.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
+		dst.SubresourceIndex = s;
+
+		D3D12_TEXTURE_COPY_LOCATION src = {};
+		src.pResource = pUploadBuffer;
+		src.Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
+		src.PlacedFootprint = footprints[s];
+
+		m_pCommandList->CopyTextureRegion(&dst, 0, 0, 0, &src, nullptr);
+	}
+
+	// COPY_DEST -> ALL_SHADER_RESOURCE
+	m_pCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(pTexResource, D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE));
+
+	hr = m_pCommandList->Close(); ASSERT(SUCCEEDED(hr), "CL Close failed.");
+	ID3D12CommandList* lists[] = { m_pCommandList };
+	m_pCommandQueue->ExecuteCommandLists(_countof(lists), lists);
+	fence();
+	waitForFenceValue();
+
+	SAFE_RELEASE(pUploadBuffer);
+
+	*ppOutResource = pTexResource;
 	return true;
 }
+
+
 
 bool D3D12ResourceManager::CreateTexturePair(
 	ID3D12Resource** ppOutResource,
@@ -513,8 +716,7 @@ bool D3D12ResourceManager::CreateTextureFromFile(
 	ID3D12Resource** ppOutResource,
 	D3D12_RESOURCE_DESC* pOutDesc,
 	const wchar_t* wchFileName,
-	bool bUseGpuUploadHeaps,
-	bool bDynamicMips)
+	bool bUseGpuUploadHeaps)
 {
 	ASSERT(m_pD3DDevice, "D3D device must be initialized.");
 	ASSERT(ppOutResource, "ppOutResource must not be null.");
@@ -537,9 +739,7 @@ bool D3D12ResourceManager::CreateTextureFromFile(
 	const uint width = img.GetWidth();
 	const uint height = img.GetHeight();
 	const uint arraySize = std::max(1u, img.GetArraySize());
-
-	const uint srcMipCount = std::max(1u, img.GetMipCount());
-	const uint descMipLevels = bDynamicMips ? 0u : srcMipCount;
+	const uint mipCount = std::max(1u, img.GetMipCount());
 
 	const DXGI_FORMAT dxgiFmt = static_cast<DXGI_FORMAT>(img.GetFormat());
 
@@ -563,18 +763,13 @@ bool D3D12ResourceManager::CreateTextureFromFile(
 		texDesc.Width = static_cast<UINT64>(width);
 		texDesc.Height = static_cast<UINT>(height);
 		texDesc.DepthOrArraySize = static_cast<UINT16>(depth0);
-		texDesc.MipLevels = static_cast<UINT16>(descMipLevels);
+		texDesc.MipLevels = static_cast<UINT16>(mipCount);
 		texDesc.Format = dxgiFmt;
 		texDesc.SampleDesc.Count = 1;
 		texDesc.SampleDesc.Quality = 0;
 		texDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
 		texDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
-		// If we will generate mips via compute, 3D also needs UAV.
-		if (bDynamicMips)
-		{
-			texDesc.Flags |= D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
-		}
-		// Upload-heap 3D is not generally usable; force DEFAULT heap path.
+		// 업로드 힙의 ROW_MAJOR 3D 텍스처는 드물고 제약이 있으니 기본 힙 경유로 고정
 		bUseGpuUploadHeaps = false;
 	}
 	else
@@ -584,13 +779,9 @@ bool D3D12ResourceManager::CreateTextureFromFile(
 			static_cast<UINT64>(width),
 			static_cast<UINT>(height),
 			static_cast<UINT16>(arraySize),
-			static_cast<UINT16>(descMipLevels));
+			static_cast<UINT16>(mipCount));
 
-		// UAV required if we plan to build mips in compute
-		texDesc.Flags |= bDynamicMips ? D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS : D3D12_RESOURCE_FLAG_NONE;
-		// For dynamic mips, force DEFAULT heap (ROW_MAJOR upload textures are not shader-friendly)
-		bUseGpuUploadHeaps = bDynamicMips ? false : bUseGpuUploadHeaps;
-
+		texDesc.Flags |= D3D12_RESOURCE_FLAG_NONE;
 		if (bUseGpuUploadHeaps)
 		{
 			texDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
@@ -614,9 +805,9 @@ bool D3D12ResourceManager::CreateTextureFromFile(
 	std::vector<D3D12_SUBRESOURCE_DATA> subs;
 	if (b3DTex)
 	{
-		subs.reserve(srcMipCount);
+		subs.reserve(mipCount);
 		// 3D: one subresource per mip. pData = slice0; helper copies depth using SlicePitch.
-		for (uint mip = 0; mip < srcMipCount; ++mip)
+		for (uint mip = 0; mip < mipCount; ++mip)
 		{
 			const void* pData = img.GetDataPtr(0, mip, 0);
 			ASSERT(pData, "Image::GetDataPtr (3D) returned null.");
@@ -634,10 +825,10 @@ bool D3D12ResourceManager::CreateTextureFromFile(
 	else
 	{
 		// 2D / 2D-array / cubemap-as-array (arraySize may be 6*N)
-		subs.reserve(arraySize * srcMipCount);
+		subs.reserve(arraySize * mipCount);
 		for (uint item = 0; item < arraySize; ++item)
 		{
-			for (uint mip = 0; mip < srcMipCount; ++mip)
+			for (uint mip = 0; mip < mipCount; ++mip)
 			{
 				const void* pData = img.GetDataPtr(item, mip, 0);
 				ASSERT(pData, "Image::GetDataPtr (2D) returned null.");
@@ -677,124 +868,43 @@ bool D3D12ResourceManager::CreateTextureFromFile(
 	else
 	{
 		// DEFAULT heap + staging upload
+		const UINT subCount = static_cast<UINT>(subs.size());
+		const uint64_t uploadSize = GetRequiredIntermediateSize(pTexResource, 0, subCount);
+
+		ID3D12Resource* pUpload = nullptr;
+		hr = m_pD3DDevice->CreateCommittedResource(
+			&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD),
+			D3D12_HEAP_FLAG_NONE,
+			&CD3DX12_RESOURCE_DESC::Buffer(uploadSize),
+			D3D12_RESOURCE_STATE_GENERIC_READ,
+			nullptr,
+			IID_PPV_ARGS(&pUpload));
+		if (FAILED(hr))
+		{
+			ASSERT(false, "CreateCommittedResource (upload buffer) failed.");
+			SAFE_RELEASE(pTexResource);
+			return false;
+		}
+
 		hr = m_pCommandAllocator->Reset(); ASSERT(SUCCEEDED(hr), "CA Reset failed.");
 		hr = m_pCommandList->Reset(m_pCommandAllocator, nullptr); ASSERT(SUCCEEDED(hr), "CL Reset failed.");
 
 		// COMMON -> COPY_DEST
 		m_pCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(pTexResource, D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST));
 
-		if (b3DTex)
-		{
-			// 3D: contiguous mip range from subresource 0 is fine.
-			const UINT subCount3D = static_cast<UINT>(subs.size());
-			const uint64_t uploadSize3D = GetRequiredIntermediateSize(pTexResource, 0, subCount3D);
+		UpdateSubresources(m_pCommandList, pTexResource, pUpload, 0, 0, subCount, subs.data());
 
-			ID3D12Resource* pUpload = nullptr;
-			hr = m_pD3DDevice->CreateCommittedResource(
-				&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD),
-				D3D12_HEAP_FLAG_NONE,
-				&CD3DX12_RESOURCE_DESC::Buffer(uploadSize3D),
-				D3D12_RESOURCE_STATE_GENERIC_READ,
-				nullptr,
-				IID_PPV_ARGS(&pUpload));
-			if (FAILED(hr))
-			{
-				ASSERT(false, "CreateCommittedResource (upload buffer) failed.");
-				SAFE_RELEASE(pTexResource);
-				return false;
-			}
+		// COPY_DEST -> ALL_SHADER_RESOURCE
+		m_pCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(pTexResource, D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE));
 
-			UpdateSubresources(m_pCommandList, pTexResource, pUpload, 0, 0, subCount3D, subs.data());
+		hr = m_pCommandList->Close(); ASSERT(SUCCEEDED(hr), "CL Close failed.");
 
-			// Keep upload buffer alive until GPU finishes (release after fence).
-			std::vector<ID3D12Resource*> aliveUploads;
-			aliveUploads.push_back(pUpload);
+		ID3D12CommandList* lists[] = { m_pCommandList };
+		m_pCommandQueue->ExecuteCommandLists(_countof(lists), lists);
+		fence();
+		waitForFenceValue();
 
-			// COPY_DEST -> ALL_SHADER_RESOURCE
-			m_pCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(pTexResource, D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE));
-
-			hr = m_pCommandList->Close(); ASSERT(SUCCEEDED(hr), "CL Close failed.");
-
-			ID3D12CommandList* lists[] = { m_pCommandList };
-			m_pCommandQueue->ExecuteCommandLists(_countof(lists), lists);
-			fence();
-			waitForFenceValue();
-
-			// Now it is safe to release temporary uploads.
-			for (auto* u : aliveUploads)
-			{
-				SAFE_RELEASE(u);
-			}
-		}
-		else
-		{
-			// 2D / array / cubemap: copy per-slice with correct FirstSubresource,
-			// and keep each upload buffer alive until the fence is signaled.
-			const auto rd = pTexResource->GetDesc();
-			const UINT M = rd.MipLevels;           // actual mip count in the destination resource
-			const UINT arr = rd.DepthOrArraySize;    // array size (6 for a single cubemap)
-
-			std::vector<ID3D12Resource*> aliveUploads; // keep uploads alive until GPU done
-			aliveUploads.reserve(arr);
-
-			for (UINT item = 0; item < arr; ++item)
-			{
-				const D3D12_SUBRESOURCE_DATA* pSliceSubs = subs.data() + (item * srcMipCount);
-				const UINT numSliceSubs = srcMipCount;
-
-				// Destination subresource range for this slice starts at mip=0 of this array slice.
-				const UINT first = D3D12CalcSubresource(/*MipSlice*/0, /*ArraySlice*/item, /*PlaneSlice*/0, M, arr);
-
-				const uint64_t uploadSizeSlice = GetRequiredIntermediateSize(pTexResource, first, numSliceSubs);
-
-				ID3D12Resource* pUpload = nullptr;
-				hr = m_pD3DDevice->CreateCommittedResource(
-					&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD),
-					D3D12_HEAP_FLAG_NONE,
-					&CD3DX12_RESOURCE_DESC::Buffer(uploadSizeSlice),
-					D3D12_RESOURCE_STATE_GENERIC_READ,
-					nullptr,
-					IID_PPV_ARGS(&pUpload));
-				if (FAILED(hr))
-				{
-					ASSERT(false, "CreateCommittedResource (upload buffer) failed.");
-					SAFE_RELEASE(pTexResource);
-					// Release already created uploads before returning.
-					for (auto* u : aliveUploads)
-					{
-						SAFE_RELEASE(u);
-					}
-					return false;
-				}
-
-				UpdateSubresources(m_pCommandList,
-					pTexResource,
-					pUpload,
-					/*IntermediateOffset*/0,
-					/*FirstSubresource*/first,
-					/*NumSubresources*/numSliceSubs,
-					pSliceSubs);
-
-				// Defer release until GPU work completes.
-				aliveUploads.push_back(pUpload);
-			}
-
-			// COPY_DEST -> ALL_SHADER_RESOURCE
-			m_pCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(pTexResource, D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE));
-
-			hr = m_pCommandList->Close(); ASSERT(SUCCEEDED(hr), "CL Close failed.");
-
-			ID3D12CommandList* lists[] = { m_pCommandList };
-			m_pCommandQueue->ExecuteCommandLists(_countof(lists), lists);
-			fence();
-			waitForFenceValue();
-
-			// Now it is safe to release temporary uploads.
-			for (auto* u : aliveUploads)
-			{
-				SAFE_RELEASE(u);
-			}
-		}
+		SAFE_RELEASE(pUpload);
 	}
 
 	if (pOutDesc)
