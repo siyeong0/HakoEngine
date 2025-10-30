@@ -811,7 +811,7 @@ static Bounds BoundsFromGrid(const SparseBinaryGrid& g)
 // -----------------------------------------------------------------------------
 // 메인: V-HACD로 볼록분해 → 동일 포맷으로 저장
 // -----------------------------------------------------------------------------
-bool ENGINECALL Prelight::DecomposeToConvex(const StaticMesh& m) const
+bool ENGINECALL Prelight::DecomposeToConvex(const UStaticMesh& m) const
 {
 	SparseBinaryGrid surfaceGrid;
 	VoxelizeToSparse(m.Positions, m.Sections[0].Indices, m.MeshBounds, 0.01f, &surfaceGrid);

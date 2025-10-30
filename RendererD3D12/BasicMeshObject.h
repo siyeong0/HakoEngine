@@ -27,10 +27,10 @@ public:
 	STDMETHODIMP_(ULONG)	Release();
 
 	// Derived from IMeshObject
-	void ENGINECALL CreateFromStaticMesh(const StaticMesh& mesh, bool bUseRayTracingIfSupported = true) override;
+	void ENGINECALL CreateFromStaticMesh(const UStaticMesh& mesh, bool bUseRayTracingIfSupported = true) override;
 
 	bool ENGINECALL BeginCreateMesh(const Vertex* vertices, uint numVertices, uint numTriGroups) override;
-	bool ENGINECALL InsertTriGroup(const uint16_t* indices, uint numTriangles, const Material& material) override;
+	bool ENGINECALL InsertTriGroup(const uint16_t* indices, uint numTriangles, const UMaterial& material) override;
 	void ENGINECALL EndCreateMesh(bool bUseRayTracingIfSupported) override;
 
 	uint ENGINECALL GetRenderPass() override;
@@ -46,7 +46,7 @@ public:
 private:
 	bool initPipelineState();
 
-	void deleteTriGroup(IndexedTriGroup* pTriGroup);
+	void deleteTriGroup(MeshSection* pTriGroup);
 	void cleanup();
 
 private:
@@ -58,7 +58,7 @@ private:
 
 	PSOHandle* m_pPSOHandle = nullptr;
 
-	std::vector<IndexedTriGroup> m_TriGroups;
+	std::vector<MeshSection> m_TriGroups;
 	std::vector<bool> m_bTriGroupOpaques;
 	uint m_MaxNumTriGroups = 0;
 

@@ -34,14 +34,14 @@ static IMeshObject* createKittyBoxMeshObject(IRenderer* pRenderer)
 		L"./Resources/KittyCraft_06.dds"
 	};
 
-	StaticMesh meshData = StaticMesh::CreateUnitCubeMesh();
+	UStaticMesh meshData = UStaticMesh::CreateUnitCubeMesh();
 	std::vector<Vertex> vertices = meshData.GetVertexArray();
 
 	pMeshObj = pRenderer->CreateBasicMeshObject();
 	pMeshObj->BeginCreateMesh(vertices.data(), (uint)vertices.size(), 6);	// 박스의 6면-1면당 삼각형 2개-인덱스 6개
 	for (int i = 0; i < 6; i++)
 	{
-		Material mtl(diffuseTexPaths[i], nullptr, nullptr, nullptr, nullptr, MATERIAL_TYPE_METAL);
+		UMaterial mtl(diffuseTexPaths[i], nullptr, nullptr, nullptr, nullptr, MATERIAL_TYPE_METAL);
 		pMeshObj->InsertTriGroup(meshData.Sections[0].Indices.data() + i * 6, 2, mtl);
 	}
 	pMeshObj->EndCreateMesh();
@@ -78,7 +78,7 @@ static IMeshObject* createMegayuchiBoxMeshObject(IRenderer* pRenderer)
 		L"./Resources/megayuchi/tex_05_N.dds"
 	};
 
-	StaticMesh meshData = StaticMesh::CreateUnitCubeMesh();
+	UStaticMesh meshData = UStaticMesh::CreateUnitCubeMesh();
 
 	std::vector<Vertex> vertices = meshData.GetVertexArray();
 
@@ -86,7 +86,7 @@ static IMeshObject* createMegayuchiBoxMeshObject(IRenderer* pRenderer)
 	pMeshObj->BeginCreateMesh(vertices.data(), (uint)vertices.size(), 6);	// 박스의 6면-1면당 삼각형 2개-인덱스 6개
 	for (int i = 0; i < 6; i++)
 	{
-		Material mtl(diffuseTexPaths[i], normalTexPaths[i], nullptr, nullptr, nullptr, MATERIAL_TYPE_MATTE);
+		UMaterial mtl(diffuseTexPaths[i], normalTexPaths[i], nullptr, nullptr, nullptr, MATERIAL_TYPE_MATTE);
 		pMeshObj->InsertTriGroup(meshData.Sections[0].Indices.data() + i * 6, 2, mtl);
 	}
 	pMeshObj->EndCreateMesh();
@@ -104,15 +104,15 @@ static IMeshObject* createKannaSphereMeshObject(IRenderer* pRenderer)
 
 	const wchar_t* diffuseTexPath = L"./Resources/Kanna.dds";
 
-	StaticMesh meshData = StaticMesh::CreateSphereMesh(1.0f, 20, 20);
+	UStaticMesh meshData = UStaticMesh::CreateSphereMesh(1.0f, 20, 20);
 
 	std::vector<Vertex> vertices = meshData.GetVertexArray();
 
 	pMeshObj = pRenderer->CreateBasicMeshObject();
 	pMeshObj->BeginCreateMesh(vertices.data(), (uint)vertices.size(), (uint)meshData.Sections.size());
-	for (const MeshSection& sec : meshData.Sections)
+	for (const UMeshSection& sec : meshData.Sections)
 	{
-		Material mtl(diffuseTexPath, nullptr, nullptr, nullptr, nullptr, MATERIAL_TYPE_MIRROR);
+		UMaterial mtl(diffuseTexPath, nullptr, nullptr, nullptr, nullptr, MATERIAL_TYPE_MIRROR);
 		pMeshObj->InsertTriGroup(sec.Indices.data(), (uint)(sec.Indices.size() / 3), mtl);
 	}
 	pMeshObj->EndCreateMesh();
@@ -130,14 +130,14 @@ static IMeshObject* createPlaneMeshObject(IRenderer* pRenderer)
 
 	const wchar_t* diffuseTexPath = L"./Resources/Floor.dds";
 
-	StaticMesh meshData = StaticMesh::CreatePlaneMesh(20.0f, 20.0f);
+	UStaticMesh meshData = UStaticMesh::CreatePlaneMesh(20.0f, 20.0f);
 	std::vector<Vertex> vertices = meshData.GetVertexArray();
 
 	pMeshObj = pRenderer->CreateBasicMeshObject();
 	pMeshObj->BeginCreateMesh(vertices.data(), (uint)vertices.size(), (uint)meshData.Sections.size());
-	for (const MeshSection& sec : meshData.Sections)
+	for (const UMeshSection& sec : meshData.Sections)
 	{
-		Material mtl(diffuseTexPath, nullptr, nullptr, nullptr, nullptr, MATERIAL_TYPE_MIRROR);
+		UMaterial mtl(diffuseTexPath, nullptr, nullptr, nullptr, nullptr, MATERIAL_TYPE_MIRROR);
 		pMeshObj->InsertTriGroup(sec.Indices.data(), (uint)(sec.Indices.size() / 3), mtl);
 	}
 	pMeshObj->EndCreateMesh();
@@ -155,14 +155,14 @@ static IMeshObject* createStoneCylinderMeshObject(IRenderer* pRenderer)
 
 	const wchar_t* diffuseTexPath = L"./Resources/Stone.dds";
 
-	StaticMesh meshData = StaticMesh::CreateCylinderMesh(0.5f, 2.0f, 20);
+	UStaticMesh meshData = UStaticMesh::CreateCylinderMesh(0.5f, 2.0f, 20);
 	std::vector<Vertex> vertices = meshData.GetVertexArray();
 
 	pMeshObj = pRenderer->CreateBasicMeshObject();
 	pMeshObj->BeginCreateMesh(vertices.data(), (uint)vertices.size(), (uint)meshData.Sections.size());
-	for (const MeshSection& sec : meshData.Sections)
+	for (const UMeshSection& sec : meshData.Sections)
 	{
-		Material mtl(diffuseTexPath, nullptr, nullptr, nullptr, nullptr, MATERIAL_TYPE_MATTE);
+		UMaterial mtl(diffuseTexPath, nullptr, nullptr, nullptr, nullptr, MATERIAL_TYPE_MATTE);
 		pMeshObj->InsertTriGroup(sec.Indices.data(), (uint)(sec.Indices.size() / 3), mtl);
 	}
 	pMeshObj->EndCreateMesh();
@@ -180,14 +180,14 @@ static IMeshObject* createStoneConeMeshObject(IRenderer* pRenderer)
 
 	const wchar_t* diffuseTexPath = L"./Resources/Stone.dds";
 
-	StaticMesh meshData = StaticMesh::CreateConeMesh(1.0f, 2.0f, 20);
+	UStaticMesh meshData = UStaticMesh::CreateConeMesh(1.0f, 2.0f, 20);
 	std::vector<Vertex> vertices = meshData.GetVertexArray();
 
 	pMeshObj = pRenderer->CreateBasicMeshObject();
 	pMeshObj->BeginCreateMesh(vertices.data(), (uint)vertices.size(), (uint)meshData.Sections.size());
-	for (const MeshSection& sec : meshData.Sections)
+	for (const UMeshSection& sec : meshData.Sections)
 	{
-		Material mtl(diffuseTexPath, nullptr, nullptr, nullptr, nullptr, MATERIAL_TYPE_MATTE);
+		UMaterial mtl(diffuseTexPath, nullptr, nullptr, nullptr, nullptr, MATERIAL_TYPE_MATTE);
 		pMeshObj->InsertTriGroup(sec.Indices.data(), (uint)(sec.Indices.size() / 3), mtl);
 	}
 	pMeshObj->EndCreateMesh();
@@ -206,14 +206,14 @@ static IMeshObject* createMetalTileGridMeshObject(IRenderer* pRenderer)
 	const wchar_t* diffuseTexPath = L"./Resources/megayuchi/tilemap_008.dds";
 	const wchar_t* normalTexPath = L"./Resources/megayuchi/tilemap_008_N.dds";
 
-	StaticMesh meshData = StaticMesh::CreateGridMesh(20.0f, 20.0f, 100, 100);
+	UStaticMesh meshData = UStaticMesh::CreateGridMesh(20.0f, 20.0f, 100, 100);
 	std::vector<Vertex> vertices = meshData.GetVertexArray();
 
 	pMeshObj = pRenderer->CreateBasicMeshObject();
 	pMeshObj->BeginCreateMesh(vertices.data(), (uint)vertices.size(), (uint)meshData.Sections.size());
-	for (const MeshSection& sec : meshData.Sections)
+	for (const UMeshSection& sec : meshData.Sections)
 	{
-		Material mtl(diffuseTexPath, normalTexPath, nullptr, nullptr, nullptr, MATERIAL_TYPE_MATTE);
+		UMaterial mtl(diffuseTexPath, normalTexPath, nullptr, nullptr, nullptr, MATERIAL_TYPE_MATTE);
 		mtl.NormalScale = 0.4f;
 		pMeshObj->InsertTriGroup(sec.Indices.data(), (uint)(sec.Indices.size() / 3), mtl);
 	}
@@ -232,14 +232,14 @@ static IMeshObject* createWaterMeshObject(IRenderer* pRenderer)
 
 	const wchar_t* diffuseTexPath = L"./Resources/megayuchi/Wat_S_Mo_000.dds";
 
-	StaticMesh meshData = StaticMesh::CreatePlaneMesh(20.0f, 20.0f);
+	UStaticMesh meshData = UStaticMesh::CreatePlaneMesh(20.0f, 20.0f);
 	std::vector<Vertex> vertices = meshData.GetVertexArray();
 
 	pMeshObj = pRenderer->CreateBasicMeshObject();
 	pMeshObj->BeginCreateMesh(vertices.data(), (uint)vertices.size(), (uint)meshData.Sections.size());
-	for (const MeshSection& sec : meshData.Sections)
+	for (const UMeshSection& sec : meshData.Sections)
 	{
-		Material mtl(diffuseTexPath, nullptr, nullptr, nullptr, nullptr, MATERIAL_TYPE_WATER);
+		UMaterial mtl(diffuseTexPath, nullptr, nullptr, nullptr, nullptr, MATERIAL_TYPE_WATER);
 		pMeshObj->InsertTriGroup(sec.Indices.data(), (uint)(sec.Indices.size() / 3), mtl);
 	}
 	pMeshObj->EndCreateMesh();
@@ -255,13 +255,13 @@ static IMeshObject* createWireWall(IRenderer* pRenderer)
 		return pMeshObj;
 	}
 	const wchar_t* diffuseTexPath = L"./Resources/wire_fence.dds";
-	StaticMesh meshData = StaticMesh::CreateGridMesh(1.0f, 1.0f, 5, 5);
+	UStaticMesh meshData = UStaticMesh::CreateGridMesh(1.0f, 1.0f, 5, 5);
 	std::vector<Vertex> vertices = meshData.GetVertexArray();
 	pMeshObj = pRenderer->CreateBasicMeshObject();
 	pMeshObj->BeginCreateMesh(vertices.data(), (uint)vertices.size(), (uint)meshData.Sections.size());
-	for (const MeshSection& sec : meshData.Sections)
+	for (const UMeshSection& sec : meshData.Sections)
 	{
-		Material mtl(diffuseTexPath, nullptr, nullptr, nullptr, nullptr, MATERIAL_TYPE_METAL, true);
+		UMaterial mtl(diffuseTexPath, nullptr, nullptr, nullptr, nullptr, MATERIAL_TYPE_METAL, true);
 		// mtl.RoughnessFactor = 0.8f;
 		pMeshObj->InsertTriGroup(sec.Indices.data(), (uint)(sec.Indices.size() / 3), mtl);
 	}
@@ -278,7 +278,7 @@ static IMeshObject* createMeshFromFile(IRenderer* pRenderer, const char* filenam
 		return pMeshObj;
 	}
 
-	StaticMesh meshData;
+	UStaticMesh meshData;
 	if (!meshData.LoadFromFile(filename, 1.0f))
 	{
 		std::cout << std::format("Failed to load model from file: {}\n", filename);
@@ -289,7 +289,7 @@ static IMeshObject* createMeshFromFile(IRenderer* pRenderer, const char* filenam
 	std::vector<Vertex> vertices = meshData.GetVertexArray();
 	pMeshObj = pRenderer->CreateBasicMeshObject();
 	pMeshObj->BeginCreateMesh(vertices.data(), (uint)vertices.size(), (uint)meshData.Sections.size());
-	for (const MeshSection& sec : meshData.Sections)
+	for (const UMeshSection& sec : meshData.Sections)
 	{
 		pMeshObj->InsertTriGroup(sec.Indices.data(), (uint)(sec.Indices.size() / 3), sec.Material);
 	}
@@ -300,7 +300,7 @@ static IMeshObject* createMeshFromFile(IRenderer* pRenderer, const char* filenam
 static IProceduralSphereObject* createProceduralSphereObject(IRenderer* pRenderer, FLOAT3 center, float radius)
 {
 	IProceduralSphereObject* pSphereObj = pRenderer->CreateProceduralSphereObject();
-	Material mtl(nullptr, nullptr, nullptr, nullptr, nullptr, MATERIAL_TYPE_MIRROR, false);
+	UMaterial mtl(nullptr, nullptr, nullptr, nullptr, nullptr, MATERIAL_TYPE_MIRROR, false);
 	pSphereObj->BeginCreateGeom(2, mtl);
 	Sphere s1 = { center, radius };
 	Sphere s2 = { center + FLOAT3{3.0f, 0.0f, 0.0f}, radius };
@@ -349,7 +349,7 @@ static ICasperObject* createCasperObject(IRenderer* pRenderer, const std::wstrin
 		casperBounds.Max.z - casperBounds.Min.z });
 
 	ICasperObject* pCasperObj = pRenderer->CreateCasperObject();
-	Material mtl(nullptr, nullptr, nullptr, nullptr, nullptr, MATERIAL_TYPE_GLASS, false);
+	UMaterial mtl(nullptr, nullptr, nullptr, nullptr, nullptr, MATERIAL_TYPE_GLASS, false);
 	pCasperObj->BeginCreateCasper(1, mtl);
 	CasperAtlas atlas = {};
 	atlas.AtlasBounds = casperBounds;

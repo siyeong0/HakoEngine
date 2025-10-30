@@ -13,7 +13,7 @@ enum MATERIAL_PRESET_TYPE
 	MATERIAL_TYPE_COUNT
 };
 
-struct Material
+struct UMaterial
 {
 	std::wstring DiffuseTexturePath;
 	std::wstring NormalTexturePath;
@@ -34,8 +34,8 @@ struct Material
 
 	bool bAlphaMasked = false;
 
-	Material() = default;
-	Material(
+	UMaterial() = default;
+	UMaterial(
 		const wchar_t* diffusePathOrNull,
 		const wchar_t* normalPathOrNull,
 		const wchar_t* specularPathOrNull,
@@ -67,7 +67,7 @@ struct Material
 	{
 	}
 
-	Material(
+	UMaterial(
 		const wchar_t* diffusePathOrNull,
 		const wchar_t* normalPathOrNull,
 		const wchar_t* specularPathOrNull = nullptr,

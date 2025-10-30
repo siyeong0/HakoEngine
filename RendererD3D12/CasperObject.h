@@ -8,7 +8,7 @@ public:
 	STDMETHODIMP_(ULONG)	AddRef();
 	STDMETHODIMP_(ULONG)	Release();
 
-	bool ENGINECALL BeginCreateCasper(uint numAtlases, const Material& material) override;
+	bool ENGINECALL BeginCreateCasper(uint numAtlases, const UMaterial& material) override;
 	bool ENGINECALL InsertCasperAtlas(const CasperAtlas& atlas) override;
 	void ENGINECALL EndCreateCasper(bool bUseRayTracingIfSupported = true) override;
 
@@ -32,7 +32,7 @@ private:
 	ID3D12Resource* m_pAABBBuffer = nullptr;
 	std::vector<Bounds> m_AtlasBoundsArray;
 	std::vector<std::pair<TextureHandle*, TextureHandle*>> m_Atlases;
-	RenderMaterial m_Material;
+	CBMaterial m_Material;
 	bool m_bOpaque = true;
 	uint m_MaxNumAtlases = 0;
 

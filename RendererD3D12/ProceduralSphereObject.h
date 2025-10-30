@@ -11,7 +11,7 @@ public:
 	STDMETHODIMP_(ULONG)	AddRef();
 	STDMETHODIMP_(ULONG)	Release();
 
-	bool ENGINECALL BeginCreateGeom(uint numSpheres, const Material& material) override;
+	bool ENGINECALL BeginCreateGeom(uint numSpheres, const UMaterial& material) override;
 	bool ENGINECALL InsertSphere(const Sphere& sphereData) override;
 	void ENGINECALL EndCreateGeom(bool bUseRayTracingIfSupported = true) override;
 
@@ -36,7 +36,7 @@ private:
 	ID3D12Resource* m_pSphereDataBuffer = nullptr;
 
 	std::vector<Sphere> m_SphereDataArray;
-	RenderMaterial m_Material;
+	CBMaterial m_Material;
 	bool m_bOpaque = true;
 	uint m_MaxNumSpheres = 0;
 

@@ -49,7 +49,6 @@
 #include <filesystem>
 
 #include "RenderTypes.h"
-#include "ConstantBuffer.h"
 #include "Interface/IRenderer.h"
 #include "Interface/IMeshObject.h"
 #include "Interface/ISpriteObject.h"

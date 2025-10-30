@@ -27,7 +27,7 @@ STDMETHODIMP_(ULONG) ProceduralSphereObject::Release()
 	return refCount;
 }
 
-bool ENGINECALL ProceduralSphereObject::BeginCreateGeom(uint numSpheres, const Material& material)
+bool ENGINECALL ProceduralSphereObject::BeginCreateGeom(uint numSpheres, const UMaterial& material)
 {
 	m_MaxNumSpheres = numSpheres;
 	m_SphereDataArray.reserve(m_MaxNumSpheres);

@@ -1,6 +1,4 @@
 ﻿#pragma once
-#include "ConstantBuffer.h"
-
 struct PSOHandle;
 class D3D12Renderer;
 

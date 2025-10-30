@@ -154,7 +154,6 @@
     <ClInclude Include="BasicMeshObject.h" />
     <ClInclude Include="CasperObject.h" />
     <ClInclude Include="CommandListPool.h" />
-    <ClInclude Include="ConstantBuffer.h" />
     <ClInclude Include="ConstantBufferManager.h" />
     <ClInclude Include="D3D12Renderer.h" />
     <ClInclude Include="D3D12ResourceManager.h" />

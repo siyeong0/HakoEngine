@@ -254,7 +254,7 @@ BLASHandle* RayTracingManager::AllocBLASTriangles(
 	ID3D12Resource* pVertexBuffer,
 	uint numVertices,
 	uint vertexStrideBytes,
-	const std::vector<IndexedTriGroup>& triGroups,
+	const std::vector<MeshSection>& triGroups,
 	const std::vector<bool>& bTriGroupOpaques,
 	bool bAllowUpdate)
 {
@@ -382,7 +382,7 @@ BLASHandle* RayTracingManager::AllocBLASSpheres(
 	ID3D12Resource* pSphereDataBuffer,
 	uint numSpheres,
 	uint sphereDataStrideBytes,
-	const RenderMaterial& material,
+	const CBMaterial& material,
 	bool bOpaque,
 	bool bAllowUpdate)
 {
@@ -467,7 +467,7 @@ BLASHandle* RayTracingManager::AllocBLASCasper(
 	uint numAABBs,
 	uint aabbStrideBytes,
 	const std::vector<std::pair<TextureHandle*, TextureHandle*>>& atlases,
-	const RenderMaterial& material,
+	const CBMaterial& material,
 	bool bOpaque,
 	bool bAllowUpdate)
 {

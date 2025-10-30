@@ -10,7 +10,7 @@
 #include "Generic/Image.h"
 #include "StaticMesh.h"
 
-void StaticMesh::BeginCreate(
+void UStaticMesh::BeginCreate(
 	const std::vector<FVector3>& vertices,
 	const std::vector<FVector3>& normals,
 	const std::vector<FVector3>& tangents,
@@ -37,9 +37,9 @@ void StaticMesh::BeginCreate(
 	}
 }
 
-void StaticMesh::InsertSection(const std::vector<uint16_t> indices, const Material&& material)
+void UStaticMesh::InsertSection(const std::vector<uint16_t> indices, const UMaterial&& material)
 {
-	MeshSection section;
+	UMeshSection section;
 	section.Indices = indices;
 	section.Material = material;
 	for (uint16_t index : indices)
@@ -52,14 +52,14 @@ void StaticMesh::InsertSection(const std::vector<uint16_t> indices, const Materi
 	Sections.emplace_back(section);
 }
 
-void StaticMesh::EndCreate()
+void UStaticMesh::EndCreate()
 {
 	// Compute normals if not provided
 	if (Normals.empty())
 	{
 		// Compute normals from geometry
 		Normals.resize(Positions.size(), FVector3(0.0f, 0.0f, 0.0f));
-		for (const MeshSection& section : Sections)
+		for (const UMeshSection& section : Sections)
 		{
 			for (size_t i = 0; i < section.Indices.size(); i += 3)
 			{
@@ -90,7 +90,7 @@ void StaticMesh::EndCreate()
 	{
 		// Compute tangents from geometry and UVs
 		Tangents.resize(Positions.size(), FVector3(0.0f, 0.0f, 0.0f));
-		for (const MeshSection& section : Sections)
+		for (const UMeshSection& section : Sections)
 		{
 			for (size_t i = 0; i < section.Indices.size(); i += 3)
 			{
@@ -142,7 +142,7 @@ void StaticMesh::EndCreate()
 
 static std::filesystem::path dumpEmbeddedTextureToCache(const aiTexture* atex, std::wstring key);
 
-bool StaticMesh::LoadFromFile(const char* filename, float scale)
+bool UStaticMesh::LoadFromFile(const char* filename, float scale)
 {
 	if (!filename || !*filename)
 	{
@@ -329,7 +329,7 @@ bool StaticMesh::LoadFromFile(const char* filename, float scale)
 		}
 
 		// Create section (indices + material)
-		MeshSection sec;
+		UMeshSection sec;
 		sec.Indices.resize(size_t(nf) * 3u);
 
 		sec.LocalBounds.Min = FVector3::FMaxValue();
@@ -522,7 +522,7 @@ bool StaticMesh::LoadFromFile(const char* filename, float scale)
 	return true;
 }
 
-std::vector<Vertex> StaticMesh::GetVertexArray() const
+std::vector<Vertex> UStaticMesh::GetVertexArray() const
 {
 	size_t numVertices = Positions.size();
 	std::vector<Vertex> out(numVertices);
@@ -543,7 +543,7 @@ std::vector<Vertex> StaticMesh::GetVertexArray() const
 	return out;
 }
 
-void StaticMesh::FlipYAxis()
+void UStaticMesh::FlipYAxis()
 {
 	// 1) Flip geometry along Y
 	for (FVector3& p : Positions)
@@ -564,7 +564,7 @@ void StaticMesh::FlipYAxis()
 	}
 
 	// 3) Reverse triangle winding to preserve facing after mirror
-	for (MeshSection& sec : Sections)
+	for (UMeshSection& sec : Sections)
 	{
 		ASSERT(sec.Indices.size() % 3 == 0, "Indices are not a multiple of 3.");
 		for (size_t i = 0; i + 2 < sec.Indices.size(); i += 3)
@@ -594,14 +594,14 @@ void StaticMesh::FlipYAxis()
 
 
 // Predefined mesh creation static functions
-StaticMesh StaticMesh::CreateUnitCubeMesh()
+UStaticMesh UStaticMesh::CreateUnitCubeMesh()
 {
 	return CreateBoxMesh(1.0f, 1.0f, 1.0f);
 }
 
-StaticMesh StaticMesh::CreateBoxMesh(float width, float height, float depth)
+UStaticMesh UStaticMesh::CreateBoxMesh(float width, float height, float depth)
 {
-	StaticMesh m;
+	UStaticMesh m;
 
 	const float ex = width * 0.5f;
 	const float ey = height * 0.5f;
@@ -672,9 +672,9 @@ StaticMesh StaticMesh::CreateBoxMesh(float width, float height, float depth)
 	return m;
 }
 
-StaticMesh StaticMesh::CreateSphereMesh(float radius, int segments, int rings)
+UStaticMesh UStaticMesh::CreateSphereMesh(float radius, int segments, int rings)
 {
-	StaticMesh m;
+	UStaticMesh m;
 	segments = std::max(3, segments);
 	rings = std::max(2, rings);
 
@@ -731,9 +731,9 @@ StaticMesh StaticMesh::CreateSphereMesh(float radius, int segments, int rings)
 	return m;
 }
 
-StaticMesh StaticMesh::CreateGridMesh(float width, float height, int rows, int columns)
+UStaticMesh UStaticMesh::CreateGridMesh(float width, float height, int rows, int columns)
 {
-	StaticMesh m;
+	UStaticMesh m;
 	rows = std::max(1, rows);
 	columns = std::max(1, columns);
 
@@ -790,9 +790,9 @@ StaticMesh StaticMesh::CreateGridMesh(float width, float height, int rows, int c
 	return m;
 }
 
-StaticMesh StaticMesh::CreateCylinderMesh(float radius, float height, int segments)
+UStaticMesh UStaticMesh::CreateCylinderMesh(float radius, float height, int segments)
 {
-	StaticMesh m;
+	UStaticMesh m;
 	segments = std::max(3, segments);
 
 	const float halfH = height * 0.5f;
@@ -915,9 +915,9 @@ StaticMesh StaticMesh::CreateCylinderMesh(float radius, float height, int segmen
 	return m;
 }
 
-StaticMesh StaticMesh::CreateConeMesh(float radius, float height, int segments)
+UStaticMesh UStaticMesh::CreateConeMesh(float radius, float height, int segments)
 {
-	StaticMesh m;
+	UStaticMesh m;
 	segments = std::max(3, segments);
 
 	const float halfH = height * 0.5f;
@@ -1014,9 +1014,9 @@ StaticMesh StaticMesh::CreateConeMesh(float radius, float height, int segments)
 	return m;
 }
 
-StaticMesh StaticMesh::CreatePlaneMesh(float width, float height)
+UStaticMesh UStaticMesh::CreatePlaneMesh(float width, float height)
 {
-	StaticMesh m;
+	UStaticMesh m;
 
 	const float halfW = width * 0.5f;
 	const float halfH = height * 0.5f;

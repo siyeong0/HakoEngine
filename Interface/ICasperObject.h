@@ -13,7 +13,7 @@ struct CasperAtlas
 
 interface ICasperObject : public IUnknown
 {
-	virtual bool ENGINECALL BeginCreateCasper(uint numAtlases, const Material & material) = 0;
+	virtual bool ENGINECALL BeginCreateCasper(uint numAtlases, const UMaterial & material) = 0;
 	virtual bool ENGINECALL InsertCasperAtlas(const CasperAtlas& atlas) = 0;
 	virtual void ENGINECALL EndCreateCasper(bool bUseRayTracingIfSupported = true) = 0;
 

@@ -167,9 +167,6 @@
     <ClInclude Include="D3D12Renderer.h">
       <Filter>RendererBody</Filter>
     </ClInclude>
-    <ClInclude Include="ConstantBuffer.h">
-      <Filter>Common</Filter>
-    </ClInclude>
     <ClInclude Include="SkyObject.h">
       <Filter>RenderObject\SkyObject</Filter>
     </ClInclude>

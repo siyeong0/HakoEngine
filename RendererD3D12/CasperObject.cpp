@@ -26,7 +26,7 @@ STDMETHODIMP_(ULONG) CasperObject::Release()
 	return refCount;
 }
 
-bool ENGINECALL CasperObject::BeginCreateCasper(uint numAtlases, const Material& material)
+bool ENGINECALL CasperObject::BeginCreateCasper(uint numAtlases, const UMaterial& material)
 {
 	m_MaxNumAtlases = numAtlases;
 	m_Atlases.reserve(m_MaxNumAtlases);
