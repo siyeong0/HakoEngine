@@ -168,6 +168,7 @@ void BasicMeshObject::Draw(int threadIndex, ID3D12GraphicsCommandList6* pCommand
 	ASSERT(cb, "Failed to allocate constant buffer.");
 	CONSTANT_BUFFER_MESH_OBJECT* pCBPerDraw = (CONSTANT_BUFFER_MESH_OBJECT*)cb->pSystemMemAddr;
 	pCBPerDraw->WorldMatrix = XMMatrixTranspose(worldMatrix);
+	pCBPerDraw->Material = {}; // 나중에 TriGroup 루프에서 덮어씀
 
 	// --- 2) SRV Descriptor table (TriGroup 개수 만큼)
 	static constexpr uint NUM_SRV_PER_TRIGROUP = 2;
