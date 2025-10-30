@@ -89,6 +89,9 @@ public:
 	void ProcessByThread(int threadIndex);
 	void EnsureCompleted();
 
+	// CASPER
+	TextureHandle* CreateCasperDepthAtlasTextureFromFile(const wchar_t* wchFileName);
+
 	ID3D12Device5* GetD3DDevice() const { return m_pD3DDevice; }
 	RayTracingManager* GetRayTracingManager() { return m_pRayTracingManager; }
 	D3D12ResourceManager* GetResourceManager() { return m_pResourceManager; }

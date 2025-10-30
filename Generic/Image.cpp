@@ -130,8 +130,6 @@ namespace
 
 }
 
-#include <objbase.h>   // CoInitializeEx / CoUninitialize
-
 namespace 
 {
 	// Thread-local COM init for WIC. Never uninitialize to keep WIC factory valid.
@@ -165,42 +163,8 @@ Image::Image()
 
 Image::~Image()
 {
-#ifdef _WIN32
-	if (m_pData)
-	{
-		ImageState* st = reinterpret_cast<ImageState*>(m_pData);
-		delete st;
-		m_pData = nullptr;
-	}
-#endif
+	Reset();
 	m_Header = GeneralHeader{};
-}
-
-Image::Image(const Image& rhs)
-{
-#ifdef _WIN32
-	m_pData = reinterpret_cast<uint8_t*>(new ImageState{});
-	if (rhs.m_pData)
-	{
-		ImageState* dst = reinterpret_cast<ImageState*>(m_pData);
-		const ImageState* src = reinterpret_cast<const ImageState*>(rhs.m_pData);
-		const DirectX::TexMetadata& md = src->scratch.GetMetadata();
-
-		DirectX::ScratchImage tmp;
-		if (SUCCEEDED(tmp.Initialize(md)))
-		{
-			const DirectX::Image* sImgs = src->scratch.GetImages();
-			const DirectX::Image* dImgs = tmp.GetImages();
-			size_t n = src->scratch.GetImageCount();
-			for (size_t i = 0; i < n; ++i)
-			{
-				std::memcpy(dImgs[i].pixels, sImgs[i].pixels, sImgs[i].slicePitch);
-			}
-			dst->scratch = std::move(tmp);
-			UpdateHeaderVariant(m_Header, md);
-		}
-	}
-#endif
 }
 
 Image::Image(Image&& rhs) noexcept
@@ -208,57 +172,18 @@ Image::Image(Image&& rhs) noexcept
 	m_Header = std::move(rhs.m_Header);
 	m_pData = rhs.m_pData;
 	rhs.m_pData = nullptr;
-}
-
-Image& Image::operator=(const Image& rhs)
-{
-	if (this == &rhs)
-	{
-		return *this;
-	}
-	Reset();
-
-#ifdef _WIN32
-	if (!m_pData)
-	{
-		m_pData = reinterpret_cast<uint8_t*>(new ImageState{});
-	}
-	if (rhs.m_pData)
-	{
-		ImageState* dst = reinterpret_cast<ImageState*>(m_pData);
-		const ImageState* src = reinterpret_cast<const ImageState*>(rhs.m_pData);
-		const DirectX::TexMetadata md = src->scratch.GetMetadata();
-
-		DirectX::ScratchImage tmp;
-		if (SUCCEEDED(tmp.Initialize(md)))
-		{
-			const DirectX::Image* sImgs = src->scratch.GetImages();
-			const DirectX::Image* dImgs = tmp.GetImages();
-			size_t n = src->scratch.GetImageCount();
-			for (size_t i = 0; i < n; ++i)
-			{
-				std::memcpy(dImgs[i].pixels, sImgs[i].pixels, sImgs[i].slicePitch);
-			}
-			dst->scratch = std::move(tmp);
-			UpdateHeaderVariant(m_Header, md);
-		}
-	}
-#endif
-	return *this;
+	ZeroMemory(&rhs.m_Header, sizeof(rhs.m_Header));
 }
 
 Image& Image::operator=(Image&& rhs) noexcept
 {
-	if (this == &rhs)
-	{
-		return *this;
+	if (this != &rhs) {
+		Reset();
+		m_pData = rhs.m_pData;
+		m_Header = rhs.m_Header;
+		rhs.m_pData = nullptr;
+		ZeroMemory(&rhs.m_Header, sizeof(rhs.m_Header));
 	}
-	Reset();
-
-	m_Header = std::move(rhs.m_Header);
-	m_pData = rhs.m_pData;
-	rhs.m_pData = nullptr;
-
 	return *this;
 }
 
@@ -422,7 +347,9 @@ Image Image::CreateBlank(uint w, uint h, FORMAT fmt, uint mips, uint arraySize, 
 	ImageState* st = reinterpret_cast<ImageState*>(out.m_pData);
 
 	DirectX::TexMetadata md = {};
-	md.width = w; md.height = h; md.depth = 1;
+	md.width = w; 
+	md.height = h; 
+	md.depth = 1;
 	md.arraySize = arraySize ? arraySize : 1;
 	md.mipLevels = std::max<uint>(1, mips);
 	md.format = static_cast<DXGI_FORMAT>(fmt);
@@ -1099,6 +1026,7 @@ bool Image::SaveToCubeMapDDS(const std::filesystem::path& path, const Image face
 	DirectX::ScratchImage mipped;
 	if (bGenerateMips)
 	{
+		EnsureCOMForWIC();
 		if (FAILED(DirectX::GenerateMipMaps(images, n, mdc, DirectX::TEX_FILTER_DEFAULT, mipLevels, mipped)))
 		{
 			return false;
@@ -1125,6 +1053,7 @@ void Image::Reset()
 	{
 		ImageState* st = reinterpret_cast<ImageState*>(m_pData);
 		st->scratch.Release();
+		m_pData = nullptr;
 	}
 #endif
 	m_Header = GeneralHeader{};

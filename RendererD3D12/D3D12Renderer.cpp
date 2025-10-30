@@ -1120,6 +1120,13 @@ void D3D12Renderer::EnsureCompleted()
 	}
 }
 
+TextureHandle* D3D12Renderer::CreateCasperDepthAtlasTextureFromFile(const wchar_t* wchFileName)
+{
+	TextureHandle* pTexHandle = m_pTextureManager->CreateCasperDepthAtlasTextureFromFile(wchFileName);
+	ASSERT(pTexHandle, "Failed to create Casper depth atlas texture from file.");
+	return pTexHandle;
+}
+
 SimpleConstantBufferPool* D3D12Renderer::GetConstantBufferPool(CONSTANT_BUFFER_TYPE type, int threadIndex) const
 {
 	ConstantBufferManager* pConstBufferManager = m_ppConstBufferManager[m_CurrContextIndex][threadIndex];

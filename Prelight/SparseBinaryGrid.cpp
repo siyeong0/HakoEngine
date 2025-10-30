@@ -235,23 +235,22 @@ static void ProjectFace(
 {
 	// Create blank RGBA8 targets (1 mip)
 	outColor = Image::CreateBlank(W, H, Image::FORMAT_RGBA8_UNORM, 1, 1, false);
-	outDepthRG = Image::CreateBlank(W, H, Image::FORMAT_RGBA8_UNORM, 1, 1, false);
+	outDepthRG = Image::CreateBlank(W, H, Image::FORMAT_R16_UNORM, 1, 1, false);
 
 	ASSERT(outColor.IsValid(), "outColor image creation failed");
 	ASSERT(outDepthRG.IsValid(), "outDepthRG image creation failed");
 
 	// Get writable pointers (cast away const for authoring)
-	uint8_t* colorBase = const_cast<uint8_t*>(
-		static_cast<const uint8_t*>(outColor.GetDataPtr(0, 0, 0)));
-	uint8_t* depthBase = const_cast<uint8_t*>(
-		static_cast<const uint8_t*>(outDepthRG.GetDataPtr(0, 0, 0)));
+	uint8_t* colorBase = const_cast<uint8_t*>(static_cast<const uint8_t*>(outColor.GetDataPtr(0, 0, 0)));
+	uint8_t* depthBase = const_cast<uint8_t*>(static_cast<const uint8_t*>(outDepthRG.GetDataPtr(0, 0, 0)));
 	const size_t colorRowPitch = outColor.GetRowPitch(0, 0, 0);
 	const size_t depthRowPitch = outDepthRG.GetRowPitch(0, 0, 0);
 
 	ASSERT(colorBase && depthBase, "Failed to map Image pixel buffers");
-	ASSERT(colorRowPitch >= W * 4 && depthRowPitch >= W * 4, "RowPitch too small");
+	ASSERT(colorRowPitch >= W * 4 && depthRowPitch >= W * 2, "RowPitch too small");
 
 	auto toIdx4 = [&](uint x) { return static_cast<size_t>(x) * 4; };
+	auto toIdx2 = [&](uint x) { return static_cast<size_t>(x) * 2; };
 
 	const uint3 dim = grid.GetDim();
 
@@ -347,19 +346,17 @@ static void ProjectFace(
 				}
 			}
 
-			const size_t i4 = toIdx4(uu);
-
 			// write color
+			const size_t i4 = toIdx4(uu);
 			rowC[i4 + 0] = cr;
 			rowC[i4 + 1] = cg;
 			rowC[i4 + 2] = cb;
 			rowC[i4 + 3] = ca;
 
 			// write depth as RG (hi/lo), B=0, A=255
-			rowD[i4 + 0] = static_cast<uint8_t>((depth16 >> 8) & 0xFF);
-			rowD[i4 + 1] = static_cast<uint8_t>(depth16 & 0xFF);
-			rowD[i4 + 2] = 0;
-			rowD[i4 + 3] = 255;
+			const size_t i2 = toIdx2(uu);
+			rowD[i2 + 0] = depth16 & 0xFF;          // R = lo byte
+			rowD[i2 + 1] = (depth16 >> 8) & 0xFF;   // G = hi byte
 		}
 	}
 }
@@ -402,13 +399,13 @@ bool SparseBinaryGrid::SaveAsCasper(const std::string& path) const
 
 		// Save PNGs (color / depthRG)
 		{
-			fs::path colorPath = base / std::format("{}_color.png", faceTag[f]);
-			bool ok = colorImg.Save(colorPath, Image::EImageFormat::PNG);
+			fs::path colorPath = base / std::format("{}_color.dds", faceTag[f]);
+			bool ok = colorImg.Save(colorPath, Image::EImageFormat::DDS);
 			if (!ok) std::cerr << "[SaveAsCasper] Failed to save " << colorPath << "\n";
 		}
 		{
-			fs::path depthPath = base / std::format("{}_depth.png", faceTag[f]);
-			bool ok = depthRG.Save(depthPath, Image::EImageFormat::PNG);
+			fs::path depthPath = base / std::format("{}_depth.dds", faceTag[f]);
+			bool ok = depthRG.Save(depthPath, Image::EImageFormat::DDS);
 			if (!ok) std::cerr << "[SaveAsCasper] Failed to save " << depthPath << "\n";
 		}
 
@@ -420,12 +417,12 @@ bool SparseBinaryGrid::SaveAsCasper(const std::string& path) const
 	// DirectX 표준 순서: +X, -X, +Y, -Y, +Z, -Z
 	{
 		Image cubeFaces[6];
-		cubeFaces[0] = colorFacesByDir[POSX]; // +X
-		cubeFaces[1] = colorFacesByDir[NEGX]; // -X
-		cubeFaces[2] = colorFacesByDir[POSY]; // +Y
-		cubeFaces[3] = colorFacesByDir[NEGY]; // -Y
-		cubeFaces[4] = colorFacesByDir[POSZ]; // +Z
-		cubeFaces[5] = colorFacesByDir[NEGZ]; // -Z
+		cubeFaces[0] = std::move(colorFacesByDir[POSX]); // +X
+		cubeFaces[1] = std::move(colorFacesByDir[NEGX]); // -X
+		cubeFaces[2] = std::move(colorFacesByDir[POSY]); // +Y
+		cubeFaces[3] = std::move(colorFacesByDir[NEGY]); // -Y
+		cubeFaces[4] = std::move(colorFacesByDir[POSZ]); // +Z
+		cubeFaces[5] = std::move(colorFacesByDir[NEGZ]); // -Z
 		fs::path ddsPath = base / "casper_color.dds";
 		bool ok = Image::SaveToCubeMapDDS(ddsPath, cubeFaces, /*bGenerateMips*/true, /*mipLevels*/0);
 		if (!ok) std::cerr << "[SaveAsCasper] Failed to save cubemap DDS: " << ddsPath << "\n";
@@ -433,12 +430,12 @@ bool SparseBinaryGrid::SaveAsCasper(const std::string& path) const
 
 	{
 		Image depthCube[6];
-		depthCube[0] = depthFacesByDir[POSX];
-		depthCube[1] = depthFacesByDir[NEGX];
-		depthCube[2] = depthFacesByDir[POSY];
-		depthCube[3] = depthFacesByDir[NEGY];
-		depthCube[4] = depthFacesByDir[POSZ];
-		depthCube[5] = depthFacesByDir[NEGZ];
+		depthCube[0] = std::move(depthFacesByDir[POSX]);
+		depthCube[1] = std::move(depthFacesByDir[NEGX]);
+		depthCube[2] = std::move(depthFacesByDir[POSY]);
+		depthCube[3] = std::move(depthFacesByDir[NEGY]);
+		depthCube[4] = std::move(depthFacesByDir[POSZ]);
+		depthCube[5] = std::move(depthFacesByDir[NEGZ]);
 		fs::path ddsDepthPath = base / "casper_depth.dds";
 		bool ok = Image::SaveToCubeMapDDS(ddsDepthPath, depthCube, /*bGenerateMips*/false, 0);
 		if (!ok) std::cerr << "[SaveAsCasper] Failed to save depth cubemap DDS: " << ddsDepthPath << "\n";

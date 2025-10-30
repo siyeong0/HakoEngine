@@ -71,8 +71,8 @@ int main()
 	if (true)
 	{
 		UStaticMesh mesh;
-		//bool bLoaded = mesh.LoadFromFile("./Resources/stanford_bunny_pbr.glb", 0.05f);
-		bool bLoaded = mesh.LoadFromFile("./Resources/Decomp/camel.off", 1.0f);
+		bool bLoaded = mesh.LoadFromFile("./Resources/stanford_bunny_pbr.glb", 0.02f);
+		//bool bLoaded = mesh.LoadFromFile("./Resources/Decomp/camel.off", 1.0f);
 		if (bLoaded == false)
 		{
 			ASSERT(false, "Fail to load mesh file");

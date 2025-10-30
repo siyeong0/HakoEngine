@@ -14,6 +14,12 @@ bool TextureManager::Initialize(D3D12Renderer* pRenderer, int numExpectedItems)
 	return true;
 }
 
+void TextureManager::Cleanup()
+{
+	ASSERT(m_HashTable.size() > 0, "Texture resource leak detected.\n");
+	m_HashTable.clear();
+}
+
 TextureHandle* TextureManager::CreateTextureFromFile(const wchar_t* wchFileName)
 {
 	ID3D12Device* pD3DDevice = m_pRenderer->GetD3DDevice();
@@ -170,15 +176,58 @@ TextureHandle* TextureManager::CreateImmutableTexture(uint texWidth, uint texHei
 	return pTexHandle;
 }
 
+TextureHandle* TextureManager::CreateCasperDepthAtlasTextureFromFile(const wchar_t* wchFileName)
+{
+	ID3D12Device* pD3DDevice = m_pRenderer->GetD3DDevice();
+	SingleDescriptorAllocator* pSingleDescriptorAllocator = m_pRenderer->GetSingleDescriptorAllocator();
+	bool bUseGpuUploadHeaps = false;
+	bool bDynamicMips = true;
+
+	ID3D12Resource* pTexResource = nullptr;
+	D3D12_CPU_DESCRIPTOR_HANDLE srv = {};
+	D3D12_RESOURCE_DESC	desc = {};
+	TextureHandle* pOutTexHandle = nullptr;
+
+	if (m_pResourceManager->CreateTextureFromFile(&pTexResource, &desc, wchFileName, bUseGpuUploadHeaps, bDynamicMips))
+	{
+		ASSERT(desc.Dimension == D3D12_RESOURCE_DIMENSION_TEXTURE2D, "Only 2D");
+		ASSERT(desc.DepthOrArraySize == 6, "Only single cubemap (6 slices).");
+		ASSERT((desc.Flags & D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS) != 0, "UAV required for compute mips.");
+		// ASSERT(desc.Format == DXGI_FORMAT_R16_FLOAT, "Only R16_FLOAT is supported for Casper depth atlas.");
+
+		D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
+		srvDesc.Format = desc.Format;
+		srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+		srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURECUBE;
+		srvDesc.TextureCube.MipLevels = desc.MipLevels;
+		srvDesc.TextureCube.ResourceMinLODClamp = 0.0f;
+
+		// Descriptor heap allocation and SRV creation
+		if (pSingleDescriptorAllocator->AllocDescriptorHandle(&srv))
+		{
+			pD3DDevice->CreateShaderResourceView(pTexResource, &srvDesc, srv);
+
+			pOutTexHandle = allocTextureHandle();
+			pOutTexHandle->pTexResource = pTexResource;
+			pOutTexHandle->bFromFile = TRUE;
+			pOutTexHandle->SRV = srv;
+			pOutTexHandle->Dimension = srvDesc.ViewDimension;
+
+			// auto bResult = m_HashTable.insert({ wchFileName,  pOutTexHandle }).second;
+			// ASSERT(bResult, "HashTable insertion failed.\n");
+		}
+		else
+		{
+			SAFE_RELEASE(pTexResource);
+		}
+	}
+
+	return pOutTexHandle;
+}
+
 void TextureManager::DeleteTexture(TextureHandle* pTexHandle)
 {
 	freeTextureHandle(pTexHandle);
-}
-
-void TextureManager::Cleanup()
-{
-	ASSERT(m_HashTable.size() > 0, "Texture resource leak detected.\n");
-	m_HashTable.clear();
 }
 
 TextureHandle* TextureManager::allocTextureHandle()

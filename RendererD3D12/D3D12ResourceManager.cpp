@@ -513,33 +513,40 @@ bool D3D12ResourceManager::CreateTextureFromFile(
 	ID3D12Resource** ppOutResource,
 	D3D12_RESOURCE_DESC* pOutDesc,
 	const wchar_t* wchFileName,
-	bool bUseGpuUploadHeaps)
+	bool bUseGpuUploadHeaps,
+	bool bDynamicMips)
 {
 	ASSERT(m_pD3DDevice, "D3D device must be initialized.");
 	ASSERT(ppOutResource, "ppOutResource must not be null.");
 	ASSERT(wchFileName && *wchFileName, "Invalid filename.");
 	*ppOutResource = nullptr;
-	if (pOutDesc) std::memset(pOutDesc, 0, sizeof(*pOutDesc));
+	if (pOutDesc)
+	{
+		std::memset(pOutDesc, 0, sizeof(*pOutDesc));
+	}
 
 	// 1) Load via Image
 	Image img;
-	if (!img.Load(std::filesystem::path(wchFileName))) 
+	if (!img.Load(std::filesystem::path(wchFileName)))
 	{
 		ASSERT(false, "Image::Load failed.");
 		return false;
 	}
 	ASSERT(img.IsValid(), "Loaded image is invalid.");
 
-	const uint  width = img.GetWidth();
-	const uint  height = img.GetHeight();
-	const uint  mips = std::max(1u, img.GetMipCount());
-	const uint  arraySize = std::max(1u, img.GetArraySize());
+	const uint width = img.GetWidth();
+	const uint height = img.GetHeight();
+	const uint arraySize = std::max(1u, img.GetArraySize());
+
+	const uint srcMipCount = std::max(1u, img.GetMipCount());
+	const uint descMipLevels = bDynamicMips ? 0u : srcMipCount;
+
 	const DXGI_FORMAT dxgiFmt = static_cast<DXGI_FORMAT>(img.GetFormat());
 
 	// 2) Detect 3D volume (depth > 1) by probing slice 1 on mip 0
 	bool b3DTex = (img.GetDataPtr(0, 0, 1) != nullptr);
 	uint  depth0 = 1;
-	if (b3DTex) 
+	if (b3DTex)
 	{
 		// count depth at mip 0
 		while (img.GetDataPtr(0, 0, depth0) != nullptr) ++depth0;
@@ -556,22 +563,34 @@ bool D3D12ResourceManager::CreateTextureFromFile(
 		texDesc.Width = static_cast<UINT64>(width);
 		texDesc.Height = static_cast<UINT>(height);
 		texDesc.DepthOrArraySize = static_cast<UINT16>(depth0);
-		texDesc.MipLevels = static_cast<UINT16>(mips);
+		texDesc.MipLevels = static_cast<UINT16>(descMipLevels);
 		texDesc.Format = dxgiFmt;
 		texDesc.SampleDesc.Count = 1;
 		texDesc.SampleDesc.Quality = 0;
 		texDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
 		texDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
-		// 업로드 힙의 ROW_MAJOR 3D 텍스처는 드물고 제약이 있으니 기본 힙 경유로 고정
+		// If we will generate mips via compute, 3D also needs UAV.
+		if (bDynamicMips)
+		{
+			texDesc.Flags |= D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
+		}
+		// Upload-heap 3D is not generally usable; force DEFAULT heap path.
 		bUseGpuUploadHeaps = false;
 	}
-	else {
+	else
+	{
 		texDesc = CD3DX12_RESOURCE_DESC::Tex2D(
 			dxgiFmt,
 			static_cast<UINT64>(width),
 			static_cast<UINT>(height),
 			static_cast<UINT16>(arraySize),
-			static_cast<UINT16>(mips));
+			static_cast<UINT16>(descMipLevels));
+
+		// UAV required if we plan to build mips in compute
+		texDesc.Flags |= bDynamicMips ? D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS : D3D12_RESOURCE_FLAG_NONE;
+		// For dynamic mips, force DEFAULT heap (ROW_MAJOR upload textures are not shader-friendly)
+		bUseGpuUploadHeaps = bDynamicMips ? false : bUseGpuUploadHeaps;
+
 		if (bUseGpuUploadHeaps)
 		{
 			texDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
@@ -593,12 +612,12 @@ bool D3D12ResourceManager::CreateTextureFromFile(
 
 	// 4) Build subresources
 	std::vector<D3D12_SUBRESOURCE_DATA> subs;
-	subs.reserve(b3DTex ? mips : (arraySize * mips));
-
 	if (b3DTex)
 	{
+		subs.reserve(srcMipCount);
 		// 3D: one subresource per mip. pData = slice0; helper copies depth using SlicePitch.
-		for (uint mip = 0; mip < mips; ++mip) {
+		for (uint mip = 0; mip < srcMipCount; ++mip)
+		{
 			const void* pData = img.GetDataPtr(0, mip, 0);
 			ASSERT(pData, "Image::GetDataPtr (3D) returned null.");
 			const size_t rowPitch = img.GetRowPitch(0, mip, 0);
@@ -615,9 +634,10 @@ bool D3D12ResourceManager::CreateTextureFromFile(
 	else
 	{
 		// 2D / 2D-array / cubemap-as-array (arraySize may be 6*N)
+		subs.reserve(arraySize * srcMipCount);
 		for (uint item = 0; item < arraySize; ++item)
 		{
-			for (uint mip = 0; mip < mips; ++mip)
+			for (uint mip = 0; mip < srcMipCount; ++mip)
 			{
 				const void* pData = img.GetDataPtr(item, mip, 0);
 				ASSERT(pData, "Image::GetDataPtr (2D) returned null.");
@@ -635,7 +655,8 @@ bool D3D12ResourceManager::CreateTextureFromFile(
 	}
 
 	// 5) Upload
-	if (bUseGpuUploadHeaps) {
+	if (bUseGpuUploadHeaps)
+	{
 		// CPU write directly into ROW_MAJOR resource (2D only)
 		const UINT subCount = static_cast<UINT>(subs.size());
 		for (UINT i = 0; i < subCount; ++i)
@@ -653,45 +674,127 @@ bool D3D12ResourceManager::CreateTextureFromFile(
 			}
 		}
 	}
-	else {
+	else
+	{
 		// DEFAULT heap + staging upload
-		const UINT subCount = static_cast<UINT>(subs.size());
-		const uint64_t uploadSize = GetRequiredIntermediateSize(pTexResource, 0, subCount);
-
-		ID3D12Resource* pUpload = nullptr;
-		hr = m_pD3DDevice->CreateCommittedResource(
-			&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD),
-			D3D12_HEAP_FLAG_NONE,
-			&CD3DX12_RESOURCE_DESC::Buffer(uploadSize),
-			D3D12_RESOURCE_STATE_GENERIC_READ,
-			nullptr,
-			IID_PPV_ARGS(&pUpload));
-		if (FAILED(hr))
-		{
-			ASSERT(false, "CreateCommittedResource (upload buffer) failed.");
-			SAFE_RELEASE(pTexResource);
-			return false;
-		}
-
 		hr = m_pCommandAllocator->Reset(); ASSERT(SUCCEEDED(hr), "CA Reset failed.");
 		hr = m_pCommandList->Reset(m_pCommandAllocator, nullptr); ASSERT(SUCCEEDED(hr), "CL Reset failed.");
 
 		// COMMON -> COPY_DEST
 		m_pCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(pTexResource, D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST));
 
-		UpdateSubresources(m_pCommandList, pTexResource, pUpload, 0, 0, subCount, subs.data());
+		if (b3DTex)
+		{
+			// 3D: contiguous mip range from subresource 0 is fine.
+			const UINT subCount3D = static_cast<UINT>(subs.size());
+			const uint64_t uploadSize3D = GetRequiredIntermediateSize(pTexResource, 0, subCount3D);
 
-		// COPY_DEST -> ALL_SHADER_RESOURCE
-		m_pCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(pTexResource, D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE));
+			ID3D12Resource* pUpload = nullptr;
+			hr = m_pD3DDevice->CreateCommittedResource(
+				&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD),
+				D3D12_HEAP_FLAG_NONE,
+				&CD3DX12_RESOURCE_DESC::Buffer(uploadSize3D),
+				D3D12_RESOURCE_STATE_GENERIC_READ,
+				nullptr,
+				IID_PPV_ARGS(&pUpload));
+			if (FAILED(hr))
+			{
+				ASSERT(false, "CreateCommittedResource (upload buffer) failed.");
+				SAFE_RELEASE(pTexResource);
+				return false;
+			}
 
-		hr = m_pCommandList->Close(); ASSERT(SUCCEEDED(hr), "CL Close failed.");
+			UpdateSubresources(m_pCommandList, pTexResource, pUpload, 0, 0, subCount3D, subs.data());
 
-		ID3D12CommandList* lists[] = { m_pCommandList };
-		m_pCommandQueue->ExecuteCommandLists(_countof(lists), lists);
-		fence();
-		waitForFenceValue();
+			// Keep upload buffer alive until GPU finishes (release after fence).
+			std::vector<ID3D12Resource*> aliveUploads;
+			aliveUploads.push_back(pUpload);
 
-		SAFE_RELEASE(pUpload);
+			// COPY_DEST -> ALL_SHADER_RESOURCE
+			m_pCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(pTexResource, D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE));
+
+			hr = m_pCommandList->Close(); ASSERT(SUCCEEDED(hr), "CL Close failed.");
+
+			ID3D12CommandList* lists[] = { m_pCommandList };
+			m_pCommandQueue->ExecuteCommandLists(_countof(lists), lists);
+			fence();
+			waitForFenceValue();
+
+			// Now it is safe to release temporary uploads.
+			for (auto* u : aliveUploads)
+			{
+				SAFE_RELEASE(u);
+			}
+		}
+		else
+		{
+			// 2D / array / cubemap: copy per-slice with correct FirstSubresource,
+			// and keep each upload buffer alive until the fence is signaled.
+			const auto rd = pTexResource->GetDesc();
+			const UINT M = rd.MipLevels;           // actual mip count in the destination resource
+			const UINT arr = rd.DepthOrArraySize;    // array size (6 for a single cubemap)
+
+			std::vector<ID3D12Resource*> aliveUploads; // keep uploads alive until GPU done
+			aliveUploads.reserve(arr);
+
+			for (UINT item = 0; item < arr; ++item)
+			{
+				const D3D12_SUBRESOURCE_DATA* pSliceSubs = subs.data() + (item * srcMipCount);
+				const UINT numSliceSubs = srcMipCount;
+
+				// Destination subresource range for this slice starts at mip=0 of this array slice.
+				const UINT first = D3D12CalcSubresource(/*MipSlice*/0, /*ArraySlice*/item, /*PlaneSlice*/0, M, arr);
+
+				const uint64_t uploadSizeSlice = GetRequiredIntermediateSize(pTexResource, first, numSliceSubs);
+
+				ID3D12Resource* pUpload = nullptr;
+				hr = m_pD3DDevice->CreateCommittedResource(
+					&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD),
+					D3D12_HEAP_FLAG_NONE,
+					&CD3DX12_RESOURCE_DESC::Buffer(uploadSizeSlice),
+					D3D12_RESOURCE_STATE_GENERIC_READ,
+					nullptr,
+					IID_PPV_ARGS(&pUpload));
+				if (FAILED(hr))
+				{
+					ASSERT(false, "CreateCommittedResource (upload buffer) failed.");
+					SAFE_RELEASE(pTexResource);
+					// Release already created uploads before returning.
+					for (auto* u : aliveUploads)
+					{
+						SAFE_RELEASE(u);
+					}
+					return false;
+				}
+
+				UpdateSubresources(m_pCommandList,
+					pTexResource,
+					pUpload,
+					/*IntermediateOffset*/0,
+					/*FirstSubresource*/first,
+					/*NumSubresources*/numSliceSubs,
+					pSliceSubs);
+
+				// Defer release until GPU work completes.
+				aliveUploads.push_back(pUpload);
+			}
+
+			// COPY_DEST -> ALL_SHADER_RESOURCE
+			m_pCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(pTexResource, D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE));
+
+			hr = m_pCommandList->Close(); ASSERT(SUCCEEDED(hr), "CL Close failed.");
+
+			ID3D12CommandList* lists[] = { m_pCommandList };
+			m_pCommandQueue->ExecuteCommandLists(_countof(lists), lists);
+			fence();
+			waitForFenceValue();
+
+			// Now it is safe to release temporary uploads.
+			for (auto* u : aliveUploads)
+			{
+				SAFE_RELEASE(u);
+			}
+		}
 	}
 
 	if (pOutDesc)
@@ -701,6 +804,7 @@ bool D3D12ResourceManager::CreateTextureFromFile(
 	*ppOutResource = pTexResource;
 	return true;
 }
+
 
 void D3D12ResourceManager::UpdateTextureForWrite(ID3D12Resource* pDestTexResource, ID3D12Resource* pSrcTexResource)
 {

@@ -242,10 +242,10 @@ public:
 	// Construction & lifetime
 	// ----------------------------
 	Image();
-	Image(const Image&);
 	Image(Image&&) noexcept;
-	Image& operator=(const Image&);
-	Image& operator=(Image&&) noexcept;
+    Image& operator=(Image&&) noexcept;
+    Image(const Image&) = delete;
+	Image& operator=(const Image&) = delete;
 	~Image();
 
 	// ----------------------------
