@@ -147,6 +147,14 @@ void MyIntersectionShader_Casper()
     float3 enter = UnitSpaceHitPosition();
     float3 exit = UnitSpaceExitPosition();
     
+    {
+        MyCasperIntersectionAttributes attr;
+        attr.UnitSpaceHitPosition = enter * 2.0 - 1.0;
+        float tReport = ComputeTHit(enter);
+        ReportHit(tReport, /*hitKind*/0, attr);
+        return;
+    }
+    
     float tEnter = 0.0f;
     float tExit = length(exit - enter) / length(rayDir);
     
@@ -161,8 +169,8 @@ void MyIntersectionShader_Casper()
     int vax = (zax + 2) % 3;
     
     float tCurr = tEnter + EPS;
-    float3 currPos = enter; // +tCurr * rayDir;
-    for (int mip = mipCount - 1; mip >= 0; --mip)
+    float3 currPos = enter + tCurr * rayDir; // +tCurr * rayDir;
+    for (int mip = mipCount - 2; mip >= 0; --mip)
     {
         uint dimL = max(1u, baseDim >> mip); // Assert square textures
         float slice = 1.0 / dimL;
@@ -268,6 +276,17 @@ void MyClosestHitShader_RadianceRay_Casper(inout RadiancePayload rayPayload, in 
     float3 localtion = attr.UnitSpaceHitPosition;
     float4 texDiffuse = l_DiffuseAtlasTexture.SampleLevel(g_SamplerClamp, localtion, 0);
     float texDepth = l_DepthAtlasTexture.SampleLevel(g_SamplerClamp, localtion, 0);
+    
+    rayPayload.radiance = l_DepthAtlasTexture.SampleLevel(g_SamplerPoint, normalize(localtion), 0);
+    if (rayPayload.radiance.x <= 0.0 || rayPayload.radiance.y <= 0.0 || rayPayload.radiance.z <= 0.0)
+    {
+        rayPayload.radiance = float3(1, 0, 0);
+    }
+    if (rayPayload.radiance.x >= 1.0 || rayPayload.radiance.y >= 1.0 || rayPayload.radiance.z >= 1.0)
+    {
+        rayPayload.radiance = float3(0, 1, 0);
+    }
+    return;
     
     float tt = RayTCurrent() / 25.0;
     rayPayload.radiance = (tt * tt).xxx;

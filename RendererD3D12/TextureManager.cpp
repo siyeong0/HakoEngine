@@ -251,84 +251,7 @@ static inline SeamSample RemapSeam(int face, int u, int v, int W, int H)
 	}
 }
 
-// inFaces[f], outFaces[f] : 타이트(패딩 없음), 크기 W*H
-// iterations >= 1 이면 그 횟수만큼 ping-pong 에로전 수행
-static void Erode3x3_R16_UNORM_Cube(
-	const uint16_t* inFaces[6],
-	uint16_t* outFaces[6],
-	uint W, uint H,
-	int iterations = 1)
-{
-	// seam-aware 샘플러 (경계 넘어가면 이웃 face로 리맵)
-	auto SampleFaceSafe = [&](int face, int u, int v) -> uint16_t
-		{
-			if ((unsigned)u < W && (unsigned)v < H)
-				return inFaces[face][v * W + u];
-
-			SeamSample s = RemapSeam(face, u, v, (int)W, (int)H);
-			s.u = std::clamp(s.u, 0, (int)W - 1);
-			s.v = std::clamp(s.v, 0, (int)H - 1);
-			return inFaces[s.face][s.v * W + s.u];
-		};
-
-	// 내부 ping-pong 버퍼 (iterations>1 대비)
-	std::vector<std::vector<uint16_t>> ping(6), pong(6);
-	for (int f = 0; f < 6; ++f)
-	{
-		ping[f].assign(W * H, 0);
-		pong[f].assign(W * H, 0);
-		// 최초 입력 복사
-		std::memcpy(ping[f].data(), inFaces[f], size_t(W) * H * sizeof(uint16_t));
-	}
-
-	auto step_once = [&](std::vector<std::vector<uint16_t>>& src,
-		std::vector<std::vector<uint16_t>>& dst)
-		{
-			for (int f = 0; f < 6; ++f)
-			{
-				const uint16_t* s = src[f].data();
-				uint16_t* d = dst[f].data();
-				for (uint y = 0; y < H; ++y)
-				{
-					for (uint x = 0; x < W; ++x)
-					{
-						// 3x3 min (seam-aware)
-						uint16_t m = 0xFFFF;
-						for (int dy = -1; dy <= 1; ++dy)
-						{
-							for (int dx = -1; dx <= 1; ++dx)
-							{
-								int ux = int(x) + dx;
-								int vy = int(y) + dy;
-								uint16_t v = SampleFaceSafe(f, ux, vy);
-								m = (v < m) ? v : m;
-							}
-						}
-						d[y * W + x] = m;
-					}
-				}
-			}
-		};
-
-	// iterations회 에로전
-	for (int it = 0; it < iterations; ++it)
-	{
-		step_once(ping, pong);
-		// swap
-		for (int f = 0; f < 6; ++f)
-			ping[f].swap(pong[f]);
-	}
-
-	// 결과를 outFaces로 복사
-	for (int f = 0; f < 6; ++f)
-		std::memcpy(outFaces[f], ping[f].data(), size_t(W) * H * sizeof(uint16_t));
-}
-
-
-// prevFaces[f]  : 이전 레벨(상위 해상도) face f의 시작 포인터 (size: W*H)
-// outFaces[f]   : 이번 레벨(하위 해상도) face f의 시작 포인터 (size: (W/2)*(H/2))
-// 모든 버퍼는 "타이트"하게 행연속(패딩 없음)이라고 가정.
-static void BuildMinMip_R16_UNORM_Cube(
+static void BuildMinMip_R16_UNORM_Cube_Simple(
 	const uint16_t* prevFaces[6],
 	uint16_t* outFaces[6],
 	uint W, uint H)
@@ -336,20 +259,18 @@ static void BuildMinMip_R16_UNORM_Cube(
 	const uint Wo = std::max(1u, W / 2);
 	const uint Ho = std::max(1u, H / 2);
 
-	auto SampleFaceSafe = [&](int face, int u, int v) -> uint16_t
+	auto SampleClamp = [&](const uint16_t* img, int u, int v) -> uint16_t
 		{
-			if ((unsigned)u < W && (unsigned)v < H)
-				return prevFaces[face][v * W + u];
-
-			SeamSample s = RemapSeam(face, u, v, (int)W, (int)H);
-			s.u = std::clamp(s.u, 0, (int)W - 1);
-			s.v = std::clamp(s.v, 0, (int)H - 1);
-			return prevFaces[s.face][s.v * W + s.u];
+			u = std::clamp(u, 0, int(W) - 1);
+			v = std::clamp(v, 0, int(H) - 1);
+			return img[v * W + u];
 		};
 
 	for (int f = 0; f < 6; ++f)
 	{
+		const uint16_t* src = prevFaces[f];
 		uint16_t* dst = outFaces[f];
+
 		for (uint y = 0; y < Ho; ++y)
 		{
 			const int v0 = int(2 * y + 0);
@@ -359,16 +280,15 @@ static void BuildMinMip_R16_UNORM_Cube(
 				const int u0 = int(2 * x + 0);
 				const int u1 = int(2 * x + 1);
 
-				uint16_t a = SampleFaceSafe(f, u0, v0);
-				uint16_t b = SampleFaceSafe(f, u1, v0);
-				uint16_t c = SampleFaceSafe(f, u0, v1);
-				uint16_t d = SampleFaceSafe(f, u1, v1);
+				uint16_t a = SampleClamp(src, u0, v0);
+				uint16_t b = SampleClamp(src, u1, v0);
+				uint16_t c = SampleClamp(src, u0, v1);
+				uint16_t d = SampleClamp(src, u1, v1);
 				dst[y * Wo + x] = std::min(std::min(a, b), std::min(c, d));
 			}
 		}
 	}
 }
-
 
 static inline uint CalcFullMipCount(uint w, uint h)
 {
@@ -409,13 +329,12 @@ TextureHandle* TextureManager::CreateCasperDepthAtlasTextureFromFile(const wchar
 	ASSERT(arraySize == 6, "Depth atlas must have 6 faces for a cubemap.");
 
 	// --- Build min-mip chain on CPU for each face (tight-packed: rowPitch = width*2) ---
+
 	const uint mipCount = CalcFullMipCount(W0, H0);
-
-	// Allocate tight-packed buffer for all faces & mips: [face0 m0..mN][face1 m0..mN]...
 	const size_t texelsPerFace = SumTexelsOverMips(W0, H0);
-	std::vector<uint16_t> tightPacked;
-	tightPacked.resize(texelsPerFace * arraySize);
+	std::vector<uint16_t> tightPacked(texelsPerFace * arraySize, 0xFFFF); // << 기본 1.0로 전체 초기화
 
+	// face별 최상위 레벨 복사
 	size_t faceBase = 0;
 	for (int f = 0; f < 6; ++f)
 	{
@@ -429,10 +348,15 @@ TextureHandle* TextureManager::CreateCasperDepthAtlasTextureFromFile(const wchar
 			uint16_t* drow = dstTop + y * W0;
 			std::memcpy(drow, srow, size_t(W0) * sizeof(uint16_t));
 		}
+
+		// (옵션) 입력이 ‘0’을 ‘비어있음’으로 쓴 경우, 기본 1.0 정책을 지키려면 0을 0xFFFF로 승격
+		for (uint i = 0; i < W0 * H0; ++i)
+			if (dstTop[i] == 0) dstTop[i] = 0xFFFF;
+
 		faceBase += texelsPerFace;
 	}
 
-	// 레벨 포인터
+	// 레벨 포인터 헬퍼
 	auto FaceLevelPtr = [&](int face, uint level) -> uint16_t*
 		{
 			size_t base = size_t(face) * texelsPerFace;
@@ -446,13 +370,10 @@ TextureHandle* TextureManager::CreateCasperDepthAtlasTextureFromFile(const wchar
 			return tightPacked.data() + base + off;
 		};
 
+	// --- 순수 2×2 min 체인 빌드 ---
 	uint curW = W0, curH = H0;
 	for (uint level = 1; level < mipCount; ++level)
 	{
-		const uint nextW = std::max(1u, curW >> 1);
-		const uint nextH = std::max(1u, curH >> 1);
-
-		// prev(level-1), eroded(level-1), out(level) 포인터
 		const uint16_t* prevFaces[6] = {
 			FaceLevelPtr(PX, level - 1),
 			FaceLevelPtr(NX, level - 1),
@@ -461,20 +382,6 @@ TextureHandle* TextureManager::CreateCasperDepthAtlasTextureFromFile(const wchar
 			FaceLevelPtr(PZ, level - 1),
 			FaceLevelPtr(NZ, level - 1),
 		};
-
-		// 에로전 결과 임시 버퍼 (타이트)
-		std::vector<std::vector<uint16_t>> eroded(6);
-		for (int f = 0; f < 6; ++f) eroded[f].assign(curW * curH, 0);
-
-		const uint16_t* erodedIn[6] = { nullptr,nullptr,nullptr,nullptr,nullptr,nullptr };
-		uint16_t* erodedOut[6] = { nullptr,nullptr,nullptr,nullptr,nullptr,nullptr };
-		for (int f = 0; f < 6; ++f) { erodedOut[f] = eroded[f].data(); }
-
-		// prev → eroded (3×3 min, 1회; 보수성 강화)
-		Erode3x3_R16_UNORM_Cube(prevFaces, erodedOut, curW, curH, /*iterations=*/1);
-
-		// 다운샘플 입력 포인터 배열로 넘김
-		for (int f = 0; f < 6; ++f) erodedIn[f] = eroded[f].data();
 
 		uint16_t* outFaces[6] = {
 			FaceLevelPtr(PX, level),
@@ -485,10 +392,11 @@ TextureHandle* TextureManager::CreateCasperDepthAtlasTextureFromFile(const wchar
 			FaceLevelPtr(NZ, level),
 		};
 
-		// (에로전된) prev level → next level (2×2 min)
-		BuildMinMip_R16_UNORM_Cube(erodedIn, outFaces, curW, curH);
+		// 하위 레벨 버퍼는 이미 0xFFFF로 채워져 있음(위에서 전체 초기화)
+		BuildMinMip_R16_UNORM_Cube_Simple(prevFaces, outFaces, curW, curH);
 
-		curW = nextW; curH = nextH;
+		curW = std::max(1u, curW >> 1);
+		curH = std::max(1u, curH >> 1);
 	}
 
 

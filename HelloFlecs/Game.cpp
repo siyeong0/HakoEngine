@@ -803,7 +803,7 @@ bool Game::Initialize(
 			// Create CASPER entity
 			{
 				flecs::entity e = m_ECSWorld.entity()
-					.set<comp::Position>({ -2.5f, -2.0f, 12.0f })
+					.set<comp::Position>({ -3.5f, -2.0f, 12.0f })
 					.set<comp::Rotation>({ 0.0f, DegToRad(180.0f), 0.0f })
 					.set<comp::Scale>({ 0.05f, 0.05f, 0.05f })
 					.set<comp::Transform>({})
@@ -812,7 +812,7 @@ bool Game::Initialize(
 			}
 			{
 				flecs::entity e = m_ECSWorld.entity()
-					.set<comp::Position>({ -2.5f, -2.0f, 12.0f })
+					.set<comp::Position>({ 3.5f, -2.0f, 12.0f })
 					.set<comp::Rotation>({ 0.0f, DegToRad(180.0f), 0.0f })
 					.set<comp::Scale>({ 1.0f, 1.0f, 1.0f })
 					.set<comp::Transform>({})
@@ -828,7 +828,7 @@ bool Game::Initialize(
 					.set<comp::CasperRenderer>({ createCasperObject(m_pRenderer, L"./Resources/temp/carmel") });
 				m_Entities.emplace_back(e.id());
 			}
-			const uint BUNNY_CASPER_OBJECT_COUNT = 10;
+			const uint BUNNY_CASPER_OBJECT_COUNT = 0;
 			for (uint i = 0; i < BUNNY_CASPER_OBJECT_COUNT; i++)
 			{
 				flecs::entity e = m_ECSWorld.entity()
