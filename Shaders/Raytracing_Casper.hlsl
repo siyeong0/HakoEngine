@@ -6,7 +6,7 @@
 struct MyCasperIntersectionAttributes
 {
     float3 UnitSpaceHitPosition;
-    float3 Normal;
+    int Axis;
 };
 
 ConstantBuffer<CONSTANT_BUFFER_RT_PROC> l_ProcGeomCB : register(b1, space0);
@@ -23,6 +23,13 @@ StructuredBuffer<AABB> l_AABBBuffer : register(t2, space1);
 // =======================================================
 // Unit-space helpers
 // =======================================================
+
+float3 UnitToObject(float3 unitPos)
+{
+    AABB aabb = l_AABBBuffer[PrimitiveIndex()];
+    float3 extent = aabb.Max - aabb.Min;
+    return aabb.Min + unitPos * extent;
+}
 
 float RayTEnter()
 {
@@ -174,7 +181,7 @@ void MyIntersectionShader_Casper()
         float slice = 1.0 / dimL;
         
         for (int stepCount = 0; stepCount < MAX_STEPS && tPrev < tExit; ++stepCount)
-        {   
+        {
             fracs[uax] = FracInSlice(currPos[uax], slice);
             fracs[vax] = FracInSlice(currPos[vax], slice);
             fracs[zax] = FracInSlice(currPos[zax], slice);
@@ -225,11 +232,8 @@ void MyIntersectionShader_Casper()
     }
     
     MyCasperIntersectionAttributes attr;
-    attr.UnitSpaceHitPosition = currPos * 2.0 - 1.0;
-    attr.UnitSpaceHitPosition[taxis] = rayDir[taxis] > 0.0 ? -1.0 : 1.0;
-    float3 normal = 0.xxx;
-    normal[taxis] = rayDir[taxis] > 0.0 ? -1.0 : 1.0;
-    attr.Normal = normal;
+    attr.UnitSpaceHitPosition = currPos;
+    attr.Axis = taxis;
     float tReport = ComputeTHit(currPos);
     ReportHit(tReport, /*hitKind*/0, attr);
 }
@@ -275,11 +279,57 @@ void MyClosestHitShader_RadianceRay_Casper(inout RadiancePayload rayPayload, in 
     projPos /= projPos.w;
     rayPayload.depth = saturate(projPos.z);
     
-    float3 localtion = attr.UnitSpaceHitPosition;
-    float4 texDiffuse = l_DiffuseAtlasTexture.SampleLevel(g_SamplerClamp, localtion, 0);
+    float3 localtion = attr.UnitSpaceHitPosition * 2.0 - 1.0;
+    localtion[attr.Axis] = (ObjectRayDirection()[attr.Axis] > 0.0) ? -1.0 : 1.0;
+    float4 texDiffuse = l_DiffuseAtlasTexture.SampleLevel(g_SamplerClamp, normalize(localtion), 0);
     
-    float3 objectNormal = attr.Normal;
+    int zax = attr.Axis;
+    int uax = (zax + 1) % 3;
+    int vax = (zax + 2) % 3;
+    
+    float offset = 1.0 / 512.0; // Hardcoded base dimension
+    float3 offset0 = 0.xxx;
+    offset0[uax] = -offset;
+    offset0[vax] = -offset;
+    float3 offset1 = 0.xxx;
+    offset1[uax] = +offset;
+    offset1[vax] = -offset;
+    float3 offset2 = 0.xxx;
+    offset2[uax] = -offset;
+    offset2[vax] = +offset;
+    
+    float3 pn0 = attr.UnitSpaceHitPosition + offset0;
+    float3 loc0 = pn0 * 2.0 - 1.0;
+    loc0[attr.Axis] = (ObjectRayDirection()[attr.Axis] > 0.0) ? -1.0 : 1.0;
+    float d0 = l_DepthAtlasTexture.SampleLevel(g_SamplerClamp, normalize(loc0), 0);
+    pn0[attr.Axis] = (ObjectRayDirection()[attr.Axis] > 0.0) ? d0 : (1.0 - d0);
+    pn0 = UnitToObject(pn0);
+    
+    float3 pn1 = attr.UnitSpaceHitPosition + offset1;
+    float3 loc1 = pn1 * 2.0 - 1.0;
+    loc1[attr.Axis] = (ObjectRayDirection()[attr.Axis] > 0.0) ? -1.0 : 1.0;
+    float d1 = l_DepthAtlasTexture.SampleLevel(g_SamplerClamp, normalize(loc1), 0);
+    pn1[attr.Axis] = (ObjectRayDirection()[attr.Axis] > 0.0) ? d1 : (1.0 - d1);
+    pn1 = UnitToObject(pn1);
+    
+    float3 pn2 = attr.UnitSpaceHitPosition + offset2;
+    float3 loc2 = pn2 * 2.0 - 1.0;
+    loc2[attr.Axis] = (ObjectRayDirection()[attr.Axis] > 0.0) ? -1.0 : 1.0;
+    float d2 = l_DepthAtlasTexture.SampleLevel(g_SamplerClamp, normalize(loc2), 0);
+    pn2[attr.Axis] = (ObjectRayDirection()[attr.Axis] > 0.0) ? d2 : (1.0 - d2);
+    pn2 = UnitToObject(pn2);
+    
+    float3 v1 = normalize(pn1 - pn0);
+    float3 v2 = normalize(pn2 - pn0);
+    
+    float3 objectNormal = (ObjectRayDirection()[attr.Axis] > 0.0) ? normalize(cross(v2, v1)) : normalize(cross(v1, v2));
     float3 surfaceNormal = normalize(mul(objectNormal, (float3x3) ObjectToWorld4x3()));
+
+    //rayPayload.radiance = 0.5 * (objectNormal + 1.0);
+    //return;
+    
+    surfaceNormal = 0.xxx;
+    surfaceNormal[attr.Axis] = (ObjectRayDirection()[attr.Axis] > 0.0) ? 1.0 : -1.0;
     
     // Compute radiance
     BasicMaterial mtl = l_ProcGeomCB.Material;

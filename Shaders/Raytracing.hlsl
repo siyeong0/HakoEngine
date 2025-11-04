@@ -128,7 +128,7 @@ void MyClosestHitShader_RadianceRay(inout RadiancePayload rayPayload, in BuiltIn
     tanNormal = normalize(tanNormal);
     
     float3 surfaceNormal = (tanNormal.xxx * worldTangent) + (tanNormal.yyy * worldBinormal) + (tanNormal.zzz * worldNormal);
-    
+
     // Compute depth
     float4 projPos = mul(float4(hitPosition, 1.0), g_ViewProj);
     projPos /= projPos.w;
