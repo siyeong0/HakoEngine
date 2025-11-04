@@ -349,7 +349,7 @@ static ICasperObject* createCasperObject(IRenderer* pRenderer, const std::wstrin
 		casperBounds.Max.z - casperBounds.Min.z });
 
 	ICasperObject* pCasperObj = pRenderer->CreateCasperObject();
-	UMaterial mtl(nullptr, nullptr, nullptr, nullptr, nullptr, MATERIAL_TYPE_GLASS, false);
+	UMaterial mtl(nullptr, nullptr, nullptr, nullptr, nullptr, MATERIAL_TYPE_MIRROR, false);
 	pCasperObj->BeginCreateCasper(1, mtl);
 	CasperAtlas atlas = {};
 	atlas.AtlasBounds = casperBounds;
@@ -828,7 +828,7 @@ bool Game::Initialize(
 					.set<comp::CasperRenderer>({ createCasperObject(m_pRenderer, L"./Resources/temp/carmel") });
 				m_Entities.emplace_back(e.id());
 			}
-			const uint BUNNY_CASPER_OBJECT_COUNT = 0;
+			const uint BUNNY_CASPER_OBJECT_COUNT = 10;
 			for (uint i = 0; i < BUNNY_CASPER_OBJECT_COUNT; i++)
 			{
 				flecs::entity e = m_ECSWorld.entity()

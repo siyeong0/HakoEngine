@@ -130,10 +130,6 @@ namespace D3DUtil
 	{
 		SetDefaultSamplerDesc(pOutSamperDesc, RegisterIndex);
 		pOutSamperDesc->Filter = D3D12_FILTER_MIN_MAG_MIP_POINT;
-
-		pOutSamperDesc->AddressU = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
-		pOutSamperDesc->AddressV = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
-		pOutSamperDesc->AddressW = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
 	}
 
 	void SetSamplerDesc_Border(D3D12_STATIC_SAMPLER_DESC* pOutSamperDesc, uint RegisterIndex)

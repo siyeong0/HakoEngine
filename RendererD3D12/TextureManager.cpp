@@ -176,115 +176,56 @@ TextureHandle* TextureManager::CreateImmutableTexture(uint texWidth, uint texHei
 	return pTexHandle;
 }
 
+
 enum CubeFace { PX = 0, NX = 1, PY = 2, NY = 3, PZ = 4, NZ = 5 };
 
-// u,v는 [0..W-1],[0..H-1] 정수 격자 좌표(픽셀 인덱스)라고 가정.
-// 경계를 벗어나면 이웃 face 및 (u,v) 변환으로 리맵.
-struct SeamSample
-{
-	int face;
-	int u;
-	int v;
-};
+static inline bool IsNegFace(int f) { return f == NX || f == NY || f == NZ; }
 
-// (DirectX 표준 큐브맵 좌표 기준) 각 face 가장자리에서의 이웃과 (u,v) 변환.
-// 주의: 프로젝트에서 face 이미지의 실제 회전/플립이 다르면 이 부분만 수정.
-static inline SeamSample RemapSeamPX(int u, int v, int W, int H)
-{
-	if (u < 0)      return { PZ,           0 + v,         H - 1, }; // PX의 u<0는 PZ의 위쪽 가장자리로
-	if (u >= W)     return { NZ,           0 + (H - 1 - v),   0, };
-	if (v < 0)      return { PY,           0 + u,         0, };
-	/* v >= H */    return { NY,           0 + u,         H - 1, };
-}
-
-static inline SeamSample RemapSeamNX(int u, int v, int W, int H)
-{
-	if (u < 0)      return { NZ,           0 + v,         H - 1, };
-	if (u >= W)     return { PZ,           0 + (H - 1 - v),   0, };
-	if (v < 0)      return { PY,           W - 1 - u,       0, };
-	/* v >= H */    return { NY,           W - 1 - u,       H - 1, };
-}
-
-static inline SeamSample RemapSeamPY(int u, int v, int W, int H)
-{
-	if (u < 0)      return { PZ,           0,             0 + u, };
-	if (u >= W)     return { NZ,           0,             0 + (W - 1 - u), };
-	if (v < 0)      return { NX,           W - 1 - u,       0, };
-	/* v >= H */    return { PX,           0 + u,         0, };
-}
-
-static inline SeamSample RemapSeamNY(int u, int v, int W, int H)
-{
-	if (u < 0)      return { PZ,           W - 1,           0 + (W - 1 - u), };
-	if (u >= W)     return { NZ,           W - 1,           0 + u, };
-	if (v < 0)      return { PX,           0 + u,         H - 1, };
-	/* v >= H */    return { NX,           W - 1 - u,       H - 1, };
-}
-
-static inline SeamSample RemapSeamPZ(int u, int v, int W, int H)
-{
-	if (u < 0)      return { NX,           0,             0 + v, };
-	if (u >= W)     return { PX,           W - 1,           0 + v, };
-	if (v < 0)      return { PY,           0 + u,         0, };
-	/* v >= H */    return { NY,           0 + u,         H - 1, };
-}
-
-static inline SeamSample RemapSeamNZ(int u, int v, int W, int H)
-{
-	if (u < 0)      return { PX,           0,             0 + (H - 1 - v), };
-	if (u >= W)     return { NX,           W - 1,           0 + (H - 1 - v), };
-	if (v < 0)      return { PY,           W - 1 - u,       0, };
-	/* v >= H */    return { NY,           W - 1 - u,       H - 1, };
-}
-
-static inline SeamSample RemapSeam(int face, int u, int v, int W, int H)
-{
-	switch (face)
-	{
-	case PX: return RemapSeamPX(u, v, W, H);
-	case NX: return RemapSeamNX(u, v, W, H);
-	case PY: return RemapSeamPY(u, v, W, H);
-	case NY: return RemapSeamNY(u, v, W, H);
-	case PZ: return RemapSeamPZ(u, v, W, H);
-	case NZ: return RemapSeamNZ(u, v, W, H);
-	default: return { face, std::clamp(u,0,W - 1), std::clamp(v,0,H - 1) };
-	}
-}
-
-static void BuildMinMip_R16_UNORM_Cube_Simple(
+// 한 단계(레벨 N -> 레벨 N+1) 다운샘플: 2x2 min
+// prevFaces: [6] = 레벨 N 각 face 버퍼 (rowPitch = W * sizeof(uint16_t))
+// outFaces : [6] = 레벨 N+1 각 face 버퍼 (rowPitch = Wo * sizeof(uint16_t))
+// W,H      : 레벨 N 크기
+static void BuildMinMip_R16_UNORM_Cube_Anchored(
 	const uint16_t* prevFaces[6],
 	uint16_t* outFaces[6],
-	uint W, uint H)
+	uint32_t W, uint32_t H)
 {
-	const uint Wo = std::max(1u, W / 2);
-	const uint Ho = std::max(1u, H / 2);
+	const uint32_t Wo = std::max(1u, W / 2);
+	const uint32_t Ho = std::max(1u, H / 2);
 
-	auto SampleClamp = [&](const uint16_t* img, int u, int v) -> uint16_t
-		{
-			u = std::clamp(u, 0, int(W) - 1);
-			v = std::clamp(v, 0, int(H) - 1);
-			return img[v * W + u];
+	auto SampleClamp = [&](const uint16_t* img, int u, int v) -> uint16_t {
+		// 경계는 클램프 (파워-오브-투가 아니어도 안정)
+		if (u < 0) u = 0; else if (u >= (int)W) u = (int)W - 1;
+		if (v < 0) v = 0; else if (v >= (int)H) v = (int)H - 1;
+		return img[v * W + u];
 		};
 
 	for (int f = 0; f < 6; ++f)
 	{
+		const bool neg = IsNegFace(f);
 		const uint16_t* src = prevFaces[f];
 		uint16_t* dst = outFaces[f];
 
-		for (uint y = 0; y < Ho; ++y)
+		for (uint32_t y = 0; y < Ho; ++y)
 		{
 			const int v0 = int(2 * y + 0);
 			const int v1 = int(2 * y + 1);
-			for (uint x = 0; x < Wo; ++x)
+
+			for (uint32_t x = 0; x < Wo; ++x)
 			{
-				const int u0 = int(2 * x + 0);
-				const int u1 = int(2 * x + 1);
+				// Positive: (u0,u1) = (2x, 2x+1)
+				// Negative: 우측-상단 기준으로 2x2 블록을 잡도록 오른쪽 anchor
+				//           (u0,u1) = (W-2 - 2x, W-1 - 2x)
+				int u0 = neg ? (int(W) - 2 - int(2 * x)) : int(2 * x);
+				int u1 = u0 + 1;
 
 				uint16_t a = SampleClamp(src, u0, v0);
 				uint16_t b = SampleClamp(src, u1, v0);
 				uint16_t c = SampleClamp(src, u0, v1);
 				uint16_t d = SampleClamp(src, u1, v1);
-				dst[y * Wo + x] = std::min(std::min(a, b), std::min(c, d));
+
+				uint32_t wx = neg ? (Wo - 1 - x) : x;
+				dst[y * Wo + wx] = std::min(std::min(a, b), std::min(c, d));
 			}
 		}
 	}
@@ -342,16 +283,14 @@ TextureHandle* TextureManager::CreateCasperDepthAtlasTextureFromFile(const wchar
 		const size_t srcRowPitch = depthAtlasImage.GetRowPitch(f, 0, 0);
 		uint16_t* dstTop = tightPacked.data() + faceBase;
 
+		std::memset(dstTop, 0xFFFF, size_t(W0) * size_t(H0) * sizeof(uint16_t));
+
 		for (uint y = 0; y < H0; ++y)
 		{
 			const uint8_t* srow = (const uint8_t*)srcTop + y * srcRowPitch;
 			uint16_t* drow = dstTop + y * W0;
 			std::memcpy(drow, srow, size_t(W0) * sizeof(uint16_t));
 		}
-
-		// (옵션) 입력이 ‘0’을 ‘비어있음’으로 쓴 경우, 기본 1.0 정책을 지키려면 0을 0xFFFF로 승격
-		for (uint i = 0; i < W0 * H0; ++i)
-			if (dstTop[i] == 0) dstTop[i] = 0xFFFF;
 
 		faceBase += texelsPerFace;
 	}
@@ -393,7 +332,7 @@ TextureHandle* TextureManager::CreateCasperDepthAtlasTextureFromFile(const wchar
 		};
 
 		// 하위 레벨 버퍼는 이미 0xFFFF로 채워져 있음(위에서 전체 초기화)
-		BuildMinMip_R16_UNORM_Cube_Simple(prevFaces, outFaces, curW, curH);
+		BuildMinMip_R16_UNORM_Cube_Anchored(prevFaces, outFaces, curW, curH);
 
 		curW = std::max(1u, curW >> 1);
 		curH = std::max(1u, curH >> 1);

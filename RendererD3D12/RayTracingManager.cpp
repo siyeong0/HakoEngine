@@ -1041,7 +1041,7 @@ void RayTracingManager::createRaytracingPipelineStateObject()
 
 	CD3DX12_RAYTRACING_SHADER_CONFIG_SUBOBJECT* pShaderConfig = raytracingPipeline.CreateSubobject<CD3DX12_RAYTRACING_SHADER_CONFIG_SUBOBJECT>();
 	UINT payloadSize = PAYLOAD_SIZE;
-	UINT attributeSize = 12;
+	UINT attributeSize = 24;
 	pShaderConfig->Config(payloadSize, attributeSize);
 
 	CD3DX12_LOCAL_ROOT_SIGNATURE_SUBOBJECT* pLocalRootSignature = raytracingPipeline.CreateSubobject<CD3DX12_LOCAL_ROOT_SIGNATURE_SUBOBJECT>();
