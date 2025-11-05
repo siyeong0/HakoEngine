@@ -349,7 +349,7 @@ static ICasperObject* createCasperObject(IRenderer* pRenderer, const std::wstrin
 		casperBounds.Max.z - casperBounds.Min.z });
 
 	ICasperObject* pCasperObj = pRenderer->CreateCasperObject();
-	UMaterial mtl(nullptr, nullptr, nullptr, nullptr, nullptr, MATERIAL_TYPE_MIRROR, false);
+	UMaterial mtl(nullptr, nullptr, nullptr, nullptr, nullptr, MATERIAL_TYPE_MATTE, false);
 	pCasperObj->BeginCreateCasper(1, mtl);
 	CasperAtlas atlas = {};
 	atlas.AtlasBounds = casperBounds;

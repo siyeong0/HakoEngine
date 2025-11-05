@@ -6,7 +6,7 @@
 struct MyCasperIntersectionAttributes
 {
     float3 UnitSpaceHitPosition;
-    int Axis;
+    int Face;
 };
 
 ConstantBuffer<CONSTANT_BUFFER_RT_PROC> l_ProcGeomCB : register(b1, space0);
@@ -149,7 +149,7 @@ float FracInSlice(float x, float slice)
 [shader("intersection")]
 void MyIntersectionShader_Casper()
 {
-    const float EPS = 1e-4f;
+    const float EPS = 1e-6f;
     const int MAX_STEPS = 256;
     
     float3 rayDir = normalize(UnitRayDirection());
@@ -233,7 +233,7 @@ void MyIntersectionShader_Casper()
     
     MyCasperIntersectionAttributes attr;
     attr.UnitSpaceHitPosition = currPos;
-    attr.Axis = taxis;
+    attr.Face = taxis * 2 + ((rayDir[taxis] > 0.0) ? 0 : 1);
     float tReport = ComputeTHit(currPos);
     ReportHit(tReport, /*hitKind*/0, attr);
 }
@@ -280,10 +280,13 @@ void MyClosestHitShader_RadianceRay_Casper(inout RadiancePayload rayPayload, in 
     rayPayload.depth = saturate(projPos.z);
     
     float3 localtion = attr.UnitSpaceHitPosition * 2.0 - 1.0;
-    localtion[attr.Axis] = (ObjectRayDirection()[attr.Axis] > 0.0) ? -1.0 : 1.0;
+    localtion[attr.Face / 2] = attr.Face % 2 ? -1.0 : 1.0;
     float4 texDiffuse = l_DiffuseAtlasTexture.SampleLevel(g_SamplerClamp, normalize(localtion), 0);
     
-    int zax = attr.Axis;
+    texDiffuse = float4(1.0, 1.0, 1.0, 1.0); // Disable texture for debugging
+    
+    
+    int zax = attr.Face / 2;
     int uax = (zax + 1) % 3;
     int vax = (zax + 2) % 3;
     
@@ -300,36 +303,37 @@ void MyClosestHitShader_RadianceRay_Casper(inout RadiancePayload rayPayload, in 
     
     float3 pn0 = attr.UnitSpaceHitPosition + offset0;
     float3 loc0 = pn0 * 2.0 - 1.0;
-    loc0[attr.Axis] = (ObjectRayDirection()[attr.Axis] > 0.0) ? -1.0 : 1.0;
+    loc0[zax] = attr.Face % 2 ? -1.0 : 1.0;
     float d0 = l_DepthAtlasTexture.SampleLevel(g_SamplerClamp, normalize(loc0), 0);
-    pn0[attr.Axis] = (ObjectRayDirection()[attr.Axis] > 0.0) ? d0 : (1.0 - d0);
+    pn0[zax] = attr.Face % 2 ? d0 : (1.0 - d0);
     pn0 = UnitToObject(pn0);
     
     float3 pn1 = attr.UnitSpaceHitPosition + offset1;
     float3 loc1 = pn1 * 2.0 - 1.0;
-    loc1[attr.Axis] = (ObjectRayDirection()[attr.Axis] > 0.0) ? -1.0 : 1.0;
+    loc1[zax] = attr.Face % 2 ? -1.0 : 1.0;
     float d1 = l_DepthAtlasTexture.SampleLevel(g_SamplerClamp, normalize(loc1), 0);
-    pn1[attr.Axis] = (ObjectRayDirection()[attr.Axis] > 0.0) ? d1 : (1.0 - d1);
+    pn1[zax] = attr.Face % 2 ? d1 : (1.0 - d1);
     pn1 = UnitToObject(pn1);
     
     float3 pn2 = attr.UnitSpaceHitPosition + offset2;
     float3 loc2 = pn2 * 2.0 - 1.0;
-    loc2[attr.Axis] = (ObjectRayDirection()[attr.Axis] > 0.0) ? -1.0 : 1.0;
+    loc2[zax] = attr.Face % 2 ? -1.0 : 1.0;
     float d2 = l_DepthAtlasTexture.SampleLevel(g_SamplerClamp, normalize(loc2), 0);
-    pn2[attr.Axis] = (ObjectRayDirection()[attr.Axis] > 0.0) ? d2 : (1.0 - d2);
+    pn2[zax] = attr.Face % 2 ? d2 : (1.0 - d2);
     pn2 = UnitToObject(pn2);
     
     float3 v1 = normalize(pn1 - pn0);
     float3 v2 = normalize(pn2 - pn0);
     
-    float3 objectNormal = (ObjectRayDirection()[attr.Axis] > 0.0) ? normalize(cross(v2, v1)) : normalize(cross(v1, v2));
+    float3 objectNormal = attr.Face % 2 ? normalize(cross(v2, v1)) : normalize(cross(v1, v2));
     float3 surfaceNormal = normalize(mul(objectNormal, (float3x3) ObjectToWorld4x3()));
 
     //rayPayload.radiance = 0.5 * (objectNormal + 1.0);
     //return;
     
-    surfaceNormal = 0.xxx;
-    surfaceNormal[attr.Axis] = (ObjectRayDirection()[attr.Axis] > 0.0) ? 1.0 : -1.0;
+    objectNormal = 0.xxx;
+    objectNormal[zax] = attr.Face % 2 ? 1.0 : -1.0;
+    surfaceNormal = normalize(mul(objectNormal, (float3x3) ObjectToWorld4x3()));
     
     // Compute radiance
     BasicMaterial mtl = l_ProcGeomCB.Material;
