@@ -34,27 +34,33 @@ float3 UnitToObject(float3 unitPos)
 float RayTEnter()
 {
     AABB aabb = l_AABBBuffer[PrimitiveIndex()];
-    float3 origin = ObjectRayOrigin();
-    float3 invDir = 1.0 / ObjectRayDirection();
-    
-    float3 t0 = (aabb.Min - origin) * invDir;
-    float3 t1 = (aabb.Max - origin) * invDir;
-    float3 tMin3 = min(t0, t1);
-    
-    return max(max(tMin3.x, tMin3.y), tMin3.z);
+    float3 ro = ObjectRayOrigin();
+    float3 rd = ObjectRayDirection();
+    float3 inv = 1.0 / rd;
+
+    float3 t0 = (aabb.Min - ro) * inv;
+    float3 t1 = (aabb.Max - ro) * inv;
+    float3 tmin3 = min(t0, t1);
+
+    float tEnter = max(max(tmin3.x, tmin3.y), tmin3.z);
+    tEnter = max(tEnter, RayTMin());
+    return tEnter;
 }
 
 float RayTExit()
 {
     AABB aabb = l_AABBBuffer[PrimitiveIndex()];
-    float3 origin = ObjectRayOrigin();
-    float3 invDir = 1.0 / ObjectRayDirection();
-    
-    float3 t0 = (aabb.Min - origin) * invDir;
-    float3 t1 = (aabb.Max - origin) * invDir;
-    float3 tMax3 = max(t0, t1);
-    
-    return min(min(tMax3.x, tMax3.y), tMax3.z);
+    float3 ro = ObjectRayOrigin();
+    float3 rd = ObjectRayDirection();
+    float3 inv = 1.0 / rd;
+
+    float3 t0 = (aabb.Min - ro) * inv;
+    float3 t1 = (aabb.Max - ro) * inv;
+    float3 tmax3 = max(t0, t1);
+
+    float tExit = min(min(tmax3.x, tmax3.y), tmax3.z);
+    tExit = min(tExit, RayTCurrent());
+    return tExit;
 }
 
 float3 UnitRayDirection()
@@ -231,6 +237,8 @@ void MyIntersectionShader_Casper()
         return;
     }
     
+    float3 hitPos = enter + (tCurr - EPS) * rayDir;
+    
     MyCasperIntersectionAttributes attr;
     attr.UnitSpaceHitPosition = currPos;
     attr.Face = taxis * 2 + ((rayDir[taxis] > 0.0) ? 0 : 1);
@@ -287,53 +295,53 @@ void MyClosestHitShader_RadianceRay_Casper(inout RadiancePayload rayPayload, in 
     
     
     int zax = attr.Face / 2;
-    int uax = (zax + 1) % 3;
-    int vax = (zax + 2) % 3;
+    //int uax = (zax + 1) % 3;
+    //int vax = (zax + 2) % 3;
     
-    float offset = 1.0 / 512.0; // Hardcoded base dimension
-    float3 offset0 = 0.xxx;
-    offset0[uax] = -offset;
-    offset0[vax] = -offset;
-    float3 offset1 = 0.xxx;
-    offset1[uax] = +offset;
-    offset1[vax] = -offset;
-    float3 offset2 = 0.xxx;
-    offset2[uax] = -offset;
-    offset2[vax] = +offset;
+    //float offset = 1.0 / 512.0; // Hardcoded base dimension
+    //float3 offset0 = 0.xxx;
+    //offset0[uax] = -offset;
+    //offset0[vax] = -offset;
+    //float3 offset1 = 0.xxx;
+    //offset1[uax] = +offset;
+    //offset1[vax] = -offset;
+    //float3 offset2 = 0.xxx;
+    //offset2[uax] = -offset;
+    //offset2[vax] = +offset;
     
-    float3 pn0 = attr.UnitSpaceHitPosition + offset0;
-    float3 loc0 = pn0 * 2.0 - 1.0;
-    loc0[zax] = attr.Face % 2 ? -1.0 : 1.0;
-    float d0 = l_DepthAtlasTexture.SampleLevel(g_SamplerClamp, normalize(loc0), 0);
-    pn0[zax] = attr.Face % 2 ? d0 : (1.0 - d0);
-    pn0 = UnitToObject(pn0);
+    //float3 pn0 = attr.UnitSpaceHitPosition + offset0;
+    //float3 loc0 = pn0 * 2.0 - 1.0;
+    //loc0[zax] = attr.Face % 2 ? -1.0 : 1.0;
+    //float d0 = l_DepthAtlasTexture.SampleLevel(g_SamplerClamp, normalize(loc0), 0);
+    //pn0[zax] = attr.Face % 2 ? d0 : (1.0 - d0);
+    //pn0 = UnitToObject(pn0);
     
-    float3 pn1 = attr.UnitSpaceHitPosition + offset1;
-    float3 loc1 = pn1 * 2.0 - 1.0;
-    loc1[zax] = attr.Face % 2 ? -1.0 : 1.0;
-    float d1 = l_DepthAtlasTexture.SampleLevel(g_SamplerClamp, normalize(loc1), 0);
-    pn1[zax] = attr.Face % 2 ? d1 : (1.0 - d1);
-    pn1 = UnitToObject(pn1);
+    //float3 pn1 = attr.UnitSpaceHitPosition + offset1;
+    //float3 loc1 = pn1 * 2.0 - 1.0;
+    //loc1[zax] = attr.Face % 2 ? -1.0 : 1.0;
+    //float d1 = l_DepthAtlasTexture.SampleLevel(g_SamplerClamp, normalize(loc1), 0);
+    //pn1[zax] = attr.Face % 2 ? d1 : (1.0 - d1);
+    //pn1 = UnitToObject(pn1);
     
-    float3 pn2 = attr.UnitSpaceHitPosition + offset2;
-    float3 loc2 = pn2 * 2.0 - 1.0;
-    loc2[zax] = attr.Face % 2 ? -1.0 : 1.0;
-    float d2 = l_DepthAtlasTexture.SampleLevel(g_SamplerClamp, normalize(loc2), 0);
-    pn2[zax] = attr.Face % 2 ? d2 : (1.0 - d2);
-    pn2 = UnitToObject(pn2);
+    //float3 pn2 = attr.UnitSpaceHitPosition + offset2;
+    //float3 loc2 = pn2 * 2.0 - 1.0;
+    //loc2[zax] = attr.Face % 2 ? -1.0 : 1.0;
+    //float d2 = l_DepthAtlasTexture.SampleLevel(g_SamplerClamp, normalize(loc2), 0);
+    //pn2[zax] = attr.Face % 2 ? d2 : (1.0 - d2);
+    //pn2 = UnitToObject(pn2);
     
-    float3 v1 = normalize(pn1 - pn0);
-    float3 v2 = normalize(pn2 - pn0);
+    //float3 v1 = normalize(pn1 - pn0);
+    //float3 v2 = normalize(pn2 - pn0);
     
-    float3 objectNormal = attr.Face % 2 ? normalize(cross(v2, v1)) : normalize(cross(v1, v2));
-    float3 surfaceNormal = normalize(mul(objectNormal, (float3x3) ObjectToWorld4x3()));
+    //float3 objectNormal = attr.Face % 2 ? normalize(cross(v2, v1)) : normalize(cross(v1, v2));
+    //float3 surfaceNormal = normalize(mul(objectNormal, (float3x3) ObjectToWorld4x3()));
 
     //rayPayload.radiance = 0.5 * (objectNormal + 1.0);
     //return;
     
-    objectNormal = 0.xxx;
+    float3 objectNormal = 0.xxx;
     objectNormal[zax] = attr.Face % 2 ? 1.0 : -1.0;
-    surfaceNormal = normalize(mul(objectNormal, (float3x3) ObjectToWorld4x3()));
+    float3 surfaceNormal = normalize(mul(objectNormal, (float3x3) ObjectToWorld4x3()));
     
     // Compute radiance
     BasicMaterial mtl = l_ProcGeomCB.Material;
