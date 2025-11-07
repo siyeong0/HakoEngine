@@ -207,56 +207,56 @@ void MyIntersectionShader_Casper()
     float tUnit = 0.0;
 
     // 먼저 “현재 셀”이 안에 있는지 검사 (레퍼런스의 instantHit)
-    //{
-    //    float3 uMin = (float3(cell)) / N;
-    //    float3 uMax = (float3(cell) + 1.0) / N;
-    //    if (IsInsideGeometry(uMin, uMax, mipToTest))
-    //    {
-    //        // 히트는 엔트리에서 바로 (tUnit=0). Face는 들어온 면을 알아야 하므로,
-    //        // 엔트리에서 가장 큰 tEnter 축이 '들어온 면'이다.
-    //        float3 roObj = ObjectRayOrigin();
-    //        float3 rdObj = ObjectRayDirection();
+    {
+        float3 uMin = (float3(cell)) / N;
+        float3 uMax = (float3(cell) + 1.0) / N;
+        if (IsInsideGeometry(uMin, uMax, mipToTest))
+        {
+            // 히트는 엔트리에서 바로 (tUnit=0). Face는 들어온 면을 알아야 하므로,
+            // 엔트리에서 가장 큰 tEnter 축이 '들어온 면'이다.
+            float3 roObj = ObjectRayOrigin();
+            float3 rdObj = ObjectRayDirection();
 
-    //        // Face 판정: 어느 축 경계로 들어왔는가
-    //        // slab에서 tEnter를 만든 축을 다시 계산
-    //        // 간단히 uEnter가 0 또는 1에 가장 가까운 축을 찾는다.
-    //        float3 d0 = abs(uEnter - 0.0);
-    //        float3 d1 = abs(1.0 - uEnter);
-    //        int axis = 0;
-    //        int sign = 0;
-    //        float best = 1e9;
+            // Face 판정: 어느 축 경계로 들어왔는가
+            // slab에서 tEnter를 만든 축을 다시 계산
+            // 간단히 uEnter가 0 또는 1에 가장 가까운 축을 찾는다.
+            float3 d0 = abs(uEnter - 0.0);
+            float3 d1 = abs(1.0 - uEnter);
+            int axis = 0;
+            int sign = 0;
+            float best = 1e9;
 
-    //        // 축별로 “경계에 가장 근접”한 걸 찾는다 (정밀 안정화 목적)
-    //        if (min(d0.x, d1.x) < best)
-    //        {
-    //            best = min(d0.x, d1.x);
-    //            axis = 0;
-    //            sign = (uRd.x > 0) ? 0 : 1;
-    //        }
-    //        if (min(d0.y, d1.y) < best)
-    //        {
-    //            best = min(d0.y, d1.y);
-    //            axis = 1;
-    //            sign = (uRd.y > 0) ? 2 : 3;
-    //        }
-    //        if (min(d0.z, d1.z) < best)
-    //        {
-    //            best = min(d0.z, d1.z);
-    //            axis = 2;
-    //            sign = (uRd.z > 0) ? 4 : 5;
-    //        }
+            // 축별로 “경계에 가장 근접”한 걸 찾는다 (정밀 안정화 목적)
+            if (min(d0.x, d1.x) < best)
+            {
+                best = min(d0.x, d1.x);
+                axis = 0;
+                sign = (uRd.x > 0) ? 0 : 1;
+            }
+            if (min(d0.y, d1.y) < best)
+            {
+                best = min(d0.y, d1.y);
+                axis = 1;
+                sign = (uRd.y > 0) ? 2 : 3;
+            }
+            if (min(d0.z, d1.z) < best)
+            {
+                best = min(d0.z, d1.z);
+                axis = 2;
+                sign = (uRd.z > 0) ? 4 : 5;
+            }
 
-    //        MyCasperIntersectionAttributes attr;
-    //        attr.UnitSpaceHitPosition = uRo;
-    //        // sign을 0/1로만 쓰고 싶으면 아래 라인처럼 지정:
-    //        attr.Face = (axis * 2) + ((uRd[axis] > 0.0f) ? 0 : 1);
+            MyCasperIntersectionAttributes attr;
+            attr.UnitSpaceHitPosition = uRo;
+            // sign을 0/1로만 쓰고 싶으면 아래 라인처럼 지정:
+            attr.Face = (axis * 2) + ((uRd[axis] > 0.0f) ? 0 : 1);
 
-    //        // 오브젝트 t로 환산
-    //        float tObjHit = UnitTToObjectT(tUnit, uRo, uRd);
-    //        ReportHit(tObjHit, /*hitKind*/0, attr);
-    //        return;
-    //    }
-    //}
+            // 오브젝트 t로 환산
+            float tObjHit = UnitTToObjectT(tUnit, uRo, uRd);
+            ReportHit(tObjHit, /*hitKind*/0, attr);
+            return;
+        }
+    }
 
     // 메인 DDA 루프 ---------------------------------------------
     int lastStepAxis = 2; // 초기값은 임의 (x=0,y=1,z=2), 첫 스텝에서 갱신

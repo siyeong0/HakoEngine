@@ -289,8 +289,9 @@ static IMeshObject* createMeshFromFile(IRenderer* pRenderer, const char* filenam
 	std::vector<Vertex> vertices = meshData.GetVertexArray();
 	pMeshObj = pRenderer->CreateBasicMeshObject();
 	pMeshObj->BeginCreateMesh(vertices.data(), (uint)vertices.size(), (uint)meshData.Sections.size());
-	for (const UMeshSection& sec : meshData.Sections)
+	for (UMeshSection& sec : meshData.Sections)
 	{
+		sec.Material.DiffuseTexturePath = L"";
 		pMeshObj->InsertTriGroup(sec.Indices.data(), (uint)(sec.Indices.size() / 3), sec.Material);
 	}
 	pMeshObj->EndCreateMesh();
@@ -819,16 +820,7 @@ bool Game::Initialize(
 					.set<comp::CasperRenderer>({ createCasperObject(m_pRenderer, L"./Resources/temp/bunny") });
 				m_Entities.emplace_back(e.id());
 			}
-			{
-				flecs::entity e = m_ECSWorld.entity()
-					.set<comp::Position>({ 10.5f, -2.0f, 12.0f })
-					.set<comp::Rotation>({ 0.0f, DegToRad(180.0f), 0.0f })
-					.set<comp::Scale>({ 5.0f, 5.0f, 5.0f })
-					.set<comp::Transform>({})
-					.set<comp::CasperRenderer>({ createCasperObject(m_pRenderer, L"./Resources/temp/carmel") });
-				m_Entities.emplace_back(e.id());
-			}
-			const uint BUNNY_CASPER_OBJECT_COUNT = 10;
+			const uint BUNNY_CASPER_OBJECT_COUNT = 0;
 			for (uint i = 0; i < BUNNY_CASPER_OBJECT_COUNT; i++)
 			{
 				flecs::entity e = m_ECSWorld.entity()
