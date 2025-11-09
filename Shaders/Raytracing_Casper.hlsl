@@ -5,7 +5,7 @@
 
 struct MyCasperIntersectionAttributes
 {
-    float3 UnitSpaceHitPosition; // [0,1]^3
+    float3 UnitSpaceHitPosition; // Hit position in [0,1]^3 inside the AABB
     int Face; // 0:+X,1:-X, 2:+Y,3:-Y, 4:+Z,5:-Z
 };
 
@@ -21,320 +21,321 @@ struct AABB
 StructuredBuffer<AABB> l_AABBBuffer : register(t2, space1);
 
 // --------------------------------------------------
-// Helpers: AABB slab tEnter/tExit (object space)
+// Object-space entry/exit t for the current AABB
 // --------------------------------------------------
 float RayTEnterObj()
 {
     AABB aabb = l_AABBBuffer[PrimitiveIndex()];
-    float3 ro = ObjectRayOrigin();
-    float3 rd = ObjectRayDirection();
-    float3 inv = 1.0 / rd;
+    float3 rayOrigin = ObjectRayOrigin();
+    float3 rayDirection = ObjectRayDirection();
+    float3 invDirection = 1.0 / rayDirection;
 
-    float3 t0 = (aabb.Min - ro) * inv;
-    float3 t1 = (aabb.Max - ro) * inv;
-    float3 tmin3 = min(t0, t1);
+    float3 t0 = (aabb.Min - rayOrigin) * invDirection;
+    float3 t1 = (aabb.Max - rayOrigin) * invDirection;
+    float3 tMin3 = min(t0, t1);
 
-    float tEnter = max(max(tmin3.x, tmin3.y), tmin3.z);
+    float tEnter = max(max(tMin3.x, tMin3.y), tMin3.z);
     return max(tEnter, RayTMin());
 }
 
 float RayTExitObj()
 {
     AABB aabb = l_AABBBuffer[PrimitiveIndex()];
-    float3 ro = ObjectRayOrigin();
-    float3 rd = ObjectRayDirection();
-    float3 inv = 1.0 / rd;
+    float3 rayOrigin = ObjectRayOrigin();
+    float3 rayDirection = ObjectRayDirection();
+    float3 invDirection = 1.0 / rayDirection;
 
-    float3 t0 = (aabb.Min - ro) * inv;
-    float3 t1 = (aabb.Max - ro) * inv;
-    float3 tmax3 = max(t0, t1);
+    float3 t0 = (aabb.Min - rayOrigin) * invDirection;
+    float3 t1 = (aabb.Max - rayOrigin) * invDirection;
+    float3 tMax3 = max(t0, t1);
 
-    float tExit = min(min(tmax3.x, tmax3.y), tmax3.z);
+    float tExit = min(min(tMax3.x, tMax3.y), tMax3.z);
     return min(tExit, RayTCurrent());
 }
 
-// 오브젝트→유닛 공간 변환
-void ObjectToUnit(in float3 objP, out float3 unitP, out float3 invExtent)
+// --------------------------------------------------
+// Object-space <-> Unit-space helpers
+// --------------------------------------------------
+void ObjectToUnit(in float3 objectPosition, out float3 unitPosition, out float3 inverseExtent)
 {
     AABB aabb = l_AABBBuffer[PrimitiveIndex()];
     float3 extent = aabb.Max - aabb.Min;
-    invExtent = 1.0 / extent;
-    unitP = (objP - aabb.Min) * invExtent;
+    inverseExtent = 1.0 / extent;
+    unitPosition = (objectPosition - aabb.Min) * inverseExtent;
 }
 
-float3 UnitRayDir()
+// Scale object-space ray direction into unit-space
+float3 UnitRayDirection()
 {
-    // 오브젝트 공간 레이를 유닛 공간으로 스케일
     AABB aabb = l_AABBBuffer[PrimitiveIndex()];
-    float3 invExtent = 1.0 / (aabb.Max - aabb.Min);
-    return ObjectRayDirection() * invExtent;
+    float3 inverseExtent = 1.0 / (aabb.Max - aabb.Min);
+    return ObjectRayDirection() * inverseExtent;
 }
 
-// 유닛 공간 t→오브젝트 공간 t 변환
-float UnitTToObjectT(float tUnit, float3 unitOrigin, float3 unitDir)
+// Convert a unit-space ray parameter tUnit back to object-space t
+float UnitTToObjectT(float tUnit, float3 unitRayOrigin, float3 unitRayDirection)
 {
-    // 오브젝트 공간: P(t) = ro + tObj * rd
-    // 유닛   공간 : U(t) = Uo + tUnit * Ud  (Ud = rd * invExtent)
-    // ⇒ tObj = tUnit / |Ud along ray-param|, 그러나 방향 비정규화 주의.
-    // 가장 안전한 변환은 유닛공간 히트 좌표를 오브젝트 좌표로 역변환하여 거리 투영.
     AABB aabb = l_AABBBuffer[PrimitiveIndex()];
     float3 extent = aabb.Max - aabb.Min;
 
-    float3 unitHit = unitOrigin + unitDir * tUnit; // [0,1]^3
-    float3 objHit = aabb.Min + unitHit * extent;
+    float3 unitHit = unitRayOrigin + unitRayDirection * tUnit;
+    float3 objectHit = aabb.Min + unitHit * extent;
 
-    float3 ro = ObjectRayOrigin();
-    float3 rd = ObjectRayDirection();
+    float3 rayOrigin = ObjectRayOrigin();
+    float3 rayDirection = ObjectRayDirection();
 
-    // 정사영으로 t 계산 (rd가 정규화가 아닐 수도 있으므로 dot/|rd|^2)
-    float tObj = dot(objHit - ro, rd) / dot(rd, rd);
-    return tObj;
+    // Project hit point onto the original (possibly non-normalized) ray
+    float tObject = dot(objectHit - rayOrigin, rayDirection) / dot(rayDirection, rayDirection);
+    return tObject;
 }
 
-float GetEmpty(float3 unitPos, int axis, int sign, int mip)
+// --------------------------------------------------
+// CASPER: sample empty-space (depth) from cube map
+// --------------------------------------------------
+float GetEmpty(float3 unitPosition, int axis, int sign, int mip)
 {
-    float3 sampleDir = unitPos * 2.0f - 1.0f; // [0,1] -> [-1,1]
-    sampleDir[axis] = sign;
-    return l_DepthAtlasTexture.SampleLevel(g_SamplerPoint, normalize(sampleDir), mip);
+    float3 sampleDirection = unitPosition * 2.0f - 1.0f; // [0,1] -> [-1,1]
+    sampleDirection[axis] = sign;
+    return l_DepthAtlasTexture.SampleLevel(g_SamplerPoint, normalize(sampleDirection), mip);
 }
 
-void GetEmpties(float3 unitPos, out float outEmpties[6], int mip)
+void GetEmpties(float3 unitPosition, out float outEmpties[6], int mip)
 {
-    outEmpties[0] = GetEmpty(unitPos, 0, -1.0, mip);
-    outEmpties[1] = GetEmpty(unitPos, 0, 1.0, mip);
-    outEmpties[2] = GetEmpty(unitPos, 1, -1.0, mip);
-    outEmpties[3] = GetEmpty(unitPos, 1, 1.0, mip);
-    outEmpties[4] = GetEmpty(unitPos, 2, -1.0, mip);
-    outEmpties[5] = GetEmpty(unitPos, 2, 1.0, mip);
+    outEmpties[0] = GetEmpty(unitPosition, 0, -1.0, mip);
+    outEmpties[1] = GetEmpty(unitPosition, 0, 1.0, mip);
+    outEmpties[2] = GetEmpty(unitPosition, 1, -1.0, mip);
+    outEmpties[3] = GetEmpty(unitPosition, 1, 1.0, mip);
+    outEmpties[4] = GetEmpty(unitPosition, 2, -1.0, mip);
+    outEmpties[5] = GetEmpty(unitPosition, 2, 1.0, mip);
 }
 
-void GetLimits(float3 unitPos, out float2 outLimits[3], int mip)
+// For a given sample position, compute valid [min,max] ranges along X/Y/Z
+void GetLimits(float3 unitPosition, out float2 outLimits[3], int mip)
 {
     float empties[6];
-    GetEmpties(unitPos, empties, mip);
+    GetEmpties(unitPosition, empties, mip);
     outLimits[0] = float2(empties[0], 1.0 - empties[1]);
     outLimits[1] = float2(empties[2], 1.0 - empties[3]);
     outLimits[2] = float2(empties[4], 1.0 - empties[5]);
 }
 
+// Returns true if the unit-space box [unitMin,unitMax] intersects
+// the valid ranges along all three axes at this mip.
 bool IsInsideGeometry(float3 unitMin, float3 unitMax, int mip)
 {
-    float3 samplePos = (unitMin + unitMax) * 0.5;
+    float3 samplePosition = (unitMin + unitMax) * 0.5;
     float2 limits[3];
-    GetLimits(samplePos, limits, mip);
+    GetLimits(samplePosition, limits, mip);
     
-    bool bInsideX = (limits[0].x <= unitMax.x && unitMin.x <= limits[0].y);
-    bool bInsideY = (limits[1].x <= unitMax.y && unitMin.y <= limits[1].y);
-    bool bInsideZ = (limits[2].x <= unitMax.z && unitMin.z <= limits[2].y);
+    bool insideX = (limits[0].x <= unitMax.x && unitMin.x <= limits[0].y);
+    bool insideY = (limits[1].x <= unitMax.y && unitMin.y <= limits[1].y);
+    bool insideZ = (limits[2].x <= unitMax.z && unitMin.z <= limits[2].y);
     
-    return bInsideX && bInsideY && bInsideZ;
+    return insideX && insideY && insideZ;
 }
 
 // =======================================================
-// Intersection Shader
+// Intersection Shader (unit-space DDA traversal)
 // =======================================================
 
 [shader("intersection")]
 void MyIntersectionShader_Casper()
 {
-    // 세팅
-    const float EPS = 1e-6f;
     const int MAX_STEPS = 1024;
 
-    float tEnterObj = RayTEnterObj();
-    float tExitObj = RayTExitObj();
-    if (tEnterObj > tExitObj)
+    // Object-space entry / exit for the AABB
+    float tEnterObject = RayTEnterObj();
+    float tExitObject = RayTExitObj();
+    
+    if (tEnterObject >= tExitObject)
+    {
+        // No intersection with the AABB
         return;
+    }
 
-    // 오브젝트 공간에서 엔트리/엑싯 포인트 → 유닛 공간
-    float3 ro = ObjectRayOrigin();
-    float3 rd = ObjectRayDirection();
-    float3 objEnter = ro + tEnterObj * rd;
-    float3 objExit = ro + tExitObj * rd;
+    float3 rayOriginObject = ObjectRayOrigin();
+    float3 rayDirectionObject = ObjectRayDirection();
 
-    float3 uEnter, invExt0;
-    float3 uExit, invExt1;
-    ObjectToUnit(objEnter, uEnter, invExt0);
-    ObjectToUnit(objExit, uExit, invExt1);
+    float3 objectEnter = rayOriginObject + tEnterObject * rayDirectionObject;
+    float3 objectExit = rayOriginObject + tExitObject * rayDirectionObject;
 
-    // 유닛 공간 레이
-    float3 uRo = uEnter; // 유닛 공간에서 시작은 엔트리에서
-    float3 uRd = UnitRayDir();
-    float3 uAbs = abs(uRd);
+    // Convert entry/exit points into unit-space
+    float3 unitEnter, inverseExtent0;
+    float3 unitExit, inverseExtent1;
+    ObjectToUnit(objectEnter, unitEnter, inverseExtent0);
+    ObjectToUnit(objectExit, unitExit, inverseExtent1);
 
-    // 텍스처 해상도에서 베이스 보xel 수를 가져오되, 원하는 목표 그리드가 있으면 여기에 매핑
-    uint w, h, mipCount;
-    l_DepthAtlasTexture.GetDimensions(0, w, h, mipCount);
-    // CASPER의 base grid 해상도 (큐브맵 한 면의 texel 수와 1:1로 가는 게 보통)
-    uint N = w; // 필요시 상수/CB 로 교체 가능
-    int mipToTest = 0; //    int(mipCount) - 1; // 보수적 시작을 원하면 coarse mip부터, 정확도 우선이면 0
+    float3 unitRayOrigin = unitEnter;
+    float3 unitRayDirection = UnitRayDirection();
+    float3 unitRayDirectionAbs = abs(unitRayDirection);
 
-    // 유닛 경계 박스
-    float3 boxMin = float3(0, 0, 0);
-    float3 boxMax = float3(1, 1, 1);
+    // Use base cube-map resolution as the voxel grid resolution
+    uint textureWidth, textureHeight, mipCount;
+    l_DepthAtlasTexture.GetDimensions(0, textureWidth, textureHeight, mipCount);
+    uint gridResolution = textureWidth;
+    int mipToTest = 0; // Fine level only in this version
+    gridResolution = max(gridResolution >> mipToTest, 1);
 
-    // DDA 초기화 ------------------------------------------------
-    // 시작점이 경계에 딱 걸리는 경우를 피하기 위해 살짝 전진
-    uRo += uRd * EPS;
+    // Slightly nudge start point inside the AABB to avoid boundary issues
+    unitRayOrigin += unitRayDirection * EPSILON;
 
-    // 현재 위치가 속한 보xel 좌표
-    int3 cell = int3(clamp((int3) floor(uRo * N), int3(0, 0, 0), int3(N - 1, N - 1, N - 1)));
-
-    // 축별 스텝(+1 or -1)
-    int3 step = int3(
-        (uRd.x > 0) ? 1 : -1,
-        (uRd.y > 0) ? 1 : -1,
-        (uRd.z > 0) ? 1 : -1
+    // Current voxel index in unit-space grid
+    int3 cellIndex = int3(
+        clamp(
+            (int3) floor(unitRayOrigin * gridResolution),
+            int3(0, 0, 0),
+            int3(gridResolution - 1, gridResolution - 1, gridResolution - 1)
+        )
+    );
+    
+    int3 cellStep = int3(
+        (unitRayDirection.x > 0.0f) ? 1 : -1,
+        (unitRayDirection.y > 0.0f) ? 1 : -1,
+        (unitRayDirection.z > 0.0f) ? 1 : -1
     );
 
-    // 다음 경계까지의 t(유닛 파라미터)
-    float3 cellMin = (float3(cell)) / N;
-    float3 cellMax = (float3(cell) + 1.0) / N;
+    float3 cellMinUnit = (float3(cellIndex)) / gridResolution;
+    float3 cellMaxUnit = (float3(cellIndex) + 1.0) / gridResolution;
 
-    float txMax = (uRd.x > 0) ? (cellMax.x - uRo.x) / max(uRd.x, 1e-30f)
-                              : (cellMin.x - uRo.x) / min(uRd.x, -1e-30f);
-    float tyMax = (uRd.y > 0) ? (cellMax.y - uRo.y) / max(uRd.y, 1e-30f)
-                              : (cellMin.y - uRo.y) / min(uRd.y, -1e-30f);
-    float tzMax = (uRd.z > 0) ? (cellMax.z - uRo.z) / max(uRd.z, 1e-30f)
-                              : (cellMin.z - uRo.z) / min(uRd.z, -1e-30f);
+    float txMax = (unitRayDirection.x > 0.0f)
+        ? (cellMaxUnit.x - unitRayOrigin.x) / max(unitRayDirection.x, 1e-30f)
+        : (cellMinUnit.x - unitRayOrigin.x) / min(unitRayDirection.x, -1e-30f);
 
-    float3 tMax = float3(txMax, tyMax, tzMax);
+    float tyMax = (unitRayDirection.y > 0.0f)
+        ? (cellMaxUnit.y - unitRayOrigin.y) / max(unitRayDirection.y, 1e-30f)
+        : (cellMinUnit.y - unitRayOrigin.y) / min(unitRayDirection.y, -1e-30f);
 
-    // 축별 한 셀을 건널 때 추가될 t
-    float3 tDelta = abs((1.0 / N) / max(uAbs, float3(1e-30f, 1e-30f, 1e-30f)));
+    float tzMax = (unitRayDirection.z > 0.0f)
+        ? (cellMaxUnit.z - unitRayOrigin.z) / max(unitRayDirection.z, 1e-30f)
+        : (cellMinUnit.z - unitRayOrigin.z) / min(unitRayDirection.z, -1e-30f);
 
-    // 현재 유닛 파라미터 (uRo는 uEnter에서 시작이므로 tUnit=0)
-    float tUnit = 0.0;
+    float3 tMaxPerAxis = float3(txMax, tyMax, tzMax);
 
-    // 먼저 “현재 셀”이 안에 있는지 검사 (레퍼런스의 instantHit)
+    float3 tDeltaPerAxis = abs(
+        (1.0 / gridResolution) /
+        max(unitRayDirectionAbs, float3(1e-30f, 1e-30f, 1e-30f))
+    );
+
+    float tUnit = 0.0f;
+
+    // Check the initial cell immediately (instant-hit case)
     {
-        float3 uMin = (float3(cell)) / N;
-        float3 uMax = (float3(cell) + 1.0) / N;
-        if (IsInsideGeometry(uMin, uMax, mipToTest))
+        float3 cellUnitMin = (float3(cellIndex)) / gridResolution;
+        float3 cellUnitMax = (float3(cellIndex) + 1.0) / gridResolution;
+
+        if (IsInsideGeometry(cellUnitMin, cellUnitMax, mipToTest))
         {
-            // 히트는 엔트리에서 바로 (tUnit=0). Face는 들어온 면을 알아야 하므로,
-            // 엔트리에서 가장 큰 tEnter 축이 '들어온 면'이다.
-            float3 roObj = ObjectRayOrigin();
-            float3 rdObj = ObjectRayDirection();
+            // Estimate which face we entered from, based on how close unitEnter is to 0/1 on each axis
+            float3 distanceToMin = abs(unitEnter - 0.0);
+            float3 distanceToMax = abs(1.0 - unitEnter);
 
-            // Face 판정: 어느 축 경계로 들어왔는가
-            // slab에서 tEnter를 만든 축을 다시 계산
-            // 간단히 uEnter가 0 또는 1에 가장 가까운 축을 찾는다.
-            float3 d0 = abs(uEnter - 0.0);
-            float3 d1 = abs(1.0 - uEnter);
-            int axis = 0;
-            int sign = 0;
-            float best = 1e9;
+            int entryAxis = 0;
+            float bestDistance = 1e9;
 
-            // 축별로 “경계에 가장 근접”한 걸 찾는다 (정밀 안정화 목적)
-            if (min(d0.x, d1.x) < best)
+            float candidate = min(distanceToMin.x, distanceToMax.x);
+            if (candidate < bestDistance)
             {
-                best = min(d0.x, d1.x);
-                axis = 0;
-                sign = (uRd.x > 0) ? 0 : 1;
-            }
-            if (min(d0.y, d1.y) < best)
-            {
-                best = min(d0.y, d1.y);
-                axis = 1;
-                sign = (uRd.y > 0) ? 2 : 3;
-            }
-            if (min(d0.z, d1.z) < best)
-            {
-                best = min(d0.z, d1.z);
-                axis = 2;
-                sign = (uRd.z > 0) ? 4 : 5;
+                bestDistance = candidate;
+                entryAxis = 0;
             }
 
-            MyCasperIntersectionAttributes attr;
-            attr.UnitSpaceHitPosition = uRo;
-            // sign을 0/1로만 쓰고 싶으면 아래 라인처럼 지정:
-            attr.Face = (axis * 2) + ((uRd[axis] > 0.0f) ? 0 : 1);
+            candidate = min(distanceToMin.y, distanceToMax.y);
+            if (candidate < bestDistance)
+            {
+                bestDistance = candidate;
+                entryAxis = 1;
+            }
 
-            // 오브젝트 t로 환산
-            float tObjHit = UnitTToObjectT(tUnit, uRo, uRd);
-            ReportHit(tObjHit, /*hitKind*/0, attr);
+            candidate = min(distanceToMin.z, distanceToMax.z);
+            if (candidate < bestDistance)
+            {
+                bestDistance = candidate;
+                entryAxis = 2;
+            }
+
+            MyCasperIntersectionAttributes attributes;
+            attributes.UnitSpaceHitPosition = unitRayOrigin;
+            attributes.Face = entryAxis * 2 + ((unitRayDirection[entryAxis] > 0.0f) ? 0 : 1);
+
+            float tObjectHit = UnitTToObjectT(tUnit, unitRayOrigin, unitRayDirection);
+            ReportHit(tObjectHit, /*hitKind*/0, attributes);
             return;
         }
     }
 
-    // 메인 DDA 루프 ---------------------------------------------
-    int lastStepAxis = 2; // 초기값은 임의 (x=0,y=1,z=2), 첫 스텝에서 갱신
+    int lastStepAxis = 2;
 
+    // Main DDA traversal in unit-space
     [loop]
-    for (int stepCount = 0; stepCount < MAX_STEPS; ++stepCount)
+    for (int stepIndex = 0; stepIndex < MAX_STEPS; ++stepIndex)
     {
-        // 다음 경계까지 중 최소 축 선택
-        uint axis;
-        float tNext = tMax.x;
-        axis = 0;
-        if (tMax.y < tNext)
+        uint stepAxis = 0;
+        float tNext = tMaxPerAxis.x;
+
+        if (tMaxPerAxis.y < tNext)
         {
-            tNext = tMax.y;
-            axis = 1;
+            tNext = tMaxPerAxis.y;
+            stepAxis = 1;
         }
-        if (tMax.z < tNext)
+        if (tMaxPerAxis.z < tNext)
         {
-            tNext = tMax.z;
-            axis = 2;
+            tNext = tMaxPerAxis.z;
+            stepAxis = 2;
         }
 
-        // 유닛 파라미터 갱신
         tUnit = tNext;
 
-        // 유닛 파라미터를 오브젝트 파라미터로 환산해서 Exit를 넘는지 조기 종료
-        float tObjCandidate = UnitTToObjectT(tUnit, uRo, uRd);
-        if (tObjCandidate > tExitObj + 1e-6f)
+        float tObjectCandidate = UnitTToObjectT(tUnit, unitRayOrigin, unitRayDirection);
+        if (tObjectCandidate > tExitObject + 1e-6f)
+        {
             break;
-
-        // 해당 축으로 한 셀 전진
-        if (axis == 0)
-        {
-            cell.x += step.x;
-            tMax.x += tDelta.x;
         }
-        else if (axis == 1)
+
+        if (stepAxis == 0)
         {
-            cell.y += step.y;
-            tMax.y += tDelta.y;
+            cellIndex.x += cellStep.x;
+            tMaxPerAxis.x += tDeltaPerAxis.x;
+        }
+        else if (stepAxis == 1)
+        {
+            cellIndex.y += cellStep.y;
+            tMaxPerAxis.y += tDeltaPerAxis.y;
         }
         else
         {
-            cell.z += step.z;
-            tMax.z += tDelta.z;
+            cellIndex.z += cellStep.z;
+            tMaxPerAxis.z += tDeltaPerAxis.z;
         }
-        lastStepAxis = axis;
 
-        // 그리드 밖이면 종료
-        if (any(cell < int3(0, 0, 0)) || any(cell > int3(N - 1, N - 1, N - 1)))
-            break;
+        lastStepAxis = stepAxis;
 
-        // 새로 진입한 셀 검사
-        float3 uMin = (float3(cell)) / N;
-        float3 uMax = (float3(cell) + 1.0) / N;
-
-        if (IsInsideGeometry(uMin, uMax, mipToTest))
+        if (any(cellIndex < int3(0, 0, 0)) ||
+            any(cellIndex > int3(gridResolution - 1, gridResolution - 1, gridResolution - 1)))
         {
-            // 히트 포지션 (유닛 공간)
-            float3 uHit = uRo + uRd * tUnit;
+            break;
+        }
 
-            MyCasperIntersectionAttributes attr;
-            attr.UnitSpaceHitPosition = uHit;
+        float3 cellUnitMin = (float3(cellIndex)) / gridResolution;
+        float3 cellUnitMax = (float3(cellIndex) + 1.0) / gridResolution;
 
-            // Face: 스텝한 축과 방향으로 결정
-            // +X면 = 0, -X = 1, +Y = 2, -Y = 3, +Z = 4, -Z = 5
+        if (IsInsideGeometry(cellUnitMin, cellUnitMax, mipToTest))
+        {
+            float3 unitHitPosition = unitRayOrigin + unitRayDirection * tUnit;
+
+            MyCasperIntersectionAttributes attributes;
+            attributes.UnitSpaceHitPosition = unitHitPosition;
+
             int faceBase = lastStepAxis * 2;
-            int face = faceBase + ((uRd[lastStepAxis] > 0.0f) ? 0 : 1);
-            attr.Face = face;
+            int faceIndex = faceBase + ((unitRayDirection[lastStepAxis] > 0.0f) ? 0 : 1);
+            attributes.Face = faceIndex;
 
-            // 오브젝트 공간 t
-            float tObjHit = UnitTToObjectT(tUnit, uRo, uRd);
-            ReportHit(tObjHit, /*hitKind*/0, attr);
+            float tObjectHit = UnitTToObjectT(tUnit, unitRayOrigin, unitRayDirection);
+            ReportHit(tObjectHit, /*hitKind*/0, attributes);
             return;
         }
     }
 
-    // 여기까지 오면 히트 없음
+    // No hit
     return;
 }
 
