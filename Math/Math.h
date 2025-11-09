@@ -20,3 +20,7 @@ constexpr float RadToDeg(float radians) { return radians * (180.0f / PI); }
 
 #include "Bounds.h"
 #include "Plane.h"
+
+#include "IVector3.h"
+#include "IBounds.h"
+

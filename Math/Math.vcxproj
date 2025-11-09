@@ -142,6 +142,8 @@
     <ClInclude Include="Bounds.h" />
     <ClInclude Include="FVector2.h" />
     <ClInclude Include="FVector3.h" />
+    <ClInclude Include="IBounds.h" />
+    <ClInclude Include="IVector3.h" />
     <ClInclude Include="Math.h" />
     <ClInclude Include="Matrix.h" />
     <ClInclude Include="pch.h" />

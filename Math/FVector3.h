@@ -65,7 +65,9 @@ struct FVector3
 	static inline FVector3 Abs(const FVector3& vec) { return FVector3{ std::fabs(vec.x), std::fabs(vec.y), std::fabs(vec.z) }; }
 	static inline FVector3 Min(const FVector3& a, const FVector3& b) { return FVector3{ std::fmin(a.x, b.x), std::fmin(a.y, b.y), std::fmin(a.z, b.z) }; }
 	static inline FVector3 Max(const FVector3& a, const FVector3& b) { return FVector3{ std::fmax(a.x, b.x), std::fmax(a.y, b.y), std::fmax(a.z, b.z) }; }
-	
+	static inline float MinComponent(const FVector3& v) { return std::fmin(std::fmin(v.x, v.y), v.z); }
+	static inline float MaxComponent(const FVector3& v) { return std::fmax(std::fmax(v.x, v.y), v.z); }
+
 	static inline FVector3 Clamp(const FVector3& value, FLOAT min, FLOAT max)
 	{
 		return Clamp(value, FVector3{ min, min, min }, FVector3{ max, max, max });
@@ -102,6 +104,7 @@ struct FVector3
 	inline FVector3 operator+(const FVector3& rhs) const { return FVector3{ x + rhs.x, y + rhs.y, z + rhs.z }; }
 	inline FVector3 operator-(const FVector3& rhs) const { return FVector3{ x - rhs.x, y - rhs.y, z - rhs.z }; }
 	inline FVector3 operator*(const FVector3& rhs) const { return FVector3{ x * rhs.x, y * rhs.y, z * rhs.z }; }
+	inline FVector3 operator/(const FVector3& rhs) const { return FVector3{ x / rhs.x, y / rhs.y, z / rhs.z }; }
 	inline FVector3 operator*(FLOAT s) const { return FVector3{ x * s, y * s, z * s }; }
 	inline FVector3 operator/(FLOAT s) const { return FVector3{ x / s, y / s, z / s }; }
 

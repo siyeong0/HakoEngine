@@ -33,5 +33,17 @@ struct Bounds
 			(point.y >= Min.y && point.y <= Max.y) &&
 			(point.z >= Min.z && point.z <= Max.z);
 	}
+
+	inline bool Overlaps(const Bounds& other) const
+	{
+		return (Min.x <= other.Max.x && Max.x >= other.Min.x) &&
+			(Min.y <= other.Max.y && Max.y >= other.Min.y) &&
+			(Min.z <= other.Max.z && Max.z >= other.Min.z);
+	}
+
+	static bool Overlaps(const Bounds& a, const Bounds& b)
+	{
+		return a.Overlaps(b);
+	}
 };
 static_assert(sizeof(Bounds) == 24, "Wrong size of Bounds struct");
