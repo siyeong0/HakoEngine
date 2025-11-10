@@ -24,3 +24,16 @@ constexpr float RadToDeg(float radians) { return radians * (180.0f / PI); }
 #include "IVector3.h"
 #include "IBounds.h"
 
+inline IVector3 ToIVector3(const FVector3& v)
+{
+	return IVector3(static_cast<INT32>(std::floor(v.x)),
+		static_cast<INT32>(std::floor(v.y)),
+		static_cast<INT32>(std::floor(v.z)));
+}
+
+inline FVector3 ToFVector3(const IVector3& v)
+{
+	return FVector3(static_cast<FLOAT>(v.x),
+		static_cast<FLOAT>(v.y),
+		static_cast<FLOAT>(v.z));
+}

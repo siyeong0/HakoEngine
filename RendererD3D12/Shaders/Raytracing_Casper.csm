@@ -1,4 +1,4 @@
-; shader hash: d30427ba030878461cd3044914538afd
+; shader hash: 4a1927d43e8e200e8caa93db9183453d
 ;
 ; Buffer Definitions:
 ;
@@ -614,7 +614,7 @@ define void @"\01?MyIntersectionShader_Casper@@YAXXZ"() #0 {
 
 ; <label>:436                                     ; preds = %349
   %437 = add nuw nsw i32 %281, 1
-  %438 = icmp slt i32 %437, 1024
+  %438 = icmp slt i32 %437, 2048
   br i1 %438, label %274, label %439, !llvm.loop !42
 
 ; <label>:439                                     ; preds = %436, %343, %333, %274

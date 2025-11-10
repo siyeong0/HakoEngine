@@ -3,6 +3,7 @@
 #include <limits>
 #include <algorithm>
 #include <cmath>
+#include "FVector3.h"
 
 using INT32 = int32_t;
 
@@ -40,21 +41,42 @@ struct IVector3
 	static inline constexpr IVector3 Backward() { return { 0, 0,-1 }; }
 
 	// modifiers (component-wise)
-	inline void operator+=(const IVector3& o) { x += o.x; y += o.y; z += o.z; }
-	inline void operator-=(const IVector3& o) { x -= o.x; y -= o.y; z -= o.z; }
-	inline void operator*=(INT32 s) { x *= s; y *= s; z *= s; }
-	inline void operator/=(INT32 s) { x /= s; y /= s; z /= s; }
-	inline void operator*=(float s)
+	inline IVector3& operator+=(const IVector3& o) { x += o.x; y += o.y; z += o.z; return *this; }
+	inline IVector3& operator-=(const IVector3& o) { x -= o.x; y -= o.y; z -= o.z; return *this; }
+	inline IVector3& operator*=(const IVector3& o) { x *= o.x; y *= o.y; z *= o.z; return *this; }
+	inline IVector3& operator/=(const IVector3& o) { x /= o.x; y /= o.y; z /= o.z; return *this; }
+
+	inline IVector3& operator&=(const IVector3& o) { x &= o.x; y &= o.y; z &= o.z; return *this; }
+	inline IVector3& operator|=(const IVector3& o) { x |= o.x; y |= o.y; z |= o.z; return *this; }
+	inline IVector3& operator^=(const IVector3& o) { x ^= o.x; y ^= o.y; z ^= o.z; return *this; }
+	inline IVector3& operator<<=(const IVector3& o) { x <<= o.x; y <<= o.y; z <<= o.z; return *this; }
+	inline IVector3& operator>>=(const IVector3& o) { x >>= o.x; y >>= o.y; z >>= o.z; return *this; }
+
+
+	inline IVector3& operator+=(INT32 s) { x += s; y += s; z += s; return *this; }
+	inline IVector3& operator-=(INT32 s) { x -= s; y -= s; z -= s; return *this; }
+	inline IVector3& operator*=(INT32 s) { x *= s; y *= s; z *= s; return *this; }
+	inline IVector3& operator/=(INT32 s) { x /= s; y /= s; z /= s; return *this; }
+
+	inline IVector3& operator&=(INT32 s) { x &= s; y &= s; z &= s; return *this; }
+	inline IVector3& operator|=(INT32 s) { x |= s; y |= s; z |= s; return *this; }
+	inline IVector3& operator^=(INT32 s) { x ^= s; y ^= s; z ^= s; return *this; }
+	inline IVector3& operator<<=(INT32 s) { x <<= s; y <<= s; z <<= s; return *this; }
+	inline IVector3& operator>>=(INT32 s) { x >>= s; y >>= s; z >>= s; return *this; }
+
+	inline IVector3& operator*=(float s)
 	{
 		x = static_cast<INT32>(std::lround(x * s));
 		y = static_cast<INT32>(std::lround(y * s));
 		z = static_cast<INT32>(std::lround(z * s));
+		return *this;
 	}
-	inline void operator/=(float s)
+	inline IVector3& operator/=(float s)
 	{
 		x = static_cast<INT32>(std::lround(x / s));
 		y = static_cast<INT32>(std::lround(y / s));
 		z = static_cast<INT32>(std::lround(z / s));
+		return *this;
 	}
 
 	// unary
@@ -63,9 +85,26 @@ struct IVector3
 	// arithmetic (component-wise and scalar)
 	inline IVector3 operator+(const IVector3& r) const { return { x + r.x, y + r.y, z + r.z }; }
 	inline IVector3 operator-(const IVector3& r) const { return { x - r.x, y - r.y, z - r.z }; }
-	inline IVector3 operator*(const IVector3& r) const { return { x * r.x, y * r.y, z * r.z }; } // 주의: 정수 곱
+	inline IVector3 operator*(const IVector3& r) const { return { x * r.x, y * r.y, z * r.z }; }
+	inline IVector3 operator/(const IVector3& r) const { return { x / r.x, y / r.y, z / r.z }; }
+
+	inline IVector3 operator&(const IVector3& r) const { return { x & r.x, y & r.y, z & r.z }; }
+	inline IVector3 operator|(const IVector3& r) const { return { x | r.x, y | r.y, z | r.z }; }
+	inline IVector3 operator^(const IVector3& r) const { return { x ^ r.x, y ^ r.y, z ^ r.z }; }
+	inline IVector3 operator<<(const IVector3& r) const { return { x << r.x, y << r.y, z << r.z }; }
+	inline IVector3 operator>>(const IVector3& r) const { return { x >> r.x, y >> r.y, z >> r.z }; }
+
+	inline IVector3 operator+(INT32 s) const { return { x + s, y + s, z + s }; }
+	inline IVector3 operator-(INT32 s) const { return { x - s, y - s, z - s }; }
 	inline IVector3 operator*(INT32 s) const { return { x * s, y * s, z * s }; }
 	inline IVector3 operator/(INT32 s) const { return { x / s, y / s, z / s }; }
+
+	inline IVector3 operator&(INT32 s) const { return { x & s, y & s, z & s }; }
+	inline IVector3 operator|(INT32 s) const { return { x | s, y | s, z | s }; }
+	inline IVector3 operator^(INT32 s) const { return { x ^ s, y ^ s, z ^ s }; }
+	inline IVector3 operator<<(INT32 s) const { return { x << s, y << s, z << s }; }
+	inline IVector3 operator>>(INT32 s) const { return { x >> s, y >> s, z >> s }; }
+
 	inline IVector3 operator*(float s) const
 	{
 		const float tx = std::lround(x * s);
@@ -90,7 +129,7 @@ struct IVector3
 	static inline IVector3 Min(const IVector3& a, const IVector3& b) { return { std::min(a.x,b.x), std::min(a.y,b.y), std::min(a.z,b.z) }; }
 	static inline IVector3 Max(const IVector3& a, const IVector3& b) { return { std::max(a.x,b.x), std::max(a.y,b.y), std::max(a.z,b.z) }; }
 
-	static inline IVector3 Clamp(const IVector3& v, INT32 mn, INT32 mx) {return Clamp(v, { mn,mn,mn }, { mx,mx,mx });}
+	static inline IVector3 Clamp(const IVector3& v, INT32 mn, INT32 mx) { return Clamp(v, { mn,mn,mn }, { mx,mx,mx }); }
 	static inline IVector3 Clamp(const IVector3& v, const IVector3& mn, const IVector3& mx)
 	{
 		return {
@@ -100,7 +139,7 @@ struct IVector3
 		};
 	}
 
-	static inline IVector3 Lerp(const IVector3& a, const IVector3& b, float t) 
+	static inline IVector3 Lerp(const IVector3& a, const IVector3& b, float t)
 	{
 		const float tx = std::lround(a.x + (b.x - a.x) * t);
 		const float ty = std::lround(a.y + (b.y - a.y) * t);

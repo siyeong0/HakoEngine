@@ -3,6 +3,7 @@
 #include <cmath>
 #include <numeric>
 #include <limits>
+#include "IVector3.h"
 
 #undef max
 
@@ -48,10 +49,12 @@ struct FVector3
 	inline FVector3 Normalized() const { return *this / Length(); }
 	inline void Normalize() { *this = Normalized(); }
 
-	inline void operator+=(const FVector3& other) { *this = *this + other; }
-	inline void operator-=(const FVector3& other) { *this = *this - other; }
-	inline void operator*=(FLOAT v) { *this = *this * v; }
-	inline void operator/=(FLOAT v) { *this = *this / v; }
+	inline FVector3& operator+=(const FVector3& other) { *this = *this + other; return *this; }
+	inline FVector3& operator-=(const FVector3& other) { *this = *this - other; return *this; }
+	inline FVector3& operator*=(const FVector3& other) { *this = *this * other; return *this; }
+	inline FVector3& operator/=(const FVector3& other) { *this = *this / other; return *this; }
+	inline FVector3& operator*=(FLOAT v) { *this = *this * v; return *this; }
+	inline FVector3& operator/=(FLOAT v) { *this = *this / v; return *this; }
 
 	static inline float Dot(const FVector3& a, const FVector3& b) { return a.Dot(b); }
 	static inline FVector3 Cross(const FVector3& a, const FVector3& b) { return a.Cross(b); }
@@ -105,6 +108,8 @@ struct FVector3
 	inline FVector3 operator-(const FVector3& rhs) const { return FVector3{ x - rhs.x, y - rhs.y, z - rhs.z }; }
 	inline FVector3 operator*(const FVector3& rhs) const { return FVector3{ x * rhs.x, y * rhs.y, z * rhs.z }; }
 	inline FVector3 operator/(const FVector3& rhs) const { return FVector3{ x / rhs.x, y / rhs.y, z / rhs.z }; }
+	inline FVector3 operator+(FLOAT s) const { return FVector3{ x + s, y + s, z + s }; }
+	inline FVector3 operator-(FLOAT s) const { return FVector3{ x - s, y - s, z - s }; }
 	inline FVector3 operator*(FLOAT s) const { return FVector3{ x * s, y * s, z * s }; }
 	inline FVector3 operator/(FLOAT s) const { return FVector3{ x / s, y / s, z / s }; }
 

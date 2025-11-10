@@ -49,6 +49,34 @@ struct RayVolumeIntersection
 	FLOAT3 normal;
 };
 
+// Intersections
+struct RayBoxIntersection
+{
+	explicit operator bool() { return exit >= entry; }
+
+	float entry;
+	float exit;
+};
+
+// See https://tavianator.com/fast-branchless-raybounding-box-intersections/
+inline RayBoxIntersection intersect(const Ray& ray, const Bounds& box)
+{
+	// Inverse direction could be precomputed and stored in the ray
+	// if we find we often intersect the same ray with multiple boxes.
+	const FLOAT3 invDir = FLOAT3({ 1.0f, 1.0f, 1.0f }) / ray.direction;
+
+	const FLOAT3 lower = (box.Min - ray.origin) * invDir;
+	const FLOAT3 upper = (box.Max - ray.origin) * invDir;
+
+	const FLOAT3 minCorner = FLOAT3::Min(lower, upper);
+	const FLOAT3 maxCorner = FLOAT3::Max(lower, upper);
+
+	RayBoxIntersection intersection;
+	intersection.entry = FLOAT3::MaxComponent(minCorner);
+	intersection.exit = FLOAT3::MinComponent(maxCorner);
+	return intersection;
+}
+
 struct SubDAG
 {
 	IVector3 lowerBound;

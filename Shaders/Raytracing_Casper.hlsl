@@ -141,8 +141,8 @@ bool IsInsideGeometry(float3 unitMin, float3 unitMax, int mip)
 [shader("intersection")]
 void MyIntersectionShader_Casper()
 {
-    const int MAX_STEPS = 1024;
-
+    const int MAX_STEPS = 2048;
+    
     // Object-space entry / exit for the AABB
     float tEnterObject = RayTEnterObj();
     float tExitObject = RayTExitObj();
@@ -381,11 +381,14 @@ void MyClosestHitShader_RadianceRay_Casper(inout RadiancePayload rayPayload, in 
     rayPayload.depth = saturate(projPos.z);
     
     float3 localtion = attr.UnitSpaceHitPosition * 2.0 - 1.0;
-    localtion[attr.Face / 2] = attr.Face % 2 ? -1.0 : 1.0;
+    localtion[attr.Face / 2] = attr.Face % 2 ? 1.0 : -1.0;
     float4 texDiffuse = l_DiffuseAtlasTexture.SampleLevel(g_SamplerClamp, normalize(localtion), 0);
     
     texDiffuse = float4(1.0, 1.0, 1.0, 1.0); // Disable texture for debugging
     
+    //float4 texDepth = l_DepthAtlasTexture.SampleLevel(g_SamplerPoint, normalize(localtion), 0);
+    //rayPayload.radiance = texDepth.xxx; // Visualize depth for debugging
+    //return;
     
     int zax = attr.Face / 2;
     //int uax = (zax + 1) % 3;

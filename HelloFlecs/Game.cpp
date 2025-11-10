@@ -844,28 +844,6 @@ bool Game::Initialize(
 				m_Entities.emplace_back(e.id());
 			}
 			// Create volumes
-			//{
-			//	Volume vol;
-			//	bool bLoaded = vol.load("./Resources/cubq/birdhouse.dag");
-			//	ASSERT(bLoaded, "Failed to load volume data");
-
-			//	Image diffuseProjImages[6];
-			//	Image depthProjImages[6];
-			//	for (int i = 0; i < 6; i++)
-			//	{
-			//		ProjectVolumeFace(vol, i, 256, &diffuseProjImages[i], &depthProjImages[i]);
-			//	}
-			//	Image::SaveToCubeMapDDS(L"./Resources/temp/birdhouse/casper_color.dds", diffuseProjImages, /*bGenerateMips*/true, /*mipLevels*/0);
-			//	Image::SaveToCubeMapDDS(L"./Resources/temp/birdhouse/casper_depth.dds", depthProjImages, /*bGenerateMips*/false, /*mipLevels*/0);
-
-			//	flecs::entity e = m_ECSWorld.entity()
-			//		.set<comp::Position>({ 25.0f, 10.0f, 12.0f })
-			//		.set<comp::Rotation>({ 0.0f, 0.0f, 0.0f })
-			//		.set<comp::Scale>({ 0.1f, 0.1f, 0.1f })
-			//		.set<comp::Transform>({})
-			//		.set<comp::CasperRenderer>({ createCasperObject(m_pRenderer, L"./Resources/temp/birdhouse") });
-			//	m_Entities.emplace_back(e.id());
-			//}
 			{
 				Volume vol;
 				bool bLoaded = vol.load("./Resources/cubq/glycon.dag");
@@ -875,7 +853,7 @@ bool Game::Initialize(
 				Image depthProjImages[6];
 				for (int i = 0; i < 6; i++)
 				{
-					ProjectVolumeFace(vol, i, 256, &diffuseProjImages[i], &depthProjImages[i]);
+					ProjectVolumeFace(vol, i, 4096, &diffuseProjImages[i], &depthProjImages[i]);
 				}
 				IBounds bounds = vol.getOccupiedBounds();
 				{
@@ -894,30 +872,49 @@ bool Game::Initialize(
 				Image::SaveToCubeMapDDS(L"./Resources/temp/glycon/casper_depth.dds", depthProjImages, /*bGenerateMips*/false, /*mipLevels*/0);
 
 				flecs::entity e = m_ECSWorld.entity()
-					.set<comp::Position>({ 65.0f, 10.0f, 12.0f })
-					.set<comp::Rotation>({ 0.0f, 0.0f, 0.0f })
+					.set<comp::Position>({ 15.0f, 0.0f, 12.0f })
+					.set<comp::Rotation>({ DegToRad(-90.0f), 0.0f, 0.0f })
 					.set<comp::Scale>({ 0.01f, 0.01f, 0.01f })
 					.set<comp::Transform>({})
 					.set<comp::CasperRenderer>({ createCasperObject(m_pRenderer, L"./Resources/temp/glycon") });
 				m_Entities.emplace_back(e.id());
 			}
 			{
-				//Volume vol;
-				//bool bLoaded = vol.load("./Resources/cubq/building.dag");
-				//ASSERT(bLoaded, "Failed to load volume data");
+				Volume vol;
+				bool bLoaded = vol.load("./Resources/cubq/building.dag");
+				ASSERT(bLoaded, "Failed to load volume data");
 			
-				//Image diffuseProjImages[6];
-				//Image depthProjImages[6];
+				Image diffuseProjImages[6];
+				Image depthProjImages[6];
+				for (int i = 0; i < 6; i++)
+				{
+					ProjectVolumeFace(vol, i, 1024, &diffuseProjImages[i], &depthProjImages[i]);
+				}
+				IBounds bounds = vol.getOccupiedBounds();
+				{
+					std::filesystem::path metaPath = "./Resources/temp/building/metadata.txt";
+					std::ofstream ofs(metaPath);
+					if (!ofs)
+					{
+						std::cerr << "[SaveAsCasper] Failed to open metadata: " << metaPath << "\n";
+						return false;
+					}
+
+					ofs << "Min" << " " << bounds.Min.x << " " << bounds.Min.y << " " << bounds.Min.z << "\n";
+					ofs << "Max" << " " << bounds.Max.x << " " << bounds.Max.y << " " << bounds.Max.z << "\n";
+				}
+
 				//for (int i = 0; i < 6; i++)
 				//{
-				//	ProjectVolumeFace(vol, i, 256, &diffuseProjImages[i], &depthProjImages[i]);
+				//	depthProjImages[i].Save(L"./Resources/temp/building/depth_face_" + std::to_wstring(i) + L".dds", Image::EImageFormat::DDS);
 				//}
-				//Image::SaveToCubeMapDDS(L"./Resources/temp/building/casper_color.dds", diffuseProjImages, /*bGenerateMips*/true, /*mipLevels*/0);
-				//Image::SaveToCubeMapDDS(L"./Resources/temp/building/casper_depth.dds", depthProjImages, /*bGenerateMips*/false, /*mipLevels*/0);
+
+				Image::SaveToCubeMapDDS(L"./Resources/temp/building/casper_color.dds", diffuseProjImages, /*bGenerateMips*/true, /*mipLevels*/0);
+				Image::SaveToCubeMapDDS(L"./Resources/temp/building/casper_depth.dds", depthProjImages, /*bGenerateMips*/false, /*mipLevels*/0);
 
 				flecs::entity e = m_ECSWorld.entity()
-					.set<comp::Position>({ -25.0f, 10.0f, 12.0f })
-					.set<comp::Rotation>({ 0.0f, 0.0f, 0.0f })
+					.set<comp::Position>({ -25.0f, 0.0f, 12.0f })
+					.set<comp::Rotation>({ DegToRad(-90.0f), DegToRad(180.0f), 0.0f })
 					.set<comp::Scale>({ 0.01f, 0.01f, 0.01f })
 					.set<comp::Transform>({})
 					.set<comp::CasperRenderer>({ createCasperObject(m_pRenderer, L"./Resources/temp/building") });
