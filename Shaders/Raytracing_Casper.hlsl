@@ -205,9 +205,7 @@ int DetermineEntryFace(float3 unitEnterPos, float3 unitRayDirection, int lastSte
 // -----------------------------------------------------------------------------
 
 [shader("intersection")]
-
-    void MyIntersectionShader_Casper
-    ()
+void MyIntersectionShader_Casper()
 {
     const int MAX_STEPS = 2048;
 
