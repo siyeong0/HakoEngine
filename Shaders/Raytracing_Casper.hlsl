@@ -134,6 +134,51 @@ bool IsInsideGeometry(float3 unitMin, float3 unitMax, int mip)
     return insideX && insideY && insideZ;
 }
 
+// Determine the entry face index (0:+X,1:-X,2:+Y,3:-Y,4:+Z,5:-Z)
+// First iteration: estimate from unitEnterPos (closest to 0 or 1).
+// Later: use last stepped axis and the sign of unitRayDirection.
+int DetermineEntryFace(float3 unitEnterPos, float3 unitRayDirection, int lastStepAxis)
+{
+    int outFaceIndex = 0;
+    if (lastStepAxis < 0)
+    {
+        float3 distToMin = abs(unitEnterPos - 0.0);
+        float3 distToMax = abs(1.0 - unitEnterPos);
+
+        int entryAxis = 0;
+        float best = 1e9;
+
+        float candidate = min(distToMin.x, distToMax.x);
+        if (candidate < best)
+        {
+            best = candidate;
+            entryAxis = 0;
+        }
+
+        candidate = min(distToMin.y, distToMax.y);
+        if (candidate < best)
+        {
+            best = candidate;
+            entryAxis = 1;
+        }
+
+        candidate = min(distToMin.z, distToMax.z);
+        if (candidate < best)
+        {
+            best = candidate;
+            entryAxis = 2;
+        }
+
+        outFaceIndex = entryAxis * 2 + ((unitRayDirection[entryAxis] > 0.0f) ? 0 : 1);
+    }
+    else
+    {
+        outFaceIndex = (lastStepAxis * 2) + ((unitRayDirection[lastStepAxis] > 0.0f) ? 0 : 1);
+    }
+    
+    return outFaceIndex;
+}
+
 // =======================================================
 // Intersection Shader (unit-space DDA traversal)
 // =======================================================
@@ -160,7 +205,9 @@ bool IsInsideGeometry(float3 unitMin, float3 unitMax, int mip)
 // -----------------------------------------------------------------------------
 
 [shader("intersection")]
-void MyIntersectionShader_Casper()
+
+    void MyIntersectionShader_Casper
+    ()
 {
     const int MAX_STEPS = 2048;
 
@@ -274,49 +321,9 @@ void MyIntersectionShader_Casper()
             {
                 float3 unitHitPos = unitRayOrigin + unitRayDirection * tAlongUnitRay;
 
-                // Determine entry face index.
-                // First iteration: estimate from unitEnterPos (closest to 0 or 1).
-                // Later: use last stepped axis and the sign of unitRayDirection.
-                int faceIndex = 0;
-                if (lastStepAxis < 0)
-                {
-                    float3 distToMin = abs(unitEnterPos - 0.0);
-                    float3 distToMax = abs(1.0 - unitEnterPos);
-
-                    int entryAxis = 0;
-                    float best = 1e9;
-
-                    float candidate = min(distToMin.x, distToMax.x);
-                    if (candidate < best)
-                    {
-                        best = candidate;
-                        entryAxis = 0;
-                    }
-
-                    candidate = min(distToMin.y, distToMax.y);
-                    if (candidate < best)
-                    {
-                        best = candidate;
-                        entryAxis = 1;
-                    }
-
-                    candidate = min(distToMin.z, distToMax.z);
-                    if (candidate < best)
-                    {
-                        best = candidate;
-                        entryAxis = 2;
-                    }
-
-                    faceIndex = entryAxis * 2 + ((unitRayDirection[entryAxis] > 0.0f) ? 0 : 1);
-                }
-                else
-                {
-                    faceIndex = (lastStepAxis * 2) + ((unitRayDirection[lastStepAxis] > 0.0f) ? 0 : 1);
-                }
-
                 MyCasperIntersectionAttributes attr;
                 attr.UnitSpaceHitPosition = unitHitPos;
-                attr.Face = faceIndex;
+                attr.Face = DetermineEntryFace(unitHitPos, unitRayDirection, lastStepAxis);
 
                 float objectTHit = UnitTToObjectT(tAlongUnitRay, unitRayOrigin, unitRayDirection);
                 ReportHit(objectTHit, /*hitKind*/0, attr);
@@ -394,7 +401,11 @@ void MyIntersectionShader_Casper()
 //}
 
 [shader("closesthit")]
-void MyClosestHitShader_RadianceRay_Casper(inout RadiancePayload rayPayload, in MyCasperIntersectionAttributes attr)
+
+    void MyClosestHitShader_RadianceRay_Casper
+    (inout
+    RadiancePayload rayPayload, in MyCasperIntersectionAttributes
+    attr)
 {
     float3 hitPosition = HitWorldPosition();
     uint instanceID = InstanceID(); // The instance ID as specified in the instance desc.
@@ -481,7 +492,11 @@ void MyClosestHitShader_RadianceRay_Casper(inout RadiancePayload rayPayload, in 
 }
 
 [shader("closesthit")]
-void MyClosestHitShader_ShadowRay_Casper(inout ShadowPayload rayPayload, in MyCasperIntersectionAttributes attr)
+
+    void MyClosestHitShader_ShadowRay_Casper
+    (inout
+    ShadowPayload rayPayload, in MyCasperIntersectionAttributes
+    attr)
 {
     // Never called if RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH is set.
     rayPayload.tHit = RayTCurrent();

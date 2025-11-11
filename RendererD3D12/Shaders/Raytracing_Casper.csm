@@ -1,4 +1,4 @@
-; shader hash: fbc41f69783bf4c07aa5ddcf5db6cfb4
+; shader hash: 7953c240b69b9a47cab210d4593b993b
 ;
 ; Buffer Definitions:
 ;
@@ -204,232 +204,232 @@ define void @"\01?MyIntersectionShader_Casper@@YAXXZ"() #0 {
   %71 = fmul fast float %59, %19
   %72 = fmul fast float %60, %20
   %73 = fmul fast float %61, %21
-  %74 = getelementptr inbounds [3 x float], [3 x float]* %5, i32 0, i32 0
-  store float %71, float* %74, align 4
-  %75 = getelementptr inbounds [3 x float], [3 x float]* %5, i32 0, i32 1
-  store float %72, float* %75, align 4
-  %76 = getelementptr inbounds [3 x float], [3 x float]* %5, i32 0, i32 2
-  store float %73, float* %76, align 4
-  %77 = call float @dx.op.unary.f32(i32 6, float %71)  ; FAbs(value)
-  %78 = call float @dx.op.unary.f32(i32 6, float %72)  ; FAbs(value)
-  %79 = call float @dx.op.unary.f32(i32 6, float %73)  ; FAbs(value)
-  %80 = call %dx.types.Handle @"dx.op.createHandleForLib.class.TextureCube<float>"(i32 160, %"class.TextureCube<float>" %3)  ; CreateHandleForLib(Resource)
-  %81 = call %dx.types.Dimensions @dx.op.getDimensions(i32 72, %dx.types.Handle %80, i32 0)  ; GetDimensions(handle,mipLevel)
-  %82 = extractvalue %dx.types.Dimensions %81, 0
-  %83 = call i32 @dx.op.binary.i32(i32 39, i32 %82, i32 1)  ; UMax(a,b)
-  %84 = fmul fast float %71, 0x3EB0C6F7A0000000
-  %85 = fmul fast float %72, 0x3EB0C6F7A0000000
-  %86 = fmul fast float %73, 0x3EB0C6F7A0000000
-  %87 = fadd fast float %84, %68
-  %88 = fadd fast float %85, %69
-  %89 = fadd fast float %86, %70
-  %90 = add i32 %83, -1
-  %91 = uitofp i32 %83 to float
-  %92 = fmul fast float %91, %87
-  %93 = fmul fast float %91, %88
-  %94 = fmul fast float %91, %89
-  %95 = call float @dx.op.unary.f32(i32 27, float %92)  ; Round_ni(value)
-  %96 = call float @dx.op.unary.f32(i32 27, float %93)  ; Round_ni(value)
-  %97 = call float @dx.op.unary.f32(i32 27, float %94)  ; Round_ni(value)
-  %98 = fptosi float %95 to i32
-  %99 = fptosi float %96 to i32
-  %100 = fptosi float %97 to i32
-  %101 = call i32 @dx.op.binary.i32(i32 37, i32 %98, i32 0)  ; IMax(a,b)
-  %102 = call i32 @dx.op.binary.i32(i32 37, i32 %99, i32 0)  ; IMax(a,b)
-  %103 = call i32 @dx.op.binary.i32(i32 37, i32 %100, i32 0)  ; IMax(a,b)
-  %104 = call i32 @dx.op.binary.i32(i32 38, i32 %101, i32 %90)  ; IMin(a,b)
-  %105 = call i32 @dx.op.binary.i32(i32 38, i32 %102, i32 %90)  ; IMin(a,b)
-  %106 = call i32 @dx.op.binary.i32(i32 38, i32 %103, i32 %90)  ; IMin(a,b)
-  %107 = fcmp fast ogt float %71, 0.000000e+00
-  %108 = select i1 %107, i32 1, i32 -1
-  %109 = fcmp fast ogt float %72, 0.000000e+00
-  %110 = select i1 %109, i32 1, i32 -1
-  %111 = fcmp fast ogt float %73, 0.000000e+00
-  %112 = select i1 %111, i32 1, i32 -1
-  %113 = sitofp i32 %105 to float
-  %114 = sitofp i32 %106 to float
-  %115 = fdiv fast float %113, %91
-  %116 = fdiv fast float %114, %91
-  %117 = fadd fast float %113, 1.000000e+00
-  %118 = fadd fast float %114, 1.000000e+00
-  %119 = fdiv fast float %117, %91
-  %120 = fdiv fast float %118, %91
-  br i1 %107, label %121, label %128
+  %74 = call float @dx.op.unary.f32(i32 6, float %71)  ; FAbs(value)
+  %75 = call float @dx.op.unary.f32(i32 6, float %72)  ; FAbs(value)
+  %76 = call float @dx.op.unary.f32(i32 6, float %73)  ; FAbs(value)
+  %77 = call %dx.types.Handle @"dx.op.createHandleForLib.class.TextureCube<float>"(i32 160, %"class.TextureCube<float>" %3)  ; CreateHandleForLib(Resource)
+  %78 = call %dx.types.Dimensions @dx.op.getDimensions(i32 72, %dx.types.Handle %77, i32 0)  ; GetDimensions(handle,mipLevel)
+  %79 = extractvalue %dx.types.Dimensions %78, 0
+  %80 = call i32 @dx.op.binary.i32(i32 39, i32 %79, i32 1)  ; UMax(a,b)
+  %81 = fmul fast float %71, 0x3EB0C6F7A0000000
+  %82 = fmul fast float %72, 0x3EB0C6F7A0000000
+  %83 = fmul fast float %73, 0x3EB0C6F7A0000000
+  %84 = fadd fast float %81, %68
+  %85 = fadd fast float %82, %69
+  %86 = fadd fast float %83, %70
+  %87 = add i32 %80, -1
+  %88 = uitofp i32 %80 to float
+  %89 = fmul fast float %88, %84
+  %90 = fmul fast float %88, %85
+  %91 = fmul fast float %88, %86
+  %92 = call float @dx.op.unary.f32(i32 27, float %89)  ; Round_ni(value)
+  %93 = call float @dx.op.unary.f32(i32 27, float %90)  ; Round_ni(value)
+  %94 = call float @dx.op.unary.f32(i32 27, float %91)  ; Round_ni(value)
+  %95 = fptosi float %92 to i32
+  %96 = fptosi float %93 to i32
+  %97 = fptosi float %94 to i32
+  %98 = call i32 @dx.op.binary.i32(i32 37, i32 %95, i32 0)  ; IMax(a,b)
+  %99 = call i32 @dx.op.binary.i32(i32 37, i32 %96, i32 0)  ; IMax(a,b)
+  %100 = call i32 @dx.op.binary.i32(i32 37, i32 %97, i32 0)  ; IMax(a,b)
+  %101 = call i32 @dx.op.binary.i32(i32 38, i32 %98, i32 %87)  ; IMin(a,b)
+  %102 = call i32 @dx.op.binary.i32(i32 38, i32 %99, i32 %87)  ; IMin(a,b)
+  %103 = call i32 @dx.op.binary.i32(i32 38, i32 %100, i32 %87)  ; IMin(a,b)
+  %104 = fcmp fast ogt float %71, 0.000000e+00
+  %105 = select i1 %104, i32 1, i32 -1
+  %106 = fcmp fast ogt float %72, 0.000000e+00
+  %107 = select i1 %106, i32 1, i32 -1
+  %108 = fcmp fast ogt float %73, 0.000000e+00
+  %109 = select i1 %108, i32 1, i32 -1
+  %110 = sitofp i32 %102 to float
+  %111 = sitofp i32 %103 to float
+  %112 = fdiv fast float %110, %88
+  %113 = fdiv fast float %111, %88
+  %114 = fadd fast float %110, 1.000000e+00
+  %115 = fadd fast float %111, 1.000000e+00
+  %116 = fdiv fast float %114, %88
+  %117 = fdiv fast float %115, %88
+  br i1 %104, label %118, label %125
 
-; <label>:121                                     ; preds = %52
-  %122 = sitofp i32 %104 to float
-  %123 = fadd fast float %122, 1.000000e+00
-  %124 = fdiv fast float %123, %91
-  %125 = fsub fast float %124, %87
-  %126 = call float @dx.op.binary.f32(i32 35, float %71, float 0x39B4484C00000000)  ; FMax(a,b)
-  %127 = fdiv fast float %125, %126
-  br label %134
+; <label>:118                                     ; preds = %52
+  %119 = sitofp i32 %101 to float
+  %120 = fadd fast float %119, 1.000000e+00
+  %121 = fdiv fast float %120, %88
+  %122 = fsub fast float %121, %84
+  %123 = call float @dx.op.binary.f32(i32 35, float %71, float 0x39B4484C00000000)  ; FMax(a,b)
+  %124 = fdiv fast float %122, %123
+  br label %131
 
-; <label>:128                                     ; preds = %52
-  %129 = sitofp i32 %104 to float
-  %130 = fdiv fast float %129, %91
-  %131 = fsub fast float %130, %87
-  %132 = call float @dx.op.binary.f32(i32 36, float %71, float 0xB9B4484C00000000)  ; FMin(a,b)
-  %133 = fdiv fast float %131, %132
-  br label %134
+; <label>:125                                     ; preds = %52
+  %126 = sitofp i32 %101 to float
+  %127 = fdiv fast float %126, %88
+  %128 = fsub fast float %127, %84
+  %129 = call float @dx.op.binary.f32(i32 36, float %71, float 0xB9B4484C00000000)  ; FMin(a,b)
+  %130 = fdiv fast float %128, %129
+  br label %131
 
-; <label>:134                                     ; preds = %128, %121
-  %135 = phi float [ %127, %121 ], [ %133, %128 ]
-  br i1 %109, label %136, label %140
+; <label>:131                                     ; preds = %125, %118
+  %132 = phi float [ %124, %118 ], [ %130, %125 ]
+  br i1 %106, label %133, label %137
 
-; <label>:136                                     ; preds = %134
-  %137 = fsub fast float %119, %88
-  %138 = call float @dx.op.binary.f32(i32 35, float %72, float 0x39B4484C00000000)  ; FMax(a,b)
-  %139 = fdiv fast float %137, %138
-  br label %144
+; <label>:133                                     ; preds = %131
+  %134 = fsub fast float %116, %85
+  %135 = call float @dx.op.binary.f32(i32 35, float %72, float 0x39B4484C00000000)  ; FMax(a,b)
+  %136 = fdiv fast float %134, %135
+  br label %141
 
-; <label>:140                                     ; preds = %134
-  %141 = fsub fast float %115, %88
-  %142 = call float @dx.op.binary.f32(i32 36, float %72, float 0xB9B4484C00000000)  ; FMin(a,b)
-  %143 = fdiv fast float %141, %142
-  br label %144
+; <label>:137                                     ; preds = %131
+  %138 = fsub fast float %112, %85
+  %139 = call float @dx.op.binary.f32(i32 36, float %72, float 0xB9B4484C00000000)  ; FMin(a,b)
+  %140 = fdiv fast float %138, %139
+  br label %141
 
-; <label>:144                                     ; preds = %140, %136
-  %145 = phi float [ %139, %136 ], [ %143, %140 ]
-  br i1 %111, label %146, label %150
+; <label>:141                                     ; preds = %137, %133
+  %142 = phi float [ %136, %133 ], [ %140, %137 ]
+  br i1 %108, label %143, label %147
 
-; <label>:146                                     ; preds = %144
-  %147 = fsub fast float %120, %89
-  %148 = call float @dx.op.binary.f32(i32 35, float %73, float 0x39B4484C00000000)  ; FMax(a,b)
-  %149 = fdiv fast float %147, %148
-  br label %154
+; <label>:143                                     ; preds = %141
+  %144 = fsub fast float %117, %86
+  %145 = call float @dx.op.binary.f32(i32 35, float %73, float 0x39B4484C00000000)  ; FMax(a,b)
+  %146 = fdiv fast float %144, %145
+  br label %151
 
-; <label>:150                                     ; preds = %144
-  %151 = fsub fast float %116, %89
-  %152 = call float @dx.op.binary.f32(i32 36, float %73, float 0xB9B4484C00000000)  ; FMin(a,b)
-  %153 = fdiv fast float %151, %152
-  br label %154
+; <label>:147                                     ; preds = %141
+  %148 = fsub fast float %113, %86
+  %149 = call float @dx.op.binary.f32(i32 36, float %73, float 0xB9B4484C00000000)  ; FMin(a,b)
+  %150 = fdiv fast float %148, %149
+  br label %151
 
-; <label>:154                                     ; preds = %150, %146
-  %155 = phi float [ %149, %146 ], [ %153, %150 ]
-  %156 = fdiv fast float 1.000000e+00, %91
-  %157 = call float @dx.op.binary.f32(i32 35, float %77, float 0x39B4484C00000000)  ; FMax(a,b)
-  %158 = call float @dx.op.binary.f32(i32 35, float %78, float 0x39B4484C00000000)  ; FMax(a,b)
-  %159 = call float @dx.op.binary.f32(i32 35, float %79, float 0x39B4484C00000000)  ; FMax(a,b)
-  %160 = fdiv fast float %156, %157
-  %161 = fdiv fast float %156, %158
-  %162 = fdiv fast float %156, %159
-  %163 = call float @dx.op.unary.f32(i32 6, float %160)  ; FAbs(value)
-  %164 = call float @dx.op.unary.f32(i32 6, float %161)  ; FAbs(value)
-  %165 = call float @dx.op.unary.f32(i32 6, float %162)  ; FAbs(value)
-  br label %166
+; <label>:151                                     ; preds = %147, %143
+  %152 = phi float [ %146, %143 ], [ %150, %147 ]
+  %153 = fdiv fast float 1.000000e+00, %88
+  %154 = call float @dx.op.binary.f32(i32 35, float %74, float 0x39B4484C00000000)  ; FMax(a,b)
+  %155 = call float @dx.op.binary.f32(i32 35, float %75, float 0x39B4484C00000000)  ; FMax(a,b)
+  %156 = call float @dx.op.binary.f32(i32 35, float %76, float 0x39B4484C00000000)  ; FMax(a,b)
+  %157 = fdiv fast float %153, %154
+  %158 = fdiv fast float %153, %155
+  %159 = fdiv fast float %153, %156
+  %160 = call float @dx.op.unary.f32(i32 6, float %157)  ; FAbs(value)
+  %161 = call float @dx.op.unary.f32(i32 6, float %158)  ; FAbs(value)
+  %162 = call float @dx.op.unary.f32(i32 6, float %159)  ; FAbs(value)
+  br label %163
 
-; <label>:166                                     ; preds = %390, %154
-  %167 = phi i32 [ %104, %154 ], [ %375, %390 ]
-  %168 = phi i32 [ %105, %154 ], [ %376, %390 ]
-  %169 = phi i32 [ %106, %154 ], [ %377, %390 ]
-  %170 = phi float [ %135, %154 ], [ %378, %390 ]
-  %171 = phi float [ %145, %154 ], [ %379, %390 ]
-  %172 = phi float [ %155, %154 ], [ %380, %390 ]
-  %173 = phi float [ 0.000000e+00, %154 ], [ %181, %390 ]
-  %174 = phi i32 [ -1, %154 ], [ %180, %390 ]
-  %175 = phi i32 [ 0, %154 ], [ %391, %390 ]
-  %176 = fcmp fast olt float %171, %170
-  %177 = zext i1 %176 to i32
-  %178 = select i1 %176, float %171, float %170
-  %179 = fcmp fast olt float %172, %178
-  %180 = select i1 %179, i32 2, i32 %177
-  %181 = select i1 %179, float %172, float %178
-  %182 = sitofp i32 %167 to float
-  %183 = sitofp i32 %168 to float
-  %184 = sitofp i32 %169 to float
-  %185 = fdiv fast float %182, %91
-  %186 = fdiv fast float %183, %91
-  %187 = fdiv fast float %184, %91
-  %188 = fadd fast float %182, 1.000000e+00
-  %189 = fadd fast float %183, 1.000000e+00
-  %190 = fadd fast float %184, 1.000000e+00
-  %191 = fdiv fast float %188, %91
-  %192 = fdiv fast float %189, %91
-  %193 = fdiv fast float %190, %91
-  %194 = fadd fast float %186, -1.000000e+00
-  %195 = fadd fast float %194, %192
-  %196 = fadd fast float %187, -1.000000e+00
-  %197 = fadd fast float %196, %193
-  %198 = call float @dx.op.dot3.f32(i32 55, float -1.000000e+00, float %195, float %197, float -1.000000e+00, float %195, float %197)  ; Dot3(ax,ay,az,bx,by,bz)
-  %199 = call float @dx.op.unary.f32(i32 25, float %198)  ; Rsqrt(value)
-  %200 = fsub fast float -0.000000e+00, %199
-  %201 = fmul fast float %199, %195
-  %202 = fmul fast float %197, %199
-  %203 = call %dx.types.Handle @"dx.op.createHandleForLib.class.TextureCube<float>"(i32 160, %"class.TextureCube<float>" %3)  ; CreateHandleForLib(Resource)
-  %204 = call %dx.types.Handle @dx.op.createHandleForLib.struct.SamplerState(i32 160, %struct.SamplerState %1)  ; CreateHandleForLib(Resource)
-  %205 = call %dx.types.ResRet.f32 @dx.op.sampleLevel.f32(i32 62, %dx.types.Handle %203, %dx.types.Handle %204, float %200, float %201, float %202, float undef, i32 undef, i32 undef, i32 undef, float 0.000000e+00)  ; SampleLevel(srv,sampler,coord0,coord1,coord2,coord3,offset0,offset1,offset2,LOD)
-  %206 = extractvalue %dx.types.ResRet.f32 %205, 0
-  %207 = call float @dx.op.dot3.f32(i32 55, float 1.000000e+00, float %195, float %197, float 1.000000e+00, float %195, float %197)  ; Dot3(ax,ay,az,bx,by,bz)
-  %208 = call float @dx.op.unary.f32(i32 25, float %207)  ; Rsqrt(value)
-  %209 = fmul fast float %208, %195
-  %210 = fmul fast float %208, %197
-  %211 = call %dx.types.ResRet.f32 @dx.op.sampleLevel.f32(i32 62, %dx.types.Handle %203, %dx.types.Handle %204, float %208, float %209, float %210, float undef, i32 undef, i32 undef, i32 undef, float 0.000000e+00)  ; SampleLevel(srv,sampler,coord0,coord1,coord2,coord3,offset0,offset1,offset2,LOD)
-  %212 = extractvalue %dx.types.ResRet.f32 %211, 0
-  %213 = fadd fast float %185, -1.000000e+00
-  %214 = fadd fast float %213, %191
-  %215 = call float @dx.op.dot3.f32(i32 55, float %214, float -1.000000e+00, float %197, float %214, float -1.000000e+00, float %197)  ; Dot3(ax,ay,az,bx,by,bz)
-  %216 = call float @dx.op.unary.f32(i32 25, float %215)  ; Rsqrt(value)
-  %217 = fmul fast float %216, %214
-  %218 = fsub fast float -0.000000e+00, %216
-  %219 = fmul fast float %216, %197
-  %220 = call %dx.types.ResRet.f32 @dx.op.sampleLevel.f32(i32 62, %dx.types.Handle %203, %dx.types.Handle %204, float %217, float %218, float %219, float undef, i32 undef, i32 undef, i32 undef, float 0.000000e+00)  ; SampleLevel(srv,sampler,coord0,coord1,coord2,coord3,offset0,offset1,offset2,LOD)
-  %221 = extractvalue %dx.types.ResRet.f32 %220, 0
-  %222 = call float @dx.op.dot3.f32(i32 55, float %214, float 1.000000e+00, float %197, float %214, float 1.000000e+00, float %197)  ; Dot3(ax,ay,az,bx,by,bz)
-  %223 = call float @dx.op.unary.f32(i32 25, float %222)  ; Rsqrt(value)
-  %224 = fmul fast float %223, %214
-  %225 = fmul fast float %223, %197
-  %226 = call %dx.types.ResRet.f32 @dx.op.sampleLevel.f32(i32 62, %dx.types.Handle %203, %dx.types.Handle %204, float %224, float %223, float %225, float undef, i32 undef, i32 undef, i32 undef, float 0.000000e+00)  ; SampleLevel(srv,sampler,coord0,coord1,coord2,coord3,offset0,offset1,offset2,LOD)
-  %227 = extractvalue %dx.types.ResRet.f32 %226, 0
-  %228 = call float @dx.op.dot3.f32(i32 55, float %214, float %195, float -1.000000e+00, float %214, float %195, float -1.000000e+00)  ; Dot3(ax,ay,az,bx,by,bz)
-  %229 = call float @dx.op.unary.f32(i32 25, float %228)  ; Rsqrt(value)
-  %230 = fmul fast float %229, %214
-  %231 = fmul fast float %229, %195
-  %232 = fsub fast float -0.000000e+00, %229
-  %233 = call %dx.types.ResRet.f32 @dx.op.sampleLevel.f32(i32 62, %dx.types.Handle %203, %dx.types.Handle %204, float %230, float %231, float %232, float undef, i32 undef, i32 undef, i32 undef, float 0.000000e+00)  ; SampleLevel(srv,sampler,coord0,coord1,coord2,coord3,offset0,offset1,offset2,LOD)
-  %234 = extractvalue %dx.types.ResRet.f32 %233, 0
-  %235 = call float @dx.op.dot3.f32(i32 55, float %214, float %195, float 1.000000e+00, float %214, float %195, float 1.000000e+00)  ; Dot3(ax,ay,az,bx,by,bz)
-  %236 = call float @dx.op.unary.f32(i32 25, float %235)  ; Rsqrt(value)
-  %237 = fmul fast float %236, %214
-  %238 = fmul fast float %236, %195
-  %239 = call %dx.types.ResRet.f32 @dx.op.sampleLevel.f32(i32 62, %dx.types.Handle %203, %dx.types.Handle %204, float %237, float %238, float %236, float undef, i32 undef, i32 undef, i32 undef, float 0.000000e+00)  ; SampleLevel(srv,sampler,coord0,coord1,coord2,coord3,offset0,offset1,offset2,LOD)
-  %240 = extractvalue %dx.types.ResRet.f32 %239, 0
-  %241 = fsub fast float 1.000000e+00, %212
-  %242 = fsub fast float 1.000000e+00, %227
-  %243 = fsub fast float 1.000000e+00, %240
-  %244 = fcmp fast ole float %206, %191
-  %245 = fcmp fast ole float %185, %241
+; <label>:163                                     ; preds = %390, %151
+  %164 = phi i32 [ %101, %151 ], [ %375, %390 ]
+  %165 = phi i32 [ %102, %151 ], [ %376, %390 ]
+  %166 = phi i32 [ %103, %151 ], [ %377, %390 ]
+  %167 = phi float [ %132, %151 ], [ %378, %390 ]
+  %168 = phi float [ %142, %151 ], [ %379, %390 ]
+  %169 = phi float [ %152, %151 ], [ %380, %390 ]
+  %170 = phi float [ 0.000000e+00, %151 ], [ %178, %390 ]
+  %171 = phi i32 [ -1, %151 ], [ %177, %390 ]
+  %172 = phi i32 [ 0, %151 ], [ %391, %390 ]
+  %173 = fcmp fast olt float %168, %167
+  %174 = zext i1 %173 to i32
+  %175 = select i1 %173, float %168, float %167
+  %176 = fcmp fast olt float %169, %175
+  %177 = select i1 %176, i32 2, i32 %174
+  %178 = select i1 %176, float %169, float %175
+  %179 = sitofp i32 %164 to float
+  %180 = sitofp i32 %165 to float
+  %181 = sitofp i32 %166 to float
+  %182 = fdiv fast float %179, %88
+  %183 = fdiv fast float %180, %88
+  %184 = fdiv fast float %181, %88
+  %185 = fadd fast float %179, 1.000000e+00
+  %186 = fadd fast float %180, 1.000000e+00
+  %187 = fadd fast float %181, 1.000000e+00
+  %188 = fdiv fast float %185, %88
+  %189 = fdiv fast float %186, %88
+  %190 = fdiv fast float %187, %88
+  %191 = fadd fast float %183, -1.000000e+00
+  %192 = fadd fast float %191, %189
+  %193 = fadd fast float %184, -1.000000e+00
+  %194 = fadd fast float %193, %190
+  %195 = call float @dx.op.dot3.f32(i32 55, float -1.000000e+00, float %192, float %194, float -1.000000e+00, float %192, float %194)  ; Dot3(ax,ay,az,bx,by,bz)
+  %196 = call float @dx.op.unary.f32(i32 25, float %195)  ; Rsqrt(value)
+  %197 = fsub fast float -0.000000e+00, %196
+  %198 = fmul fast float %196, %192
+  %199 = fmul fast float %194, %196
+  %200 = call %dx.types.Handle @"dx.op.createHandleForLib.class.TextureCube<float>"(i32 160, %"class.TextureCube<float>" %3)  ; CreateHandleForLib(Resource)
+  %201 = call %dx.types.Handle @dx.op.createHandleForLib.struct.SamplerState(i32 160, %struct.SamplerState %1)  ; CreateHandleForLib(Resource)
+  %202 = call %dx.types.ResRet.f32 @dx.op.sampleLevel.f32(i32 62, %dx.types.Handle %200, %dx.types.Handle %201, float %197, float %198, float %199, float undef, i32 undef, i32 undef, i32 undef, float 0.000000e+00)  ; SampleLevel(srv,sampler,coord0,coord1,coord2,coord3,offset0,offset1,offset2,LOD)
+  %203 = extractvalue %dx.types.ResRet.f32 %202, 0
+  %204 = call float @dx.op.dot3.f32(i32 55, float 1.000000e+00, float %192, float %194, float 1.000000e+00, float %192, float %194)  ; Dot3(ax,ay,az,bx,by,bz)
+  %205 = call float @dx.op.unary.f32(i32 25, float %204)  ; Rsqrt(value)
+  %206 = fmul fast float %205, %192
+  %207 = fmul fast float %205, %194
+  %208 = call %dx.types.ResRet.f32 @dx.op.sampleLevel.f32(i32 62, %dx.types.Handle %200, %dx.types.Handle %201, float %205, float %206, float %207, float undef, i32 undef, i32 undef, i32 undef, float 0.000000e+00)  ; SampleLevel(srv,sampler,coord0,coord1,coord2,coord3,offset0,offset1,offset2,LOD)
+  %209 = extractvalue %dx.types.ResRet.f32 %208, 0
+  %210 = fadd fast float %182, -1.000000e+00
+  %211 = fadd fast float %210, %188
+  %212 = call float @dx.op.dot3.f32(i32 55, float %211, float -1.000000e+00, float %194, float %211, float -1.000000e+00, float %194)  ; Dot3(ax,ay,az,bx,by,bz)
+  %213 = call float @dx.op.unary.f32(i32 25, float %212)  ; Rsqrt(value)
+  %214 = fmul fast float %213, %211
+  %215 = fsub fast float -0.000000e+00, %213
+  %216 = fmul fast float %213, %194
+  %217 = call %dx.types.ResRet.f32 @dx.op.sampleLevel.f32(i32 62, %dx.types.Handle %200, %dx.types.Handle %201, float %214, float %215, float %216, float undef, i32 undef, i32 undef, i32 undef, float 0.000000e+00)  ; SampleLevel(srv,sampler,coord0,coord1,coord2,coord3,offset0,offset1,offset2,LOD)
+  %218 = extractvalue %dx.types.ResRet.f32 %217, 0
+  %219 = call float @dx.op.dot3.f32(i32 55, float %211, float 1.000000e+00, float %194, float %211, float 1.000000e+00, float %194)  ; Dot3(ax,ay,az,bx,by,bz)
+  %220 = call float @dx.op.unary.f32(i32 25, float %219)  ; Rsqrt(value)
+  %221 = fmul fast float %220, %211
+  %222 = fmul fast float %220, %194
+  %223 = call %dx.types.ResRet.f32 @dx.op.sampleLevel.f32(i32 62, %dx.types.Handle %200, %dx.types.Handle %201, float %221, float %220, float %222, float undef, i32 undef, i32 undef, i32 undef, float 0.000000e+00)  ; SampleLevel(srv,sampler,coord0,coord1,coord2,coord3,offset0,offset1,offset2,LOD)
+  %224 = extractvalue %dx.types.ResRet.f32 %223, 0
+  %225 = call float @dx.op.dot3.f32(i32 55, float %211, float %192, float -1.000000e+00, float %211, float %192, float -1.000000e+00)  ; Dot3(ax,ay,az,bx,by,bz)
+  %226 = call float @dx.op.unary.f32(i32 25, float %225)  ; Rsqrt(value)
+  %227 = fmul fast float %226, %211
+  %228 = fmul fast float %226, %192
+  %229 = fsub fast float -0.000000e+00, %226
+  %230 = call %dx.types.ResRet.f32 @dx.op.sampleLevel.f32(i32 62, %dx.types.Handle %200, %dx.types.Handle %201, float %227, float %228, float %229, float undef, i32 undef, i32 undef, i32 undef, float 0.000000e+00)  ; SampleLevel(srv,sampler,coord0,coord1,coord2,coord3,offset0,offset1,offset2,LOD)
+  %231 = extractvalue %dx.types.ResRet.f32 %230, 0
+  %232 = call float @dx.op.dot3.f32(i32 55, float %211, float %192, float 1.000000e+00, float %211, float %192, float 1.000000e+00)  ; Dot3(ax,ay,az,bx,by,bz)
+  %233 = call float @dx.op.unary.f32(i32 25, float %232)  ; Rsqrt(value)
+  %234 = fmul fast float %233, %211
+  %235 = fmul fast float %233, %192
+  %236 = call %dx.types.ResRet.f32 @dx.op.sampleLevel.f32(i32 62, %dx.types.Handle %200, %dx.types.Handle %201, float %234, float %235, float %233, float undef, i32 undef, i32 undef, i32 undef, float 0.000000e+00)  ; SampleLevel(srv,sampler,coord0,coord1,coord2,coord3,offset0,offset1,offset2,LOD)
+  %237 = extractvalue %dx.types.ResRet.f32 %236, 0
+  %238 = fsub fast float 1.000000e+00, %209
+  %239 = fsub fast float 1.000000e+00, %224
+  %240 = fsub fast float 1.000000e+00, %237
+  %241 = fcmp fast ole float %203, %188
+  %242 = fcmp fast ole float %182, %238
+  %243 = and i1 %241, %242
+  %244 = fcmp fast ole float %218, %189
+  %245 = fcmp fast ole float %183, %239
   %246 = and i1 %244, %245
-  %247 = fcmp fast ole float %221, %192
-  %248 = fcmp fast ole float %186, %242
+  %247 = fcmp fast ole float %231, %190
+  %248 = fcmp fast ole float %184, %240
   %249 = and i1 %247, %248
-  %250 = fcmp fast ole float %234, %193
-  %251 = fcmp fast ole float %187, %243
-  %252 = and i1 %250, %251
-  %253 = and i1 %246, %249
-  %254 = and i1 %253, %252
-  br i1 %254, label %255, label %328
+  %250 = and i1 %243, %246
+  %251 = and i1 %250, %249
+  br i1 %251, label %252, label %328
 
-; <label>:255                                     ; preds = %166
-  %256 = fmul fast float %173, %71
-  %257 = fmul fast float %173, %72
-  %258 = fmul fast float %173, %73
-  %259 = fadd fast float %256, %87
-  %260 = fadd fast float %257, %88
-  %261 = fadd fast float %258, %89
-  %262 = insertelement <3 x float> undef, float %259, i32 0
-  %263 = insertelement <3 x float> %262, float %260, i32 1
-  %264 = insertelement <3 x float> %263, float %261, i32 2
-  %265 = icmp slt i32 %174, 0
+; <label>:252                                     ; preds = %163
+  %253 = fmul fast float %170, %71
+  %254 = fmul fast float %170, %72
+  %255 = fmul fast float %170, %73
+  %256 = fadd fast float %253, %84
+  %257 = fadd fast float %254, %85
+  %258 = fadd fast float %255, %86
+  %259 = insertelement <3 x float> undef, float %256, i32 0
+  %260 = insertelement <3 x float> %259, float %257, i32 1
+  %261 = insertelement <3 x float> %260, float %258, i32 2
+  %262 = getelementptr inbounds [3 x float], [3 x float]* %5, i32 0, i32 0
+  store float %71, float* %262, align 4
+  %263 = getelementptr inbounds [3 x float], [3 x float]* %5, i32 0, i32 1
+  store float %72, float* %263, align 4
+  %264 = getelementptr inbounds [3 x float], [3 x float]* %5, i32 0, i32 2
+  store float %73, float* %264, align 4
+  %265 = icmp slt i32 %171, 0
   br i1 %265, label %266, label %292
 
-; <label>:266                                     ; preds = %255
-  %267 = call float @dx.op.unary.f32(i32 6, float %68)  ; FAbs(value)
-  %268 = call float @dx.op.unary.f32(i32 6, float %69)  ; FAbs(value)
-  %269 = call float @dx.op.unary.f32(i32 6, float %70)  ; FAbs(value)
-  %270 = fsub fast float 1.000000e+00, %68
-  %271 = fsub fast float 1.000000e+00, %69
-  %272 = fsub fast float 1.000000e+00, %70
+; <label>:266                                     ; preds = %252
+  %267 = call float @dx.op.unary.f32(i32 6, float %256)  ; FAbs(value)
+  %268 = call float @dx.op.unary.f32(i32 6, float %257)  ; FAbs(value)
+  %269 = call float @dx.op.unary.f32(i32 6, float %258)  ; FAbs(value)
+  %270 = fsub fast float 1.000000e+00, %256
+  %271 = fsub fast float 1.000000e+00, %257
+  %272 = fsub fast float 1.000000e+00, %258
   %273 = call float @dx.op.unary.f32(i32 6, float %270)  ; FAbs(value)
   %274 = call float @dx.op.unary.f32(i32 6, float %271)  ; FAbs(value)
   %275 = call float @dx.op.unary.f32(i32 6, float %272)  ; FAbs(value)
@@ -451,9 +451,9 @@ define void @"\01?MyIntersectionShader_Casper@@YAXXZ"() #0 {
   %291 = or i32 %286, %290
   br label %299
 
-; <label>:292                                     ; preds = %255
-  %293 = shl nsw i32 %174, 1
-  %294 = getelementptr [3 x float], [3 x float]* %5, i32 0, i32 %174
+; <label>:292                                     ; preds = %252
+  %293 = shl nsw i32 %171, 1
+  %294 = getelementptr [3 x float], [3 x float]* %5, i32 0, i32 %171
   %295 = load float, float* %294, align 4, !tbaa !40
   %296 = fcmp ule float %295, 0.000000e+00
   %297 = zext i1 %296 to i32
@@ -474,9 +474,9 @@ define void @"\01?MyIntersectionShader_Casper@@YAXXZ"() #0 {
   %310 = fsub fast float %307, %303
   %311 = fsub fast float %308, %304
   %312 = fsub fast float %309, %305
-  %313 = fmul fast float %310, %259
-  %314 = fmul fast float %311, %260
-  %315 = fmul fast float %312, %261
+  %313 = fmul fast float %310, %256
+  %314 = fmul fast float %311, %257
+  %315 = fmul fast float %312, %258
   %316 = fsub fast float %303, %16
   %317 = fadd fast float %316, %313
   %318 = fsub fast float %304, %17
@@ -487,13 +487,13 @@ define void @"\01?MyIntersectionShader_Casper@@YAXXZ"() #0 {
   %323 = call float @dx.op.dot3.f32(i32 55, float %19, float %20, float %21, float %19, float %20, float %21)  ; Dot3(ax,ay,az,bx,by,bz)
   %324 = fdiv fast float %322, %323
   %325 = getelementptr inbounds %struct.MyCasperIntersectionAttributes, %struct.MyCasperIntersectionAttributes* %4, i32 0, i32 0
-  store <3 x float> %264, <3 x float>* %325, align 8
+  store <3 x float> %261, <3 x float>* %325, align 8
   %326 = getelementptr inbounds %struct.MyCasperIntersectionAttributes, %struct.MyCasperIntersectionAttributes* %4, i32 0, i32 1
   store i32 %300, i32* %326, align 4
   %327 = call i1 @dx.op.reportHit.struct.MyCasperIntersectionAttributes(i32 158, float %324, i32 0, %struct.MyCasperIntersectionAttributes* nonnull %4)  ; ReportHit(THit,HitKind,Attributes)
   br label %394
 
-; <label>:328                                     ; preds = %166
+; <label>:328                                     ; preds = %163
   %329 = call %dx.types.Handle @"dx.op.createHandleForLib.class.StructuredBuffer<AABB>"(i32 160, %"class.StructuredBuffer<AABB>" %2)  ; CreateHandleForLib(Resource)
   %330 = call %dx.types.ResRet.f32 @dx.op.rawBufferLoad.f32(i32 139, %dx.types.Handle %329, i32 %6, i32 0, i8 7, i32 4)  ; RawBufferLoad(srv,index,elementOffset,mask,alignment)
   %331 = extractvalue %dx.types.ResRet.f32 %330, 0
@@ -506,12 +506,12 @@ define void @"\01?MyIntersectionShader_Casper@@YAXXZ"() #0 {
   %338 = fsub fast float %335, %331
   %339 = fsub fast float %336, %332
   %340 = fsub fast float %337, %333
-  %341 = fmul fast float %181, %71
-  %342 = fmul fast float %181, %72
-  %343 = fmul fast float %181, %73
-  %344 = fadd fast float %341, %87
-  %345 = fadd fast float %342, %88
-  %346 = fadd fast float %343, %89
+  %341 = fmul fast float %178, %71
+  %342 = fmul fast float %178, %72
+  %343 = fmul fast float %178, %73
+  %344 = fadd fast float %341, %84
+  %345 = fadd fast float %342, %85
+  %346 = fadd fast float %343, %86
   %347 = fmul fast float %338, %344
   %348 = fmul fast float %339, %345
   %349 = fmul fast float %340, %346
@@ -529,52 +529,52 @@ define void @"\01?MyIntersectionShader_Casper@@YAXXZ"() #0 {
   br i1 %360, label %393, label %361
 
 ; <label>:361                                     ; preds = %328
-  %362 = icmp eq i32 %180, 0
+  %362 = icmp eq i32 %177, 0
   br i1 %362, label %363, label %366
 
 ; <label>:363                                     ; preds = %361
-  %364 = add nsw i32 %167, %108
-  %365 = fadd fast float %170, %163
+  %364 = add nsw i32 %164, %105
+  %365 = fadd fast float %167, %160
   br label %374
 
 ; <label>:366                                     ; preds = %361
-  %367 = icmp eq i32 %180, 1
+  %367 = icmp eq i32 %177, 1
   br i1 %367, label %368, label %371
 
 ; <label>:368                                     ; preds = %366
-  %369 = add nsw i32 %168, %110
-  %370 = fadd fast float %171, %164
+  %369 = add nsw i32 %165, %107
+  %370 = fadd fast float %168, %161
   br label %374
 
 ; <label>:371                                     ; preds = %366
-  %372 = add nsw i32 %169, %112
-  %373 = fadd fast float %172, %165
+  %372 = add nsw i32 %166, %109
+  %373 = fadd fast float %169, %162
   br label %374
 
 ; <label>:374                                     ; preds = %371, %368, %363
-  %375 = phi i32 [ %364, %363 ], [ %167, %368 ], [ %167, %371 ]
-  %376 = phi i32 [ %168, %363 ], [ %369, %368 ], [ %168, %371 ]
-  %377 = phi i32 [ %169, %363 ], [ %169, %368 ], [ %372, %371 ]
-  %378 = phi float [ %365, %363 ], [ %170, %368 ], [ %170, %371 ]
-  %379 = phi float [ %171, %363 ], [ %370, %368 ], [ %171, %371 ]
-  %380 = phi float [ %172, %363 ], [ %172, %368 ], [ %373, %371 ]
+  %375 = phi i32 [ %364, %363 ], [ %164, %368 ], [ %164, %371 ]
+  %376 = phi i32 [ %165, %363 ], [ %369, %368 ], [ %165, %371 ]
+  %377 = phi i32 [ %166, %363 ], [ %166, %368 ], [ %372, %371 ]
+  %378 = phi float [ %365, %363 ], [ %167, %368 ], [ %167, %371 ]
+  %379 = phi float [ %168, %363 ], [ %370, %368 ], [ %168, %371 ]
+  %380 = phi float [ %169, %363 ], [ %169, %368 ], [ %373, %371 ]
   %381 = or i32 %376, %375
   %382 = or i32 %381, %377
   %383 = icmp slt i32 %382, 0
   br i1 %383, label %393, label %384
 
 ; <label>:384                                     ; preds = %374
-  %385 = icmp sgt i32 %375, %90
-  %386 = icmp sgt i32 %376, %90
-  %387 = icmp sgt i32 %377, %90
+  %385 = icmp sgt i32 %375, %87
+  %386 = icmp sgt i32 %376, %87
+  %387 = icmp sgt i32 %377, %87
   %388 = or i1 %385, %386
   %389 = or i1 %388, %387
   br i1 %389, label %393, label %390
 
 ; <label>:390                                     ; preds = %384
-  %391 = add nuw nsw i32 %175, 1
+  %391 = add nuw nsw i32 %172, 1
   %392 = icmp slt i32 %391, 2048
-  br i1 %392, label %166, label %393, !llvm.loop !44
+  br i1 %392, label %163, label %393, !llvm.loop !44
 
 ; <label>:393                                     ; preds = %390, %384, %374, %328
   br label %394
