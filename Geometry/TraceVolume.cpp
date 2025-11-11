@@ -1,4 +1,5 @@
 ﻿#include "pch.h"
+#include "Generic/Color.h"
 #include "TraceVolume.h"
 
 #include <cfloat>
@@ -780,7 +781,7 @@ void ProjectVolumeFace(
 
 			// ESVO 교차 (표면 속성 불필요: false)
 			Ray ray{ origin, dir };
-			RayVolumeIntersection hit = intersectVolume(volume, subDAGs, ray, /*computeSurfaceProperties*/false, /*maxFootprint*/MAX_FOOTPRINT_DISABLED);
+			RayVolumeIntersection hit = intersectVolume(volume, subDAGs, ray, /*computeSurfaceProperties*/true, /*maxFootprint*/MAX_FOOTPRINT_DISABLED);
 
 			// 결과 쓰기
 			// - 컬러: hit → (200,200,255,255), miss → 투명
@@ -795,7 +796,8 @@ void ProjectVolumeFace(
 				uint32_t di = (uint32_t)std::lround(depthF * 65535.0f);
 				depth16 = (uint16_t)std::min(di, 65535u);
 
-				c[0] = 200; c[1] = 200; c[2] = 255; c[3] = 255;
+				const RGBA rgba = volume.getColor(hit.material);
+				c[0] = rgba.r; c[1] = rgba.g; c[2] = rgba.b; c[3] = rgba.a;
 			}
 			else
 			{

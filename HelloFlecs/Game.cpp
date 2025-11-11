@@ -888,7 +888,7 @@ bool Game::Initialize(
 				Image depthProjImages[6];
 				for (int i = 0; i < 6; i++)
 				{
-					ProjectVolumeFace(vol, i, 1024, &diffuseProjImages[i], &depthProjImages[i]);
+					ProjectVolumeFace(vol, i, 10000, &diffuseProjImages[i], &depthProjImages[i]);
 				}
 				IBounds bounds = vol.getOccupiedBounds();
 				{

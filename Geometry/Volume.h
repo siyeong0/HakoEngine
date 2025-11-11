@@ -1,4 +1,5 @@
 ﻿#pragma once
+#include "Generic/Color.h"
 #include <array>
 #include <unordered_set>
 #include <unordered_map>
@@ -7,8 +8,8 @@ using MaterialId = uint8_t;
 
 namespace Internals
 {
-	constexpr MaterialId MinMaterial = std::numeric_limits< MaterialId>::min();
-	constexpr MaterialId MaxMaterial = std::numeric_limits< MaterialId>::max();
+	constexpr MaterialId MinMaterial = std::numeric_limits<MaterialId>::min();
+	constexpr MaterialId MaxMaterial = std::numeric_limits<MaterialId>::max();
 	constexpr uint32_t MaterialCount = static_cast<uint32_t>(MaxMaterial) + 1;
 	constexpr uint64_t VolumeSideLength = UINT64_C(1) << 32;
 
@@ -185,6 +186,8 @@ public:
 	MaterialId voxel(const ArrayType& position) const;
 	MaterialId voxel(int32_t x, int32_t y, int32_t z) const;
 
+	const Color& getColor(MaterialId matId) const { return mMaterialColors[matId]; }
+
 	void bake();
 
 	uint32_t countNodes() const { return mDAG.countNodes(rootNodeIndex()); };
@@ -205,6 +208,7 @@ private:
 private:
 	Internals::NodeDAG mDAG;
 	IBounds mOccupiedBounds;
+	std::array<Color, Internals::MaterialCount> mMaterialColors;
 
 	// Note: The undo system is linear. If we apply operation A, undo it, and then apply operation B
 	// then A is lost. But it we wanted to we could still track it, because the appropriate edit still

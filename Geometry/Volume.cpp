@@ -1,4 +1,5 @@
 ﻿#include "pch.h"
+#include "Generic/Color.h"
 #include "Volume.h"
 
 /***************************************************************************************************
@@ -18,6 +19,8 @@
 #include <cassert>
 #include <cstring>
 #include <fstream>
+#include <sstream>
+#include <iomanip>
 
 using namespace Internals;
 
@@ -249,12 +252,14 @@ Volume::Volume()
 {
 	mRootNodeIndices.resize(1);
 	mCurrentRoot = 0;
+	for (Color& c : mMaterialColors) { c = Color::Magenta(); }
 }
 
 Volume::Volume(const std::string& filename)
 {
 	mRootNodeIndices.resize(1);
 	mCurrentRoot = 0;
+	for (Color& c : mMaterialColors) { c = Color::Magenta(); }
 
 	load(filename);
 }
@@ -694,6 +699,132 @@ MaterialId Volume::voxel(int32_t x, int32_t y, int32_t z) const
 // Private member functions
 ////////////////////////////////////////////////////////////////////////////////
 
+namespace 
+{
+	// Keep as-is (or add if you don't have it yet)
+	inline std::filesystem::path MakeTomlPath(const std::string& filename)
+	{
+		std::filesystem::path p(filename);
+		p.replace_extension(".toml");
+		return p;
+	}
+
+
+	// Trim helpers (ASCII-only is fine for our .toml)
+	inline void ltrim(std::string& s)
+	{
+		size_t i = 0;
+		while (i < s.size() && std::isspace(static_cast<unsigned char>(s[i]))) ++i;
+		s.erase(0, i);
+	}
+	inline void rtrim(std::string& s)
+	{
+		if (s.empty()) return;
+		size_t i = s.size();
+		while (i && std::isspace(static_cast<unsigned char>(s[i - 1]))) --i;
+		s.erase(i);
+	}
+	inline void trim(std::string& s) { rtrim(s); ltrim(s); }
+
+	// Parse "[a, b, c (, d)]" into up to 4 floats
+	inline std::vector<float> ParseFloatArray(std::string s)
+	{
+		std::vector<float> out;
+		auto lb = s.find('[');
+		auto rb = s.find(']', lb == std::string::npos ? 0 : lb + 1);
+		if (lb == std::string::npos || rb == std::string::npos || rb <= lb + 1) return out;
+
+		std::string body = s.substr(lb + 1, rb - lb - 1);
+		// Replace commas with spaces to use stringstream easily
+		for (char& ch : body)
+		{
+			if (ch == ',') ch = ' ';
+		}
+		std::istringstream iss(body);
+		double v;
+		while (iss >> v)
+		{
+			out.push_back(static_cast<float>(v));
+			if (out.size() == 4) break;
+		}
+		return out;
+	}
+
+	// Load colors[0..255] from TOML without external libs.
+	// Expects blocks like:
+	// [[materials]]
+	// base_color = [r, g, b]  # or [r, g, b, a]
+	inline void LoadColorsFromToml(std::array<Color, Internals::MaterialCount>& outColors, const std::filesystem::path& tomlPath)
+	{
+		std::ifstream ifs(tomlPath);
+		if (!ifs.is_open()) return;
+
+		size_t currentIndex = static_cast<size_t>(-1);
+		std::string line;
+
+		while (std::getline(ifs, line))
+		{
+			// Strip comments
+			if (auto hash = line.find('#'); hash != std::string::npos)
+				line.erase(hash);
+
+			trim(line);
+			if (line.empty()) continue;
+
+			// New [[materials]] section: next material index
+			if (line.rfind("[[materials]]", 0) == 0)
+			{
+				size_t next = (currentIndex == static_cast<size_t>(-1)) ? 0 : currentIndex + 1;
+				if (next < Internals::MaterialCount) currentIndex = next;
+				else currentIndex = static_cast<size_t>(-1); // ignore overflow
+				continue;
+			}
+
+			// base_color line inside current material
+			if (currentIndex != static_cast<size_t>(-1))
+			{
+				// Loose check: line contains "base_color" and '['
+				if (line.find("base_color") != std::string::npos && line.find('[') != std::string::npos)
+				{
+					auto vals = ParseFloatArray(line);
+					if (vals.size() >= 3)
+					{
+						Color c = outColors[currentIndex]; // keep existing alpha by default
+						c.r = vals[0];
+						c.g = vals[1];
+						c.b = vals[2];
+						if (vals.size() >= 4) c.a = vals[3];
+						outColors[currentIndex] = c;
+					}
+				}
+			}
+		}
+	}
+
+	// Save colors[0..255] to TOML without external libs.
+	inline void SaveColorsToToml(const std::array<Color, Internals::MaterialCount>& colors, const std::filesystem::path& tomlPath)
+	{
+		std::ofstream os(tomlPath, std::ios::out | std::ios::trunc);
+		if (!os.is_open()) return;
+
+		os << "# Material color table (auto-generated)\n\n";
+		os << "# Each [[materials]] block corresponds to material index order (0..255)\n\n";
+
+		os << std::fixed << std::setprecision(4);
+		for (size_t i = 0; i < colors.size(); ++i) 
+		{
+			const Color& c = colors[i];
+			os << "[[materials]] # Material index " << i << "\n";
+			os << "base_color = [" << c.r << ", " << c.g << ", " << c.b;
+			if (std::fabs(c.a - 1.0f) > 1e-6f) os << ", " << c.a;
+			os << "]\n\n";
+		}
+	}
+
+} // namespace
+
+
+
 bool Volume::load(const std::string& filename)
 {
 	std::ifstream file(filename, std::ios::binary);
@@ -723,6 +854,10 @@ bool Volume::load(const std::string& filename)
 	}
 
 	setRootNodeIndex(rootNodeIndex);
+
+	const auto tomlPath = MakeTomlPath(filename);
+	LoadColorsFromToml(mMaterialColors, tomlPath);
+
 	computeOccupiedBounds();
 
 	return true;
@@ -740,6 +875,9 @@ void Volume::save(const std::string& filename)
 	file.write(reinterpret_cast<const char*>(&root), sizeof(root));
 	mDAG.write(file);
 	file.close();
+
+	const auto tomlPath = MakeTomlPath(filename);
+	SaveColorsToToml(mMaterialColors, tomlPath);
 }
 
 void Volume::computeOccupiedBounds()
@@ -829,7 +967,7 @@ void Volume::computeOccupiedBounds()
 		// 비어있음: IBounds의 기본(empty) 상태 그대로 반환
 		mOccupiedBounds = IBounds();
 	}
-	
+
 	mOccupiedBounds = acc;
 }
 

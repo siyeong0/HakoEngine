@@ -384,8 +384,6 @@ void MyClosestHitShader_RadianceRay_Casper(inout RadiancePayload rayPayload, in 
     localtion[attr.Face / 2] = attr.Face % 2 ? 1.0 : -1.0;
     float4 texDiffuse = l_DiffuseAtlasTexture.SampleLevel(g_SamplerClamp, normalize(localtion), 0);
     
-    texDiffuse = float4(1.0, 1.0, 1.0, 1.0); // Disable texture for debugging
-    
     //float4 texDepth = l_DepthAtlasTexture.SampleLevel(g_SamplerPoint, normalize(localtion), 0);
     //rayPayload.radiance = texDepth.xxx; // Visualize depth for debugging
     //return;
