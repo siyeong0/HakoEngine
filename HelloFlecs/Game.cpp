@@ -374,7 +374,7 @@ static ICasperObject* createCasperObject(IRenderer* pRenderer, const std::wstrin
 		casperBounds.Max.z - casperBounds.Min.z });
 
 	ICasperObject* pCasperObj = pRenderer->CreateCasperObject();
-	UMaterial mtl(nullptr, nullptr, nullptr, nullptr, nullptr, MATERIAL_TYPE_MATTE, false);
+	UMaterial mtl(nullptr, nullptr, nullptr, nullptr, nullptr, MATERIAL_TYPE_DEFAULT, false);
 	pCasperObj->BeginCreateCasper(1, mtl);
 	CasperAtlas atlas = {};
 	atlas.AtlasBounds = casperBounds;
@@ -872,9 +872,9 @@ bool Game::Initialize(
 				//Image::SaveToCubeMapDDS(L"./Resources/temp/glycon/casper_depth.dds", depthProjImages, /*bGenerateMips*/false, /*mipLevels*/0);
 
 				flecs::entity e = m_ECSWorld.entity()
-					.set<comp::Position>({ 15.0f, 0.0f, 12.0f })
+					.set<comp::Position>({ 5.0f, 0.0f, 3.0f })
 					.set<comp::Rotation>({ DegToRad(-90.0f), 0.0f, 0.0f })
-					.set<comp::Scale>({ 0.01f, 0.01f, 0.01f })
+					.set<comp::Scale>({ 0.005f, 0.005f, 0.005f })
 					.set<comp::Transform>({})
 					.set<comp::CasperRenderer>({ createCasperObject(m_pRenderer, L"./Resources/temp/glycon") });
 				m_Entities.emplace_back(e.id());

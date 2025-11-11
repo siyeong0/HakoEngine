@@ -64,6 +64,13 @@ void ObjectToUnit(in float3 objectPosition, out float3 unitPosition, out float3 
     unitPosition = (objectPosition - aabb.Min) * inverseExtent;
 }
 
+float3 UnitToObject(in float3 unitPosition)
+{
+    AABB aabb = l_AABBBuffer[PrimitiveIndex()];
+    float3 extent = aabb.Max - aabb.Min;
+    return aabb.Min + unitPosition * extent;
+}
+
 // Scale object-space ray direction into unit-space
 float3 UnitRayDirection()
 {
@@ -414,15 +421,52 @@ void MyIntersectionShader_Casper()
     projPos /= projPos.w;
     rayPayload.depth = saturate(projPos.z);
     
+    int axisP = attr.Face / 2;
+    int axisU = (axisP + 1) % 3;
+    int axisV = (axisP + 2) % 3;
+    
     float3 localtion = attr.UnitSpaceHitPosition * 2.0 - 1.0;
-    localtion[attr.Face / 2] = attr.Face % 2 ? 1.0 : -1.0;
+    localtion[axisP] = attr.Face % 2 ? 1.0 : -1.0;
     float4 texDiffuse = l_DiffuseAtlasTexture.SampleLevel(g_SamplerClamp, normalize(localtion), 0);
+    
+    uint atlasWidth, atlasHeight, atlasMipCount;
+    l_DepthAtlasTexture.GetDimensions(0, atlasWidth, atlasHeight, atlasMipCount);
+    
+    float ddim = atlasWidth >> 2; // Quarter pixel in UV space
+    
+    float3 loc0 = localtion;
+    loc0[axisU] -= 1.0 / ddim;
+    float3 loc1 = localtion;
+    loc1[axisU] += 1.0 / ddim;
+    float3 loc2 = localtion;
+    loc2[axisV] -= 1.0 / ddim;
+    float3 loc3 = localtion;
+    loc3[axisV] += 1.0 / ddim;
+    
+    float d0 = l_DepthAtlasTexture.SampleLevel(g_SamplerClamp, normalize(loc0), 0);
+    float d1 = l_DepthAtlasTexture.SampleLevel(g_SamplerClamp, normalize(loc1), 0);
+    float d2 = l_DepthAtlasTexture.SampleLevel(g_SamplerClamp, normalize(loc2), 0);
+    float d3 = l_DepthAtlasTexture.SampleLevel(g_SamplerClamp, normalize(loc3), 0);
+    
+    float3 unitPos0 = loc0 * 0.5 + 0.5;
+    unitPos0[axisP] = attr.Face % 2 ? d0 : (1.0 - d0);
+    float3 unitPos1 = loc1 * 0.5 + 0.5;
+    unitPos1[axisP] = attr.Face % 2 ? d1 : (1.0 - d1);
+    float3 unitPos2 = loc2 * 0.5 + 0.5;
+    unitPos2[axisP] = attr.Face % 2 ? d2 : (1.0 - d2);
+    float3 unitPos3 = loc3 * 0.5 + 0.5;
+    unitPos3[axisP] = attr.Face % 2 ? d3 : (1.0 - d3);
+
+    float3 vec1 = UnitToObject(unitPos1) - UnitToObject(unitPos0);
+    float3 vec2 = UnitToObject(unitPos3) - UnitToObject(unitPos2);
+    
+    float3 objectNormal = attr.Face % 2 ? normalize(cross(vec1, vec2)) : normalize(cross(vec2, vec1));
     
     //float4 texDepth = l_DepthAtlasTexture.SampleLevel(g_SamplerPoint, normalize(localtion), 0);
     //rayPayload.radiance = texDepth.xxx; // Visualize depth for debugging
     //return;
     
-    int zax = attr.Face / 2;
+    // int zax = axisP;
     //int uax = (zax + 1) % 3;
     //int vax = (zax + 2) % 3;
     
@@ -467,9 +511,12 @@ void MyIntersectionShader_Casper()
     //rayPayload.radiance = 0.5 * (objectNormal + 1.0);
     //return;
     
-    float3 objectNormal = 0.xxx;
-    objectNormal[zax] = attr.Face % 2 ? 1.0 : -1.0;
+    //float3 objectNormal = 0.xxx;
+    //objectNormal[axisP] = attr.Face % 2 ? 1.0 : -1.0;
     float3 surfaceNormal = normalize(mul(objectNormal, (float3x3) ObjectToWorld4x3()));
+    
+    //rayPayload.radiance = 0.5 * (surfaceNormal + 1.0);
+    //return;
     
     // Compute radiance
     BasicMaterial mtl = l_ProcGeomCB.Material;
