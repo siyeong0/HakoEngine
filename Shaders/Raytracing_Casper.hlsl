@@ -137,166 +137,207 @@ bool IsInsideGeometry(float3 unitMin, float3 unitMax, int mip)
 // =======================================================
 // Intersection Shader (unit-space DDA traversal)
 // =======================================================
+// -----------------------------------------------------------------------------
+// DXR Procedural AABB — Unit-space Voxel DDA Intersection
+//
+// High-level flow:
+// 1) Intersect ray with object-space AABB to get [tEnter, tExit].
+// 2) Convert the entry/exit points to unit space [0,1]^3 (axis-aligned).
+// 3) Initialize a 3D-DDA over a unit-space voxel grid (resolution = cube-map base).
+// 4) In a single loop:
+//      - Choose next cell boundary (smallest t-max among X/Y/Z).
+//      - Test the current cell for "inside" (custom IsInsideGeometry).
+//      - If inside: report hit with unit-space hit position and entry face.
+//      - Else: advance to the next cell along the chosen axis.
+//      - Stop if we step outside the grid or past the object-space exit t.
+// 5) If no cell is inside, return miss.
+//
+// Notes on tricky parts:
+// - Entry face for the very first cell is estimated from unitEnter (closest to 0 or 1).
+// - After the first step, the entry face is derived from the last stepped axis and ray sign.
+// - We evaluate "current cell" BEFORE stepping. This also handles the case where the
+//   entry cell is inside (no separate pre-loop check needed).
+// -----------------------------------------------------------------------------
 
 [shader("intersection")]
 void MyIntersectionShader_Casper()
 {
     const int MAX_STEPS = 2048;
-    
-    // Object-space entry / exit for the AABB
-    float tEnterObject = RayTEnterObj();
-    float tExitObject = RayTExitObj();
-    
-    if (tEnterObject >= tExitObject)
+
+    // -------------------------------------------------------------------------
+    // 1) AABB entry/exit in object space
+    // -------------------------------------------------------------------------
+    float objectTEnter = RayTEnterObj();
+    float objectTExit = RayTExitObj();
+
+    if (objectTEnter >= objectTExit)
     {
-        // No intersection with the AABB
-        return;
+        return; // Ray misses the AABB.
     }
 
-    float3 rayOriginObject = ObjectRayOrigin();
-    float3 rayDirectionObject = ObjectRayDirection();
+    float3 objRayOrigin = ObjectRayOrigin();
+    float3 objRayDir = ObjectRayDirection();
 
-    float3 objectEnter = rayOriginObject + tEnterObject * rayDirectionObject;
-    float3 objectExit = rayOriginObject + tExitObject * rayDirectionObject;
+    float3 objectEnterPos = objRayOrigin + objectTEnter * objRayDir;
+    float3 objectExitPos = objRayOrigin + objectTExit * objRayDir;
 
-    // Convert entry/exit points into unit-space
-    float3 unitEnter, inverseExtent0;
-    float3 unitExit, inverseExtent1;
-    ObjectToUnit(objectEnter, unitEnter, inverseExtent0);
-    ObjectToUnit(objectExit, unitExit, inverseExtent1);
+    // -------------------------------------------------------------------------
+    // 2) Map entry/exit to unit space [0,1]^3
+    //    ObjectToUnit returns the unit-space position and (optionally) inverse extents.
+    // -------------------------------------------------------------------------
+    float3 unitEnterPos, invExtentAtEnter;
+    float3 unitExitPos, invExtentAtExit;
+    ObjectToUnit(objectEnterPos, unitEnterPos, invExtentAtEnter);
+    ObjectToUnit(objectExitPos, unitExitPos, invExtentAtExit);
 
-    float3 unitRayOrigin = unitEnter;
+    float3 unitRayOrigin = unitEnterPos;
     float3 unitRayDirection = UnitRayDirection();
-    float3 unitRayDirectionAbs = abs(unitRayDirection);
+    float3 unitRayDirAbs = abs(unitRayDirection);
 
-    // Use base cube-map resolution as the voxel grid resolution
-    uint textureWidth, textureHeight, mipCount;
-    l_DepthAtlasTexture.GetDimensions(0, textureWidth, textureHeight, mipCount);
-    uint gridResolution = textureWidth;
-    int mipToTest = 0; // Fine level only in this version
-    gridResolution = max(gridResolution >> mipToTest, 1);
+    // -------------------------------------------------------------------------
+    // 3) Grid resolution = base cube-map width (mip 0)
+    // -------------------------------------------------------------------------
+    uint atlasWidth, atlasHeight, atlasMipCount;
+    l_DepthAtlasTexture.GetDimensions(0, atlasWidth, atlasHeight, atlasMipCount);
 
-    // Slightly nudge start point inside the AABB to avoid boundary issues
+    int mipLevelToTest = 0; // Fine level in this version
+    uint gridResolution = max(atlasWidth >> mipLevelToTest, 1);
+
+    // Push the start slightly inward to avoid boundary ambiguity.
     unitRayOrigin += unitRayDirection * EPSILON;
 
-    // Current voxel index in unit-space grid
-    int3 cellIndex = int3(
-        clamp(
-            (int3) floor(unitRayOrigin * gridResolution),
-            int3(0, 0, 0),
-            int3(gridResolution - 1, gridResolution - 1, gridResolution - 1)
-        )
-    );
-    
+    // -------------------------------------------------------------------------
+    // 4) DDA initialization in unit space
+    // -------------------------------------------------------------------------
+    int3 cellIndex = clamp((int3) floor(unitRayOrigin * gridResolution), int3(0, 0, 0), int3(gridResolution - 1, gridResolution - 1, gridResolution - 1));
+
     int3 cellStep = int3(
         (unitRayDirection.x > 0.0f) ? 1 : -1,
         (unitRayDirection.y > 0.0f) ? 1 : -1,
-        (unitRayDirection.z > 0.0f) ? 1 : -1
-    );
+        (unitRayDirection.z > 0.0f) ? 1 : -1);
 
-    float3 cellMinUnit = (float3(cellIndex)) / gridResolution;
-    float3 cellMaxUnit = (float3(cellIndex) + 1.0) / gridResolution;
+    float3 currentCellUnitMin = (float3(cellIndex)) / gridResolution;
+    float3 currentCellUnitMax = (float3(cellIndex) + 1.0) / gridResolution;
 
-    float txMax = (unitRayDirection.x > 0.0f)
-        ? (cellMaxUnit.x - unitRayOrigin.x) / max(unitRayDirection.x, 1e-30f)
-        : (cellMinUnit.x - unitRayOrigin.x) / min(unitRayDirection.x, -1e-30f);
+    // tMax per axis: parametric unit-space "t" when the ray hits the next X/Y/Z boundary of the current cell.
+    float tMaxX = (unitRayDirection.x > 0.0f)
+        ? (currentCellUnitMax.x - unitRayOrigin.x) / max(unitRayDirection.x, 1e-30f)
+        : (currentCellUnitMin.x - unitRayOrigin.x) / min(unitRayDirection.x, -1e-30f);
 
-    float tyMax = (unitRayDirection.y > 0.0f)
-        ? (cellMaxUnit.y - unitRayOrigin.y) / max(unitRayDirection.y, 1e-30f)
-        : (cellMinUnit.y - unitRayOrigin.y) / min(unitRayDirection.y, -1e-30f);
+    float tMaxY = (unitRayDirection.y > 0.0f)
+        ? (currentCellUnitMax.y - unitRayOrigin.y) / max(unitRayDirection.y, 1e-30f)
+        : (currentCellUnitMin.y - unitRayOrigin.y) / min(unitRayDirection.y, -1e-30f);
 
-    float tzMax = (unitRayDirection.z > 0.0f)
-        ? (cellMaxUnit.z - unitRayOrigin.z) / max(unitRayDirection.z, 1e-30f)
-        : (cellMinUnit.z - unitRayOrigin.z) / min(unitRayDirection.z, -1e-30f);
+    float tMaxZ = (unitRayDirection.z > 0.0f)
+        ? (currentCellUnitMax.z - unitRayOrigin.z) / max(unitRayDirection.z, 1e-30f)
+        : (currentCellUnitMin.z - unitRayOrigin.z) / min(unitRayDirection.z, -1e-30f);
 
-    float3 tMaxPerAxis = float3(txMax, tyMax, tzMax);
+    float3 tMaxPerAxis = float3(tMaxX, tMaxY, tMaxZ);
 
-    float3 tDeltaPerAxis = abs(
-        (1.0 / gridResolution) /
-        max(unitRayDirectionAbs, float3(1e-30f, 1e-30f, 1e-30f))
-    );
+    // tDelta per axis: parametric distance to cross one full cell along that axis.
+    float3 tDeltaPerAxis = abs((1.0 / gridResolution) / max(unitRayDirAbs, 1e-30f.xxx));
 
-    float tUnit = 0.0f;
+    // tAlongUnitRay is the current parametric t in unit space for the active cell start.
+    float tAlongUnitRay = 0.0f;
 
-    // Check the initial cell immediately (instant-hit case)
-    {
-        float3 cellUnitMin = (float3(cellIndex)) / gridResolution;
-        float3 cellUnitMax = (float3(cellIndex) + 1.0) / gridResolution;
+    // Used to determine the face on which we entered the hit cell.
+    // -1 = unknown (first iteration); afterwards 0/1/2 = X/Y/Z last stepped axis.
+    int lastStepAxis = -1;
 
-        if (IsInsideGeometry(cellUnitMin, cellUnitMax, mipToTest))
-        {
-            // Estimate which face we entered from, based on how close unitEnter is to 0/1 on each axis
-            float3 distanceToMin = abs(unitEnter - 0.0);
-            float3 distanceToMax = abs(1.0 - unitEnter);
-
-            int entryAxis = 0;
-            float bestDistance = 1e9;
-
-            float candidate = min(distanceToMin.x, distanceToMax.x);
-            if (candidate < bestDistance)
-            {
-                bestDistance = candidate;
-                entryAxis = 0;
-            }
-
-            candidate = min(distanceToMin.y, distanceToMax.y);
-            if (candidate < bestDistance)
-            {
-                bestDistance = candidate;
-                entryAxis = 1;
-            }
-
-            candidate = min(distanceToMin.z, distanceToMax.z);
-            if (candidate < bestDistance)
-            {
-                bestDistance = candidate;
-                entryAxis = 2;
-            }
-
-            MyCasperIntersectionAttributes attributes;
-            attributes.UnitSpaceHitPosition = unitRayOrigin;
-            attributes.Face = entryAxis * 2 + ((unitRayDirection[entryAxis] > 0.0f) ? 0 : 1);
-
-            float tObjectHit = UnitTToObjectT(tUnit, unitRayOrigin, unitRayDirection);
-            ReportHit(tObjectHit, /*hitKind*/0, attributes);
-            return;
-        }
-    }
-
-    int lastStepAxis = 2;
-
-    // Main DDA traversal in unit-space
+    // -------------------------------------------------------------------------
+    // 5) Single-loop DDA: pick next boundary -> test current cell -> step
+    // -------------------------------------------------------------------------
     [loop]
     for (int stepIndex = 0; stepIndex < MAX_STEPS; ++stepIndex)
     {
-        uint stepAxis = 0;
-        float tNext = tMaxPerAxis.x;
+        // 5.1) Determine next boundary among X/Y/Z
+        uint axisToStep = 0;
+        float tAtNextBoundary = tMaxPerAxis.x;
 
-        if (tMaxPerAxis.y < tNext)
+        if (tMaxPerAxis.y < tAtNextBoundary)
         {
-            tNext = tMaxPerAxis.y;
-            stepAxis = 1;
+            tAtNextBoundary = tMaxPerAxis.y;
+            axisToStep = 1;
         }
-        if (tMaxPerAxis.z < tNext)
+        if (tMaxPerAxis.z < tAtNextBoundary)
         {
-            tNext = tMaxPerAxis.z;
-            stepAxis = 2;
+            tAtNextBoundary = tMaxPerAxis.z;
+            axisToStep = 2;
         }
 
-        tUnit = tNext;
+        // 5.2) Test current cell BEFORE stepping
+        {
+            float3 cellUnitMin = (float3(cellIndex)) / gridResolution;
+            float3 cellUnitMax = (float3(cellIndex) + 1.0) / gridResolution;
 
-        float tObjectCandidate = UnitTToObjectT(tUnit, unitRayOrigin, unitRayDirection);
-        if (tObjectCandidate > tExitObject + 1e-6f)
+            if (IsInsideGeometry(cellUnitMin, cellUnitMax, mipLevelToTest))
+            {
+                float3 unitHitPos = unitRayOrigin + unitRayDirection * tAlongUnitRay;
+
+                // Determine entry face index.
+                // First iteration: estimate from unitEnterPos (closest to 0 or 1).
+                // Later: use last stepped axis and the sign of unitRayDirection.
+                int faceIndex = 0;
+                if (lastStepAxis < 0)
+                {
+                    float3 distToMin = abs(unitEnterPos - 0.0);
+                    float3 distToMax = abs(1.0 - unitEnterPos);
+
+                    int entryAxis = 0;
+                    float best = 1e9;
+
+                    float candidate = min(distToMin.x, distToMax.x);
+                    if (candidate < best)
+                    {
+                        best = candidate;
+                        entryAxis = 0;
+                    }
+
+                    candidate = min(distToMin.y, distToMax.y);
+                    if (candidate < best)
+                    {
+                        best = candidate;
+                        entryAxis = 1;
+                    }
+
+                    candidate = min(distToMin.z, distToMax.z);
+                    if (candidate < best)
+                    {
+                        best = candidate;
+                        entryAxis = 2;
+                    }
+
+                    faceIndex = entryAxis * 2 + ((unitRayDirection[entryAxis] > 0.0f) ? 0 : 1);
+                }
+                else
+                {
+                    faceIndex = (lastStepAxis * 2) + ((unitRayDirection[lastStepAxis] > 0.0f) ? 0 : 1);
+                }
+
+                MyCasperIntersectionAttributes attr;
+                attr.UnitSpaceHitPosition = unitHitPos;
+                attr.Face = faceIndex;
+
+                float objectTHit = UnitTToObjectT(tAlongUnitRay, unitRayOrigin, unitRayDirection);
+                ReportHit(objectTHit, /*hitKind*/0, attr);
+                return;
+            }
+        }
+
+        // 5.3) If the next boundary would exceed object-space exit, stop (miss).
+        float objectTCandidate = UnitTToObjectT(tAtNextBoundary, unitRayOrigin, unitRayDirection);
+        if (objectTCandidate > objectTExit + 1e-6f)
         {
             break;
         }
 
-        if (stepAxis == 0)
+        // 5.4) Advance to the neighbor cell along the chosen axis
+        if (axisToStep == 0)
         {
             cellIndex.x += cellStep.x;
             tMaxPerAxis.x += tDeltaPerAxis.x;
         }
-        else if (stepAxis == 1)
+        else if (axisToStep == 1)
         {
             cellIndex.y += cellStep.y;
             tMaxPerAxis.y += tDeltaPerAxis.y;
@@ -307,37 +348,21 @@ void MyIntersectionShader_Casper()
             tMaxPerAxis.z += tDeltaPerAxis.z;
         }
 
-        lastStepAxis = stepAxis;
+        tAlongUnitRay = tAtNextBoundary;
+        lastStepAxis = (int) axisToStep;
 
+        // 5.5) Stop if we left the unit grid
         if (any(cellIndex < int3(0, 0, 0)) ||
             any(cellIndex > int3(gridResolution - 1, gridResolution - 1, gridResolution - 1)))
         {
             break;
         }
-
-        float3 cellUnitMin = (float3(cellIndex)) / gridResolution;
-        float3 cellUnitMax = (float3(cellIndex) + 1.0) / gridResolution;
-
-        if (IsInsideGeometry(cellUnitMin, cellUnitMax, mipToTest))
-        {
-            float3 unitHitPosition = unitRayOrigin + unitRayDirection * tUnit;
-
-            MyCasperIntersectionAttributes attributes;
-            attributes.UnitSpaceHitPosition = unitHitPosition;
-
-            int faceBase = lastStepAxis * 2;
-            int faceIndex = faceBase + ((unitRayDirection[lastStepAxis] > 0.0f) ? 0 : 1);
-            attributes.Face = faceIndex;
-
-            float tObjectHit = UnitTToObjectT(tUnit, unitRayOrigin, unitRayDirection);
-            ReportHit(tObjectHit, /*hitKind*/0, attributes);
-            return;
-        }
     }
 
-    // No hit
+    // No hit detected in any traversed cell.
     return;
 }
+
 
 //[shader("intersection")]
 //void MyIntersectionShader_Casper()
