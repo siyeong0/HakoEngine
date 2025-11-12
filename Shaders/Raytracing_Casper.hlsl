@@ -56,12 +56,12 @@ float RayTExitObj()
 // --------------------------------------------------
 // Object-space <-> Unit-space helpers
 // --------------------------------------------------
-void ObjectToUnit(in float3 objectPosition, out float3 unitPosition, out float3 inverseExtent)
+float3 ObjectToUnit(in float3 objectPosition)
 {
     AABB aabb = l_AABBBuffer[PrimitiveIndex()];
     float3 extent = aabb.Max - aabb.Min;
-    inverseExtent = 1.0 / extent;
-    unitPosition = (objectPosition - aabb.Min) * inverseExtent;
+    float3 inverseExtent = 1.0 / extent;
+    return (objectPosition - aabb.Min) * inverseExtent;
 }
 
 float3 UnitToObject(in float3 unitPosition)
@@ -80,7 +80,7 @@ float3 UnitRayDirection()
 }
 
 // Convert a unit-space ray parameter tUnit back to object-space t
-float UnitTToObjectT(float tUnit, float3 unitRayOrigin, float3 unitRayDirection)
+float UnitTToObjectT(float tUnit, in float3 unitRayOrigin, in float3 unitRayDirection)
 {
     AABB aabb = l_AABBBuffer[PrimitiveIndex()];
     float3 extent = aabb.Max - aabb.Min;
@@ -144,7 +144,7 @@ bool IsInsideGeometry(float3 unitMin, float3 unitMax, int mip)
 // Determine the entry face index (0:+X,1:-X,2:+Y,3:-Y,4:+Z,5:-Z)
 // First iteration: estimate from unitEnterPos (closest to 0 or 1).
 // Later: use last stepped axis and the sign of unitRayDirection.
-int DetermineEntryFace(float3 unitEnterPos, float3 unitRayDirection, int lastStepAxis)
+int DetermineEntryFace(in float3 unitEnterPos, in float3 unitRayDirection, int lastStepAxis)
 {
     int outFaceIndex = 0;
     if (lastStepAxis < 0)
@@ -237,10 +237,8 @@ void MyIntersectionShader_Casper()
     // 2) Map entry/exit to unit space [0,1]^3
     //    ObjectToUnit returns the unit-space position and (optionally) inverse extents.
     // -------------------------------------------------------------------------
-    float3 unitEnterPos, invExtentAtEnter;
-    float3 unitExitPos, invExtentAtExit;
-    ObjectToUnit(objectEnterPos, unitEnterPos, invExtentAtEnter);
-    ObjectToUnit(objectExitPos, unitExitPos, invExtentAtExit);
+    float3 unitEnterPos = ObjectToUnit(objectEnterPos);
+    float3 unitExitPos = ObjectToUnit(objectExitPos);
 
     float3 unitRayOrigin = unitEnterPos;
     float3 unitRayDirection = UnitRayDirection();
