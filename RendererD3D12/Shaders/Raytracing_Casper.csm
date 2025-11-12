@@ -1,4 +1,4 @@
-; shader hash: 998556c4678cbb54a7d67ac6687ec50e
+; shader hash: 04e0470800d1189078a71a0cfa221487
 ;
 ; Buffer Definitions:
 ;
@@ -648,31 +648,31 @@ define void @"\01?MyClosestHitShader_RadianceRay_Casper@@YAXURadiancePayload@@UM
   %60 = srem i32 %59, 3
   %61 = add nsw i32 %58, 2
   %62 = srem i32 %61, 3
-  %63 = getelementptr inbounds %struct.MyCasperIntersectionAttributes, %struct.MyCasperIntersectionAttributes* %attr, i32 0, i32 0
-  %64 = load <3 x float>, <3 x float>* %63, align 4, !tbaa !53
-  %65 = extractelement <3 x float> %64, i32 0
-  %66 = fmul fast float %65, 2.000000e+00
-  %67 = extractelement <3 x float> %64, i32 1
+  %63 = and i32 %57, 1
+  %64 = icmp ne i32 %63, 0
+  %65 = getelementptr inbounds %struct.MyCasperIntersectionAttributes, %struct.MyCasperIntersectionAttributes* %attr, i32 0, i32 0
+  %66 = load <3 x float>, <3 x float>* %65, align 4, !tbaa !53
+  %67 = extractelement <3 x float> %66, i32 0
   %68 = fmul fast float %67, 2.000000e+00
-  %69 = extractelement <3 x float> %64, i32 2
+  %69 = extractelement <3 x float> %66, i32 1
   %70 = fmul fast float %69, 2.000000e+00
-  %71 = fadd fast float %66, -1.000000e+00
-  %72 = fadd fast float %68, -1.000000e+00
-  %73 = fadd fast float %70, -1.000000e+00
-  %74 = getelementptr inbounds [3 x float], [3 x float]* %11, i32 0, i32 0
-  store float %71, float* %74, align 4
-  %75 = getelementptr inbounds [3 x float], [3 x float]* %11, i32 0, i32 1
-  store float %72, float* %75, align 4
-  %76 = getelementptr inbounds [3 x float], [3 x float]* %11, i32 0, i32 2
+  %71 = extractelement <3 x float> %66, i32 2
+  %72 = fmul fast float %71, 2.000000e+00
+  %73 = fadd fast float %68, -1.000000e+00
+  %74 = fadd fast float %70, -1.000000e+00
+  %75 = fadd fast float %72, -1.000000e+00
+  %76 = getelementptr inbounds [3 x float], [3 x float]* %11, i32 0, i32 0
   store float %73, float* %76, align 4
-  %77 = and i32 %57, 1
-  %78 = icmp ne i32 %77, 0
-  %79 = select i1 %78, float 1.000000e+00, float -1.000000e+00
+  %77 = getelementptr inbounds [3 x float], [3 x float]* %11, i32 0, i32 1
+  store float %74, float* %77, align 4
+  %78 = getelementptr inbounds [3 x float], [3 x float]* %11, i32 0, i32 2
+  store float %75, float* %78, align 4
+  %79 = select i1 %64, float 1.000000e+00, float -1.000000e+00
   %80 = getelementptr [3 x float], [3 x float]* %11, i32 0, i32 %58
   store float %79, float* %80, align 4, !tbaa !40
-  %81 = load float, float* %74, align 4
-  %82 = load float, float* %75, align 4
-  %83 = load float, float* %76, align 4
+  %81 = load float, float* %76, align 4
+  %82 = load float, float* %77, align 4
+  %83 = load float, float* %78, align 4
   %84 = call float @dx.op.dot3.f32(i32 55, float %81, float %82, float %83, float %81, float %82, float %83)  ; Dot3(ax,ay,az,bx,by,bz)
   %85 = call float @dx.op.unary.f32(i32 25, float %84)  ; Rsqrt(value)
   %86 = fmul fast float %85, %81
@@ -783,7 +783,7 @@ define void @"\01?MyClosestHitShader_RadianceRay_Casper@@YAXURadiancePayload@@UM
   %173 = getelementptr inbounds [3 x float], [3 x float]* %16, i32 0, i32 2
   store float %170, float* %173, align 4
   %174 = fsub fast float 1.000000e+00, %134
-  %175 = select i1 %78, float %134, float %174
+  %175 = select i1 %64, float %174, float %134
   %176 = getelementptr [3 x float], [3 x float]* %16, i32 0, i32 %58
   store float %175, float* %176, align 4, !tbaa !40
   %177 = fmul fast float %135, 5.000000e-01
@@ -799,7 +799,7 @@ define void @"\01?MyClosestHitShader_RadianceRay_Casper@@YAXURadiancePayload@@UM
   %185 = getelementptr inbounds [3 x float], [3 x float]* %17, i32 0, i32 2
   store float %182, float* %185, align 4
   %186 = fsub fast float 1.000000e+00, %144
-  %187 = select i1 %78, float %144, float %186
+  %187 = select i1 %64, float %186, float %144
   %188 = getelementptr [3 x float], [3 x float]* %17, i32 0, i32 %58
   store float %187, float* %188, align 4, !tbaa !40
   %189 = fmul fast float %145, 5.000000e-01
@@ -815,7 +815,7 @@ define void @"\01?MyClosestHitShader_RadianceRay_Casper@@YAXURadiancePayload@@UM
   %197 = getelementptr inbounds [3 x float], [3 x float]* %18, i32 0, i32 2
   store float %194, float* %197, align 4
   %198 = fsub fast float 1.000000e+00, %154
-  %199 = select i1 %78, float %154, float %198
+  %199 = select i1 %64, float %198, float %154
   %200 = getelementptr [3 x float], [3 x float]* %18, i32 0, i32 %58
   store float %199, float* %200, align 4, !tbaa !40
   %201 = fmul fast float %155, 5.000000e-01
@@ -831,7 +831,7 @@ define void @"\01?MyClosestHitShader_RadianceRay_Casper@@YAXURadiancePayload@@UM
   %209 = getelementptr inbounds [3 x float], [3 x float]* %19, i32 0, i32 2
   store float %206, float* %209, align 4
   %210 = fsub fast float 1.000000e+00, %164
-  %211 = select i1 %78, float %164, float %210
+  %211 = select i1 %64, float %210, float %164
   %212 = getelementptr [3 x float], [3 x float]* %19, i32 0, i32 %58
   store float %211, float* %212, align 4, !tbaa !40
   %213 = load float, float* %183, align 4
@@ -871,552 +871,551 @@ define void @"\01?MyClosestHitShader_RadianceRay_Casper@@YAXURadiancePayload@@UM
   %247 = fmul fast float %227, %246
   %248 = fsub fast float %240, %243
   %249 = fmul fast float %228, %248
-  %250 = icmp eq i32 %77, 0
-  br i1 %250, label %261, label %251
+  br i1 %64, label %250, label %260
 
-; <label>:251                                     ; preds = %0
-  %252 = fmul fast float %249, %235
-  %253 = fmul fast float %247, %237
-  %254 = fsub fast float %252, %253
-  %255 = fmul fast float %245, %237
-  %256 = fmul fast float %249, %233
-  %257 = fsub fast float %255, %256
-  %258 = fmul fast float %247, %233
-  %259 = fmul fast float %245, %235
-  %260 = fsub fast float %258, %259
-  br label %271
+; <label>:250                                     ; preds = %0
+  %251 = fmul fast float %249, %235
+  %252 = fmul fast float %247, %237
+  %253 = fsub fast float %251, %252
+  %254 = fmul fast float %245, %237
+  %255 = fmul fast float %249, %233
+  %256 = fsub fast float %254, %255
+  %257 = fmul fast float %247, %233
+  %258 = fmul fast float %245, %235
+  %259 = fsub fast float %257, %258
+  br label %270
 
-; <label>:261                                     ; preds = %0
-  %262 = fmul fast float %247, %237
-  %263 = fmul fast float %249, %235
-  %264 = fsub fast float %262, %263
-  %265 = fmul fast float %249, %233
-  %266 = fmul fast float %245, %237
-  %267 = fsub fast float %265, %266
-  %268 = fmul fast float %245, %235
-  %269 = fmul fast float %247, %233
-  %270 = fsub fast float %268, %269
-  br label %271
+; <label>:260                                     ; preds = %0
+  %261 = fmul fast float %247, %237
+  %262 = fmul fast float %249, %235
+  %263 = fsub fast float %261, %262
+  %264 = fmul fast float %249, %233
+  %265 = fmul fast float %245, %237
+  %266 = fsub fast float %264, %265
+  %267 = fmul fast float %245, %235
+  %268 = fmul fast float %247, %233
+  %269 = fsub fast float %267, %268
+  br label %270
 
-; <label>:271                                     ; preds = %261, %251
-  %272 = phi float [ %254, %251 ], [ %264, %261 ]
-  %273 = phi float [ %257, %251 ], [ %267, %261 ]
-  %274 = phi float [ %260, %251 ], [ %270, %261 ]
-  %275 = call float @dx.op.dot3.f32(i32 55, float %272, float %273, float %274, float %272, float %273, float %274)  ; Dot3(ax,ay,az,bx,by,bz)
-  %276 = call float @dx.op.unary.f32(i32 25, float %275)  ; Rsqrt(value)
-  %277 = fmul fast float %276, %272
-  %278 = fmul fast float %276, %273
-  %279 = fmul fast float %276, %274
-  %280 = call float @dx.op.objectToWorld.f32(i32 151, i32 0, i8 0)  ; ObjectToWorld(row,col)
-  %281 = call float @dx.op.objectToWorld.f32(i32 151, i32 1, i8 0)  ; ObjectToWorld(row,col)
-  %282 = call float @dx.op.objectToWorld.f32(i32 151, i32 2, i8 0)  ; ObjectToWorld(row,col)
-  %283 = call float @dx.op.objectToWorld.f32(i32 151, i32 0, i8 1)  ; ObjectToWorld(row,col)
-  %284 = call float @dx.op.objectToWorld.f32(i32 151, i32 1, i8 1)  ; ObjectToWorld(row,col)
-  %285 = call float @dx.op.objectToWorld.f32(i32 151, i32 2, i8 1)  ; ObjectToWorld(row,col)
-  %286 = call float @dx.op.objectToWorld.f32(i32 151, i32 0, i8 2)  ; ObjectToWorld(row,col)
-  %287 = call float @dx.op.objectToWorld.f32(i32 151, i32 1, i8 2)  ; ObjectToWorld(row,col)
-  %288 = call float @dx.op.objectToWorld.f32(i32 151, i32 2, i8 2)  ; ObjectToWorld(row,col)
-  %289 = fmul fast float %277, %280
-  %290 = call float @dx.op.tertiary.f32(i32 46, float %278, float %283, float %289)  ; FMad(a,b,c)
-  %291 = call float @dx.op.tertiary.f32(i32 46, float %279, float %286, float %290)  ; FMad(a,b,c)
-  %292 = fmul fast float %281, %277
-  %293 = call float @dx.op.tertiary.f32(i32 46, float %278, float %284, float %292)  ; FMad(a,b,c)
-  %294 = call float @dx.op.tertiary.f32(i32 46, float %279, float %287, float %293)  ; FMad(a,b,c)
-  %295 = fmul fast float %282, %277
-  %296 = call float @dx.op.tertiary.f32(i32 46, float %278, float %285, float %295)  ; FMad(a,b,c)
-  %297 = call float @dx.op.tertiary.f32(i32 46, float %279, float %288, float %296)  ; FMad(a,b,c)
-  %298 = call float @dx.op.dot3.f32(i32 55, float %291, float %294, float %297, float %291, float %294, float %297)  ; Dot3(ax,ay,az,bx,by,bz)
-  %299 = call float @dx.op.unary.f32(i32 25, float %298)  ; Rsqrt(value)
-  %300 = fmul fast float %299, %291
-  %301 = fmul fast float %299, %294
-  %302 = fmul fast float %299, %297
-  %303 = call %dx.types.CBufRet.f32 @dx.op.cbufferLoadLegacy.f32(i32 59, %dx.types.Handle %20, i32 0)  ; CBufferLoadLegacy(handle,regIndex)
-  %304 = extractvalue %dx.types.CBufRet.f32 %303, 0
-  %305 = extractvalue %dx.types.CBufRet.f32 %303, 1
-  %306 = extractvalue %dx.types.CBufRet.f32 %303, 2
-  %307 = fmul fast float %304, %92
-  %308 = fmul fast float %305, %93
-  %309 = fmul fast float %306, %94
-  %310 = call %dx.types.CBufRet.f32 @dx.op.cbufferLoadLegacy.f32(i32 59, %dx.types.Handle %20, i32 2)  ; CBufferLoadLegacy(handle,regIndex)
-  %311 = extractvalue %dx.types.CBufRet.f32 %310, 0
-  %312 = extractvalue %dx.types.CBufRet.f32 %310, 1
-  %313 = call float @dx.op.unary.f32(i32 7, float %312)  ; Saturate(value)
-  %314 = call float @dx.op.binary.f32(i32 35, float 0x3FA47AE140000000, float %313)  ; FMax(a,b)
-  %315 = fsub fast float 1.000000e+00, %311
-  %316 = fmul fast float %315, %307
-  %317 = fmul fast float %315, %308
-  %318 = fmul fast float %315, %309
-  %319 = call %dx.types.CBufRet.f32 @dx.op.cbufferLoadLegacy.f32(i32 59, %dx.types.Handle %20, i32 1)  ; CBufferLoadLegacy(handle,regIndex)
-  %320 = extractvalue %dx.types.CBufRet.f32 %319, 0
-  %321 = extractvalue %dx.types.CBufRet.f32 %319, 1
-  %322 = extractvalue %dx.types.CBufRet.f32 %319, 2
+; <label>:270                                     ; preds = %260, %250
+  %271 = phi float [ %253, %250 ], [ %263, %260 ]
+  %272 = phi float [ %256, %250 ], [ %266, %260 ]
+  %273 = phi float [ %259, %250 ], [ %269, %260 ]
+  %274 = call float @dx.op.dot3.f32(i32 55, float %271, float %272, float %273, float %271, float %272, float %273)  ; Dot3(ax,ay,az,bx,by,bz)
+  %275 = call float @dx.op.unary.f32(i32 25, float %274)  ; Rsqrt(value)
+  %276 = fmul fast float %275, %271
+  %277 = fmul fast float %275, %272
+  %278 = fmul fast float %275, %273
+  %279 = call float @dx.op.objectToWorld.f32(i32 151, i32 0, i8 0)  ; ObjectToWorld(row,col)
+  %280 = call float @dx.op.objectToWorld.f32(i32 151, i32 1, i8 0)  ; ObjectToWorld(row,col)
+  %281 = call float @dx.op.objectToWorld.f32(i32 151, i32 2, i8 0)  ; ObjectToWorld(row,col)
+  %282 = call float @dx.op.objectToWorld.f32(i32 151, i32 0, i8 1)  ; ObjectToWorld(row,col)
+  %283 = call float @dx.op.objectToWorld.f32(i32 151, i32 1, i8 1)  ; ObjectToWorld(row,col)
+  %284 = call float @dx.op.objectToWorld.f32(i32 151, i32 2, i8 1)  ; ObjectToWorld(row,col)
+  %285 = call float @dx.op.objectToWorld.f32(i32 151, i32 0, i8 2)  ; ObjectToWorld(row,col)
+  %286 = call float @dx.op.objectToWorld.f32(i32 151, i32 1, i8 2)  ; ObjectToWorld(row,col)
+  %287 = call float @dx.op.objectToWorld.f32(i32 151, i32 2, i8 2)  ; ObjectToWorld(row,col)
+  %288 = fmul fast float %276, %279
+  %289 = call float @dx.op.tertiary.f32(i32 46, float %277, float %282, float %288)  ; FMad(a,b,c)
+  %290 = call float @dx.op.tertiary.f32(i32 46, float %278, float %285, float %289)  ; FMad(a,b,c)
+  %291 = fmul fast float %280, %276
+  %292 = call float @dx.op.tertiary.f32(i32 46, float %277, float %283, float %291)  ; FMad(a,b,c)
+  %293 = call float @dx.op.tertiary.f32(i32 46, float %278, float %286, float %292)  ; FMad(a,b,c)
+  %294 = fmul fast float %281, %276
+  %295 = call float @dx.op.tertiary.f32(i32 46, float %277, float %284, float %294)  ; FMad(a,b,c)
+  %296 = call float @dx.op.tertiary.f32(i32 46, float %278, float %287, float %295)  ; FMad(a,b,c)
+  %297 = call float @dx.op.dot3.f32(i32 55, float %290, float %293, float %296, float %290, float %293, float %296)  ; Dot3(ax,ay,az,bx,by,bz)
+  %298 = call float @dx.op.unary.f32(i32 25, float %297)  ; Rsqrt(value)
+  %299 = fmul fast float %298, %290
+  %300 = fmul fast float %298, %293
+  %301 = fmul fast float %298, %296
+  %302 = call %dx.types.CBufRet.f32 @dx.op.cbufferLoadLegacy.f32(i32 59, %dx.types.Handle %20, i32 0)  ; CBufferLoadLegacy(handle,regIndex)
+  %303 = extractvalue %dx.types.CBufRet.f32 %302, 0
+  %304 = extractvalue %dx.types.CBufRet.f32 %302, 1
+  %305 = extractvalue %dx.types.CBufRet.f32 %302, 2
+  %306 = fmul fast float %303, %92
+  %307 = fmul fast float %304, %93
+  %308 = fmul fast float %305, %94
+  %309 = call %dx.types.CBufRet.f32 @dx.op.cbufferLoadLegacy.f32(i32 59, %dx.types.Handle %20, i32 2)  ; CBufferLoadLegacy(handle,regIndex)
+  %310 = extractvalue %dx.types.CBufRet.f32 %309, 0
+  %311 = extractvalue %dx.types.CBufRet.f32 %309, 1
+  %312 = call float @dx.op.unary.f32(i32 7, float %311)  ; Saturate(value)
+  %313 = call float @dx.op.binary.f32(i32 35, float 0x3FA47AE140000000, float %312)  ; FMax(a,b)
+  %314 = fsub fast float 1.000000e+00, %310
+  %315 = fmul fast float %314, %306
+  %316 = fmul fast float %314, %307
+  %317 = fmul fast float %314, %308
+  %318 = call %dx.types.CBufRet.f32 @dx.op.cbufferLoadLegacy.f32(i32 59, %dx.types.Handle %20, i32 1)  ; CBufferLoadLegacy(handle,regIndex)
+  %319 = extractvalue %dx.types.CBufRet.f32 %318, 0
+  %320 = extractvalue %dx.types.CBufRet.f32 %318, 1
+  %321 = extractvalue %dx.types.CBufRet.f32 %318, 2
+  %322 = fsub fast float %306, %319
   %323 = fsub fast float %307, %320
   %324 = fsub fast float %308, %321
-  %325 = fsub fast float %309, %322
-  %326 = fmul fast float %323, %311
-  %327 = fmul fast float %324, %311
-  %328 = fmul fast float %325, %311
+  %325 = fmul fast float %322, %310
+  %326 = fmul fast float %323, %310
+  %327 = fmul fast float %324, %310
+  %328 = fadd fast float %325, %319
   %329 = fadd fast float %326, %320
   %330 = fadd fast float %327, %321
-  %331 = fadd fast float %328, %322
-  %332 = extractvalue %dx.types.CBufRet.f32 %319, 3
-  %333 = fmul fast float %329, %332
-  %334 = fmul fast float %330, %332
-  %335 = fmul fast float %331, %332
+  %331 = extractvalue %dx.types.CBufRet.f32 %318, 3
+  %332 = fmul fast float %328, %331
+  %333 = fmul fast float %329, %331
+  %334 = fmul fast float %330, %331
+  %335 = call float @dx.op.unary.f32(i32 7, float %332)  ; Saturate(value)
   %336 = call float @dx.op.unary.f32(i32 7, float %333)  ; Saturate(value)
   %337 = call float @dx.op.unary.f32(i32 7, float %334)  ; Saturate(value)
-  %338 = call float @dx.op.unary.f32(i32 7, float %335)  ; Saturate(value)
-  %339 = fcmp fast ogt float %311, 5.000000e-01
-  %340 = select i1 %339, float %307, float 1.000000e+00
-  %341 = select i1 %339, float %308, float 1.000000e+00
-  %342 = select i1 %339, float %309, float 1.000000e+00
-  %343 = extractvalue %dx.types.CBufRet.f32 %303, 3
-  %344 = call float @dx.op.unary.f32(i32 7, float %343)  ; Saturate(value)
-  %345 = fsub fast float 1.000000e+00, %344
-  %346 = fmul fast float %345, %307
-  %347 = fmul fast float %345, %308
-  %348 = fmul fast float %345, %309
-  %349 = extractvalue %dx.types.CBufRet.f32 %310, 3
-  %350 = call %dx.types.CBufRet.i32 @dx.op.cbufferLoadLegacy.i32(i32 59, %dx.types.Handle %21, i32 24)  ; CBufferLoadLegacy(handle,regIndex)
-  %351 = extractvalue %dx.types.CBufRet.i32 %350, 2
-  %352 = fsub fast float -0.000000e+00, %26
-  %353 = fsub fast float -0.000000e+00, %27
-  %354 = fsub fast float -0.000000e+00, %28
+  %338 = fcmp fast ogt float %310, 5.000000e-01
+  %339 = select i1 %338, float %306, float 1.000000e+00
+  %340 = select i1 %338, float %307, float 1.000000e+00
+  %341 = select i1 %338, float %308, float 1.000000e+00
+  %342 = extractvalue %dx.types.CBufRet.f32 %302, 3
+  %343 = call float @dx.op.unary.f32(i32 7, float %342)  ; Saturate(value)
+  %344 = fsub fast float 1.000000e+00, %343
+  %345 = fmul fast float %344, %306
+  %346 = fmul fast float %344, %307
+  %347 = fmul fast float %344, %308
+  %348 = extractvalue %dx.types.CBufRet.f32 %309, 3
+  %349 = call %dx.types.CBufRet.i32 @dx.op.cbufferLoadLegacy.i32(i32 59, %dx.types.Handle %21, i32 24)  ; CBufferLoadLegacy(handle,regIndex)
+  %350 = extractvalue %dx.types.CBufRet.i32 %349, 2
+  %351 = fsub fast float -0.000000e+00, %26
+  %352 = fsub fast float -0.000000e+00, %27
+  %353 = fsub fast float -0.000000e+00, %28
+  %354 = fcmp fast une float %315, 0.000000e+00
   %355 = fcmp fast une float %316, 0.000000e+00
   %356 = fcmp fast une float %317, 0.000000e+00
-  %357 = fcmp fast une float %318, 0.000000e+00
-  %358 = or i1 %355, %356
-  %359 = or i1 %357, %358
-  br i1 %359, label %366, label %360
+  %357 = or i1 %354, %355
+  %358 = or i1 %356, %357
+  br i1 %358, label %365, label %359
 
-; <label>:360                                     ; preds = %271
+; <label>:359                                     ; preds = %270
+  %360 = fcmp fast une float %335, 0.000000e+00
   %361 = fcmp fast une float %336, 0.000000e+00
   %362 = fcmp fast une float %337, 0.000000e+00
-  %363 = fcmp fast une float %338, 0.000000e+00
-  %364 = or i1 %361, %362
-  %365 = or i1 %364, %363
-  br i1 %365, label %366, label %560
+  %363 = or i1 %360, %361
+  %364 = or i1 %363, %362
+  br i1 %364, label %365, label %559
 
-; <label>:366                                     ; preds = %360, %271
-  %367 = call %dx.types.CBufRet.i32 @dx.op.cbufferLoadLegacy.i32(i32 59, %dx.types.Handle %21, i32 25)  ; CBufferLoadLegacy(handle,regIndex)
-  %368 = extractvalue %dx.types.CBufRet.i32 %367, 0
-  %369 = icmp eq i32 %368, 0
-  br i1 %369, label %560, label %370
+; <label>:365                                     ; preds = %359, %270
+  %366 = call %dx.types.CBufRet.i32 @dx.op.cbufferLoadLegacy.i32(i32 59, %dx.types.Handle %21, i32 25)  ; CBufferLoadLegacy(handle,regIndex)
+  %367 = extractvalue %dx.types.CBufRet.i32 %366, 0
+  %368 = icmp eq i32 %367, 0
+  br i1 %368, label %559, label %369
 
-; <label>:370                                     ; preds = %366
-  br label %371
+; <label>:369                                     ; preds = %365
+  br label %370
 
-; <label>:371                                     ; preds = %548, %370
-  %372 = phi float [ %552, %548 ], [ 0.000000e+00, %370 ]
-  %373 = phi float [ %553, %548 ], [ 0.000000e+00, %370 ]
-  %374 = phi float [ %554, %548 ], [ 0.000000e+00, %370 ]
-  %375 = phi i32 [ %555, %548 ], [ 0, %370 ]
-  %376 = shl i32 %375, 1
-  %377 = add i32 %376, 27
-  %378 = call %dx.types.CBufRet.f32 @dx.op.cbufferLoadLegacy.f32(i32 59, %dx.types.Handle %21, i32 %377)  ; CBufferLoadLegacy(handle,regIndex)
-  %379 = extractvalue %dx.types.CBufRet.f32 %378, 0
-  %380 = extractvalue %dx.types.CBufRet.f32 %378, 1
-  %381 = extractvalue %dx.types.CBufRet.f32 %378, 2
-  %382 = add i32 %376, 26
-  %383 = call %dx.types.CBufRet.f32 @dx.op.cbufferLoadLegacy.f32(i32 59, %dx.types.Handle %21, i32 %382)  ; CBufferLoadLegacy(handle,regIndex)
-  %384 = extractvalue %dx.types.CBufRet.f32 %383, 3
-  %385 = call %dx.types.CBufRet.i32 @dx.op.cbufferLoadLegacy.i32(i32 59, %dx.types.Handle %21, i32 %377)  ; CBufferLoadLegacy(handle,regIndex)
-  %386 = extractvalue %dx.types.CBufRet.i32 %385, 3
-  %387 = icmp eq i32 %386, 0
-  br i1 %387, label %388, label %395
+; <label>:370                                     ; preds = %547, %369
+  %371 = phi float [ %551, %547 ], [ 0.000000e+00, %369 ]
+  %372 = phi float [ %552, %547 ], [ 0.000000e+00, %369 ]
+  %373 = phi float [ %553, %547 ], [ 0.000000e+00, %369 ]
+  %374 = phi i32 [ %554, %547 ], [ 0, %369 ]
+  %375 = shl i32 %374, 1
+  %376 = add i32 %375, 27
+  %377 = call %dx.types.CBufRet.f32 @dx.op.cbufferLoadLegacy.f32(i32 59, %dx.types.Handle %21, i32 %376)  ; CBufferLoadLegacy(handle,regIndex)
+  %378 = extractvalue %dx.types.CBufRet.f32 %377, 0
+  %379 = extractvalue %dx.types.CBufRet.f32 %377, 1
+  %380 = extractvalue %dx.types.CBufRet.f32 %377, 2
+  %381 = add i32 %375, 26
+  %382 = call %dx.types.CBufRet.f32 @dx.op.cbufferLoadLegacy.f32(i32 59, %dx.types.Handle %21, i32 %381)  ; CBufferLoadLegacy(handle,regIndex)
+  %383 = extractvalue %dx.types.CBufRet.f32 %382, 3
+  %384 = call %dx.types.CBufRet.i32 @dx.op.cbufferLoadLegacy.i32(i32 59, %dx.types.Handle %21, i32 %376)  ; CBufferLoadLegacy(handle,regIndex)
+  %385 = extractvalue %dx.types.CBufRet.i32 %384, 3
+  %386 = icmp eq i32 %385, 0
+  br i1 %386, label %387, label %394
 
-; <label>:388                                     ; preds = %371
-  %389 = extractvalue %dx.types.CBufRet.f32 %383, 0
-  %390 = extractvalue %dx.types.CBufRet.f32 %383, 1
-  %391 = extractvalue %dx.types.CBufRet.f32 %383, 2
+; <label>:387                                     ; preds = %370
+  %388 = extractvalue %dx.types.CBufRet.f32 %382, 0
+  %389 = extractvalue %dx.types.CBufRet.f32 %382, 1
+  %390 = extractvalue %dx.types.CBufRet.f32 %382, 2
+  %391 = fsub fast float -0.000000e+00, %388
   %392 = fsub fast float -0.000000e+00, %389
   %393 = fsub fast float -0.000000e+00, %390
-  %394 = fsub fast float -0.000000e+00, %391
-  br label %402
+  br label %401
 
-; <label>:395                                     ; preds = %371
-  %396 = extractvalue %dx.types.CBufRet.f32 %383, 0
-  %397 = extractvalue %dx.types.CBufRet.f32 %383, 1
-  %398 = extractvalue %dx.types.CBufRet.f32 %383, 2
-  %399 = fsub fast float %396, %32
-  %400 = fsub fast float %397, %33
-  %401 = fsub fast float %398, %34
-  br label %402
+; <label>:394                                     ; preds = %370
+  %395 = extractvalue %dx.types.CBufRet.f32 %382, 0
+  %396 = extractvalue %dx.types.CBufRet.f32 %382, 1
+  %397 = extractvalue %dx.types.CBufRet.f32 %382, 2
+  %398 = fsub fast float %395, %32
+  %399 = fsub fast float %396, %33
+  %400 = fsub fast float %397, %34
+  br label %401
 
-; <label>:402                                     ; preds = %395, %388
-  %403 = phi float [ %392, %388 ], [ %399, %395 ]
-  %404 = phi float [ %393, %388 ], [ %400, %395 ]
-  %405 = phi float [ %394, %388 ], [ %401, %395 ]
-  %406 = call float @dx.op.dot3.f32(i32 55, float %403, float %404, float %405, float %403, float %404, float %405)  ; Dot3(ax,ay,az,bx,by,bz)
-  %407 = call float @dx.op.unary.f32(i32 25, float %406)  ; Rsqrt(value)
-  %408 = fmul fast float %407, %403
-  %409 = fmul fast float %407, %404
-  %410 = fmul fast float %407, %405
-  %411 = getelementptr inbounds %struct.RadiancePayload, %struct.RadiancePayload* %rayPayload, i32 0, i32 2
-  %412 = load i32, i32* %411, align 4, !tbaa !51, !alias.scope !54
-  %413 = icmp ult i32 %412, %351
-  br i1 %413, label %414, label %428
+; <label>:401                                     ; preds = %394, %387
+  %402 = phi float [ %391, %387 ], [ %398, %394 ]
+  %403 = phi float [ %392, %387 ], [ %399, %394 ]
+  %404 = phi float [ %393, %387 ], [ %400, %394 ]
+  %405 = call float @dx.op.dot3.f32(i32 55, float %402, float %403, float %404, float %402, float %403, float %404)  ; Dot3(ax,ay,az,bx,by,bz)
+  %406 = call float @dx.op.unary.f32(i32 25, float %405)  ; Rsqrt(value)
+  %407 = fmul fast float %406, %402
+  %408 = fmul fast float %406, %403
+  %409 = fmul fast float %406, %404
+  %410 = getelementptr inbounds %struct.RadiancePayload, %struct.RadiancePayload* %rayPayload, i32 0, i32 2
+  %411 = load i32, i32* %410, align 4, !tbaa !51, !alias.scope !54
+  %412 = icmp ult i32 %411, %350
+  br i1 %412, label %413, label %427
 
-; <label>:414                                     ; preds = %402
-  %415 = call float @dx.op.dot3.f32(i32 55, float %408, float %409, float %410, float %300, float %301, float %302)  ; Dot3(ax,ay,az,bx,by,bz)
-  %416 = fcmp fast ugt float %415, 0.000000e+00
-  br i1 %416, label %417, label %428
+; <label>:413                                     ; preds = %401
+  %414 = call float @dx.op.dot3.f32(i32 55, float %407, float %408, float %409, float %299, float %300, float %301)  ; Dot3(ax,ay,az,bx,by,bz)
+  %415 = fcmp fast ugt float %414, 0.000000e+00
+  br i1 %415, label %416, label %427
 
-; <label>:417                                     ; preds = %414
-  %418 = fmul fast float %302, 0x3F847AE140000000
-  %419 = fadd fast float %418, %34
-  %420 = fmul fast float %301, 0x3F847AE140000000
-  %421 = fadd fast float %420, %33
-  %422 = fmul fast float %300, 0x3F847AE140000000
-  %423 = fadd fast float %422, %32
-  %424 = call %dx.types.Handle @dx.op.createHandleForLib.struct.RaytracingAccelerationStructure(i32 160, %struct.RaytracingAccelerationStructure %5)  ; CreateHandleForLib(Resource)
-  %425 = getelementptr inbounds %struct.ShadowPayload, %struct.ShadowPayload* %8, i32 0, i32 0
-  store float %384, float* %425, align 8
-  call void @dx.op.traceRay.struct.ShadowPayload(i32 157, %dx.types.Handle %424, i32 12, i32 -1, i32 1, i32 2, i32 1, float %423, float %421, float %419, float 0x3F847AE140000000, float %408, float %409, float %410, float %384, %struct.ShadowPayload* nonnull %8)  ; TraceRay(AccelerationStructure,RayFlags,InstanceInclusionMask,RayContributionToHitGroupIndex,MultiplierForGeometryContributionToShaderIndex,MissShaderIndex,Origin_X,Origin_Y,Origin_Z,TMin,Direction_X,Direction_Y,Direction_Z,TMax,payload)
-  %426 = load float, float* %425, align 8
-  %427 = fcmp fast ogt float %426, 0.000000e+00
-  br label %428
+; <label>:416                                     ; preds = %413
+  %417 = fmul fast float %301, 0x3F847AE140000000
+  %418 = fadd fast float %417, %34
+  %419 = fmul fast float %300, 0x3F847AE140000000
+  %420 = fadd fast float %419, %33
+  %421 = fmul fast float %299, 0x3F847AE140000000
+  %422 = fadd fast float %421, %32
+  %423 = call %dx.types.Handle @dx.op.createHandleForLib.struct.RaytracingAccelerationStructure(i32 160, %struct.RaytracingAccelerationStructure %5)  ; CreateHandleForLib(Resource)
+  %424 = getelementptr inbounds %struct.ShadowPayload, %struct.ShadowPayload* %8, i32 0, i32 0
+  store float %383, float* %424, align 8
+  call void @dx.op.traceRay.struct.ShadowPayload(i32 157, %dx.types.Handle %423, i32 12, i32 -1, i32 1, i32 2, i32 1, float %422, float %420, float %418, float 0x3F847AE140000000, float %407, float %408, float %409, float %383, %struct.ShadowPayload* nonnull %8)  ; TraceRay(AccelerationStructure,RayFlags,InstanceInclusionMask,RayContributionToHitGroupIndex,MultiplierForGeometryContributionToShaderIndex,MissShaderIndex,Origin_X,Origin_Y,Origin_Z,TMin,Direction_X,Direction_Y,Direction_Z,TMax,payload)
+  %425 = load float, float* %424, align 8
+  %426 = fcmp fast ogt float %425, 0.000000e+00
+  br label %427
 
-; <label>:428                                     ; preds = %417, %414, %402
-  %429 = phi i1 [ %427, %417 ], [ false, %402 ], [ false, %414 ]
-  %430 = call float @dx.op.dot3.f32(i32 55, float %300, float %301, float %302, float %408, float %409, float %410)  ; Dot3(ax,ay,az,bx,by,bz)
-  %431 = xor i1 %429, true
-  %432 = fcmp fast ogt float %430, 0.000000e+00
-  %433 = and i1 %432, %431
-  br i1 %433, label %434, label %548
+; <label>:427                                     ; preds = %416, %413, %401
+  %428 = phi i1 [ %426, %416 ], [ false, %401 ], [ false, %413 ]
+  %429 = call float @dx.op.dot3.f32(i32 55, float %299, float %300, float %301, float %407, float %408, float %409)  ; Dot3(ax,ay,az,bx,by,bz)
+  %430 = xor i1 %428, true
+  %431 = fcmp fast ogt float %429, 0.000000e+00
+  %432 = and i1 %431, %430
+  br i1 %432, label %433, label %547
 
-; <label>:434                                     ; preds = %428
-  %435 = fsub fast float %408, %26
-  %436 = fsub fast float %409, %27
-  %437 = fsub fast float %410, %28
-  %438 = call float @dx.op.dot3.f32(i32 55, float %435, float %436, float %437, float %435, float %436, float %437)  ; Dot3(ax,ay,az,bx,by,bz)
-  %439 = call float @dx.op.unary.f32(i32 25, float %438)  ; Rsqrt(value)
-  %440 = fmul fast float %439, %435
-  %441 = fmul fast float %439, %436
-  %442 = fmul fast float %439, %437
-  %443 = call float @dx.op.dot3.f32(i32 55, float %300, float %301, float %302, float %440, float %441, float %442)  ; Dot3(ax,ay,az,bx,by,bz)
-  %444 = fcmp fast ogt float %443, 0.000000e+00
-  br i1 %444, label %447, label %445
+; <label>:433                                     ; preds = %427
+  %434 = fsub fast float %407, %26
+  %435 = fsub fast float %408, %27
+  %436 = fsub fast float %409, %28
+  %437 = call float @dx.op.dot3.f32(i32 55, float %434, float %435, float %436, float %434, float %435, float %436)  ; Dot3(ax,ay,az,bx,by,bz)
+  %438 = call float @dx.op.unary.f32(i32 25, float %437)  ; Rsqrt(value)
+  %439 = fmul fast float %438, %434
+  %440 = fmul fast float %438, %435
+  %441 = fmul fast float %438, %436
+  %442 = call float @dx.op.dot3.f32(i32 55, float %299, float %300, float %301, float %439, float %440, float %441)  ; Dot3(ax,ay,az,bx,by,bz)
+  %443 = fcmp fast ogt float %442, 0.000000e+00
+  br i1 %443, label %446, label %444
 
-; <label>:445                                     ; preds = %434
-  %446 = call float @dx.op.dot3.f32(i32 55, float %300, float %301, float %302, float %352, float %353, float %354)  ; Dot3(ax,ay,az,bx,by,bz)
-  br label %487
+; <label>:444                                     ; preds = %433
+  %445 = call float @dx.op.dot3.f32(i32 55, float %299, float %300, float %301, float %351, float %352, float %353)  ; Dot3(ax,ay,az,bx,by,bz)
+  br label %486
 
-; <label>:447                                     ; preds = %434
-  %448 = fmul fast float %314, %314
-  %449 = call float @dx.op.dot3.f32(i32 55, float %300, float %301, float %302, float %352, float %353, float %354)  ; Dot3(ax,ay,az,bx,by,bz)
-  %450 = call float @dx.op.unary.f32(i32 7, float %449)  ; Saturate(value)
-  %451 = call float @dx.op.unary.f32(i32 7, float %430)  ; Saturate(value)
-  %452 = call float @dx.op.dot3.f32(i32 55, float %408, float %409, float %410, float %352, float %353, float %354)  ; Dot3(ax,ay,az,bx,by,bz)
-  %453 = call float @dx.op.unary.f32(i32 7, float %452)  ; Saturate(value)
-  %454 = fmul fast float %453, 5.000000e-01
-  %455 = fadd fast float %454, 5.000000e-01
-  %456 = fmul fast float %453, 0x3FC99999A0000000
-  %457 = fsub fast float 0x3FE6666660000000, %456
-  %458 = fadd fast float %443, 5.000000e-01
-  %459 = fdiv fast float %458, %443
-  %460 = fmul fast float %457, %459
-  %461 = fmul fast float %460, %455
-  %462 = fsub fast float 1.000000e+00, %451
-  %463 = call float @dx.op.unary.f32(i32 23, float %462)  ; Log(value)
-  %464 = fmul fast float %463, 5.000000e+00
-  %465 = call float @dx.op.unary.f32(i32 21, float %464)  ; Exp(value)
-  %466 = fsub fast float 1.000000e+00, %465
-  %467 = fmul fast float %466, 0x3FF0CCCCC0000000
-  %468 = fsub fast float 1.000000e+00, %450
-  %469 = call float @dx.op.unary.f32(i32 23, float %468)  ; Log(value)
-  %470 = fmul fast float %469, 5.000000e+00
-  %471 = call float @dx.op.unary.f32(i32 21, float %470)  ; Exp(value)
-  %472 = fsub fast float 1.000000e+00, %471
-  %473 = fmul fast float %467, %472
-  %474 = fsub fast float %461, %473
-  %475 = fmul fast float %474, %448
-  %476 = fmul fast float %448, 0x3FD74D6A20000000
-  %477 = fmul fast float %476, %316
-  %478 = fmul fast float %476, %317
-  %479 = fmul fast float %476, %318
-  %480 = fadd fast float %475, %473
-  %481 = fadd fast float %480, %477
-  %482 = fadd fast float %480, %478
-  %483 = fadd fast float %480, %479
+; <label>:446                                     ; preds = %433
+  %447 = fmul fast float %313, %313
+  %448 = call float @dx.op.dot3.f32(i32 55, float %299, float %300, float %301, float %351, float %352, float %353)  ; Dot3(ax,ay,az,bx,by,bz)
+  %449 = call float @dx.op.unary.f32(i32 7, float %448)  ; Saturate(value)
+  %450 = call float @dx.op.unary.f32(i32 7, float %429)  ; Saturate(value)
+  %451 = call float @dx.op.dot3.f32(i32 55, float %407, float %408, float %409, float %351, float %352, float %353)  ; Dot3(ax,ay,az,bx,by,bz)
+  %452 = call float @dx.op.unary.f32(i32 7, float %451)  ; Saturate(value)
+  %453 = fmul fast float %452, 5.000000e-01
+  %454 = fadd fast float %453, 5.000000e-01
+  %455 = fmul fast float %452, 0x3FC99999A0000000
+  %456 = fsub fast float 0x3FE6666660000000, %455
+  %457 = fadd fast float %442, 5.000000e-01
+  %458 = fdiv fast float %457, %442
+  %459 = fmul fast float %456, %458
+  %460 = fmul fast float %459, %454
+  %461 = fsub fast float 1.000000e+00, %450
+  %462 = call float @dx.op.unary.f32(i32 23, float %461)  ; Log(value)
+  %463 = fmul fast float %462, 5.000000e+00
+  %464 = call float @dx.op.unary.f32(i32 21, float %463)  ; Exp(value)
+  %465 = fsub fast float 1.000000e+00, %464
+  %466 = fmul fast float %465, 0x3FF0CCCCC0000000
+  %467 = fsub fast float 1.000000e+00, %449
+  %468 = call float @dx.op.unary.f32(i32 23, float %467)  ; Log(value)
+  %469 = fmul fast float %468, 5.000000e+00
+  %470 = call float @dx.op.unary.f32(i32 21, float %469)  ; Exp(value)
+  %471 = fsub fast float 1.000000e+00, %470
+  %472 = fmul fast float %466, %471
+  %473 = fsub fast float %460, %472
+  %474 = fmul fast float %473, %447
+  %475 = fmul fast float %447, 0x3FD74D6A20000000
+  %476 = fmul fast float %475, %315
+  %477 = fmul fast float %475, %316
+  %478 = fmul fast float %475, %317
+  %479 = fadd fast float %474, %472
+  %480 = fadd fast float %479, %476
+  %481 = fadd fast float %479, %477
+  %482 = fadd fast float %479, %478
+  %483 = fmul fast float %480, %315
   %484 = fmul fast float %481, %316
   %485 = fmul fast float %482, %317
-  %486 = fmul fast float %483, %318
-  br label %487
+  br label %486
 
-; <label>:487                                     ; preds = %447, %445
-  %488 = phi float [ %446, %445 ], [ %449, %447 ]
-  %489 = phi float [ 0.000000e+00, %445 ], [ %484, %447 ]
-  %490 = phi float [ 0.000000e+00, %445 ], [ %485, %447 ]
-  %491 = phi float [ 0.000000e+00, %445 ], [ %486, %447 ]
-  %492 = fcmp fast ogt float %488, 0.000000e+00
-  br i1 %492, label %493, label %535
+; <label>:486                                     ; preds = %446, %444
+  %487 = phi float [ %445, %444 ], [ %448, %446 ]
+  %488 = phi float [ 0.000000e+00, %444 ], [ %483, %446 ]
+  %489 = phi float [ 0.000000e+00, %444 ], [ %484, %446 ]
+  %490 = phi float [ 0.000000e+00, %444 ], [ %485, %446 ]
+  %491 = fcmp fast ogt float %487, 0.000000e+00
+  br i1 %491, label %492, label %534
 
-; <label>:493                                     ; preds = %487
+; <label>:492                                     ; preds = %486
+  %493 = fcmp fast une float %434, 0.000000e+00
   %494 = fcmp fast une float %435, 0.000000e+00
   %495 = fcmp fast une float %436, 0.000000e+00
-  %496 = fcmp fast une float %437, 0.000000e+00
-  %497 = and i1 %494, %495
-  %498 = and i1 %496, %497
-  br i1 %498, label %499, label %535
+  %496 = and i1 %493, %494
+  %497 = and i1 %495, %496
+  br i1 %497, label %498, label %534
 
-; <label>:499                                     ; preds = %493
-  %500 = call float @dx.op.unary.f32(i32 7, float %443)  ; Saturate(value)
-  %501 = call float @dx.op.dot3.f32(i32 55, float %440, float %441, float %442, float %408, float %409, float %410)  ; Dot3(ax,ay,az,bx,by,bz)
-  %502 = call float @dx.op.unary.f32(i32 7, float %501)  ; Saturate(value)
-  %503 = fmul fast float %314, %314
-  %504 = fadd fast float %503, -1.000000e+00
-  %505 = fmul fast float %500, %500
-  %506 = fmul fast float %505, %504
-  %507 = fadd fast float %506, 1.000000e+00
-  %508 = fmul fast float %507, %507
-  %509 = fdiv fast float %503, %508
+; <label>:498                                     ; preds = %492
+  %499 = call float @dx.op.unary.f32(i32 7, float %442)  ; Saturate(value)
+  %500 = call float @dx.op.dot3.f32(i32 55, float %439, float %440, float %441, float %407, float %408, float %409)  ; Dot3(ax,ay,az,bx,by,bz)
+  %501 = call float @dx.op.unary.f32(i32 7, float %500)  ; Saturate(value)
+  %502 = fmul fast float %313, %313
+  %503 = fadd fast float %502, -1.000000e+00
+  %504 = fmul fast float %499, %499
+  %505 = fmul fast float %504, %503
+  %506 = fadd fast float %505, 1.000000e+00
+  %507 = fmul fast float %506, %506
+  %508 = fdiv fast float %502, %507
+  %509 = fsub fast float 1.000000e+00, %335
   %510 = fsub fast float 1.000000e+00, %336
   %511 = fsub fast float 1.000000e+00, %337
-  %512 = fsub fast float 1.000000e+00, %338
-  %513 = fsub fast float 1.000000e+00, %502
-  %514 = call float @dx.op.unary.f32(i32 6, float %513)  ; FAbs(value)
-  %515 = call float @dx.op.unary.f32(i32 23, float %514)  ; Log(value)
-  %516 = fmul fast float %515, 5.000000e+00
-  %517 = call float @dx.op.unary.f32(i32 21, float %516)  ; Exp(value)
-  %518 = fmul fast float %517, %510
-  %519 = fmul fast float %517, %511
-  %520 = fmul fast float %517, %512
+  %512 = fsub fast float 1.000000e+00, %501
+  %513 = call float @dx.op.unary.f32(i32 6, float %512)  ; FAbs(value)
+  %514 = call float @dx.op.unary.f32(i32 23, float %513)  ; Log(value)
+  %515 = fmul fast float %514, 5.000000e+00
+  %516 = call float @dx.op.unary.f32(i32 21, float %515)  ; Exp(value)
+  %517 = fmul fast float %516, %509
+  %518 = fmul fast float %516, %510
+  %519 = fmul fast float %516, %511
+  %520 = fadd fast float %517, %335
   %521 = fadd fast float %518, %336
   %522 = fadd fast float %519, %337
-  %523 = fadd fast float %520, %338
-  %524 = fadd fast float %488, %430
-  %525 = fmul fast float %430, 2.000000e+00
-  %526 = fmul fast float %525, %488
-  %527 = fsub fast float %524, %526
-  %528 = fmul fast float %527, %314
-  %529 = fadd fast float %528, %526
-  %530 = fdiv fast float 5.000000e-01, %529
-  %531 = fmul fast float %530, %509
-  %532 = fmul fast float %531, %521
-  %533 = fmul fast float %531, %522
-  %534 = fmul fast float %531, %523
-  br label %535
+  %523 = fadd fast float %487, %429
+  %524 = fmul fast float %429, 2.000000e+00
+  %525 = fmul fast float %524, %487
+  %526 = fsub fast float %523, %525
+  %527 = fmul fast float %526, %313
+  %528 = fadd fast float %527, %525
+  %529 = fdiv fast float 5.000000e-01, %528
+  %530 = fmul fast float %529, %508
+  %531 = fmul fast float %530, %520
+  %532 = fmul fast float %530, %521
+  %533 = fmul fast float %530, %522
+  br label %534
 
-; <label>:535                                     ; preds = %499, %493, %487
-  %536 = phi float [ %532, %499 ], [ 0.000000e+00, %493 ], [ 0.000000e+00, %487 ]
-  %537 = phi float [ %533, %499 ], [ 0.000000e+00, %493 ], [ 0.000000e+00, %487 ]
-  %538 = phi float [ %534, %499 ], [ 0.000000e+00, %493 ], [ 0.000000e+00, %487 ]
-  %539 = fmul fast float %430, %379
-  %540 = fmul fast float %430, %380
-  %541 = fmul fast float %430, %381
+; <label>:534                                     ; preds = %498, %492, %486
+  %535 = phi float [ %531, %498 ], [ 0.000000e+00, %492 ], [ 0.000000e+00, %486 ]
+  %536 = phi float [ %532, %498 ], [ 0.000000e+00, %492 ], [ 0.000000e+00, %486 ]
+  %537 = phi float [ %533, %498 ], [ 0.000000e+00, %492 ], [ 0.000000e+00, %486 ]
+  %538 = fmul fast float %429, %378
+  %539 = fmul fast float %429, %379
+  %540 = fmul fast float %429, %380
+  %541 = fadd fast float %535, %488
   %542 = fadd fast float %536, %489
   %543 = fadd fast float %537, %490
-  %544 = fadd fast float %538, %491
+  %544 = fmul fast float %538, %541
   %545 = fmul fast float %539, %542
   %546 = fmul fast float %540, %543
-  %547 = fmul fast float %541, %544
-  br label %548
+  br label %547
 
-; <label>:548                                     ; preds = %535, %428
-  %549 = phi float [ 0.000000e+00, %428 ], [ %545, %535 ]
-  %550 = phi float [ 0.000000e+00, %428 ], [ %546, %535 ]
-  %551 = phi float [ 0.000000e+00, %428 ], [ %547, %535 ]
+; <label>:547                                     ; preds = %534, %427
+  %548 = phi float [ 0.000000e+00, %427 ], [ %544, %534 ]
+  %549 = phi float [ 0.000000e+00, %427 ], [ %545, %534 ]
+  %550 = phi float [ 0.000000e+00, %427 ], [ %546, %534 ]
+  %551 = fadd fast float %548, %371
   %552 = fadd fast float %549, %372
   %553 = fadd fast float %550, %373
-  %554 = fadd fast float %551, %374
-  %555 = add i32 %375, 1
-  %556 = call %dx.types.CBufRet.i32 @dx.op.cbufferLoadLegacy.i32(i32 59, %dx.types.Handle %21, i32 25)  ; CBufferLoadLegacy(handle,regIndex)
-  %557 = extractvalue %dx.types.CBufRet.i32 %556, 0
-  %558 = icmp ult i32 %555, %557
-  br i1 %558, label %371, label %559
+  %554 = add i32 %374, 1
+  %555 = call %dx.types.CBufRet.i32 @dx.op.cbufferLoadLegacy.i32(i32 59, %dx.types.Handle %21, i32 25)  ; CBufferLoadLegacy(handle,regIndex)
+  %556 = extractvalue %dx.types.CBufRet.i32 %555, 0
+  %557 = icmp ult i32 %554, %556
+  br i1 %557, label %370, label %558
 
-; <label>:559                                     ; preds = %548
-  br label %560
+; <label>:558                                     ; preds = %547
+  br label %559
 
-; <label>:560                                     ; preds = %559, %366, %360
-  %561 = phi float [ 0.000000e+00, %360 ], [ 0.000000e+00, %366 ], [ %552, %559 ]
-  %562 = phi float [ 0.000000e+00, %360 ], [ 0.000000e+00, %366 ], [ %553, %559 ]
-  %563 = phi float [ 0.000000e+00, %360 ], [ 0.000000e+00, %366 ], [ %554, %559 ]
-  %564 = fmul fast float %316, %349
-  %565 = fmul fast float %317, %349
-  %566 = fmul fast float %318, %349
+; <label>:559                                     ; preds = %558, %365, %359
+  %560 = phi float [ 0.000000e+00, %359 ], [ 0.000000e+00, %365 ], [ %551, %558 ]
+  %561 = phi float [ 0.000000e+00, %359 ], [ 0.000000e+00, %365 ], [ %552, %558 ]
+  %562 = phi float [ 0.000000e+00, %359 ], [ 0.000000e+00, %365 ], [ %553, %558 ]
+  %563 = fmul fast float %315, %348
+  %564 = fmul fast float %316, %348
+  %565 = fmul fast float %317, %348
+  %566 = fadd fast float %560, %563
   %567 = fadd fast float %561, %564
   %568 = fadd fast float %562, %565
-  %569 = fadd fast float %563, %566
+  %569 = fcmp fast une float %339, 0.000000e+00
   %570 = fcmp fast une float %340, 0.000000e+00
   %571 = fcmp fast une float %341, 0.000000e+00
-  %572 = fcmp fast une float %342, 0.000000e+00
-  %573 = or i1 %570, %571
-  %574 = or i1 %572, %573
+  %572 = or i1 %569, %570
+  %573 = or i1 %571, %572
+  %574 = fcmp fast une float %345, 0.000000e+00
   %575 = fcmp fast une float %346, 0.000000e+00
   %576 = fcmp fast une float %347, 0.000000e+00
-  %577 = fcmp fast une float %348, 0.000000e+00
-  %578 = or i1 %575, %576
-  %579 = or i1 %577, %578
-  %580 = call float @dx.op.dot3.f32(i32 55, float %352, float %353, float %354, float %300, float %301, float %302)  ; Dot3(ax,ay,az,bx,by,bz)
-  %581 = fcmp fast ogt float %580, 0x3EB0C6F7A0000000
-  %582 = and i1 %574, %581
-  %583 = or i1 %579, %582
-  br i1 %583, label %584, label %713
+  %577 = or i1 %574, %575
+  %578 = or i1 %576, %577
+  %579 = call float @dx.op.dot3.f32(i32 55, float %351, float %352, float %353, float %299, float %300, float %301)  ; Dot3(ax,ay,az,bx,by,bz)
+  %580 = fcmp fast ogt float %579, 0x3EB0C6F7A0000000
+  %581 = and i1 %573, %580
+  %582 = or i1 %578, %581
+  br i1 %582, label %583, label %712
 
-; <label>:584                                     ; preds = %560
-  br i1 %582, label %585, label %641
+; <label>:583                                     ; preds = %559
+  br i1 %581, label %584, label %640
 
-; <label>:585                                     ; preds = %584
-  %586 = call float @dx.op.dot3.f32(i32 55, float %26, float %27, float %28, float %300, float %301, float %302)  ; Dot3(ax,ay,az,bx,by,bz)
-  %587 = fmul fast float %586, 2.000000e+00
-  %588 = fmul fast float %587, %300
-  %589 = fmul fast float %587, %301
-  %590 = fmul fast float %587, %302
-  %591 = fsub fast float %26, %588
-  %592 = fsub fast float %27, %589
-  %593 = fsub fast float %28, %590
-  %594 = call float @dx.op.dot3.f32(i32 55, float %300, float %301, float %302, float %591, float %592, float %593)  ; Dot3(ax,ay,az,bx,by,bz)
+; <label>:584                                     ; preds = %583
+  %585 = call float @dx.op.dot3.f32(i32 55, float %26, float %27, float %28, float %299, float %300, float %301)  ; Dot3(ax,ay,az,bx,by,bz)
+  %586 = fmul fast float %585, 2.000000e+00
+  %587 = fmul fast float %586, %299
+  %588 = fmul fast float %586, %300
+  %589 = fmul fast float %586, %301
+  %590 = fsub fast float %26, %587
+  %591 = fsub fast float %27, %588
+  %592 = fsub fast float %28, %589
+  %593 = call float @dx.op.dot3.f32(i32 55, float %299, float %300, float %301, float %590, float %591, float %592)  ; Dot3(ax,ay,az,bx,by,bz)
+  %594 = fsub fast float 1.000000e+00, %335
   %595 = fsub fast float 1.000000e+00, %336
   %596 = fsub fast float 1.000000e+00, %337
-  %597 = fsub fast float 1.000000e+00, %338
-  %598 = fsub fast float 1.000000e+00, %594
-  %599 = call float @dx.op.unary.f32(i32 6, float %598)  ; FAbs(value)
-  %600 = call float @dx.op.unary.f32(i32 23, float %599)  ; Log(value)
-  %601 = fmul fast float %600, 5.000000e+00
-  %602 = call float @dx.op.unary.f32(i32 21, float %601)  ; Exp(value)
-  %603 = fmul fast float %602, %595
-  %604 = fmul fast float %602, %596
-  %605 = fmul fast float %602, %597
+  %597 = fsub fast float 1.000000e+00, %593
+  %598 = call float @dx.op.unary.f32(i32 6, float %597)  ; FAbs(value)
+  %599 = call float @dx.op.unary.f32(i32 23, float %598)  ; Log(value)
+  %600 = fmul fast float %599, 5.000000e+00
+  %601 = call float @dx.op.unary.f32(i32 21, float %600)  ; Exp(value)
+  %602 = fmul fast float %601, %594
+  %603 = fmul fast float %601, %595
+  %604 = fmul fast float %601, %596
+  %605 = fadd fast float %602, %335
   %606 = fadd fast float %603, %336
   %607 = fadd fast float %604, %337
-  %608 = fadd fast float %605, %338
+  %608 = fmul fast float %605, %339
   %609 = fmul fast float %606, %340
   %610 = fmul fast float %607, %341
-  %611 = fmul fast float %608, %342
-  %612 = getelementptr inbounds %struct.RadiancePayload, %struct.RadiancePayload* %rayPayload, i32 0, i32 2
-  %613 = load i32, i32* %612, align 4
-  %614 = icmp ult i32 %613, %351
-  br i1 %614, label %615, label %631
+  %611 = getelementptr inbounds %struct.RadiancePayload, %struct.RadiancePayload* %rayPayload, i32 0, i32 2
+  %612 = load i32, i32* %611, align 4
+  %613 = icmp ult i32 %612, %350
+  br i1 %613, label %614, label %630
 
-; <label>:615                                     ; preds = %585
-  %616 = add i32 %613, 1
-  %617 = fmul fast float %593, 0x3F847AE140000000
-  %618 = fadd fast float %617, %34
-  %619 = fmul fast float %592, 0x3F847AE140000000
-  %620 = fadd fast float %619, %33
-  %621 = fmul fast float %591, 0x3F847AE140000000
-  %622 = fadd fast float %621, %32
-  %623 = call %dx.types.Handle @dx.op.createHandleForLib.struct.RaytracingAccelerationStructure(i32 160, %struct.RaytracingAccelerationStructure %5)  ; CreateHandleForLib(Resource)
-  %624 = getelementptr inbounds %struct.RadiancePayload, %struct.RadiancePayload* %10, i32 0, i32 0
-  store <3 x float> zeroinitializer, <3 x float>* %624, align 8
-  %625 = getelementptr inbounds %struct.RadiancePayload, %struct.RadiancePayload* %10, i32 0, i32 1
-  store float 0.000000e+00, float* %625, align 4
-  %626 = getelementptr inbounds %struct.RadiancePayload, %struct.RadiancePayload* %10, i32 0, i32 2
-  store i32 %616, i32* %626, align 8
-  call void @dx.op.traceRay.struct.RadiancePayload(i32 157, %dx.types.Handle %623, i32 16, i32 -1, i32 0, i32 2, i32 0, float %622, float %620, float %618, float 0x3F847AE140000000, float %591, float %592, float %593, float 8.000000e+02, %struct.RadiancePayload* nonnull %10)  ; TraceRay(AccelerationStructure,RayFlags,InstanceInclusionMask,RayContributionToHitGroupIndex,MultiplierForGeometryContributionToShaderIndex,MissShaderIndex,Origin_X,Origin_Y,Origin_Z,TMin,Direction_X,Direction_Y,Direction_Z,TMax,payload)
-  %627 = load <3 x float>, <3 x float>* %624, align 8
-  %628 = extractelement <3 x float> %627, i32 0
-  %629 = extractelement <3 x float> %627, i32 1
-  %630 = extractelement <3 x float> %627, i32 2
-  br label %631
+; <label>:614                                     ; preds = %584
+  %615 = add i32 %612, 1
+  %616 = fmul fast float %592, 0x3F847AE140000000
+  %617 = fadd fast float %616, %34
+  %618 = fmul fast float %591, 0x3F847AE140000000
+  %619 = fadd fast float %618, %33
+  %620 = fmul fast float %590, 0x3F847AE140000000
+  %621 = fadd fast float %620, %32
+  %622 = call %dx.types.Handle @dx.op.createHandleForLib.struct.RaytracingAccelerationStructure(i32 160, %struct.RaytracingAccelerationStructure %5)  ; CreateHandleForLib(Resource)
+  %623 = getelementptr inbounds %struct.RadiancePayload, %struct.RadiancePayload* %10, i32 0, i32 0
+  store <3 x float> zeroinitializer, <3 x float>* %623, align 8
+  %624 = getelementptr inbounds %struct.RadiancePayload, %struct.RadiancePayload* %10, i32 0, i32 1
+  store float 0.000000e+00, float* %624, align 4
+  %625 = getelementptr inbounds %struct.RadiancePayload, %struct.RadiancePayload* %10, i32 0, i32 2
+  store i32 %615, i32* %625, align 8
+  call void @dx.op.traceRay.struct.RadiancePayload(i32 157, %dx.types.Handle %622, i32 16, i32 -1, i32 0, i32 2, i32 0, float %621, float %619, float %617, float 0x3F847AE140000000, float %590, float %591, float %592, float 8.000000e+02, %struct.RadiancePayload* nonnull %10)  ; TraceRay(AccelerationStructure,RayFlags,InstanceInclusionMask,RayContributionToHitGroupIndex,MultiplierForGeometryContributionToShaderIndex,MissShaderIndex,Origin_X,Origin_Y,Origin_Z,TMin,Direction_X,Direction_Y,Direction_Z,TMax,payload)
+  %626 = load <3 x float>, <3 x float>* %623, align 8
+  %627 = extractelement <3 x float> %626, i32 0
+  %628 = extractelement <3 x float> %626, i32 1
+  %629 = extractelement <3 x float> %626, i32 2
+  br label %630
 
-; <label>:631                                     ; preds = %615, %585
-  %632 = phi float [ %628, %615 ], [ 0.000000e+00, %585 ]
-  %633 = phi float [ %629, %615 ], [ 0.000000e+00, %585 ]
-  %634 = phi float [ %630, %615 ], [ 0.000000e+00, %585 ]
+; <label>:630                                     ; preds = %614, %584
+  %631 = phi float [ %627, %614 ], [ 0.000000e+00, %584 ]
+  %632 = phi float [ %628, %614 ], [ 0.000000e+00, %584 ]
+  %633 = phi float [ %629, %614 ], [ 0.000000e+00, %584 ]
+  %634 = fmul fast float %608, %631
   %635 = fmul fast float %609, %632
   %636 = fmul fast float %610, %633
-  %637 = fmul fast float %611, %634
+  %637 = fadd fast float %634, %566
   %638 = fadd fast float %635, %567
   %639 = fadd fast float %636, %568
-  %640 = fadd fast float %637, %569
-  br label %641
+  br label %640
 
-; <label>:641                                     ; preds = %631, %584
-  %642 = phi float [ %638, %631 ], [ %567, %584 ]
-  %643 = phi float [ %639, %631 ], [ %568, %584 ]
-  %644 = phi float [ %640, %631 ], [ %569, %584 ]
-  br i1 %579, label %645, label %713
+; <label>:640                                     ; preds = %630, %583
+  %641 = phi float [ %637, %630 ], [ %566, %583 ]
+  %642 = phi float [ %638, %630 ], [ %567, %583 ]
+  %643 = phi float [ %639, %630 ], [ %568, %583 ]
+  br i1 %578, label %644, label %712
 
-; <label>:645                                     ; preds = %641
-  %646 = call float @dx.op.dot3.f32(i32 55, float %26, float %27, float %28, float %300, float %301, float %302)  ; Dot3(ax,ay,az,bx,by,bz)
-  %647 = fmul fast float %646, %646
-  %648 = fsub fast float 1.000000e+00, %647
-  %649 = fmul fast float %648, 0x3FE2172060000000
-  %650 = fsub fast float 1.000000e+00, %649
-  %651 = fcmp fast oge float %650, 0.000000e+00
-  %652 = fmul fast float %26, 0x3FE80F6600000000
-  %653 = fmul fast float %27, 0x3FE80F6600000000
-  %654 = fmul fast float %28, 0x3FE80F6600000000
-  %655 = call float @dx.op.unary.f32(i32 24, float %650)  ; Sqrt(value)
-  %656 = fmul fast float %646, 0x3FE80F6600000000
-  %657 = fadd fast float %656, %655
-  %658 = fmul fast float %657, %300
-  %659 = fmul fast float %657, %301
-  %660 = fmul fast float %657, %302
+; <label>:644                                     ; preds = %640
+  %645 = call float @dx.op.dot3.f32(i32 55, float %26, float %27, float %28, float %299, float %300, float %301)  ; Dot3(ax,ay,az,bx,by,bz)
+  %646 = fmul fast float %645, %645
+  %647 = fsub fast float 1.000000e+00, %646
+  %648 = fmul fast float %647, 0x3FE2172060000000
+  %649 = fsub fast float 1.000000e+00, %648
+  %650 = fcmp fast oge float %649, 0.000000e+00
+  %651 = fmul fast float %26, 0x3FE80F6600000000
+  %652 = fmul fast float %27, 0x3FE80F6600000000
+  %653 = fmul fast float %28, 0x3FE80F6600000000
+  %654 = call float @dx.op.unary.f32(i32 24, float %649)  ; Sqrt(value)
+  %655 = fmul fast float %645, 0x3FE80F6600000000
+  %656 = fadd fast float %655, %654
+  %657 = fmul fast float %656, %299
+  %658 = fmul fast float %656, %300
+  %659 = fmul fast float %656, %301
+  %660 = fsub fast float %651, %657
   %661 = fsub fast float %652, %658
   %662 = fsub fast float %653, %659
-  %663 = fsub fast float %654, %660
-  %664 = select i1 %651, float %661, float 0.000000e+00
-  %665 = select i1 %651, float %662, float 0.000000e+00
-  %666 = select i1 %651, float %663, float 0.000000e+00
+  %663 = select i1 %650, float %660, float 0.000000e+00
+  %664 = select i1 %650, float %661, float 0.000000e+00
+  %665 = select i1 %650, float %662, float 0.000000e+00
+  %666 = fsub fast float 1.000000e+00, %335
   %667 = fsub fast float 1.000000e+00, %336
   %668 = fsub fast float 1.000000e+00, %337
-  %669 = fsub fast float 1.000000e+00, %338
-  %670 = fsub fast float 1.000000e+00, %580
-  %671 = call float @dx.op.unary.f32(i32 6, float %670)  ; FAbs(value)
-  %672 = call float @dx.op.unary.f32(i32 23, float %671)  ; Log(value)
-  %673 = fmul fast float %672, 5.000000e+00
-  %674 = call float @dx.op.unary.f32(i32 21, float %673)  ; Exp(value)
-  %675 = fmul fast float %674, %667
-  %676 = fmul fast float %674, %668
-  %677 = fmul fast float %674, %669
+  %669 = fsub fast float 1.000000e+00, %579
+  %670 = call float @dx.op.unary.f32(i32 6, float %669)  ; FAbs(value)
+  %671 = call float @dx.op.unary.f32(i32 23, float %670)  ; Log(value)
+  %672 = fmul fast float %671, 5.000000e+00
+  %673 = call float @dx.op.unary.f32(i32 21, float %672)  ; Exp(value)
+  %674 = fmul fast float %673, %666
+  %675 = fmul fast float %673, %667
+  %676 = fmul fast float %673, %668
+  %677 = fsub fast float %666, %674
   %678 = fsub fast float %667, %675
   %679 = fsub fast float %668, %676
-  %680 = fsub fast float %669, %677
+  %680 = fmul fast float %677, %345
   %681 = fmul fast float %678, %346
   %682 = fmul fast float %679, %347
-  %683 = fmul fast float %680, %348
-  %684 = getelementptr inbounds %struct.RadiancePayload, %struct.RadiancePayload* %rayPayload, i32 0, i32 2
-  %685 = load i32, i32* %684, align 4
-  %686 = icmp ult i32 %685, %351
-  br i1 %686, label %687, label %703
+  %683 = getelementptr inbounds %struct.RadiancePayload, %struct.RadiancePayload* %rayPayload, i32 0, i32 2
+  %684 = load i32, i32* %683, align 4
+  %685 = icmp ult i32 %684, %350
+  br i1 %685, label %686, label %702
 
-; <label>:687                                     ; preds = %645
-  %688 = add i32 %685, 1
-  %689 = fmul fast float %666, 0x3F847AE140000000
-  %690 = fadd fast float %689, %34
-  %691 = fmul fast float %665, 0x3F847AE140000000
-  %692 = fadd fast float %691, %33
-  %693 = fmul fast float %664, 0x3F847AE140000000
-  %694 = fadd fast float %693, %32
-  %695 = call %dx.types.Handle @dx.op.createHandleForLib.struct.RaytracingAccelerationStructure(i32 160, %struct.RaytracingAccelerationStructure %5)  ; CreateHandleForLib(Resource)
-  %696 = getelementptr inbounds %struct.RadiancePayload, %struct.RadiancePayload* %9, i32 0, i32 0
-  store <3 x float> zeroinitializer, <3 x float>* %696, align 8
-  %697 = getelementptr inbounds %struct.RadiancePayload, %struct.RadiancePayload* %9, i32 0, i32 1
-  store float 0.000000e+00, float* %697, align 4
-  %698 = getelementptr inbounds %struct.RadiancePayload, %struct.RadiancePayload* %9, i32 0, i32 2
-  store i32 %688, i32* %698, align 8
-  call void @dx.op.traceRay.struct.RadiancePayload(i32 157, %dx.types.Handle %695, i32 16, i32 -1, i32 0, i32 2, i32 0, float %694, float %692, float %690, float 0x3F847AE140000000, float %664, float %665, float %666, float 8.000000e+02, %struct.RadiancePayload* nonnull %9)  ; TraceRay(AccelerationStructure,RayFlags,InstanceInclusionMask,RayContributionToHitGroupIndex,MultiplierForGeometryContributionToShaderIndex,MissShaderIndex,Origin_X,Origin_Y,Origin_Z,TMin,Direction_X,Direction_Y,Direction_Z,TMax,payload)
-  %699 = load <3 x float>, <3 x float>* %696, align 8
-  %700 = extractelement <3 x float> %699, i32 0
-  %701 = extractelement <3 x float> %699, i32 1
-  %702 = extractelement <3 x float> %699, i32 2
-  br label %703
+; <label>:686                                     ; preds = %644
+  %687 = add i32 %684, 1
+  %688 = fmul fast float %665, 0x3F847AE140000000
+  %689 = fadd fast float %688, %34
+  %690 = fmul fast float %664, 0x3F847AE140000000
+  %691 = fadd fast float %690, %33
+  %692 = fmul fast float %663, 0x3F847AE140000000
+  %693 = fadd fast float %692, %32
+  %694 = call %dx.types.Handle @dx.op.createHandleForLib.struct.RaytracingAccelerationStructure(i32 160, %struct.RaytracingAccelerationStructure %5)  ; CreateHandleForLib(Resource)
+  %695 = getelementptr inbounds %struct.RadiancePayload, %struct.RadiancePayload* %9, i32 0, i32 0
+  store <3 x float> zeroinitializer, <3 x float>* %695, align 8
+  %696 = getelementptr inbounds %struct.RadiancePayload, %struct.RadiancePayload* %9, i32 0, i32 1
+  store float 0.000000e+00, float* %696, align 4
+  %697 = getelementptr inbounds %struct.RadiancePayload, %struct.RadiancePayload* %9, i32 0, i32 2
+  store i32 %687, i32* %697, align 8
+  call void @dx.op.traceRay.struct.RadiancePayload(i32 157, %dx.types.Handle %694, i32 16, i32 -1, i32 0, i32 2, i32 0, float %693, float %691, float %689, float 0x3F847AE140000000, float %663, float %664, float %665, float 8.000000e+02, %struct.RadiancePayload* nonnull %9)  ; TraceRay(AccelerationStructure,RayFlags,InstanceInclusionMask,RayContributionToHitGroupIndex,MultiplierForGeometryContributionToShaderIndex,MissShaderIndex,Origin_X,Origin_Y,Origin_Z,TMin,Direction_X,Direction_Y,Direction_Z,TMax,payload)
+  %698 = load <3 x float>, <3 x float>* %695, align 8
+  %699 = extractelement <3 x float> %698, i32 0
+  %700 = extractelement <3 x float> %698, i32 1
+  %701 = extractelement <3 x float> %698, i32 2
+  br label %702
 
-; <label>:703                                     ; preds = %687, %645
-  %704 = phi float [ %700, %687 ], [ 0.000000e+00, %645 ]
-  %705 = phi float [ %701, %687 ], [ 0.000000e+00, %645 ]
-  %706 = phi float [ %702, %687 ], [ 0.000000e+00, %645 ]
+; <label>:702                                     ; preds = %686, %644
+  %703 = phi float [ %699, %686 ], [ 0.000000e+00, %644 ]
+  %704 = phi float [ %700, %686 ], [ 0.000000e+00, %644 ]
+  %705 = phi float [ %701, %686 ], [ 0.000000e+00, %644 ]
+  %706 = fmul fast float %680, %703
   %707 = fmul fast float %681, %704
   %708 = fmul fast float %682, %705
-  %709 = fmul fast float %683, %706
+  %709 = fadd fast float %706, %641
   %710 = fadd fast float %707, %642
   %711 = fadd fast float %708, %643
-  %712 = fadd fast float %709, %644
-  br label %713
+  br label %712
 
-; <label>:713                                     ; preds = %703, %641, %560
-  %714 = phi float [ %710, %703 ], [ %642, %641 ], [ %567, %560 ]
-  %715 = phi float [ %711, %703 ], [ %643, %641 ], [ %568, %560 ]
-  %716 = phi float [ %712, %703 ], [ %644, %641 ], [ %569, %560 ]
-  %717 = insertelement <3 x float> undef, float %714, i32 0
-  %718 = insertelement <3 x float> %717, float %715, i32 1
-  %719 = insertelement <3 x float> %718, float %716, i32 2
-  %720 = getelementptr inbounds %struct.RadiancePayload, %struct.RadiancePayload* %rayPayload, i32 0, i32 0
-  store <3 x float> %719, <3 x float>* %720, align 4, !tbaa !53
+; <label>:712                                     ; preds = %702, %640, %559
+  %713 = phi float [ %709, %702 ], [ %641, %640 ], [ %566, %559 ]
+  %714 = phi float [ %710, %702 ], [ %642, %640 ], [ %567, %559 ]
+  %715 = phi float [ %711, %702 ], [ %643, %640 ], [ %568, %559 ]
+  %716 = insertelement <3 x float> undef, float %713, i32 0
+  %717 = insertelement <3 x float> %716, float %714, i32 1
+  %718 = insertelement <3 x float> %717, float %715, i32 2
+  %719 = getelementptr inbounds %struct.RadiancePayload, %struct.RadiancePayload* %rayPayload, i32 0, i32 0
+  store <3 x float> %718, <3 x float>* %719, align 4, !tbaa !53
   ret void
 }
 
