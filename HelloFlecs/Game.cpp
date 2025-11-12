@@ -913,9 +913,9 @@ bool Game::Initialize(
 				//Image::SaveToCubeMapDDS(L"./Resources/temp/building/casper_depth.dds", depthProjImages, /*bGenerateMips*/false, /*mipLevels*/0);
 
 				flecs::entity e = m_ECSWorld.entity()
-					.set<comp::Position>({ -10.0f, 0.0f, 5.0f })
+					.set<comp::Position>({ -12.0f, -2.0f, 5.0f })
 					.set<comp::Rotation>({ DegToRad(-90.0f), DegToRad(180.0f), 0.0f })
-					.set<comp::Scale>({ 0.001f, 0.001f, 0.001f })
+					.set<comp::Scale>({ 0.005f, 0.005f, 0.005f })
 					.set<comp::Transform>({})
 					.set<comp::CasperRenderer>({ createCasperObject(m_pRenderer, L"./Resources/temp/building") });
 				m_Entities.emplace_back(e.id());

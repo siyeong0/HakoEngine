@@ -303,19 +303,8 @@ void MyIntersectionShader_Casper()
     for (int stepIndex = 0; stepIndex < MAX_STEPS; ++stepIndex)
     {
         // 5.1) Determine next boundary among X/Y/Z
-        uint axisToStep = 0;
-        float tAtNextBoundary = tMaxPerAxis.x;
-
-        if (tMaxPerAxis.y < tAtNextBoundary)
-        {
-            tAtNextBoundary = tMaxPerAxis.y;
-            axisToStep = 1;
-        }
-        if (tMaxPerAxis.z < tAtNextBoundary)
-        {
-            tAtNextBoundary = tMaxPerAxis.z;
-            axisToStep = 2;
-        }
+        uint axisToStep = tMaxPerAxis.x < tMaxPerAxis.y ? (tMaxPerAxis.x < tMaxPerAxis.z ? 0 : 2) : (tMaxPerAxis.y < tMaxPerAxis.z ? 1 : 2);
+        float tAtNextBoundary = tMaxPerAxis[axisToStep];
 
         // 5.2) Test current cell BEFORE stepping
         {
@@ -344,28 +333,14 @@ void MyIntersectionShader_Casper()
         }
 
         // 5.4) Advance to the neighbor cell along the chosen axis
-        if (axisToStep == 0)
-        {
-            cellIndex.x += cellStep.x;
-            tMaxPerAxis.x += tDeltaPerAxis.x;
-        }
-        else if (axisToStep == 1)
-        {
-            cellIndex.y += cellStep.y;
-            tMaxPerAxis.y += tDeltaPerAxis.y;
-        }
-        else
-        {
-            cellIndex.z += cellStep.z;
-            tMaxPerAxis.z += tDeltaPerAxis.z;
-        }
+        cellIndex[axisToStep] += cellStep[axisToStep];
+        tMaxPerAxis[axisToStep] += tDeltaPerAxis[axisToStep];
 
         tAlongUnitRay = tAtNextBoundary;
         lastStepAxis = (int) axisToStep;
 
         // 5.5) Stop if we left the unit grid
-        if (any(cellIndex < int3(0, 0, 0)) ||
-            any(cellIndex > int3(gridResolution - 1, gridResolution - 1, gridResolution - 1)))
+        if (any(cellIndex < 0.xxx) || any(cellIndex >= gridResolution.xxx))
         {
             break;
         }
