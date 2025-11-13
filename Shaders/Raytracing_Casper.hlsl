@@ -379,11 +379,7 @@ void MyIntersectionShader_Casper()
 //}
 
 [shader("closesthit")]
-
-    void MyClosestHitShader_RadianceRay_Casper
-    (inout
-    RadiancePayload rayPayload, in MyCasperIntersectionAttributes
-    attr)
+void MyClosestHitShader_RadianceRay_Casper(inout RadiancePayload rayPayload, in MyCasperIntersectionAttributes attr)
 {
     float3 hitPosition = HitWorldPosition();
     uint instanceID = InstanceID(); // The instance ID as specified in the instance desc.
