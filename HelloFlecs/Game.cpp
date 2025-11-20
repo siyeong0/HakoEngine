@@ -830,19 +830,6 @@ bool Game::Initialize(
 					.set<comp::CasperRenderer>({ createCasperObject(m_pRenderer, L"./Resources/temp/bunny") });
 				m_Entities.emplace_back(e.id());
 			}
-			const uint BUNNY_CASPER_OBJECT_COUNT = 0;
-			for (uint i = 0; i < BUNNY_CASPER_OBJECT_COUNT; i++)
-			{
-				flecs::entity e = m_ECSWorld.entity()
-					.set<comp::Position>(randPosition({ -35, 35 }))
-					.set<comp::Rotation>(randRotation({ -60, 60 }))
-					.set<comp::Scale>({ 2.0f, 2.0f, 2.0f })
-					.set<comp::Transform>({})
-					.set<comp::RigidBody>(randRigidBody())
-					.set<comp::Transform>({})
-					.set<comp::CasperRenderer>({ createCasperObject(m_pRenderer, L"./Resources/temp/bunny") });
-				m_Entities.emplace_back(e.id());
-			}
 			// Create volumes
 			{
 				//Volume vol;

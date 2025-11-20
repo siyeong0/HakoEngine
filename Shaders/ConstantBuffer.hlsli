@@ -33,6 +33,11 @@ cbuffer CONSTANT_BUFFER_PER_FRAME : register(b0, space0)
     Light g_LightList[MAX_LIGHT_COUNT];
 };
 
+float3 GetCameraPosition()
+{
+    return g_InvView._41_42_43;
+}
+
 cbuffer CONSTANT_BUFFER_ATMOS : register(b0, space1)
 {
     // Camera + sun (in planet-centered space; normalized)
