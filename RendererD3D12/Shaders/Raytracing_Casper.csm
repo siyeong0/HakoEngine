@@ -1,4 +1,4 @@
-; shader hash: ca07eb38127ac5ab2bad1535e8ccf96f
+; shader hash: 1a305f0364bbb62b28b5b96d4648d3a9
 ;
 ; Buffer Definitions:
 ;
@@ -625,8 +625,8 @@ define void @"\01?MyIntersectionShader_Casper@@YAXXZ"() #0 {
   %438 = fcmp fast oge float %380, %422
   %439 = fcmp fast ole float %380, %431
   %440 = and i1 %438, %439
-  %441 = and i1 %434, %437
-  %442 = and i1 %441, %440
+  %441 = and i1 %434, %440
+  %442 = and i1 %437, %441
   br i1 %442, label %443, label %624
 
 ; <label>:443                                     ; preds = %354
@@ -1949,10 +1949,10 @@ attributes #2 = { nounwind readonly }
 !33 = !{void ()* @"\01?MyIntersectionShader_Casper@@YAXXZ", !"\01?MyIntersectionShader_Casper@@YAXXZ", null, null, !34}
 !34 = !{i32 8, i32 8, i32 5, !30}
 !35 = !{!36, !38}
-!36 = distinct !{!36, !37, !"\01?GetEmpties@@YAXV?$vector@M$02@@Y05$$CAMH@Z: %outEmpties"}
-!37 = distinct !{!37, !"\01?GetEmpties@@YAXV?$vector@M$02@@Y05$$CAMH@Z"}
-!38 = distinct !{!38, !39, !"\01?GetLimits@@YAXV?$vector@M$02@@Y02$$CAV?$vector@M$01@@H@Z: %outLimits"}
-!39 = distinct !{!39, !"\01?GetLimits@@YAXV?$vector@M$02@@Y02$$CAV?$vector@M$01@@H@Z"}
+!36 = distinct !{!36, !37, !"\01?SampleCubeFaceDepths@@YAXV?$vector@M$02@@Y05$$CAMH@Z: %outEmpties"}
+!37 = distinct !{!37, !"\01?SampleCubeFaceDepths@@YAXV?$vector@M$02@@Y05$$CAMH@Z"}
+!38 = distinct !{!38, !39, !"\01?ComputeAxisDepthRanges@@YAXY02$$CAV?$vector@M$01@@V?$vector@M$02@@H@Z: %outAxisRanges"}
+!39 = distinct !{!39, !"\01?ComputeAxisDepthRanges@@YAXY02$$CAV?$vector@M$01@@V?$vector@M$02@@H@Z"}
 !40 = !{!41, !41, i64 0}
 !41 = !{!"int", !42, i64 0}
 !42 = !{!"omnipotent char", !43, i64 0}
