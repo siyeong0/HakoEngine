@@ -19,11 +19,11 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="pch.cpp">
-      <Filter>StaticMemoryPool</Filter>
-    </ClCompile>
     <ClCompile Include="StaticMemoryPool.cpp">
       <Filter>StaticMemoryPool</Filter>
+    </ClCompile>
+    <ClCompile Include="pch.cpp">
+      <Filter>pch</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>
