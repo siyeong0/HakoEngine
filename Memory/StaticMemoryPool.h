@@ -1,4 +1,5 @@
 ﻿#pragma once
+#include <cstdint>
 
 // ============================================================================
 // C-style StaticMemoryPool (paged, global intrusive free list)
@@ -52,17 +53,17 @@ private:
 	bool     ownsInPage(const Page* page, const void* payloadPtr) const;
 
 private:
-	size_t   m_ElementByteSize;
-	size_t   m_Alignment;
-	size_t   m_ElementsPerPage;
+	size_t m_ElementByteSize;
+	size_t m_Alignment;
+	size_t m_ElementsPerPage;
 
-	size_t   m_HeaderSize;
-	size_t   m_SlotStride;
+	size_t m_HeaderSize;
+	size_t m_SlotStride;
 
 	Page** m_Pages;
-	size_t   m_PageCount;
-	size_t   m_PageCapacity;
+	size_t m_PageCount;
+	size_t m_PageCapacity;
 
 	SlotHeader m_FreeHead;       // Head of the global free-list
-	size_t   m_TotalFreeCount; // Total number of free slots across all pages
+	size_t m_TotalFreeCount; // Total number of free slots across all pages
 };
