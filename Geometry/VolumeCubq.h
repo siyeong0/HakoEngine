@@ -128,7 +128,7 @@ public:
 	Bounds mBounds;
 };
 
-class Volume;
+class VolumeCubq;
 namespace Internals
 {
 	// The Volume class provides a high-level interface to the voxel data, but for some purposes (e.g. rendering) it's
@@ -137,21 +137,21 @@ namespace Internals
 	// probably shouldn't be doing it.
 
 	/// Provides access to the raw node data.
-	NodeDAG& getNodes(Volume& volume);
-	const NodeDAG& getNodes(const Volume& volume);
-	const uint32_t getRootNodeIndex(const Volume& volume);
+	NodeDAG& getNodes(VolumeCubq& volume);
+	const NodeDAG& getNodes(const VolumeCubq& volume);
+	const uint32_t getRootNodeIndex(const VolumeCubq& volume);
 }
 
-class Volume
+class VolumeCubq
 {
 public:
 
-	Volume();
-	Volume(const std::string& filename);
+	VolumeCubq();
+	VolumeCubq(const std::string& filename);
 
 	// Non-copyable (deleted)
-	Volume(const Volume&) = delete;
-	Volume& operator=(const Volume&) = delete;
+	VolumeCubq(const VolumeCubq&) = delete;
+	VolumeCubq& operator=(const VolumeCubq&) = delete;
 
 	// FIXME - Default move constructor doesn't work, I think because there
 	// is no move constructor on NodeStore (which manages a raw pointer) and
@@ -179,8 +179,8 @@ public:
 	void fillBrush(const Brush& brush, MaterialId matId);
 	uint32_t fillBrush(const Brush& brush, MaterialId matId, uint32_t nodeIndex, int nodeHeight, int32_t nodeLowerX, int32_t nodeLowerY, int32_t nodeLowerZ);
 
-	void addVolume(const Volume& rhsVolume);
-	uint32_t addVolume(const Volume& rhsVolume, uint32_t rhsNodeIndex, uint32_t nodeIndex, int nodeHeight, int32_t nodeLowerX, int32_t nodeLowerY, int32_t nodeLowerZ);
+	void addVolume(const VolumeCubq& rhsVolume);
+	uint32_t addVolume(const VolumeCubq& rhsVolume, uint32_t rhsNodeIndex, uint32_t nodeIndex, int nodeHeight, int32_t nodeLowerX, int32_t nodeLowerY, int32_t nodeLowerZ);
 
 	template <typename ArrayType>
 	MaterialId voxel(const ArrayType& position) const;
@@ -200,10 +200,10 @@ public:
 private:
 	void computeOccupiedBounds();
 
-	friend Internals::NodeDAG& Internals::getNodes(Volume& volume);
-	friend const Internals::NodeDAG& Internals::getNodes(const Volume& volume);
+	friend Internals::NodeDAG& Internals::getNodes(VolumeCubq& volume);
+	friend const Internals::NodeDAG& Internals::getNodes(const VolumeCubq& volume);
 	//friend u32& Internals::getRootNodeIndex(Volume& volume);
-	friend const uint32_t Internals::getRootNodeIndex(const Volume& volume);
+	friend const uint32_t Internals::getRootNodeIndex(const VolumeCubq& volume);
 
 private:
 	Internals::NodeDAG mDAG;
@@ -220,12 +220,12 @@ private:
 };
 
 // Implementation of templatised accessors
-template <typename ArrayType> MaterialId Volume::voxel(const ArrayType& position) const
+template <typename ArrayType> MaterialId VolumeCubq::voxel(const ArrayType& position) const
 {
 	return voxel(position[0], position[1], position[2]);
 }
 
-template <typename ArrayType> void Volume::setVoxel(const ArrayType& position, MaterialId matId)
+template <typename ArrayType> void VolumeCubq::setVoxel(const ArrayType& position, MaterialId matId)
 {
 	setVoxel(position[0], position[1], position[2], matId);
 }

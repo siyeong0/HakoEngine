@@ -18,10 +18,10 @@
     <Filter Include="Sphere">
       <UniqueIdentifier>{0513cd81-41d6-44ae-974b-e4541facea82}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Volume">
+    <Filter Include="VolumeCubq">
       <UniqueIdentifier>{1e78bd72-9901-4881-b3e0-458177b761cc}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Volume\Trace">
+    <Filter Include="VolumeCubq\Trace">
       <UniqueIdentifier>{484e9c24-3537-40aa-a741-8d4e2acb6f4f}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
@@ -42,11 +42,11 @@
     <ClInclude Include="Sphere.h">
       <Filter>Sphere</Filter>
     </ClInclude>
-    <ClInclude Include="Volume.h">
-      <Filter>Volume</Filter>
+    <ClInclude Include="VolumeCubq.h">
+      <Filter>VolumeCubq</Filter>
     </ClInclude>
-    <ClInclude Include="TraceVolume.h">
-      <Filter>Volume\Trace</Filter>
+    <ClInclude Include="TraceVolumeCubq.h">
+      <Filter>VolumeCubq\Trace</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -56,11 +56,11 @@
     <ClCompile Include="StaticMesh.cpp">
       <Filter>StaticMesh</Filter>
     </ClCompile>
-    <ClCompile Include="Volume.cpp">
-      <Filter>Volume</Filter>
+    <ClCompile Include="VolumeCubq.cpp">
+      <Filter>VolumeCubq</Filter>
     </ClCompile>
-    <ClCompile Include="TraceVolume.cpp">
-      <Filter>Volume\Trace</Filter>
+    <ClCompile Include="TraceVolumeCubq.cpp">
+      <Filter>VolumeCubq\Trace</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

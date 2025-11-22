@@ -1,6 +1,6 @@
 ﻿#include "pch.h"
 #include "Generic/Color.h"
-#include "TraceVolume.h"
+#include "TraceVolumeCubq.h"
 
 #include <cfloat>
 #include <climits>
@@ -385,7 +385,7 @@ RayVolumeIntersection intersectRayNodeESVO(const Internals::NodeStore& nodes,
 // for Octree Traversal'. I think that the standard behaviour of IEEE 754 handling of +/-infinity
 // and NaNs might be enough but I am not certain. If it proves to be a problem (if we ever see
 // NaNs?) then it can be solved by nudging tiny direction components away from zero.
-RayVolumeIntersection intersectVolume(const Volume& volume, const SubDAGArray& subDAGs,
+RayVolumeIntersection intersectVolume(const VolumeCubq& volume, const SubDAGArray& subDAGs,
 	float ray_orig_x, float ray_orig_y, float ray_orig_z,
 	float ray_dir_x, float ray_dir_y, float ray_dir_z,
 	bool computeSurfaceProperties, float maxFootprint)
@@ -395,7 +395,7 @@ RayVolumeIntersection intersectVolume(const Volume& volume, const SubDAGArray& s
 		computeSurfaceProperties, maxFootprint);
 }
 
-RayVolumeIntersection intersectVolume(const Volume& volume, const SubDAGArray& subDAGs,
+RayVolumeIntersection intersectVolume(const VolumeCubq& volume, const SubDAGArray& subDAGs,
 	Ray ray, bool computeSurfaceProperties, float maxFootprint)
 {
 	RayVolumeIntersection out = { false, 0, 0, {0,0,0}, {0,0,0} };
@@ -584,7 +584,7 @@ public:
 
 // TODO: FIXME - Can we make this take a const volume reference?
 template<typename Functor>
-void visitVolumeNodes(Volume& volume, Functor&& callback)
+void visitVolumeNodes(VolumeCubq& volume, Functor&& callback)
 {
 	Internals::NodeDAG& mDAG = Internals::getNodes(volume);
 	const uint32_t rootNodeIndex = Internals::getRootNodeIndex(volume);
@@ -644,7 +644,7 @@ void visitChildNodes(Internals::NodeDAG& mDAG, uint32_t nodeIndex, const IBounds
 	}
 }
 
-RayVolumeIntersection traceRayRef(Volume& volume,
+RayVolumeIntersection traceRayRef(VolumeCubq& volume,
 	float ray_orig_x, float ray_orig_y, float ray_orig_z,
 	float ray_dir_x, float ray_dir_y, float ray_dir_z)
 {
@@ -652,7 +652,7 @@ RayVolumeIntersection traceRayRef(Volume& volume,
 		Ray(FVector3(ray_orig_x, ray_orig_y, ray_orig_z), FVector3(ray_dir_x, ray_dir_y, ray_dir_z)));
 }
 
-RayVolumeIntersection traceRayRef(Volume& volume, Ray ray)
+RayVolumeIntersection traceRayRef(VolumeCubq& volume, Ray ray)
 {
 	IntersectionFinder intersectionFinder(ray);
 	visitVolumeNodes(volume, intersectionFinder);
@@ -670,7 +670,7 @@ static inline int mapToGrid(uint32_t p, uint32_t P, int D)
 }
 
 void ProjectVolumeFace(
-	const Volume& volume,
+	const VolumeCubq& volume,
 	uint8_t face,
 	uint maxSize,
 	Image* outDiffuseImage,

@@ -1,6 +1,6 @@
 ﻿#include "pch.h"
 #include "Generic/Color.h"
-#include "Volume.h"
+#include "VolumeCubq.h"
 
 /***************************************************************************************************
 * Cubiquity - A micro-voxel engine for games and other interactive applications                    *
@@ -248,14 +248,14 @@ uint32_t NodeDAG::updateNodeChild(uint32_t nodeIndex, uint32_t childId, uint32_t
 // Public member functions
 ////////////////////////////////////////////////////////////////////////////////
 
-Volume::Volume()
+VolumeCubq::VolumeCubq()
 {
 	mRootNodeIndices.resize(1);
 	mCurrentRoot = 0;
 	for (Color& c : mMaterialColors) { c = Color::Magenta(); }
 }
 
-Volume::Volume(const std::string& filename)
+VolumeCubq::VolumeCubq(const std::string& filename)
 {
 	mRootNodeIndices.resize(1);
 	mCurrentRoot = 0;
@@ -264,17 +264,17 @@ Volume::Volume(const std::string& filename)
 	load(filename);
 }
 
-void Volume::fill(MaterialId matId)
+void VolumeCubq::fill(MaterialId matId)
 {
 	setRootNodeIndex(matId);
 }
 
-uint32_t Volume::rootNodeIndex() const
+uint32_t VolumeCubq::rootNodeIndex() const
 {
 	return mRootNodeIndices[mCurrentRoot];
 }
 
-void Volume::setRootNodeIndex(uint32_t newRootNodeIndex)
+void VolumeCubq::setRootNodeIndex(uint32_t newRootNodeIndex)
 {
 	if (mTrackEdits)
 	{
@@ -292,7 +292,7 @@ void Volume::setRootNodeIndex(uint32_t newRootNodeIndex)
 	mRootNodeIndices[mCurrentRoot] = newRootNodeIndex;
 }
 
-void Volume::setTrackEdits(bool trackEdits)
+void VolumeCubq::setTrackEdits(bool trackEdits)
 {
 	mTrackEdits = trackEdits;
 	if (!mTrackEdits)
@@ -303,7 +303,7 @@ void Volume::setTrackEdits(bool trackEdits)
 	}
 }
 
-bool Volume::undo()
+bool VolumeCubq::undo()
 {
 	if (mCurrentRoot > 0)
 	{
@@ -314,7 +314,7 @@ bool Volume::undo()
 	return false; // Nothing to undo
 }
 
-bool Volume::redo()
+bool VolumeCubq::redo()
 {
 	if (mCurrentRoot < mRootNodeIndices.size() - 1)
 	{
@@ -325,13 +325,13 @@ bool Volume::redo()
 	return false; // Nothing to redo
 }
 
-void Volume::bake()
+void VolumeCubq::bake()
 {
 	mDAG.merge(rootNodeIndex());
 	setRootNodeIndex(mDAG.bakedNodesBegin());
 }
 
-void Volume::setVoxelRecursive(int32_t x, int32_t y, int32_t z, MaterialId matId)
+void VolumeCubq::setVoxelRecursive(int32_t x, int32_t y, int32_t z, MaterialId matId)
 {
 	// Do we need this mapping to unsiged space? Or could we eliminate it in both voxel()/
 	//setVoxel() and get the same behaviour? Or is that confusing, e.g. with raycasting?
@@ -344,7 +344,7 @@ void Volume::setVoxelRecursive(int32_t x, int32_t y, int32_t z, MaterialId matId
 	setRootNodeIndex(newRootNodeIndex);
 }
 
-uint32_t Volume::setVoxelRecursive(uint32_t ux, uint32_t uy, uint32_t uz, MaterialId matId, uint32_t nodeIndex, int nodeHeight)
+uint32_t VolumeCubq::setVoxelRecursive(uint32_t ux, uint32_t uy, uint32_t uz, MaterialId matId, uint32_t nodeIndex, int nodeHeight)
 {
 	assert(nodeHeight > 0);
 	uint32_t childHeight = nodeHeight - 1;
@@ -380,7 +380,7 @@ uint32_t Volume::setVoxelRecursive(uint32_t ux, uint32_t uy, uint32_t uz, Materi
 	}
 }
 
-void Volume::setVoxel(int32_t x, int32_t y, int32_t z, MaterialId matId)
+void VolumeCubq::setVoxel(int32_t x, int32_t y, int32_t z, MaterialId matId)
 {
 	//return setVoxelRecursive(x, y, z, matId);
 
@@ -469,7 +469,7 @@ void Volume::setVoxel(int32_t x, int32_t y, int32_t z, MaterialId matId)
 	setRootNodeIndex(nodeStateStack[rootHeight].mIndex);
 }
 
-void Volume::fillBrush(const Brush& brush, MaterialId matId)
+void VolumeCubq::fillBrush(const Brush& brush, MaterialId matId)
 {
 	const int rootHeight = std::log2(VolumeSideLength);
 	int nodeHeight = rootHeight;
@@ -481,7 +481,7 @@ void Volume::fillBrush(const Brush& brush, MaterialId matId)
 	setRootNodeIndex(newRootNodeIndex);
 }
 
-uint32_t Volume::fillBrush(const Brush& brush, MaterialId matId, uint32_t nodeIndex, int nodeHeight, int32_t nodeLowerX, int32_t nodeLowerY, int32_t nodeLowerZ)
+uint32_t VolumeCubq::fillBrush(const Brush& brush, MaterialId matId, uint32_t nodeIndex, int nodeHeight, int32_t nodeLowerX, int32_t nodeLowerY, int32_t nodeLowerZ)
 {
 	uint32_t childHeight = nodeHeight - 1;
 	//int tx = (x ^ (1UL << 31)); // Could precalculte these.
@@ -560,7 +560,7 @@ uint32_t Volume::fillBrush(const Brush& brush, MaterialId matId, uint32_t nodeIn
 	return nodeIndex;
 }
 
-void Volume::addVolume(const Volume& rhsVolume)
+void VolumeCubq::addVolume(const VolumeCubq& rhsVolume)
 {
 	const int rootHeight = std::log2(VolumeSideLength);
 	int nodeHeight = rootHeight;
@@ -573,7 +573,7 @@ void Volume::addVolume(const Volume& rhsVolume)
 
 // Fixme - This function can prbably be more efficient. Firstly through better early out when whole nodes are full/empty, and also
 // if seperate volumes shared a common memory space it would be easier to copy node directly across (maybe in compressd space?).
-uint32_t Volume::addVolume(const Volume& rhsVolume, uint32_t rhsNodeIndex, uint32_t nodeIndex, int nodeHeight, int32_t nodeLowerX, int32_t nodeLowerY, int32_t nodeLowerZ)
+uint32_t VolumeCubq::addVolume(const VolumeCubq& rhsVolume, uint32_t rhsNodeIndex, uint32_t nodeIndex, int nodeHeight, int32_t nodeLowerX, int32_t nodeLowerY, int32_t nodeLowerZ)
 {
 	uint32_t childHeight = nodeHeight - 1;
 	//int tx = (x ^ (1UL << 31)); // Could precalculte these.
@@ -658,7 +658,7 @@ uint32_t Volume::addVolume(const Volume& rhsVolume, uint32_t rhsNodeIndex, uint3
 	return nodeIndex;
 }
 
-MaterialId Volume::voxel(int32_t x, int32_t y, int32_t z) const
+MaterialId VolumeCubq::voxel(int32_t x, int32_t y, int32_t z) const
 {
 	uint32_t nodeIndex = rootNodeIndex();
 	uint32_t height = std::log2(VolumeSideLength);
@@ -825,7 +825,7 @@ namespace
 
 
 
-bool Volume::load(const std::string& filename)
+bool VolumeCubq::load(const std::string& filename)
 {
 	std::ifstream file(filename, std::ios::binary);
 
@@ -863,7 +863,7 @@ bool Volume::load(const std::string& filename)
 	return true;
 }
 
-void Volume::save(const std::string& filename)
+void VolumeCubq::save(const std::string& filename)
 {
 	bake();
 
@@ -880,7 +880,7 @@ void Volume::save(const std::string& filename)
 	SaveColorsToToml(mMaterialColors, tomlPath);
 }
 
-void Volume::computeOccupiedBounds()
+void VolumeCubq::computeOccupiedBounds()
 {
 	struct Box { int32_t minx, miny, minz, maxx, maxy, maxz; };
 
@@ -975,17 +975,17 @@ namespace Internals
 {
 	/// This is an advanced function which should only be used if you
 	/// understand the internal memory layout of Cubiquity's volume data.
-	NodeDAG& getNodes(Volume& volume)
+	NodeDAG& getNodes(VolumeCubq& volume)
 	{
 		return volume.mDAG;
 	}
 
-	const NodeDAG& getNodes(const Volume& volume)
+	const NodeDAG& getNodes(const VolumeCubq& volume)
 	{
 		return volume.mDAG;
 	}
 
-	const uint32_t getRootNodeIndex(const Volume& volume)
+	const uint32_t getRootNodeIndex(const VolumeCubq& volume)
 	{
 		return volume.rootNodeIndex();
 	}

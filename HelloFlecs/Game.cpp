@@ -9,8 +9,8 @@
 #include "Common/Common.h"
 #include "Generic/QueryPerfCounter.h"
 #include "Interface/IRenderer.h"
-#include "Geometry/Volume.h"
-#include "Geometry/TraceVolume.h"
+#include "Geometry/VolumeCubq.h"
+#include "Geometry/TraceVolumeCubq.h"
 #include "Game.h"
 #include "HakoFlecs/Components.h"
 

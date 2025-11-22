@@ -11,7 +11,7 @@
 * You should have received a copy of the CC0 Public Domain Dedication along with this software.    *
 * If not, see http://creativecommons.org/publicdomain/zero/1.0/.                                   *
 ***************************************************************************************************/
-#include "Volume.h"
+#include "VolumeCubq.h"
 
 #include "Generic/Image.h"
 
@@ -92,15 +92,15 @@ typedef std::array<SubDAG, 8> SubDAGArray;
 SubDAGArray findSubDAGs(const Internals::NodeStore& nodes, uint32_t rootNodeIndex);
 
 const float MAX_FOOTPRINT_DISABLED = -1.0f;
-RayVolumeIntersection intersectVolume(const Volume& volume, const SubDAGArray& subDAGs,
+RayVolumeIntersection intersectVolume(const VolumeCubq& volume, const SubDAGArray& subDAGs,
 	float ray_orig_x, float ray_orig_y, float ray_orig_z,
 	float ray_dir_x, float ray_dir_y, float ray_dir_z,
 	bool computeSurfaceProperties, float maxFootprint = MAX_FOOTPRINT_DISABLED);
-RayVolumeIntersection intersectVolume(const Volume& volume, const SubDAGArray& subDAGs, Ray ray, bool computeSurfaceProperties, float maxFootprint = MAX_FOOTPRINT_DISABLED);
+RayVolumeIntersection intersectVolume(const VolumeCubq& volume, const SubDAGArray& subDAGs, Ray ray, bool computeSurfaceProperties, float maxFootprint = MAX_FOOTPRINT_DISABLED);
 
-RayVolumeIntersection traceRayRef(Volume& volume,
+RayVolumeIntersection traceRayRef(VolumeCubq& volume,
 	float ray_orig_x, float ray_orig_y, float ray_orig_z,
 	float ray_dir_x, float ray_dir_y, float ray_dir_z);
-RayVolumeIntersection traceRayRef(Volume& volume, Ray ray);
+RayVolumeIntersection traceRayRef(VolumeCubq& volume, Ray ray);
 
-void ProjectVolumeFace(const Volume& volume, uint8_t face, uint maxSize, Image* outDiffuseImage, Image* outDepthImage);
+void ProjectVolumeFace(const VolumeCubq& volume, uint8_t face, uint maxSize, Image* outDiffuseImage, Image* outDepthImage);

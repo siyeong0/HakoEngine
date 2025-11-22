@@ -9,6 +9,9 @@
       <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
       <Extensions>cpp;c;cc;cxx;c++;cppm;ixx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
     </Filter>
+    <Filter Include="StaticObjectPool">
+      <UniqueIdentifier>{0d107e69-90f7-4ff1-aa7a-3373315a98cf}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h">
@@ -17,13 +20,19 @@
     <ClInclude Include="StaticMemoryPool.h">
       <Filter>StaticMemoryPool</Filter>
     </ClInclude>
+    <ClInclude Include="StaticObjectPool.h">
+      <Filter>StaticObjectPool</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="pch.cpp">
+      <Filter>pch</Filter>
+    </ClCompile>
     <ClCompile Include="StaticMemoryPool.cpp">
       <Filter>StaticMemoryPool</Filter>
     </ClCompile>
-    <ClCompile Include="pch.cpp">
-      <Filter>pch</Filter>
+    <ClCompile Include="StaticObjectPool.cpp">
+      <Filter>StaticObjectPool</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

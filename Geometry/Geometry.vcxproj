@@ -144,9 +144,9 @@
     <ClInclude Include="Material.h" />
     <ClInclude Include="pch.h" />
     <ClInclude Include="StaticMesh.h" />
-    <ClInclude Include="TraceVolume.h" />
+    <ClInclude Include="TraceVolumeCubq.h" />
     <ClInclude Include="Vertex.h" />
-    <ClInclude Include="Volume.h" />
+    <ClInclude Include="VolumeCubq.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="pch.cpp">
@@ -156,8 +156,8 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="StaticMesh.cpp" />
-    <ClCompile Include="TraceVolume.cpp" />
-    <ClCompile Include="Volume.cpp" />
+    <ClCompile Include="TraceVolumeCubq.cpp" />
+    <ClCompile Include="VolumeCubq.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
