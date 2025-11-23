@@ -11,6 +11,7 @@
 #include "Interface/IRenderer.h"
 #include "Geometry/VolumeCubq.h"
 #include "Geometry/TraceVolumeCubq.h"
+#include "Geometry/Volume.h"
 #include "Game.h"
 #include "HakoFlecs/Components.h"
 
@@ -32,7 +33,7 @@ static IMeshObject* createCubeMeshObject(IRenderer* pRenderer)
 	pMeshObj->BeginCreateMesh(vertices.data(), (uint)vertices.size(), (uint)meshData.Sections.size());
 	for (const UMeshSection& sec : meshData.Sections)
 	{
-		UMaterial mtl(nullptr, nullptr, nullptr, nullptr, nullptr, MATERIAL_TYPE_MATTE);
+		UMaterial mtl(L"Resources/Kanna.dds", nullptr, nullptr, nullptr, nullptr, MATERIAL_TYPE_MATTE);
 		pMeshObj->InsertTriGroup(sec.Indices.data(), (uint)(sec.Indices.size() / 3), mtl);
 	}
 	pMeshObj->EndCreateMesh();
@@ -740,6 +741,120 @@ bool Game::Initialize(
 				.set<comp::MeshRenderer>({ createMetalTileGridMeshObject(m_pRenderer) });
 			m_Entities.emplace_back(e.id());
 		}
+
+
+		auto visualizeVolume = [&](const Volume& vol, const FVector3& position = FVector3::Zero())
+			{
+				const auto& nodes = vol.GetNodes();
+				Bounds      rootB = vol.GetOctreeBounds();
+				const float cellSize = vol.GetCellSize();
+
+				constexpr uint32_t HAS_CHILDREN_BIT = 1u << 31;
+				constexpr uint32_t OCCUPIED_BIT = 1u << 30;
+				constexpr uint32_t CHILD_INDEX_MASK = 0x3FFFFFFFu;
+
+				struct StackEntry
+				{
+					uint32_t nodeIndex;
+					Bounds   bounds;
+					int      depth;
+				};
+
+				std::vector<StackEntry> stack;
+				stack.reserve(1024);
+				stack.push_back({ 0u, rootB, 0 }); // start from root
+
+				while (!stack.empty())
+				{
+					StackEntry entry = stack.back();
+					stack.pop_back();
+
+					const VolumeNode& node = nodes[entry.nodeIndex];
+
+					bool hasChildren = (node.TopologyBits & HAS_CHILDREN_BIT) != 0;
+
+					if (hasChildren)
+					{
+						uint32_t firstChild = (node.TopologyBits & CHILD_INDEX_MASK);
+
+						const FVector3 parentCenter = entry.bounds.Center();
+						const FVector3 parentExtents = entry.bounds.Extents();
+						const FVector3 childExtents = parentExtents * 0.5f;
+
+						for (uint32_t i = 0; i < 8; ++i)
+						{
+							float sx = (i & 1u) ? +1.0f : -1.0f;
+							float sy = (i & 2u) ? +1.0f : -1.0f;
+							float sz = (i & 4u) ? +1.0f : -1.0f;
+
+							FVector3 childCenter =
+							{
+								parentCenter.x + sx * childExtents.x,
+								parentCenter.y + sy * childExtents.y,
+								parentCenter.z + sz * childExtents.z
+							};
+
+							Bounds childBounds;
+							childBounds.Min =
+							{
+								childCenter.x - childExtents.x,
+								childCenter.y - childExtents.y,
+								childCenter.z - childExtents.z
+							};
+							childBounds.Max =
+							{
+								childCenter.x + childExtents.x,
+								childCenter.y + childExtents.y,
+								childCenter.z + childExtents.z
+							};
+
+							stack.push_back({ firstChild + i, childBounds, entry.depth + 1 });
+						}
+					}
+					else
+					{
+						// Skip empty leaf
+						if ((node.TopologyBits & OCCUPIED_BIT) == 0)
+							continue;
+
+						// Spawn a cube per occupied leaf
+						const FVector3 center = entry.bounds.Center();
+						FVector3 worldPos = position + center;
+						
+						flecs::entity e = m_ECSWorld.entity()
+							.set<comp::Position>({ worldPos.x, worldPos.y, worldPos.z })
+							.set<comp::Rotation>({ 0.0f, 0.0f, 0.0f })
+							.set<comp::Scale>({ cellSize, cellSize, cellSize })
+							.set<comp::Transform>({})
+							.set<comp::MeshRenderer>({ createCubeMeshObject(m_pRenderer) });
+
+						m_Entities.emplace_back(e.id());
+					}
+				}
+			};
+
+		//{
+		//	Volume volume = Volume::CreateBox(1.0, 2.0, 3.0);
+		//	visualizeVolume(volume, {-5.0, 0.0, 2.0});
+		//}
+		//{
+		//	Volume volume = Volume::CreateSphere(1.5);
+		//	visualizeVolume(volume, {-3.0, 0.0, 2.0 });
+		//}
+		//{
+		//	Volume volume = Volume::CreatePlane(1.0, 2.0);
+		//	visualizeVolume(volume, { -1.0, 0.0, 2.0 });
+		//}
+		//{
+		//	Volume volume = Volume::CreateCylinder(1.0, 2.0);
+		//	visualizeVolume(volume, { 1.0, 0.0, 2.0 });
+		//}
+		{
+			Volume volume = Volume::CreateCone(1.0, 2.0);
+			visualizeVolume(volume, { 3.0, 0.0, 2.0 });
+		}
+
+
 		//// wire fence
 		//{
 		//	flecs::entity e = m_ECSWorld.entity()
@@ -870,7 +985,7 @@ bool Game::Initialize(
 				//Volume vol;
 				//bool bLoaded = vol.load("./Resources/cubq/building.dag");
 				//ASSERT(bLoaded, "Failed to load volume data");
-			
+
 				//Image diffuseProjImages[6];
 				//Image depthProjImages[6];
 				//for (int i = 0; i < 6; i++)

@@ -146,6 +146,7 @@
     <ClInclude Include="StaticMesh.h" />
     <ClInclude Include="TraceVolumeCubq.h" />
     <ClInclude Include="Vertex.h" />
+    <ClInclude Include="Volume.h" />
     <ClInclude Include="VolumeCubq.h" />
   </ItemGroup>
   <ItemGroup>
@@ -157,6 +158,7 @@
     </ClCompile>
     <ClCompile Include="StaticMesh.cpp" />
     <ClCompile Include="TraceVolumeCubq.cpp" />
+    <ClCompile Include="Volume.cpp" />
     <ClCompile Include="VolumeCubq.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

@@ -24,6 +24,9 @@
     <Filter Include="VolumeCubq\Trace">
       <UniqueIdentifier>{484e9c24-3537-40aa-a741-8d4e2acb6f4f}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Volume">
+      <UniqueIdentifier>{e8d2a0bb-4ff5-422c-9e2d-962a801785c6}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h">
@@ -48,6 +51,9 @@
     <ClInclude Include="TraceVolumeCubq.h">
       <Filter>VolumeCubq\Trace</Filter>
     </ClInclude>
+    <ClInclude Include="Volume.h">
+      <Filter>Volume</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="pch.cpp">
@@ -61,6 +67,9 @@
     </ClCompile>
     <ClCompile Include="TraceVolumeCubq.cpp">
       <Filter>VolumeCubq\Trace</Filter>
+    </ClCompile>
+    <ClCompile Include="Volume.cpp">
+      <Filter>Volume</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>
