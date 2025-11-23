@@ -1,19 +1,19 @@
 ﻿#include "pch.h"
+#include "SDF.h"
 #include "Volume.h"
 
 namespace
 {
-	constexpr uint32_t TOPO_HAS_CHILDREN = 0x80000000u; // node has children
-	constexpr uint32_t TOPO_SOLID_LEAF = 0x40000000u;  // solid leaf node
-	constexpr uint32_t TOPO_FLAG_MASK = 0xC0000000u;  // top 2 bits
-	constexpr uint32_t TOPO_CHILD_MASK = 0x3FFFFFFFu;  // lower 30 bits for child base index
+	constexpr uint32_t HAS_CHILDREN_BIT = 1u << 31; // node has children
+	constexpr uint32_t OCCUPIED_BIT = 1u << 30;  // solid leaf node
+	constexpr uint32_t CHILD_INDEX_MASK = 0x3FFFFFFFu;  // top 2 bits
 
 	constexpr uint32_t INVALID_NODE_INDEX = 0xFFFFFFFFu;
 }
 
 Volume::Volume()
 	: m_CellSize(DEFAULT_CELL_SIZE)
-	, m_Bounds()
+	, m_PseudoOccupiedBounds()
 {
 	m_Nodes.reserve(DEFAULT_NODE_CAPACITY);
 	m_Nodes.emplace_back(); // root node
@@ -21,7 +21,7 @@ Volume::Volume()
 
 Volume::Volume(float cellSize)
 	: m_CellSize(cellSize)
-	, m_Bounds()
+	, m_PseudoOccupiedBounds()
 {
 	m_Nodes.reserve(DEFAULT_NODE_CAPACITY);
 	m_Nodes.emplace_back(); // root node
@@ -46,158 +46,134 @@ Bounds Volume::GetOctreeBounds() const
 
 void Volume::ApplyUnion(const std::function<float(const FVector3& pos)>& sdf)
 {
-	constexpr uint32_t HAS_CHILDREN_BIT = 1u << 31;
-	constexpr uint32_t OCCUPIED_BIT = 1u << 30;
-	constexpr uint32_t CHILD_INDEX_MASK = 0x3FFFFFFFu;
-
-	// Snapshot of the current volume (old volume).
-	std::vector<VolumeNode> oldNodes = m_Nodes;
-
-	// New node array that will store the union result.
-	std::vector<VolumeNode> newNodes;
-	newNodes.reserve(oldNodes.size());
-	newNodes.emplace_back(VolumeNode{ 0u, 0u }); // new root at index 0
-
-	Bounds maxOctreeBounds = GetOctreeBounds();
+	// Ensure the volume has at least a root node.
+	if (m_Nodes.empty())
+	{
+		m_Nodes.emplace_back(VolumeNode{ 0u, 0u });
+	}
 
 	struct NodeEntry
 	{
-		uint32_t OldIndex;   // index in oldNodes, or INVALID_NODE_INDEX
-		uint32_t NewIndex;   // index in newNodes
-		Bounds   NodeBounds; // world-space bounds of this node
-		int      Depth;      // tree depth (root = 0)
+		uint32_t Index;
+		Bounds NodeBounds;
+		int Depth;
 	};
 
 	std::vector<NodeEntry> stack;
 	stack.reserve(1024);
-	stack.push_back({ 0u, 0u, maxOctreeBounds, 0 });
-
-	bool   hasAny = false;
-	Bounds occupiedBounds{}; // combined bounds of all occupied leaves
+	stack.emplace_back(NodeEntry{ 0u, GetOctreeBounds(), 0 });
 
 	while (!stack.empty())
 	{
 		NodeEntry entry = stack.back();
 		stack.pop_back();
 
-		const Bounds& b = entry.NodeBounds;
-		const int     dep = entry.Depth;
+		VolumeNode& currNode = m_Nodes[entry.Index];
+		const Bounds& currBounds = entry.NodeBounds;
+		const int currDepth = entry.Depth;
 
-		VolumeNode& newNode = newNodes[entry.NewIndex];
+		// ------------------------------------------------------------
+		// Read existing node state
+		// ------------------------------------------------------------
+		uint32_t topoWord = currNode.TopologyBits;
+		bool bHasChildren = (topoWord & HAS_CHILDREN_BIT) != 0;
+		bool bLeafSolid = (topoWord & OCCUPIED_BIT) != 0;
+		bool bSubtreeEmpty = !bHasChildren && !bLeafSolid;
 
-		// --------------------------
-		// Read old node state
-		// --------------------------
-		VolumeNode oldNode{ 0u, 0u };
-		bool hasOld = (entry.OldIndex != INVALID_NODE_INDEX) &&
-			(entry.OldIndex < oldNodes.size());
+		// ------------------------------------------------------------
+		// Conservative SDF classification using Lipschitz bound
+		// ------------------------------------------------------------
+		const FVector3 center = currBounds.Center();
+		const FVector3 extents = currBounds.Extents();
 
-		if (hasOld)
-		{
-			oldNode = oldNodes[entry.OldIndex];
-		}
-
-		bool oldHasChildren = hasOld && (oldNode.TopologyBits & HAS_CHILDREN_BIT);
-		bool oldLeafSolid = hasOld && (oldNode.TopologyBits & OCCUPIED_BIT);
-		bool oldSubtreeEmpty = !oldHasChildren && !oldLeafSolid;
-
-		// --------------------------
-		// SDF classification (Lipschitz-based)
-		// --------------------------
-		FVector3 center = b.Center();
-		FVector3 extents = b.Extents();
-
-		// half-diagonal length of this node AABB
-		float r = std::sqrt(FVector3::Dot(extents, extents));
-
-		float d = sdf(center);   // signed distance at center
-		float minD = d - r;         // conservative minimum in the box
-		float maxD = d + r;         // conservative maximum in the box
+		float r = std::sqrt(FVector3::Dot(extents, extents)); // half-diagonal length
+		float d = sdf(center);
+		float minD = d - r;
+		float maxD = d + r;
 
 		bool bFullyOutside = (minD > 0.0f);
 		bool bFullyInside = (maxD < 0.0f);
 		bool bCenterInside = (d <= 0.0f);
 
-		// ---------------------------------------------------------------------
-		// Case 1: Node is completely outside SDF and old subtree is empty
-		// => this region contributes nothing to the union.
-		// ---------------------------------------------------------------------
-		if (bFullyOutside && oldSubtreeEmpty)
+		// ------------------------------------------------------------
+		// If SDF is fully outside AND the existing subtree is empty,
+		// this region contributes nothing to the union.
+		// ------------------------------------------------------------
+		if (bFullyOutside && bSubtreeEmpty)
 		{
-			newNode.TopologyBits = 0u;
-			newNode.BrickBits = 0u;
+			currNode.TopologyBits = 0u;
+			currNode.BrickBits = 0u;
 			continue;
 		}
 
-		// ---------------------------------------------------------------------
-		// Leaf: maximum depth reached
-		// ---------------------------------------------------------------------
-		if (dep >= MAX_OCTREE_DEPTH)
+		// ------------------------------------------------------------
+		// Leaf reached (max resolution)
+		// ------------------------------------------------------------
+		if (currDepth >= MAX_OCTREE_DEPTH)
 		{
-			// Old occupancy at this leaf
-			bool oldOccupied = oldLeafSolid;
+			bool bOldOccupied = bLeafSolid;
+			bool bSdfOccupied = bCenterInside || bFullyInside;
 
-			// SDF occupancy at this leaf (we can use center test)
-			bool sdfOccupied = bCenterInside || bFullyInside;
+			bool bResultOccupied = bOldOccupied || bSdfOccupied;
 
-			// Union: either old volume or SDF says this cell is occupied
-			bool resultOccupied = oldOccupied || sdfOccupied;
-
-			if (resultOccupied)
+			if (bResultOccupied)
 			{
-				newNode.TopologyBits = OCCUPIED_BIT;
-				newNode.BrickBits = 0u;
+				currNode.TopologyBits = OCCUPIED_BIT;
+				currNode.BrickBits = 0u;
 
-				if (!hasAny)
-				{
-					occupiedBounds = b;
-					hasAny = true;
-				}
-				else
-				{
-					occupiedBounds.Encapsulate(b);
-				}
+				m_PseudoOccupiedBounds.Encapsulate(currBounds);
 			}
 			else
 			{
-				newNode.TopologyBits = 0u;
-				newNode.BrickBits = 0u;
+				currNode.TopologyBits = 0u;
+				currNode.BrickBits = 0u;
 			}
 
 			continue;
 		}
 
-		// ---------------------------------------------------------------------
-		// Internal node: either we have old data, SDF overlap, or both.
-		// We must subdivide unless SDF is fully inside and we want to early-out.
-		//
-		// To keep the structure consistent (all leaves at MAX_OCTREE_DEPTH),
-		// we still subdivide fully inside regions as well.
-		// ---------------------------------------------------------------------
-
-		// Allocate 8 children in the new tree.
-		uint32_t firstChildIndex = static_cast<uint32_t>(newNodes.size());
-		uint32_t childIndexBits = (firstChildIndex & CHILD_INDEX_MASK);
-
-		newNode.TopologyBits = HAS_CHILDREN_BIT | childIndexBits;
-		newNode.BrickBits = 0u;
-
-		for (int i = 0; i < 8; ++i)
+		// ------------------------------------------------------------
+		// If SDF is fully outside but the subtree is not empty,
+		// keep the existing content as part of the union.
+		// No need to traverse children.
+		// ------------------------------------------------------------
+		if (bFullyOutside && !bSubtreeEmpty)
 		{
-			newNodes.emplace_back(VolumeNode{ 0u, 0u });
+			continue;
 		}
 
-		// Prepare child bounds
-		FVector3 parentCenter = b.Center();
-		FVector3 parentExtents = b.Extents();
-		FVector3 childExtents = parentExtents * 0.5f;
-
-		// Old children base index (if they exist)
-		uint32_t oldChildBase = 0;
-		if (oldHasChildren)
+		// ------------------------------------------------------------
+		// At this point SDF intersects this node's region (or at least
+		// cannot be proven fully outside). If no children exist yet,
+		// allocate them.
+		// ------------------------------------------------------------
+		uint32_t childBase = 0;
+		if (!bHasChildren)
 		{
-			oldChildBase = (oldNode.TopologyBits & CHILD_INDEX_MASK);
+			childBase = static_cast<uint32_t>(m_Nodes.size());
+			currNode.TopologyBits = HAS_CHILDREN_BIT | (childBase & CHILD_INDEX_MASK);
+			currNode.BrickBits = 0u;
+
+			for (int i = 0; i < 8; ++i)
+			{
+				m_Nodes.emplace_back(VolumeNode{ 0u, 0u });
+			}
+
+			bHasChildren = true;
 		}
+		else
+		{
+			childBase = (topoWord & CHILD_INDEX_MASK);
+		}
+
+		// ------------------------------------------------------------
+		// Subdivide the node and push all children for further processing.
+		// Each child will run its own SDF classification when popped.
+		// This ensures we only evaluate sdf() once per node.
+		// ------------------------------------------------------------
+		const FVector3 parentCenter = center;
+		const FVector3 parentExtents = extents;
+		const FVector3 childExtents = parentExtents * 0.5f;
 
 		for (uint32_t i = 0; i < 8; ++i)
 		{
@@ -226,236 +202,159 @@ void Volume::ApplyUnion(const std::function<float(const FVector3& pos)>& sdf)
 				childCenter.z + childExtents.z
 			};
 
-			// Look up old child state, if any
-			uint32_t oldChildIndex = INVALID_NODE_INDEX;
-			bool     oldChildNonEmpty = false;
+			uint32_t childIndex = childBase + i;
 
-			if (oldHasChildren)
-			{
-				oldChildIndex = oldChildBase + i;
-				if (oldChildIndex < oldNodes.size())
-				{
-					uint32_t oldTopo = oldNodes[oldChildIndex].TopologyBits;
-					oldChildNonEmpty = (oldTopo & (HAS_CHILDREN_BIT | OCCUPIED_BIT)) != 0;
-				}
-			}
-
-			// SDF classification for the child (for culling)
-			FVector3 childCenterLocal = childBounds.Center();
-			FVector3 childExtentsLocal = childBounds.Extents();
-
-			float rChild = std::sqrt(FVector3::Dot(childExtentsLocal, childExtentsLocal));
-			float dChild = sdf(childCenterLocal);
-			float minChildD = dChild - rChild;
-			float maxChildD = dChild + rChild;
-
-			bool childFullyOutside = (minChildD > 0.0f);
-
-			// If the child region is fully outside SDF AND the old child is empty,
-			// then the child contributes nothing to the union -> skip it.
-			if (childFullyOutside && !oldChildNonEmpty)
-				continue;
-
-			// Otherwise, recurse into this child.
-			stack.push_back(
-				{
-					oldChildIndex,              // index in oldNodes (if any)
-					firstChildIndex + i,        // index in newNodes
-					childBounds,
-					dep + 1
-				}
-			);
+			stack.emplace_back(NodeEntry{ childIndex, childBounds, currDepth + 1 });
 		}
 	}
 
-	// Replace current nodes with the newly built union volume.
-	m_Nodes.swap(newNodes);
-
-	if (hasAny)
-	{
-		m_Bounds = occupiedBounds;
-	}
-	// If hasAny == false, the union is empty; you can optionally reset m_Bounds here.
+	// If bAnyNew == false, the union did not introduce new occupied cells.
+	// Existing volume remains valid.
 }
+
 
 void Volume::ApplyDifference(const std::function<float(const FVector3& pos)>& sdf)
 {
-	constexpr uint32_t HAS_CHILDREN_BIT = 1u << 31;
-	constexpr uint32_t OCCUPIED_BIT = 1u << 30;
-	constexpr uint32_t CHILD_INDEX_MASK = 0x3FFFFFFFu;
-
-	// Snapshot of the current volume (old volume).
-	std::vector<VolumeNode> oldNodes = m_Nodes;
-
-	// New node array that will store the "old minus SDF" result.
-	std::vector<VolumeNode> newNodes;
-	newNodes.reserve(oldNodes.size());
-	newNodes.emplace_back(VolumeNode{ 0u, 0u }); // new root at index 0
-
-	Bounds maxOctreeBounds = GetOctreeBounds();
+	// If there is no tree yet, there is nothing to subtract from.
+	if (m_Nodes.empty())
+	{
+		ASSERT(false, "Volume has no data to subtract from.");
+		return;
+	}
 
 	struct NodeEntry
 	{
-		uint32_t OldIndex;   // index in oldNodes, or INVALID_NODE_INDEX
-		uint32_t NewIndex;   // index in newNodes
-		Bounds   NodeBounds; // world-space bounds of this node
-		int      Depth;      // tree depth (root = 0)
+		uint32_t Index;
+		Bounds NodeBounds;
+		int Depth; // root = 0
 	};
 
 	std::vector<NodeEntry> stack;
 	stack.reserve(1024);
-	stack.push_back({ 0u, 0u, maxOctreeBounds, 0 });
-
-	bool   hasAny = false;
-	Bounds occupiedBounds{}; // combined bounds of all remaining occupied leaves
+	stack.emplace_back(NodeEntry{ 0u, GetOctreeBounds(), 0 });
 
 	while (!stack.empty())
 	{
 		NodeEntry entry = stack.back();
 		stack.pop_back();
 
-		const Bounds& b = entry.NodeBounds;
-		const int     dep = entry.Depth;
+		VolumeNode& currNode = m_Nodes[entry.Index];
+		const Bounds& currBounds = entry.NodeBounds;
+		const int currDepth = entry.Depth;
 
-		VolumeNode& newNode = newNodes[entry.NewIndex];
+		// ------------------------------------------------------------
+		// Read existing node state
+		// ------------------------------------------------------------
+		uint32_t topoWord = currNode.TopologyBits;
+		bool bHasChildren = (topoWord & HAS_CHILDREN_BIT) != 0;
+		bool bLeafSolid = (topoWord & OCCUPIED_BIT) != 0;
+		bool bSubtreeEmpty = !bHasChildren && !bLeafSolid;
 
-		// ---------------------------------------------------------------------
-		// Read old node state
-		// ---------------------------------------------------------------------
-		VolumeNode oldNode{ 0u, 0u };
-		bool hasOld = (entry.OldIndex != INVALID_NODE_INDEX) &&
-			(entry.OldIndex < oldNodes.size());
-
-		if (hasOld)
+		// If the original subtree is empty, there is nothing to subtract or keep.
+		if (bSubtreeEmpty)
 		{
-			oldNode = oldNodes[entry.OldIndex];
-		}
-
-		const bool oldHasChildren = hasOld && (oldNode.TopologyBits & HAS_CHILDREN_BIT);
-		const bool oldLeafSolid = hasOld && (oldNode.TopologyBits & OCCUPIED_BIT);
-		const bool oldSubtreeEmpty = !oldHasChildren && !oldLeafSolid;
-
-		// If there was no geometry in the old volume, this region is empty
-		// regardless of the SDF: nothing to subtract.
-		if (oldSubtreeEmpty)
-		{
-			newNode.TopologyBits = 0u;
-			newNode.BrickBits = 0u;
+			currNode.TopologyBits = 0u;
+			currNode.BrickBits = 0u;
 			continue;
 		}
 
-		// ---------------------------------------------------------------------
-		// SDF classification (Lipschitz-based)
-		// ---------------------------------------------------------------------
-		FVector3 center = b.Center();
-		FVector3 extents = b.Extents();
+		// ------------------------------------------------------------
+		// Conservative SDF classification using Lipschitz bound
+		// ------------------------------------------------------------
+		const FVector3 center = currBounds.Center();
+		const FVector3 extents = currBounds.Extents();
 
-		// Half-diagonal length of this node AABB.
-		float r = std::sqrt(FVector3::Dot(extents, extents));
+		float r = std::sqrt(FVector3::Dot(extents, extents)); // half-diagonal length
+		float d = sdf(center);
+		float minD = d - r;
+		float maxD = d + r;
 
-		float d = sdf(center);   // signed distance at center
-		float minD = d - r;         // conservative minimum in the box
-		float maxD = d + r;         // conservative maximum in the box
+		bool bFullyOutside = (minD > 0.0f);  // SDF does not intersect this node's AABB
+		bool bFullyInside = (maxD < 0.0f);  // SDF fully covers this node's AABB
+		bool bCenterInside = (d <= 0.0f);    // SDF contains the center
 
-		bool bFullyOutside = (minD > 0.0f); // SDF shape is fully outside this node
-		bool bFullyInside = (maxD < 0.0f); // SDF shape fully covers this node
-		bool bCenterInside = (d <= 0.0f);   // center is inside SDF
-
-		// ---------------------------------------------------------------------
-		// Case 1: SDF volume fully covers this node region.
-		// In "difference" (old - SDF), this means the entire old subtree is removed.
-		// ---------------------------------------------------------------------
+		// ------------------------------------------------------------
+		// If the SDF completely covers this node, remove the whole subtree.
+		// In "difference" (old - SDF) this region becomes empty.
+		// ------------------------------------------------------------
 		if (bFullyInside)
 		{
-			newNode.TopologyBits = 0u;
-			newNode.BrickBits = 0u;
+			currNode.TopologyBits = 0u;
+			currNode.BrickBits = 0u;
 			continue;
 		}
 
-		// ---------------------------------------------------------------------
+		// ------------------------------------------------------------
 		// Leaf: maximum depth reached
-		// ---------------------------------------------------------------------
-		if (dep >= MAX_OCTREE_DEPTH)
+		// ------------------------------------------------------------
+		if (currDepth >= MAX_OCTREE_DEPTH)
 		{
-			// Old occupancy at this leaf
-			bool oldOccupied = oldLeafSolid;
+			// Original occupancy at this leaf
+			bool bOldOccupied = bLeafSolid;
 
-			// SDF occupancy inside this cell
-			bool sdfInsideCell;
-			if (bFullyOutside)
-			{
-				// SDF does not touch this leaf region at all.
-				sdfInsideCell = false;
-			}
-			else if (bFullyInside)
-			{
-				// Already handled above, but keep for completeness.
-				sdfInsideCell = true;
-			}
-			else
-			{
-				// Partial overlap: fall back to center test.
-				sdfInsideCell = bCenterInside;
-			}
+			// Decide whether the SDF occupies this leaf cell.
+			bool bSdfInsideCell = bCenterInside;
 
 			// Difference: keep voxel only if it was occupied AND not inside SDF.
-			bool resultOccupied = oldOccupied && !sdfInsideCell;
+			bool bResultOccupied = bOldOccupied && !bSdfInsideCell;
 
-			if (resultOccupied)
+			if (bResultOccupied)
 			{
-				newNode.TopologyBits = OCCUPIED_BIT;
-				newNode.BrickBits = 0u;
-
-				if (!hasAny)
-				{
-					occupiedBounds = b;
-					hasAny = true;
-				}
-				else
-				{
-					occupiedBounds.Encapsulate(b);
-				}
+				currNode.TopologyBits = OCCUPIED_BIT;
+				currNode.BrickBits = 0u;
 			}
 			else
 			{
-				newNode.TopologyBits = 0u;
-				newNode.BrickBits = 0u;
+				currNode.TopologyBits = 0u;
+				currNode.BrickBits = 0u;
 			}
 
 			continue;
 		}
 
-		// ---------------------------------------------------------------------
+		// ------------------------------------------------------------
 		// Internal node:
-		//  - We know there is some old geometry here (oldSubtreeEmpty == false).
-		//  - SDF is not fully covering this node (bFullyInside == false).
-		//  => We need to descend into children where old geometry exists.
-		// ---------------------------------------------------------------------
-
-		// Allocate 8 children in the new tree.
-		uint32_t firstChildIndex = static_cast<uint32_t>(newNodes.size());
-		uint32_t childIndexBits = (firstChildIndex & CHILD_INDEX_MASK);
-
-		newNode.TopologyBits = HAS_CHILDREN_BIT | childIndexBits;
-		newNode.BrickBits = 0u;
-
-		for (int i = 0; i < 8; ++i)
+		//  - We know there is some existing geometry here (bSubtreeEmpty == false).
+		//  - SDF does not fully cover this node (bFullyInside == false).
+		//  - If SDF is fully outside, nothing is removed -> keep subtree as-is.
+		//    No need to visit children.
+		// ------------------------------------------------------------
+		if (bFullyOutside)
 		{
-			newNodes.emplace_back(VolumeNode{ 0u, 0u });
+			// Current subtree remains untouched; skip children.
+			continue;
 		}
 
-		// Parent bounds decomposition into 8 child bounds.
-		FVector3 parentCenter = b.Center();
-		FVector3 parentExtents = b.Extents();
-		FVector3 childExtents = parentExtents * 0.5f;
-
-		// Old children base index (if they exist)
-		uint32_t oldChildBase = 0;
-		if (oldHasChildren)
+		// ------------------------------------------------------------
+		// SDF partially overlaps this node. We must descend into children
+		// to selectively remove voxels.
+		// Ensure this node has 8 children so we can represent the remaining geometry.
+		// ------------------------------------------------------------
+		uint32_t childBase = 0;
+		if (!bHasChildren)
 		{
-			oldChildBase = (oldNode.TopologyBits & CHILD_INDEX_MASK);
+			childBase = static_cast<uint32_t>(m_Nodes.size());
+			currNode.TopologyBits = HAS_CHILDREN_BIT | (childBase & CHILD_INDEX_MASK);
+			currNode.BrickBits = 0u;
+
+			for (int i = 0; i < 8; ++i)
+			{
+				m_Nodes.emplace_back(VolumeNode{ 0u, 0u });
+			}
+
+			bHasChildren = true;
+		}
+		else
+		{
+			childBase = (topoWord & CHILD_INDEX_MASK);
 		}
 
+		// Split parent bounds into 8 child bounds.
+		const FVector3 parentCenter = center;
+		const FVector3 parentExtents = extents;
+		const FVector3 childExtents = parentExtents * 0.5f;
+
+		// Descend into non-empty children to apply the difference.
 		for (uint32_t i = 0; i < 8; ++i)
 		{
 			float sx = (i & 1u) ? +1.0f : -1.0f;
@@ -483,62 +382,247 @@ void Volume::ApplyDifference(const std::function<float(const FVector3& pos)>& sd
 				childCenter.z + childExtents.z
 			};
 
-			// Look up old child state, if any.
-			uint32_t oldChildIndex = INVALID_NODE_INDEX;
-			bool     oldChildNonEmpty = false;
+			uint32_t childIndex = childBase + i;
+			VolumeNode& childNode = m_Nodes[childIndex];
 
-			if (oldHasChildren)
+			uint32_t childTopo = childNode.TopologyBits;
+			bool bChildHasChildren = (childTopo & HAS_CHILDREN_BIT) != 0;
+			bool bChildLeafSolid = (childTopo & OCCUPIED_BIT) != 0;
+			bool bChildSubtreeEmpty = !bChildHasChildren && !bChildLeafSolid;
+
+			// Skip children that have no geometry to begin with.
+			if (bChildSubtreeEmpty)
 			{
-				oldChildIndex = oldChildBase + i;
-				if (oldChildIndex < oldNodes.size())
-				{
-					uint32_t oldTopo = oldNodes[oldChildIndex].TopologyBits;
-					oldChildNonEmpty = (oldTopo & (HAS_CHILDREN_BIT | OCCUPIED_BIT)) != 0;
-				}
+				continue;
 			}
 
-			// If the old child is empty, there is nothing to subtract or preserve.
-			if (!oldChildNonEmpty)
-				continue;
-
-			// SDF classification for the child region (for early-out culling).
-			FVector3 childCenterLocal = childBounds.Center();
-			FVector3 childExtentsLocal = childBounds.Extents();
-
-			float rChild = std::sqrt(FVector3::Dot(childExtentsLocal, childExtentsLocal));
-			float dChild = sdf(childCenterLocal);
-			float minChildD = dChild - rChild;
-			float maxChildD = dChild + rChild;
-
-			bool childFullyInside = (maxChildD < 0.0f);
-			// bool childFullyOutside = (minChildD > 0.0f); // could be used, but not required
-
-			// If SDF fully covers this child region, the entire old child is removed.
-			if (childFullyInside)
-				continue;
-
-			// Otherwise, recurse into this child.
-			stack.push_back(
-				{
-					oldChildIndex,              // index in oldNodes
-					firstChildIndex + i,        // index in newNodes
-					childBounds,
-					dep + 1
-				}
-			);
+			stack.emplace_back(NodeEntry{ childIndex, childBounds, currDepth + 1 });
 		}
 	}
 
-	// Replace current nodes with the newly built "difference" volume.
-	m_Nodes.swap(newNodes);
-
-	if (hasAny)
-	{
-		m_Bounds = occupiedBounds;
-	}
-	// If hasAny == false, the volume became completely empty; you can reset m_Bounds here if desired.
+	// Decapsulate the new bounds after difference.
 }
 
+void Volume::Compact()
+{
+	if (m_Nodes.empty())
+	{
+		// Nothing to compact
+		return;
+	}
+
+	// Snapshot current nodes
+	const std::vector<VolumeNode> oldNodes = m_Nodes;
+	const uint32_t oldNodeCount = static_cast<uint32_t>(oldNodes.size());
+	if (oldNodeCount == 0)
+	{
+		return;
+	}
+
+	// ------------------------------------------------------------------------
+	// 1) Bottom-up: mark which old nodes have at least one occupied leaf
+	//    in their subtree (including themselves).
+	// ------------------------------------------------------------------------
+	std::vector<uint8_t> subtreeNonEmpty(oldNodeCount, 0);
+	std::vector<uint8_t> visited(oldNodeCount, 0);
+
+	std::function<bool(uint32_t)> MarkSubtreeNonEmpty;
+	MarkSubtreeNonEmpty = [&](uint32_t idx) -> bool
+		{
+			if (idx >= oldNodeCount)
+			{
+				return false;
+			}
+
+			if (visited[idx])
+			{
+				return subtreeNonEmpty[idx] != 0;
+			}
+
+			visited[idx] = 1;
+
+			const VolumeNode& node = oldNodes[idx];
+			const uint32_t topo = node.TopologyBits;
+			const bool bHasChildren = (topo & HAS_CHILDREN_BIT) != 0;
+			const bool bLeafSolid = (topo & OCCUPIED_BIT) != 0;
+
+			bool bAny = bLeafSolid;
+
+			if (bHasChildren)
+			{
+				const uint32_t childBase = (topo & CHILD_INDEX_MASK);
+				for (uint32_t i = 0; i < 8; ++i)
+				{
+					const uint32_t childIdx = childBase + i;
+					if (childIdx < oldNodeCount)
+					{
+						if (MarkSubtreeNonEmpty(childIdx))
+						{
+							bAny = true;
+						}
+					}
+				}
+			}
+
+			subtreeNonEmpty[idx] = bAny ? 1u : 0u;
+			return bAny;
+		};
+
+	const bool bRootNonEmpty = MarkSubtreeNonEmpty(0u);
+
+	// ------------------------------------------------------------------------
+	// 2) If the whole volume became empty, keep a single empty root and reset
+	//    pseudo-bounds.
+	// ------------------------------------------------------------------------
+	if (!bRootNonEmpty)
+	{
+		m_Nodes.clear();
+		m_Nodes.emplace_back(VolumeNode{ 0u, 0u });
+		m_PseudoOccupiedBounds = Bounds{};
+		return;
+	}
+
+	// ------------------------------------------------------------------------
+	// 3) Rebuild new node array top-down, only for non-empty subtrees.
+	//    We also recompute m_PseudoOccupiedBounds from occupied leaves.
+	// ------------------------------------------------------------------------
+	std::vector<VolumeNode> newNodes;
+	newNodes.reserve(oldNodeCount); // upper bound
+
+	Bounds newBounds;
+
+	std::function<void(uint32_t, uint32_t, const Bounds&, int)>
+		buildSubtree = [&](uint32_t oldIdx, uint32_t newIdx, const Bounds& nodeBounds, int depth)
+		{
+			const VolumeNode& oldNode = oldNodes[oldIdx];
+			VolumeNode& newNode = newNodes[newIdx];
+
+			const uint32_t topo = oldNode.TopologyBits;
+			const bool bHasChildren = (topo & HAS_CHILDREN_BIT) != 0;
+			const bool bLeafSolid = (topo & OCCUPIED_BIT) != 0;
+
+			// Copy brick info (if used)
+			newNode.BrickBits = oldNode.BrickBits;
+
+			// Decide if we treat this as a leaf in the new tree
+			const bool bForceLeaf = (!bHasChildren || depth >= MAX_OCTREE_DEPTH);
+
+			if (bForceLeaf)
+			{
+				if (bLeafSolid)
+				{
+					newNode.TopologyBits = OCCUPIED_BIT;
+					newBounds.Encapsulate(nodeBounds);
+				}
+				else
+				{
+					newNode.TopologyBits = 0u;
+				}
+				return;
+			}
+
+			// Internal node in the old tree. Check children occupancy.
+			const uint32_t oldChildBase = (topo & CHILD_INDEX_MASK);
+
+			bool  bAnyChildNonEmpty = false;
+			uint8_t childNonEmpty[8] = {};
+
+			for (uint32_t i = 0; i < 8; ++i)
+			{
+				const uint32_t childOldIdx = oldChildBase + i;
+				if (childOldIdx < oldNodeCount && subtreeNonEmpty[childOldIdx])
+				{
+					bAnyChildNonEmpty = true;
+					childNonEmpty[i] = 1;
+				}
+			}
+
+			// Case: no child subtree has occupancy.
+			//  - If this node itself is solid, make it a leaf.
+			//  - Otherwise, it's effectively empty.
+			if (!bAnyChildNonEmpty)
+			{
+				if (bLeafSolid)
+				{
+					newNode.TopologyBits = OCCUPIED_BIT;
+					newBounds.Encapsulate(nodeBounds);
+				}
+				else
+				{
+					newNode.TopologyBits = 0u;
+				}
+				return;
+			}
+
+			// There is at least one non-empty child subtree.
+			// Create 8 child roots contiguously.
+			const uint32_t childBaseNew = static_cast<uint32_t>(newNodes.size());
+			newNode.TopologyBits = HAS_CHILDREN_BIT | (childBaseNew & CHILD_INDEX_MASK);
+
+			// Pre-allocate 8 child root nodes (placeholders).
+			for (uint32_t i = 0; i < 8; ++i)
+			{
+				newNodes.emplace_back(VolumeNode{ 0u, 0u });
+			}
+
+			// Compute child bounds once
+			const FVector3 parentCenter = nodeBounds.Center();
+			const FVector3 parentExtents = nodeBounds.Extents();
+			const FVector3 childExtents = parentExtents * 0.5f;
+
+			for (uint32_t i = 0; i < 8; ++i)
+			{
+				const uint32_t childNewIdx = childBaseNew + i;
+
+				// Child center by octant
+				float sx = (i & 1u) ? +1.0f : -1.0f;
+				float sy = (i & 2u) ? +1.0f : -1.0f;
+				float sz = (i & 4u) ? +1.0f : -1.0f;
+
+				FVector3 childCenter =
+				{
+					parentCenter.x + sx * childExtents.x,
+					parentCenter.y + sy * childExtents.y,
+					parentCenter.z + sz * childExtents.z
+				};
+
+				Bounds childBounds;
+				childBounds.Min =
+				{
+					childCenter.x - childExtents.x,
+					childCenter.y - childExtents.y,
+					childCenter.z - childExtents.z
+				};
+				childBounds.Max =
+				{
+					childCenter.x + childExtents.x,
+					childCenter.y + childExtents.y,
+					childCenter.z + childExtents.z
+				};
+
+				const uint32_t childOldIdx = oldChildBase + i;
+
+				// If this child subtree is completely empty, leave the placeholder as
+				// an empty node (TopologyBits = 0). We don't build deeper nodes.
+				if (childOldIdx >= oldNodeCount || !subtreeNonEmpty[childOldIdx])
+				{
+					newNodes[childNewIdx].TopologyBits = 0u;
+					newNodes[childNewIdx].BrickBits = 0u;
+					continue;
+				}
+
+				// Otherwise, recursively rebuild this child subtree.
+				buildSubtree(childOldIdx, childNewIdx, childBounds, depth + 1);
+			}
+		};
+
+	// Create root in newNodes and rebuild from old root.
+	newNodes.emplace_back(VolumeNode{ 0u, 0u }); // root at index 0
+	buildSubtree(0u, 0u, GetOctreeBounds(), 0);
+
+	m_Nodes.swap(newNodes);
+	m_PseudoOccupiedBounds = newBounds;
+}
 
 // ---------------------------------------------------------
 // Static factory functions
@@ -554,19 +638,12 @@ Volume Volume::CreateBox(float width, float height, float depth, float cellSize)
 {
 	Volume volume(cellSize);
 
-	Bounds boxBounds;
-	boxBounds.Min = FVector3(-0.5f * width, -0.5f * height, -0.5f * depth);
-	boxBounds.Max = FVector3(+0.5f * width, +0.5f * height, +0.5f * depth);
+	FVector3 halfExtents(0.5f * width, 0.5f * height, 0.5f * depth);
+	FVector3 center(0.0f, 0.0f, 0.0f);
 
-	// Apply box SDF
-	volume.ApplyUnion([&boxBounds](const FVector3& p)
+	volume.ApplyUnion([center, halfExtents](const FVector3& p)
 		{
-			// Compute SDF for axis-aligned box
-			FVector3 q = FVector3::Abs(p - boxBounds.Center()) - boxBounds.Extents();
-			FVector3 maxPart = FVector3::Max(q, FVector3::Zero());
-			float outsideDist = std::sqrt(FVector3::Dot(maxPart, maxPart));
-			float insideDist = std::min(FVector3::MaxComponent(q), 0.0f);
-			return outsideDist + insideDist;
+			return SDF::Box(p, center, halfExtents);
 		});
 
 	return volume;
@@ -576,95 +653,46 @@ Volume Volume::CreateSphere(float radius, float cellSize)
 {
 	Volume volume(cellSize);
 
-	FVector3 center(0.0f, 0.0f, 0.0f);
-
-	volume.ApplyUnion([center, radius](const FVector3& p)
+	volume.ApplyUnion([radius](const FVector3& p)
 		{
-			float d = std::sqrt(FVector3::Dot(p - center, p - center));
-			return d - radius;
+			return SDF::Sphere(p, radius);
 		});
 
 	return volume;
-}
-
-
-Volume Volume::CreatePlane(float width, float height, float cellSize)
-{
-	// plane = thin box with height = cellSize
-	return CreateBox(width, height, cellSize, cellSize);
 }
 
 Volume Volume::CreateCylinder(float radius, float height, float cellSize)
 {
 	Volume volume(cellSize);
 
-	float halfH = height * 0.5f;
-
-	volume.ApplyUnion([radius, halfH](const FVector3& p)
+	volume.ApplyUnion([radius, height](const FVector3& p)
 		{
-			// Radial distance in XZ plane (Y-axis is the cylinder axis)
-			float radial = std::sqrt(p.x * p.x + p.z * p.z);
-			float yAbs = std::abs(p.y);
-
-			// Signed distances along radial and vertical directions
-			float dx = radial - radius; // radial direction (XZ)
-			float dy = yAbs - halfH;    // height (Y)
-
-			// Outside components
-			float ox = std::max(dx, 0.0f);
-			float oy = std::max(dy, 0.0f);
-
-			float outsideDist = std::sqrt(ox * ox + oy * oy);
-
-			// Inside distance
-			float insideDist = std::min(std::max(dx, dy), 0.0f);
-
-			return outsideDist + insideDist;
+			return SDF::Cylinder(p, radius, height);
 		});
 
 	return volume;
 }
 
+Volume Volume::CreatePlane(float width, float height, float cellSize)
+{
+	Volume volume(cellSize);
+
+	volume.ApplyUnion([width, height, cellSize](const FVector3& p)
+		{
+			return SDF::ThinBoxPlane(p, width, height, cellSize);
+		});
+
+	return volume;
+}
 
 Volume Volume::CreateCone(float radius, float height, float cellSize)
 {
 	Volume volume(cellSize);
 
-	float halfH = height * 0.5f;
-
-	volume.ApplyUnion([radius, halfH, height](const FVector3& p)
+	volume.ApplyUnion([radius, height](const FVector3& p)
 		{
-			// We build a cone whose axis is the Y axis.
-			// - Y range: [-halfH, +halfH]
-			// - Radius at y = -halfH is 'radius'
-			// - Radius at y = +halfH is 0 (apex)
-
-			float y = p.y;
-
-			// Radial distance in XZ plane
-			float radial = std::sqrt(p.x * p.x + p.z * p.z);
-
-			// Normalized height parameter:
-			//   t = 0 at apex (y = +halfH)
-			//   t = 1 at base (y = -halfH)
-			float t = (halfH - y) / height;
-			t = std::clamp(t, 0.0f, 1.0f);
-
-			// Radius of the cone at height y
-			float rAtY = radius * t;
-
-			// Side condition: radial <= rAtY
-			float sSide = radial - rAtY;
-
-			// Height slab condition: -halfH <= y <= +halfH
-			float sHeight = std::abs(y) - halfH;
-
-			// Approximate SDF for the finite cone as
-			// the intersection of side and height conditions.
-			// Inside region is where both are <= 0.
-			return std::max(sSide, sHeight);
+			return SDF::Cone(p, radius, height);
 		});
 
 	return volume;
 }
-

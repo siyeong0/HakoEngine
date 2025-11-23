@@ -833,25 +833,37 @@ bool Game::Initialize(
 				}
 			};
 
-		//{
-		//	Volume volume = Volume::CreateBox(1.0, 2.0, 3.0);
-		//	visualizeVolume(volume, {-5.0, 0.0, 2.0});
-		//}
-		//{
-		//	Volume volume = Volume::CreateSphere(1.5);
-		//	visualizeVolume(volume, {-3.0, 0.0, 2.0 });
-		//}
-		//{
-		//	Volume volume = Volume::CreatePlane(1.0, 2.0);
-		//	visualizeVolume(volume, { -1.0, 0.0, 2.0 });
-		//}
-		//{
-		//	Volume volume = Volume::CreateCylinder(1.0, 2.0);
-		//	visualizeVolume(volume, { 1.0, 0.0, 2.0 });
-		//}
+		{
+			Volume volume = Volume::CreateBox(1.0, 2.0, 1.5);
+			visualizeVolume(volume, {-5.0, 0.0, 2.0});
+		}
+		{
+			Volume volume = Volume::CreateSphere(0.8);
+			visualizeVolume(volume, {-3.0, 0.0, 2.0 });
+		}
+		{
+			Volume volume = Volume::CreatePlane(1.0, 2.0);
+			visualizeVolume(volume, { -1.0, 0.0, 2.0 });
+		}
+		{
+			Volume volume = Volume::CreateCylinder(1.0, 2.0);
+			visualizeVolume(volume, { 1.0, 0.0, 2.0 });
+		}
 		{
 			Volume volume = Volume::CreateCone(1.0, 2.0);
 			visualizeVolume(volume, { 3.0, 0.0, 2.0 });
+		}
+		{
+			Volume volume = Volume::CreateCylinder(1.0, 2.0);
+			volume.ApplyDifference([](const FVector3& p)
+				{
+					FVector3 center = { 0.0f, 0.25f, -0.5f };
+					float radius = 0.7f;
+					float d = std::sqrt(FVector3::Dot(p - center, p - center));
+					return d - radius;
+				});
+			volume.Compact();
+			visualizeVolume(volume, { 5.0, 0.0, 2.0 });
 		}
 
 

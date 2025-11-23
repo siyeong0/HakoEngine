@@ -17,11 +17,13 @@ public:
 
 	const std::vector<VolumeNode>& GetNodes() const { return m_Nodes; }
 	float GetCellSize() const { return m_CellSize; }
-	const Bounds& GetBounds() const { return m_Bounds; }
+	const Bounds& GetBounds() const { return m_PseudoOccupiedBounds; }
 	Bounds GetOctreeBounds() const;
 
 	void ApplyUnion(const std::function<float(const FVector3& pos)>& sdf);
 	void ApplyDifference(const std::function<float(const FVector3& pos)>& sdf);
+
+	void Compact();
 
 	static Volume CreateUnitCube(float cellSize = DEFAULT_CELL_SIZE);
 	static Volume CreateBox(float width, float height, float depth, float cellSize = DEFAULT_CELL_SIZE);
@@ -39,7 +41,7 @@ private:
 	std::vector<VolumeNode> m_Nodes;
 
 	float m_CellSize; // size of one voxel cell
-	Bounds m_Bounds; // overall volume bounds
+	Bounds m_PseudoOccupiedBounds; // overall volume bounds
 
 	static constexpr size_t DEFAULT_NODE_CAPACITY = 4096;
 };

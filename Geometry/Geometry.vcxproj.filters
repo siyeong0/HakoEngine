@@ -27,6 +27,9 @@
     <Filter Include="Volume">
       <UniqueIdentifier>{e8d2a0bb-4ff5-422c-9e2d-962a801785c6}</UniqueIdentifier>
     </Filter>
+    <Filter Include="SDF">
+      <UniqueIdentifier>{faeba68f-93a2-4a8d-8593-3f37522924e4}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h">
@@ -53,6 +56,9 @@
     </ClInclude>
     <ClInclude Include="Volume.h">
       <Filter>Volume</Filter>
+    </ClInclude>
+    <ClInclude Include="SDF.h">
+      <Filter>SDF</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
