@@ -24,11 +24,17 @@
     <Filter Include="VolumeCubq\Trace">
       <UniqueIdentifier>{484e9c24-3537-40aa-a741-8d4e2acb6f4f}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Volume">
-      <UniqueIdentifier>{e8d2a0bb-4ff5-422c-9e2d-962a801785c6}</UniqueIdentifier>
-    </Filter>
     <Filter Include="SDF">
       <UniqueIdentifier>{faeba68f-93a2-4a8d-8593-3f37522924e4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Voxels">
+      <UniqueIdentifier>{d6852e8a-459b-497c-865d-0c3794912eca}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Voxels\Volume">
+      <UniqueIdentifier>{e8d2a0bb-4ff5-422c-9e2d-962a801785c6}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Voxels\BrickPool">
+      <UniqueIdentifier>{4c99b04d-40e2-4a45-93df-652ad1f5243f}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -55,10 +61,13 @@
       <Filter>VolumeCubq\Trace</Filter>
     </ClInclude>
     <ClInclude Include="Volume.h">
-      <Filter>Volume</Filter>
+      <Filter>Voxels\Volume</Filter>
     </ClInclude>
     <ClInclude Include="SDF.h">
       <Filter>SDF</Filter>
+    </ClInclude>
+    <ClInclude Include="BrickPool.h">
+      <Filter>Voxels\BrickPool</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -75,7 +84,10 @@
       <Filter>VolumeCubq\Trace</Filter>
     </ClCompile>
     <ClCompile Include="Volume.cpp">
-      <Filter>Volume</Filter>
+      <Filter>Voxels\Volume</Filter>
+    </ClCompile>
+    <ClCompile Include="BrickPool.cpp">
+      <Filter>Voxels\BrickPool</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>
