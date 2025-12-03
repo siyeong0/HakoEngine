@@ -22,5 +22,8 @@
     <ClInclude Include="$(MSBuildThisFileDirectory)IProceduralSphereObject.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)IRenderer.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)ISpriteObject.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)ITexture.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)Texture2D.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)Texture3D.h" />
   </ItemGroup>
 </Project>

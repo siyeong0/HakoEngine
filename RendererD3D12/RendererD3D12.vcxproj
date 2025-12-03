@@ -158,6 +158,7 @@
     <ClInclude Include="D3D12Renderer.h" />
     <ClInclude Include="D3D12ResourceManager.h" />
     <ClInclude Include="D3D12ResourceRecycleBin.h" />
+    <ClInclude Include="D3D12Texture.h" />
     <ClInclude Include="D3DUtil.h" />
     <ClInclude Include="DescriptorPool.h" />
     <ClInclude Include="FontManager.h" />
@@ -189,6 +190,7 @@
     <ClCompile Include="D3D12Renderer.cpp" />
     <ClCompile Include="D3D12ResourceManager.cpp" />
     <ClCompile Include="D3D12ResourceRecycleBin.cpp" />
+    <ClCompile Include="D3D12Texture.cpp" />
     <ClCompile Include="D3DUtil.cpp" />
     <ClCompile Include="DescriptorPool.cpp" />
     <ClCompile Include="dllmain.cpp" />

@@ -114,6 +114,9 @@
     <Filter Include="RenderObject\CasperObject">
       <UniqueIdentifier>{d46a6d39-1545-44da-ac5c-cca4a03ad98f}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Texture">
+      <UniqueIdentifier>{6e426b1c-066d-4c59-b7d0-375308e12b8e}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h">
@@ -203,6 +206,9 @@
     <ClInclude Include="CasperObject.h">
       <Filter>RenderObject\CasperObject</Filter>
     </ClInclude>
+    <ClInclude Include="D3D12Texture.h">
+      <Filter>Texture</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="dllmain.cpp">
@@ -285,6 +291,9 @@
     </ClCompile>
     <ClCompile Include="CasperObject.cpp">
       <Filter>RenderObject\CasperObject</Filter>
+    </ClCompile>
+    <ClCompile Include="D3D12Texture.cpp">
+      <Filter>Texture</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
