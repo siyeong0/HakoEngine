@@ -45,6 +45,9 @@
     <ClInclude Include="IVector3.h">
       <Filter>Vector</Filter>
     </ClInclude>
+    <ClInclude Include="FVector4.h">
+      <Filter>Vector</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="pch.cpp">

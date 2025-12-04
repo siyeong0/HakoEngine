@@ -12,13 +12,7 @@
 #include "Math/Math.h"
 using FLOAT2 = FVector2;
 using FLOAT3 = FVector3;
-struct FLOAT4
-{
-	float x;
-	float y;
-	float z;
-	float w;
-};
+using FLOAT4 = FVector4;
 using Matrix4x4 = Matrix;
 
 static_assert(sizeof(FLOAT2) == 8, "FLOAT2 size mismatch");

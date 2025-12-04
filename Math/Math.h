@@ -16,6 +16,7 @@ constexpr float RadToDeg(float radians) { return radians * (180.0f / PI); }
 
 #include "FVector2.h"
 #include "FVector3.h"
+#include "FVector4.h"
 #include "Matrix.h"
 
 #include "Bounds.h"
