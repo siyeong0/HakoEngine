@@ -211,10 +211,18 @@ bool D3D12Texture::Initialize(const TEXTURE_DESC& desc)
 void D3D12Texture::Cleanup()
 {
     if (!m_bInitialized)
+    {
         return;
+    }
 
     SAFE_RELEASE(m_pTexResource);
     SAFE_RELEASE(m_pUploadBuffer);
+    if (m_SRV.ptr != 0 && m_pSrvAllocator)
+    {
+        m_pSrvAllocator->FreeDescriptorHandle(m_SRV);
+        m_SRV = {};
+    }
+
     m_SystemMemory.clear();
 
     m_SRV.ptr = 0;
@@ -228,9 +236,10 @@ void D3D12Texture::Cleanup()
 void D3D12Texture::Apply(bool /*bUpdateMipMaps*/)
 {
     if (!m_Params.bDynamic || !m_bDirtyGPU || m_pUploadBuffer == nullptr || m_pTexResource == nullptr)
+    {
         return;
+    }
 
-    // 업로드 버퍼 → GPU 텍스처 복사
     m_pResourceManager->UpdateTextureForWrite(m_pTexResource, m_pUploadBuffer);
     m_bDirtyGPU = false;
 }
@@ -508,4 +517,39 @@ void D3D12Texture::SetPixel(const uint3& pos, const Color& color, uint mipLevel,
 
     // CPU-side 버퍼에서 업로드 버퍼로 복사하려면 추가 코드 필요.
     // 지금은 "raw CopyRegion()" 경로로만 업로드한다고 가정.
+}
+
+bool D3D12Texture::InitializeFromExistingResource(const TEXTURE_DESC& desc, ID3D12Resource* pExistingResource)
+{
+    ASSERT(!m_bInitialized, "D3D12Texture already initialized.");
+    ASSERT(m_pDevice != nullptr, "D3D12Texture: m_pDevice is null.");
+    ASSERT(m_pSrvAllocator != nullptr, "D3D12Texture: m_pSrvAllocator is null.");
+    ASSERT(pExistingResource != nullptr, "InitializeFromExistingResource: pExistingResource is null.");
+
+    m_Params = desc;
+    m_pTexResource = pExistingResource;
+
+    // 동적 텍스처로 쓰고 싶다면 desc.bDynamic = true 로 넘기면 업로드 버퍼 만들어줌
+    if (m_Params.bDynamic)
+    {
+        createUploadBufferForDynamic();
+    }
+
+    createSRV();
+
+    if (m_Params.bReadable)
+    {
+        size_t totalPixels = 0;
+        for (uint mip = 0; mip < m_Params.mipCount; ++mip)
+        {
+            uint3 sz = calcMipSize(mip);
+            totalPixels += static_cast<size_t>(sz.x) * sz.y * sz.z * m_Params.arraySize;
+        }
+        m_SystemMemory.resize(totalPixels);
+    }
+
+    m_bInitialized = true;
+    m_bDirtyGPU = false;
+    m_bSamplerDirty = false;
+    return true;
 }

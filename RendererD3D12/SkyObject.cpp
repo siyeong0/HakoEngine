@@ -22,9 +22,9 @@ bool SkyObject::Initialize(D3D12Renderer* pRenderer)
 
 	SetAtmosStateFromPreset(&m_AtmosCBData, EAtmosPreset::NoonClearSky);
 
-	m_pTransmittanceTex = (TextureHandle*)m_pRenderer->CreateTextureFromFile(L"./Resources/Atmos/Transmittance.dds");
-	m_pScatteringTex = (TextureHandle*)m_pRenderer->CreateTextureFromFile(L"./Resources/Atmos/Scattering.dds");
-	m_pIrradianceTex = (TextureHandle*)m_pRenderer->CreateTextureFromFile(L"./Resources/Atmos/Irradiance.dds");
+	m_pTransmittanceTex = reinterpret_cast<D3D12Texture*>(m_pRenderer->CreateTextureFromFile(L"./Resources/Atmos/Transmittance.dds"));
+	m_pScatteringTex = reinterpret_cast<D3D12Texture*>(m_pRenderer->CreateTextureFromFile(L"./Resources/Atmos/Scattering.dds"));
+	m_pIrradianceTex = reinterpret_cast<D3D12Texture*>(m_pRenderer->CreateTextureFromFile(L"./Resources/Atmos/Irradiance.dds"));
 
 	return true;
 }
@@ -81,11 +81,11 @@ void SkyObject::Draw(int threadIndex, ID3D12GraphicsCommandList6* pCommandList)
 
 	// Copy 3 LUT SRVs to the descriptor table
 	CD3DX12_CPU_DESCRIPTOR_HANDLE cpuCurr = cpuDescriptorTable;
-	pDevice->CopyDescriptorsSimple(1, cpuCurr, m_pTransmittanceTex->SRV, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+	pDevice->CopyDescriptorsSimple(1, cpuCurr, m_pTransmittanceTex->GetSRV(), D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 	cpuCurr.Offset(1, srvDescriptorSize);
-	pDevice->CopyDescriptorsSimple(1, cpuCurr, m_pScatteringTex->SRV, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+	pDevice->CopyDescriptorsSimple(1, cpuCurr, m_pScatteringTex->GetSRV(), D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 	cpuCurr.Offset(1, srvDescriptorSize);
-	pDevice->CopyDescriptorsSimple(1, cpuCurr, m_pIrradianceTex->SRV, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+	pDevice->CopyDescriptorsSimple(1, cpuCurr, m_pIrradianceTex->GetSRV(), D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 
 	// ---- RS/PSO/IA
 	pCommandList->SetGraphicsRootSignature(pRootSigatureManager->Query(ERootSignatureType::GraphicsDefault));

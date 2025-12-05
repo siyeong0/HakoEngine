@@ -92,7 +92,7 @@ int RenderQueueRasterization::Process(
 			case RENDER_ITEM_TYPE_SPRITE:
 				{
 					SpriteObject* spriteObj = reinterpret_cast<SpriteObject*>(pItem->pObjHandle);
-					TextureHandle* texureHandle = reinterpret_cast<TextureHandle*>(pItem->SpriteParam.pTexHandle);
+					D3D12Texture* texureHandle = reinterpret_cast<D3D12Texture*>(pItem->SpriteParam.pTexHandle);
 					float z = pItem->SpriteParam.Z;
 
 					if (texureHandle)
@@ -104,15 +104,6 @@ int RenderQueueRasterization::Process(
 						if (pItem->SpriteParam.bUseRect)
 						{
 							pRect = &pItem->SpriteParam.Rect;
-						}
-
-						if (texureHandle->pUploadBuffer)
-						{
-							if (texureHandle->bUpdated)
-							{
-								D3DUtil::UpdateTexture(pD3DDevice, pCurrCommandList, texureHandle->pTexResource, texureHandle->pUploadBuffer);
-							}
-							texureHandle->bUpdated = false;
 						}
 						spriteObj->DrawWithTex(threadIndex, pCurrCommandList, &position, &scale, pRect, z, texureHandle);
 					}

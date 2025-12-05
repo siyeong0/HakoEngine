@@ -62,10 +62,10 @@ bool SpriteObject::Initialize(D3D12Renderer* pRenderer, const wchar_t* wchTexFil
 	{
 		uint texWidth = 1;
 		uint texHeight = 1;
-		m_pTexHandle = (TextureHandle*)m_pRenderer->CreateTextureFromFile(wchTexFileName);
+		m_pTexHandle = reinterpret_cast<D3D12Texture*>(m_pRenderer->CreateTextureFromFile(wchTexFileName));
 		if (m_pTexHandle)
 		{
-			D3D12_RESOURCE_DESC desc = m_pTexHandle->pTexResource->GetDesc();
+			D3D12_RESOURCE_DESC desc = m_pTexHandle->GetD3DResource()->GetDesc();
 			texWidth = static_cast<uint>(desc.Width);
 			texHeight = static_cast<uint>(desc.Height);
 		}
@@ -79,7 +79,7 @@ bool SpriteObject::Initialize(D3D12Renderer* pRenderer, const wchar_t* wchTexFil
 		{
 			if (m_pTexHandle)
 			{
-				D3D12_RESOURCE_DESC	 desc = m_pTexHandle->pTexResource->GetDesc();
+				D3D12_RESOURCE_DESC	 desc = m_pTexHandle->GetD3DResource()->GetDesc();
 				m_Rect.left = 0;
 				m_Rect.top = 0;
 				m_Rect.right = (LONG)desc.Width;
@@ -96,7 +96,7 @@ void SpriteObject::Draw(int threadIndex, ID3D12GraphicsCommandList6* pCommandLis
 	DrawWithTex(threadIndex, pCommandList, pPos, &scale, &m_Rect, Z, m_pTexHandle);
 }
 
-void SpriteObject::DrawWithTex(int threadIndex, ID3D12GraphicsCommandList6* pCommandList, const FLOAT2* pPos, const FLOAT2* pScale, const RECT* pRect, float Z, TextureHandle* pTexHandle)
+void SpriteObject::DrawWithTex(int threadIndex, ID3D12GraphicsCommandList6* pCommandList, const FLOAT2* pPos, const FLOAT2* pScale, const RECT* pRect, float Z, D3D12Texture* pTexHandle)
 {
 	ID3D12Device5* pDevice = m_pRenderer->GetD3DDevice();
 	uint srvDescriptorSize = m_pRenderer->GetSrvDescriptorSize();
@@ -109,10 +109,10 @@ void SpriteObject::DrawWithTex(int threadIndex, ID3D12GraphicsCommandList6* pCom
 	D3D12_CPU_DESCRIPTOR_HANDLE srv = {};
 	if (pTexHandle)
 	{
-		D3D12_RESOURCE_DESC desc = pTexHandle->pTexResource->GetDesc();
+		D3D12_RESOURCE_DESC desc = pTexHandle->GetD3DResource()->GetDesc();
 		texWidth = static_cast<uint>(desc.Width);
 		texHeight = static_cast<uint>(desc.Height);
-		srv = pTexHandle->SRV;
+		srv = pTexHandle->GetSRV();
 	}
 	// Sample region
 	RECT rect = {};

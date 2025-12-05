@@ -21,7 +21,7 @@ public:
 
 	bool Initialize(D3D12Renderer* pRenderer);
 	bool Initialize(D3D12Renderer* pRenderer, const wchar_t* wchTexFileName, const RECT* pRectOrNull);
-	void DrawWithTex(int threadIndex, ID3D12GraphicsCommandList6* pCommandList, const FLOAT2* pPos, const FLOAT2* pScale, const RECT* pRect, float Z, TextureHandle* pTexHandle);
+	void DrawWithTex(int threadIndex, ID3D12GraphicsCommandList6* pCommandList, const FLOAT2* pPos, const FLOAT2* pScale, const RECT* pRect, float Z, D3D12Texture* pTexHandle);
 	void Draw(int threadIndex, ID3D12GraphicsCommandList6* pCommandList, const FLOAT2* pPos, const FLOAT2* pScale, float Z);
 
 	SpriteObject();
@@ -51,7 +51,7 @@ private:
 	PSOHandle* m_pPSOHandle = nullptr;
 
 	int m_RefCount = 1;
-	TextureHandle* m_pTexHandle = nullptr;
+	D3D12Texture* m_pTexHandle = nullptr;
 	D3D12Renderer* m_pRenderer = nullptr;
 	RECT m_Rect = {};
 	FLOAT2 m_Scale = { 1.0f, 1.0f };

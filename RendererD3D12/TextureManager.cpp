@@ -1,181 +1,15 @@
 ﻿#include "pch.h"
-#include "SingleDescriptorAllocator.h"
-#include "D3D12Renderer.h"
-#include "D3D12ResourceManager.h"
 #include "TextureManager.h"
 
-bool TextureManager::Initialize(D3D12Renderer* pRenderer, int numExpectedItems)
-{
-	m_pRenderer = pRenderer;
-	m_pResourceManager = pRenderer->GetResourceManager();
+#include "D3D12Renderer.h"
+#include "D3D12Texture.h"
+#include "D3D12ResourceManager.h"
+#include "SingleDescriptorAllocator.h"
+#include "Generic/Image.h"   // 깊이 아틀라스용 Image
 
-	m_HashTable.reserve(numExpectedItems);
-
-	return true;
-}
-
-void TextureManager::Cleanup()
-{
-	ASSERT(m_HashTable.size() > 0, "Texture resource leak detected.\n");
-	m_HashTable.clear();
-}
-
-TextureHandle* TextureManager::CreateTextureFromFile(const wchar_t* wchFileName)
-{
-	ID3D12Device* pD3DDevice = m_pRenderer->GetD3DDevice();
-	SingleDescriptorAllocator* pSingleDescriptorAllocator = m_pRenderer->GetSingleDescriptorAllocator();
-	bool bUseGpuUploadHeaps = m_pRenderer->IsGpuUploadHeapsEnabledInl();
-
-	ID3D12Resource* pTexResource = nullptr;
-	D3D12_CPU_DESCRIPTOR_HANDLE srv = {};
-	D3D12_RESOURCE_DESC	desc = {};
-	TextureHandle* pOutTexHandle = nullptr;
-
-	if (auto it = m_HashTable.find(wchFileName); it != m_HashTable.end())
-	{
-		pOutTexHandle = it->second;
-		++it->second->RefCount;
-	}
-	else
-	{
-		if (m_pResourceManager->CreateTextureFromFile(&pTexResource, &desc, wchFileName, bUseGpuUploadHeaps))
-		{
-			D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
-			srvDesc.Format = desc.Format;
-			srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-
-			if (desc.Dimension == D3D12_RESOURCE_DIMENSION_TEXTURE2D)
-			{
-				if (desc.DepthOrArraySize > 1)
-				{
-					if (desc.DepthOrArraySize == 6 && (desc.Flags & D3D12_RESOURCE_FLAG_ALLOW_SIMULTANEOUS_ACCESS) == 0)
-					{
-						// CubeMap
-						srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURECUBE;
-						srvDesc.TextureCube.MipLevels = desc.MipLevels;
-					}
-					else
-					{
-						// 2D Array
-						srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2DARRAY;
-						srvDesc.Texture2DArray.MipLevels = desc.MipLevels;
-						srvDesc.Texture2DArray.ArraySize = desc.DepthOrArraySize;
-					}
-				}
-				else
-				{
-					// Normal 2D texture
-					srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
-					srvDesc.Texture2D.MipLevels = desc.MipLevels;
-				}
-			}
-			else if (desc.Dimension == D3D12_RESOURCE_DIMENSION_TEXTURE3D)
-			{
-				srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE3D;
-				srvDesc.Texture2D.MipLevels = desc.MipLevels;
-			}
-			else
-			{
-				ASSERT(false, "Unsupported texture type.\n");
-			}
-
-			// Descriptor heap allocation and SRV creation
-			if (pSingleDescriptorAllocator->AllocDescriptorHandle(&srv))
-			{
-				pD3DDevice->CreateShaderResourceView(pTexResource, &srvDesc, srv);
-
-				pOutTexHandle = allocTextureHandle();
-				pOutTexHandle->pTexResource = pTexResource;
-				pOutTexHandle->bFromFile = TRUE;
-				pOutTexHandle->SRV = srv;
-				pOutTexHandle->Dimension = srvDesc.ViewDimension;
-
-				auto bResult = m_HashTable.insert({ wchFileName,  pOutTexHandle }).second;
-				ASSERT(bResult, "HashTable insertion failed.\n");
-			}
-			else
-			{
-				SAFE_RELEASE(pTexResource);
-			}
-		}
-	}
-
-	return pOutTexHandle;
-}
-
-TextureHandle* TextureManager::CreateDynamicTexture(uint texWidth, uint texHeight)
-{
-	ID3D12Device* pD3DDevice = m_pRenderer->GetD3DDevice();
-	SingleDescriptorAllocator* pSingleDescriptorAllocator = m_pRenderer->GetSingleDescriptorAllocator();
-	TextureHandle* pTexHandle = nullptr;
-
-	ID3D12Resource* pTexResource = nullptr;
-	ID3D12Resource* pUploadBuffer = nullptr;
-	D3D12_CPU_DESCRIPTOR_HANDLE srv = {};
-
-	DXGI_FORMAT texFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
-
-	if (m_pResourceManager->CreateTexturePair(&pTexResource, &pUploadBuffer, texWidth, texHeight, texFormat))
-	{
-		D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
-		srvDesc.Format = texFormat;
-		srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-		srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
-		srvDesc.Texture2D.MipLevels = 1;
-
-		if (pSingleDescriptorAllocator->AllocDescriptorHandle(&srv))
-		{
-			pD3DDevice->CreateShaderResourceView(pTexResource, &srvDesc, srv);
-
-			pTexHandle = allocTextureHandle();
-			pTexHandle->pTexResource = pTexResource;
-			pTexHandle->pUploadBuffer = pUploadBuffer;
-			pTexHandle->SRV = srv;
-		}
-		else
-		{
-			SAFE_RELEASE(pTexResource);
-			SAFE_RELEASE(pUploadBuffer);
-		}
-	}
-
-	return pTexHandle;
-}
-
-TextureHandle* TextureManager::CreateImmutableTexture(uint texWidth, uint texHeight, DXGI_FORMAT format, const uint8_t* pInitImage)
-{
-	ID3D12Device* pD3DDevice = m_pRenderer->GetD3DDevice();
-	SingleDescriptorAllocator* pSingleDescriptorAllocator = m_pRenderer->GetSingleDescriptorAllocator();
-	TextureHandle* pTexHandle = nullptr;
-
-	ID3D12Resource* pTexResource = nullptr;
-	D3D12_CPU_DESCRIPTOR_HANDLE srv = {};
-
-	if (m_pResourceManager->CreateTexture(&pTexResource, texWidth, texHeight, format, pInitImage))
-	{
-		D3D12_SHADER_RESOURCE_VIEW_DESC SRVDesc = {};
-		SRVDesc.Format = format;
-		SRVDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-		SRVDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
-		SRVDesc.Texture2D.MipLevels = 1;
-
-		if (pSingleDescriptorAllocator->AllocDescriptorHandle(&srv))
-		{
-			pD3DDevice->CreateShaderResourceView(pTexResource, &SRVDesc, srv);
-
-			pTexHandle = allocTextureHandle();
-			pTexHandle->pTexResource = pTexResource;
-			pTexHandle->SRV = srv;
-		}
-		else
-		{
-			SAFE_RELEASE(pTexResource);
-		}
-	}
-
-	return pTexHandle;
-}
-
+// -----------------------------
+// 내부 helper들 (CASPER용)
+// -----------------------------
 
 enum CubeFace { PX = 0, NX = 1, PY = 2, NY = 3, PZ = 4, NZ = 5 };
 
@@ -214,8 +48,7 @@ static void BuildMinMip_R16_UNORM_Cube_Anchored(
 			for (uint32_t x = 0; x < Wo; ++x)
 			{
 				// Positive: (u0,u1) = (2x, 2x+1)
-				// Negative: 우측-상단 기준으로 2x2 블록을 잡도록 오른쪽 anchor
-				//           (u0,u1) = (W-2 - 2x, W-1 - 2x)
+				// Negative: 우측-상단 기준 2x2 블록을 anchor
 				int u0 = neg ? (int(W) - 2 - int(2 * x)) : int(2 * x);
 				int u1 = u0 + 1;
 
@@ -234,14 +67,20 @@ static void BuildMinMip_R16_UNORM_Cube_Anchored(
 static inline uint CalcFullMipCount(uint w, uint h)
 {
 	uint m = 1;
-	while (w > 1 || h > 1) { w = std::max(1u, w >> 1); h = std::max(1u, h >> 1); ++m; }
+	while (w > 1 || h > 1)
+	{
+		w = std::max(1u, w >> 1);
+		h = std::max(1u, h >> 1);
+		++m;
+	}
 	return m;
 }
 
 static inline size_t SumTexelsOverMips(uint w, uint h)
 {
 	size_t sum = 0;
-	while (true) {
+	while (true)
+	{
 		sum += size_t(w) * size_t(h);
 		if (w == 1 && h == 1) break;
 		w = std::max(1u, w >> 1);
@@ -250,30 +89,329 @@ static inline size_t SumTexelsOverMips(uint w, uint h)
 	return sum;
 }
 
-TextureHandle* TextureManager::CreateCasperDepthAtlasTextureFromFile(const wchar_t* wchFileName)
+// -----------------------------
+// TextureManager
+// -----------------------------
+
+TextureManager::~TextureManager()
 {
-	ID3D12Device* pD3DDevice = m_pRenderer->GetD3DDevice();
-	SingleDescriptorAllocator* pSingleDescriptorAllocator = m_pRenderer->GetSingleDescriptorAllocator();
+	Cleanup();
+}
 
+bool TextureManager::Initialize(D3D12Renderer* pRenderer, int numExpectedItems)
+{
+	m_pRenderer = pRenderer;
+	m_pResourceManager = pRenderer->GetResourceManager();
+	m_pDevice = pRenderer->GetD3DDevice();              // ID3D12Device5* 라고 가정
+	m_pSrvAllocator = pRenderer->GetSingleDescriptorAllocator();
+
+	m_TextureTable.clear();
+	if (numExpectedItems > 0)
+		m_TextureTable.reserve(numExpectedItems);
+
+	return true;
+}
+
+void TextureManager::Cleanup()
+{
+	clearAllRecords();
+
+	m_pRenderer = nullptr;
+	m_pResourceManager = nullptr;
+	m_pDevice = nullptr;
+	m_pSrvAllocator = nullptr;
+}
+
+// -----------------------------
+// 내부 헬퍼
+// -----------------------------
+
+D3D12Texture* TextureManager::createTextureObject() const
+{
+	ASSERT(m_pDevice && m_pResourceManager && m_pSrvAllocator,
+		"TextureManager not initialized (device/resourceManager/srvAllocator null).");
+	return new D3D12Texture(m_pDevice, m_pResourceManager, m_pSrvAllocator);
+}
+
+D3D12Texture* TextureManager::findCachedTexture(const std::wstring& key)
+{
+	auto it = m_TextureTable.find(key);
+	if (it == m_TextureTable.end())
+		return nullptr;
+
+	TextureRecord& rec = it->second;
+	ASSERT(rec.pTexture != nullptr, "TextureRecord with null texture.");
+	++rec.refCount;
+	return rec.pTexture;
+}
+
+D3D12Texture* TextureManager::cacheTexture(const std::wstring& key, D3D12Texture* pTex)
+{
+	ASSERT(pTex != nullptr, "cacheTexture: pTex is null.");
+
+	TextureRecord rec;
+	rec.pTexture = pTex;
+	rec.refCount = 1;
+
+	auto [it, inserted] = m_TextureTable.emplace(key, rec);
+	if (!inserted)
+	{
+		std::cout << "TextureManager::cacheTexture: key already existed. Reusing existing texture." << std::endl;
+		delete pTex;
+		TextureRecord& existing = it->second;
+		++existing.refCount;
+		return existing.pTexture;
+	}
+	return pTex;
+}
+
+void TextureManager::releaseTexture(D3D12Texture* pTex)
+{
+	if (!pTex)
+		return;
+
+	// 1) 캐시에서 찾는다.
+	for (auto it = m_TextureTable.begin(); it != m_TextureTable.end(); ++it)
+	{
+		TextureRecord& rec = it->second;
+		if (rec.pTexture == pTex)
+		{
+			ASSERT(rec.refCount > 0, "TextureManager: negative refcount.");
+			--rec.refCount;
+			if (rec.refCount == 0)
+			{
+				delete rec.pTexture;
+				m_TextureTable.erase(it);
+			}
+			return;
+		}
+	}
+
+	// 2) 캐시에 없는 경우 (동적/임뮤터블 등) → 바로 delete
+	delete pTex;
+}
+
+void TextureManager::clearAllRecords()
+{
+	for (auto& kv : m_TextureTable)
+	{
+		TextureRecord& rec = kv.second;
+		if (rec.pTexture)
+		{
+			ASSERT(rec.refCount > 0, "TextureManager::clearAllRecords: non-zero refcount on cleanup.");
+			delete rec.pTexture;
+		}
+	}
+	m_TextureTable.clear();
+}
+
+// -----------------------------
+// 공용 API
+// -----------------------------
+
+void TextureManager::DeleteTexture(D3D12Texture* pTexture)
+{
+	releaseTexture(pTexture);
+}
+
+// 파일 기반 텍스처 (캐시 + refcount)
+D3D12Texture* TextureManager::CreateTextureFromFile(const wchar_t* wchFileName)
+{
+	ASSERT(m_pRenderer && m_pResourceManager && m_pDevice && m_pSrvAllocator,
+		"TextureManager not initialized.");
+
+	if (!wchFileName || !wchFileName[0])
+		return nullptr;
+
+	std::wstring key(wchFileName);
+
+	// 1) 캐시 체크
+	if (D3D12Texture* cached = findCachedTexture(key))
+		return cached;
+
+	// 2) 새로 로드
 	ID3D12Resource* pTexResource = nullptr;
-	D3D12_CPU_DESCRIPTOR_HANDLE srv = {};
-	TextureHandle* pOutTexHandle = nullptr;
+	D3D12_RESOURCE_DESC desc = {};
+	bool bUseGpuUploadHeaps = m_pRenderer->IsGpuUploadHeapsEnabledInl();
 
-	// --- Load input image (expects R16_UNORM, cube as arraySize=6) ---
+	if (!m_pResourceManager->CreateTextureFromFile(&pTexResource, &desc, wchFileName, bUseGpuUploadHeaps))
+	{
+		return nullptr;
+	}
+
+	// 3) TEXTURE_DESC 채우기
+	TEXTURE_DESC texDesc{};
+	texDesc.size = {
+		static_cast<uint>(desc.Width),
+		static_cast<uint>(desc.Height),
+		(desc.Dimension == D3D12_RESOURCE_DIMENSION_TEXTURE3D)
+			? static_cast<uint>(desc.DepthOrArraySize)
+			: 1u
+	};
+
+	texDesc.mipCount = desc.MipLevels;
+	texDesc.arraySize = (desc.Dimension == D3D12_RESOURCE_DIMENSION_TEXTURE3D)
+		? 1u
+		: static_cast<uint>(desc.DepthOrArraySize);
+	texDesc.sampleCount = desc.SampleDesc.Count;
+	texDesc.format = static_cast<TEXFORMAT>(desc.Format);  // DXGI 값과 맞춰둔 enum
+
+	texDesc.bDynamic = false; // 파일 텍스처는 기본 immutable
+	texDesc.bReadable = false; // 필요 시 true
+	texDesc.bDataSRGB = false; // TODO: sRGB면 true로 세팅
+	texDesc.filterMode = ITexture::FilterMode::Bilinear;
+	texDesc.wrapU = ITexture::WrapMode::Repeat;
+	texDesc.wrapV = ITexture::WrapMode::Repeat;
+	texDesc.wrapW = ITexture::WrapMode::Repeat;
+	texDesc.anisoLevel = 1;
+	texDesc.mipMapBias = 0.0f;
+
+	// Dimension 판정
+	if (desc.Dimension == D3D12_RESOURCE_DIMENSION_TEXTURE3D)
+	{
+		texDesc.dimension = ITexture::Dimension::Tex3D;
+	}
+	else
+	{
+		if (desc.DepthOrArraySize > 1)
+		{
+			// 기존 코드와 동일하게 cube/array 분기
+			if (desc.DepthOrArraySize == 6 &&
+				(desc.Flags & D3D12_RESOURCE_FLAG_ALLOW_SIMULTANEOUS_ACCESS) == 0)
+			{
+				texDesc.dimension = ITexture::Dimension::Cube;
+			}
+			else
+			{
+				texDesc.dimension = ITexture::Dimension::Tex2DArray;
+			}
+		}
+		else
+		{
+			texDesc.dimension = ITexture::Dimension::Tex2D;
+		}
+	}
+
+	// 4) D3D12Texture 래핑
+	D3D12Texture* pTex = createTextureObject();
+	if (!pTex->InitializeFromExistingResource(texDesc, pTexResource))
+	{
+		SAFE_RELEASE(pTexResource);
+		delete pTex;
+		return nullptr;
+	}
+
+	// 5) 캐시에 넣고 반환
+	return cacheTexture(key, pTex);
+}
+
+// 동적 텍스처 (비캐시)
+D3D12Texture* TextureManager::CreateDynamicTexture(uint texWidth, uint texHeight, DXGI_FORMAT format)
+{
+	D3D12Texture* pTex = createTextureObject();
+
+	TEXTURE_DESC desc{};
+	desc.dimension = ITexture::Dimension::Tex2D;
+	desc.size = { texWidth, texHeight, 1u };
+	desc.mipCount = 1;
+	desc.arraySize = 1;
+	desc.sampleCount = 1;
+	desc.format = static_cast<TEXFORMAT>(format);
+	desc.bDynamic = true;   // 업로드 버퍼 생성
+	desc.bReadable = false;  // 필요시 true
+	desc.bDataSRGB = false;
+	desc.filterMode = ITexture::FilterMode::Bilinear;
+	desc.wrapU = ITexture::WrapMode::Clamp;
+	desc.wrapV = ITexture::WrapMode::Clamp;
+	desc.wrapW = ITexture::WrapMode::Clamp;
+	desc.anisoLevel = 1;
+	desc.mipMapBias = 0.0f;
+
+	if (!pTex->Initialize(desc))
+	{
+		delete pTex;
+		return nullptr;
+	}
+
+	// 동적 텍스처는 캐시 안함
+	return pTex;
+}
+
+// Immutable 텍스처 (비캐시, 초기 데이터 전달)
+D3D12Texture* TextureManager::CreateImmutableTexture(
+	uint texWidth,
+	uint texHeight,
+	DXGI_FORMAT format,
+	const uint8_t* pInitImage)
+{
+	ID3D12Resource* pTexResource = nullptr;
+
+	if (!m_pResourceManager->CreateTexture(&pTexResource, texWidth, texHeight, format, pInitImage))
+	{
+		return nullptr;
+	}
+
+	TEXTURE_DESC desc{};
+	desc.dimension = ITexture::Dimension::Tex2D;
+	desc.size = { texWidth, texHeight, 1u };
+	desc.mipCount = 1;
+	desc.arraySize = 1;
+	desc.sampleCount = 1;
+	desc.format = static_cast<TEXFORMAT>(format);
+	desc.bDynamic = false;
+	desc.bReadable = false;
+	desc.bDataSRGB = false;
+	desc.filterMode = ITexture::FilterMode::Bilinear;
+	desc.wrapU = ITexture::WrapMode::Clamp;
+	desc.wrapV = ITexture::WrapMode::Clamp;
+	desc.wrapW = ITexture::WrapMode::Clamp;
+	desc.anisoLevel = 1;
+	desc.mipMapBias = 0.0f;
+
+	D3D12Texture* pTex = createTextureObject();
+	if (!pTex->InitializeFromExistingResource(desc, pTexResource))
+	{
+		SAFE_RELEASE(pTexResource);
+		delete pTex;
+		return nullptr;
+	}
+
+	// 비캐시
+	return pTex;
+}
+
+// CASPER depth atlas (파일 기반, cube R16_UNORM, 캐시 + refcount)
+D3D12Texture* TextureManager::CreateCasperDepthAtlasTextureFromFile(const wchar_t* wchFileName)
+{
+	ASSERT(m_pRenderer && m_pResourceManager && m_pDevice && m_pSrvAllocator,
+		"TextureManager not initialized.");
+
+	if (!wchFileName || !wchFileName[0])
+		return nullptr;
+
+	std::wstring key(wchFileName);
+
+	// 1) 캐시 체크
+	if (D3D12Texture* cached = findCachedTexture(key))
+		return cached;
+
+	// 2) 이미지 로드
 	Image depthAtlasImage;
 	bool ok = depthAtlasImage.Load(wchFileName);
 	ASSERT(ok && depthAtlasImage.IsValid(), "Failed to load depth atlas image.");
+
 	ASSERT(depthAtlasImage.GetFormat() == TEXFORMAT_R16_UNORM, "Casper depth atlas must be R16_UNORM.");
+
 	const uint W0 = depthAtlasImage.GetWidth();
 	const uint H0 = depthAtlasImage.GetHeight();
 	uint arraySize = std::max(1u, depthAtlasImage.GetArraySize());
 	ASSERT(arraySize == 6, "Depth atlas must have 6 faces for a cubemap.");
 
-	// --- Build min-mip chain on CPU for each face (tight-packed: rowPitch = width*2) ---
-
+	// 3) CPU에서 min mip chain 생성
 	const uint mipCount = CalcFullMipCount(W0, H0);
 	const size_t texelsPerFace = SumTexelsOverMips(W0, H0);
-	std::vector<uint16_t> tightPacked(texelsPerFace * arraySize, 0xFFFF); // << 기본 1.0로 전체 초기화
+
+	std::vector<uint16_t> tightPacked(texelsPerFace * arraySize, 0xFFFF);
 
 	// face별 최상위 레벨 복사
 	size_t faceBase = 0;
@@ -287,7 +425,7 @@ TextureHandle* TextureManager::CreateCasperDepthAtlasTextureFromFile(const wchar
 
 		for (uint y = 0; y < H0; ++y)
 		{
-			const uint8_t* srow = (const uint8_t*)srcTop + y * srcRowPitch;
+			const uint8_t* srow = reinterpret_cast<const uint8_t*>(srcTop) + y * srcRowPitch;
 			uint16_t* drow = dstTop + y * W0;
 			std::memcpy(drow, srow, size_t(W0) * sizeof(uint16_t));
 		}
@@ -295,13 +433,13 @@ TextureHandle* TextureManager::CreateCasperDepthAtlasTextureFromFile(const wchar
 		faceBase += texelsPerFace;
 	}
 
-	// 레벨 포인터 헬퍼
 	auto FaceLevelPtr = [&](int face, uint level) -> uint16_t*
 		{
 			size_t base = size_t(face) * texelsPerFace;
 			uint w = W0, h = H0;
 			size_t off = 0;
-			for (uint m = 0; m < level; ++m) {
+			for (uint m = 0; m < level; ++m)
+			{
 				off += size_t(w) * size_t(h);
 				w = std::max(1u, w >> 1);
 				h = std::max(1u, h >> 1);
@@ -309,7 +447,6 @@ TextureHandle* TextureManager::CreateCasperDepthAtlasTextureFromFile(const wchar
 			return tightPacked.data() + base + off;
 		};
 
-	// --- 순수 2×2 min 체인 빌드 ---
 	uint curW = W0, curH = H0;
 	for (uint level = 1; level < mipCount; ++level)
 	{
@@ -331,16 +468,15 @@ TextureHandle* TextureManager::CreateCasperDepthAtlasTextureFromFile(const wchar
 			FaceLevelPtr(NZ, level),
 		};
 
-		// 하위 레벨 버퍼는 이미 0xFFFF로 채워져 있음(위에서 전체 초기화)
 		BuildMinMip_R16_UNORM_Cube_Anchored(prevFaces, outFaces, curW, curH);
 
 		curW = std::max(1u, curW >> 1);
 		curH = std::max(1u, curH >> 1);
 	}
 
-
-	// --- Create GPU texture from tight-packed buffer with mips+array ---
-	if (m_pResourceManager->CreateTexture(
+	// 4) GPU 텍스처 생성 (arraySize=6, mipCount)
+	ID3D12Resource* pTexResource = nullptr;
+	if (!m_pResourceManager->CreateTexture(
 		&pTexResource,
 		W0, H0,
 		DXGI_FORMAT_R16_UNORM,
@@ -348,66 +484,36 @@ TextureHandle* TextureManager::CreateCasperDepthAtlasTextureFromFile(const wchar
 		arraySize,
 		mipCount))
 	{
-		// Create SRV as cubemap
-		D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
-		srvDesc.Format = DXGI_FORMAT_R16_UNORM;
-		srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-		srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURECUBE;
-		srvDesc.TextureCube.MostDetailedMip = 0;
-		srvDesc.TextureCube.MipLevels = mipCount;
-		srvDesc.TextureCube.ResourceMinLODClamp = 0.0f;
-
-		if (pSingleDescriptorAllocator->AllocDescriptorHandle(&srv))
-		{
-			pD3DDevice->CreateShaderResourceView(pTexResource, &srvDesc, srv);
-
-			pOutTexHandle = allocTextureHandle();
-			pOutTexHandle->pTexResource = pTexResource;
-			pOutTexHandle->bFromFile = TRUE;
-			pOutTexHandle->SRV = srv;
-			pOutTexHandle->Dimension = srvDesc.ViewDimension;
-		}
-		else
-		{
-			SAFE_RELEASE(pTexResource);
-		}
+		return nullptr;
 	}
 
-	return pOutTexHandle;
-}
+	// 5) TEXTURE_DESC 구성
+	TEXTURE_DESC desc{};
+	desc.dimension = ITexture::Dimension::Cube;
+	desc.size = { W0, H0, 1u };
+	desc.mipCount = mipCount;
+	desc.arraySize = arraySize; // 6
+	desc.sampleCount = 1;
+	desc.format = TEXFORMAT_R16_UNORM;
+	desc.bDynamic = false;
+	desc.bReadable = false;
+	desc.bDataSRGB = false;
+	desc.filterMode = ITexture::FilterMode::Point; // depth 샘플링이니까 point
+	desc.wrapU = ITexture::WrapMode::Clamp;
+	desc.wrapV = ITexture::WrapMode::Clamp;
+	desc.wrapW = ITexture::WrapMode::Clamp;
+	desc.anisoLevel = 1;
+	desc.mipMapBias = 0.0f;
 
-
-void TextureManager::DeleteTexture(TextureHandle* pTexHandle)
-{
-	freeTextureHandle(pTexHandle);
-}
-
-TextureHandle* TextureManager::allocTextureHandle()
-{
-	TextureHandle* pTexHandle = new TextureHandle;
-	memset(pTexHandle, 0, sizeof(TextureHandle));
-	pTexHandle->RefCount = 1;
-	return pTexHandle;
-}
-
-uint TextureManager::freeTextureHandle(TextureHandle* pTexHandle)
-{
-	ID3D12Device* pD3DDevice = m_pRenderer->GetD3DDevice();
-	SingleDescriptorAllocator* pSingleDescriptorAllocator = m_pRenderer->GetSingleDescriptorAllocator();
-
-	ASSERT(pTexHandle->RefCount > 0, "Texture handle reference count is already zero.\n");
-
-	int refCount = --pTexHandle->RefCount;
-	if (!refCount)
+	D3D12Texture* pTex = createTextureObject();
+	if (!pTex->InitializeFromExistingResource(desc, pTexResource))
 	{
-		SAFE_RELEASE(pTexHandle->pTexResource);
-		SAFE_RELEASE(pTexHandle->pUploadBuffer);
-		if (pTexHandle->SRV.ptr)
-		{
-			pSingleDescriptorAllocator->FreeDescriptorHandle(pTexHandle->SRV);
-			pTexHandle->SRV = {};
-		}
-		SAFE_DELETE(pTexHandle);
+		SAFE_RELEASE(pTexResource);
+		delete pTex;
+		return nullptr;
 	}
-	return refCount;
+
+	// 6) 캐시에 넣고 반환
+	return cacheTexture(key, pTex);
 }
+

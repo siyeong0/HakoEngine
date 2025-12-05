@@ -36,7 +36,7 @@ public:
 		ID3D12Resource* pAABBBuffer,
 		uint numAABBs,
 		uint aabbStrideBytes,
-		const std::vector<std::pair<TextureHandle*, TextureHandle*>>& atlases,
+		const std::vector<std::pair<D3D12Texture*, D3D12Texture*>>& atlases,
 		const CBMaterial& material,
 		bool bOpaque,
 		bool bAllowUpdate);

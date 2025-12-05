@@ -21,9 +21,9 @@ public:
 	void Cleanup();
 	void Draw(int threadIndex, ID3D12GraphicsCommandList6* pCommandList);
 
-	TextureHandle* GetTransmittanceTexture() const { return m_pTransmittanceTex; }
-	TextureHandle* GetScatteringTexture() const { return m_pScatteringTex; }
-	TextureHandle* GetIrradianceTexture() const { return m_pIrradianceTex; }
+	D3D12Texture* GetTransmittanceTexture() const { return m_pTransmittanceTex; }
+	D3D12Texture* GetScatteringTexture() const { return m_pScatteringTex; }
+	D3D12Texture* GetIrradianceTexture() const { return m_pIrradianceTex; }
 
 	const CONSTANT_BUFFER_ATMOS& GetCBData() const { return m_AtmosCBData; }
 	static void SetAtmosStateFromPreset(CONSTANT_BUFFER_ATMOS* outDst, EAtmosPreset ePreset);
@@ -47,7 +47,7 @@ private:
 
 	CONSTANT_BUFFER_ATMOS m_AtmosCBData = {};
 
-	TextureHandle* m_pTransmittanceTex = nullptr;
-	TextureHandle* m_pScatteringTex = nullptr;
-	TextureHandle* m_pIrradianceTex = nullptr;
+	D3D12Texture* m_pTransmittanceTex = nullptr;
+	D3D12Texture* m_pScatteringTex = nullptr;
+	D3D12Texture* m_pIrradianceTex = nullptr;
 };

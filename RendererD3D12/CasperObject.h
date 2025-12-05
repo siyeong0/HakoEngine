@@ -31,7 +31,7 @@ private:
 
 	ID3D12Resource* m_pAABBBuffer = nullptr;
 	std::vector<Bounds> m_AtlasBoundsArray;
-	std::vector<std::pair<TextureHandle*, TextureHandle*>> m_Atlases;
+	std::vector<std::pair<D3D12Texture*, D3D12Texture*>> m_Atlases;
 	CBMaterial m_Material;
 	bool m_bOpaque = true;
 	uint m_MaxNumAtlases = 0;

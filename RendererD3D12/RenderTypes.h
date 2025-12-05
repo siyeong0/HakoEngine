@@ -1,5 +1,6 @@
 ﻿#pragma once
 #include "Common/Common.h"
+#include "D3D12Texture.h"
 #include "Shaders/HLSL_CPP_CommonTypes.h"
 
 // Constants
@@ -156,17 +157,6 @@ struct CONSTANT_BUFFER_ATMOS
 };
 static_assert(sizeof(CONSTANT_BUFFER_ATMOS) % 16 == 0, "CONSTANT_BUFFER_ATMOS size must be multiple of 16 bytes.");
 
-struct TextureHandle
-{
-	ID3D12Resource*	pTexResource;
-	ID3D12Resource*	pUploadBuffer;
-	D3D12_CPU_DESCRIPTOR_HANDLE SRV;
-	D3D12_SRV_DIMENSION Dimension;
-	bool bUpdated;
-	bool bFromFile;
-	int RefCount;
-};
-
 struct FontHandle
 {
 	IDWriteTextFormat*	pTextFormat;
@@ -188,8 +178,8 @@ struct MeshSection
 	ID3D12Resource* IndexBuffer = nullptr;
 	D3D12_INDEX_BUFFER_VIEW IndexBufferView = {};
 	uint NumTriangles = 0;
-	TextureHandle* DiffuseTexHandle = nullptr;
-	TextureHandle* NormalTexHandle = nullptr;
+	D3D12Texture* DiffuseTexHandle = nullptr;
+	D3D12Texture* NormalTexHandle = nullptr;
 	CBMaterial Material = {};
 };
 

@@ -46,6 +46,7 @@ struct ITexture
 	virtual uint ENGINECALL GetSampleCount() const = 0;
 
 	virtual TEXFORMAT ENGINECALL GetFormat() const = 0;
+	virtual bool ENGINECALL IsDynamic() const = 0;
 	virtual bool ENGINECALL IsDataSRGB() const = 0;
 	virtual bool ENGINECALL IsReadable() const = 0;
 

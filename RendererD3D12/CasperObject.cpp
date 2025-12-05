@@ -48,9 +48,8 @@ bool ENGINECALL CasperObject::BeginCreateCasper(uint numAtlases, const UMaterial
 
 bool ENGINECALL CasperObject::InsertCasperAtlas(const CasperAtlas& atlas)
 {
-	
-	TextureHandle* pDiffuse = (TextureHandle*)m_pRenderer->CreateTextureFromFile(atlas.DiffuseAtlas.c_str());
-	TextureHandle* pDepth = (TextureHandle*)m_pRenderer->CreateCasperDepthAtlasTextureFromFile(atlas.DepthAtlas.c_str());
+	D3D12Texture* pDiffuse = reinterpret_cast<D3D12Texture*>(m_pRenderer->CreateTextureFromFile(atlas.DiffuseAtlas.c_str()));
+	D3D12Texture* pDepth = reinterpret_cast<D3D12Texture*>(m_pRenderer->CreateCasperDepthAtlasTextureFromFile(atlas.DepthAtlas.c_str()));
 	m_Atlases.emplace_back(pDiffuse, pDepth);
 	m_AtlasBoundsArray.emplace_back(atlas.AtlasBounds);
 

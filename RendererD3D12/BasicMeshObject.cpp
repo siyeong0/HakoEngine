@@ -84,11 +84,11 @@ bool ENGINECALL BasicMeshObject::InsertTriGroup(const uint16_t* indices, uint nu
 	pTriGroup.IndexBufferView = indexBufferView;
 	pTriGroup.NumTriangles = static_cast<uint>(numTriangles);
 	pTriGroup.DiffuseTexHandle = material.HasDiffuseTexture()
-		? (TextureHandle*)m_pRenderer->CreateTextureFromFile(material.DiffuseTexturePath.c_str())
-		: (TextureHandle*)m_pRenderer->CreateImmutableTexture(Image::CreateSolidColor(128, 128, Color::White()));
+		? reinterpret_cast<D3D12Texture*>(m_pRenderer->CreateTextureFromFile(material.DiffuseTexturePath.c_str()))
+		: reinterpret_cast<D3D12Texture*>(m_pRenderer->CreateImmutableTexture(Image::CreateSolidColor(128, 128, Color::White())));
 	pTriGroup.NormalTexHandle = material.HasNormalTexture()
-		? (TextureHandle*)m_pRenderer->CreateTextureFromFile(material.NormalTexturePath.c_str())
-		: (TextureHandle*)m_pRenderer->CreateImmutableTexture(Image::CreateSolidColor(128, 128, Color{ 0.5f, 0.5f, 1.0f }));
+		? reinterpret_cast<D3D12Texture*>(m_pRenderer->CreateTextureFromFile(material.NormalTexturePath.c_str()))
+		: reinterpret_cast<D3D12Texture*>(m_pRenderer->CreateImmutableTexture(Image::CreateSolidColor(128, 128, Color{ 0.5f, 0.5f, 1.0f })));
 	pTriGroup.Material.BaseColor = material.BaseColor;
 	pTriGroup.Material.Opacity = material.Opacity;
 	pTriGroup.Material.SpecularColor = material.SpecularColor;
@@ -183,14 +183,14 @@ void BasicMeshObject::Draw(int threadIndex, ID3D12GraphicsCommandList6* pCommand
 	for (uint i = 0; i < m_TriGroups.size(); ++i)
 	{
 		const MeshSection& tg = m_TriGroups[i];
-		TextureHandle* pDiffuseTex = tg.DiffuseTexHandle;
-		TextureHandle* pNormalTex = tg.NormalTexHandle;
-		ASSERT(pDiffuseTex && pDiffuseTex->SRV.ptr != 0, "Texture SRV missing.");
+		D3D12Texture* pDiffuseTex = tg.DiffuseTexHandle;
+		D3D12Texture* pNormalTex = tg.NormalTexHandle;
+		ASSERT(pDiffuseTex && pDiffuseTex->GetSRV().ptr != 0, "Texture SRV missing.");
 
-		pDevice->CopyDescriptorsSimple(1, cpuCurrDescHandleAddress, pDiffuseTex->SRV, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+		pDevice->CopyDescriptorsSimple(1, cpuCurrDescHandleAddress, pDiffuseTex->GetSRV(), D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 		cpuCurrDescHandleAddress.Offset(1, srvDescriptorSize);
 
-		pDevice->CopyDescriptorsSimple(1, cpuCurrDescHandleAddress, pNormalTex->SRV, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+		pDevice->CopyDescriptorsSimple(1, cpuCurrDescHandleAddress, pNormalTex->GetSRV(), D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 		cpuCurrDescHandleAddress.Offset(1, srvDescriptorSize);
 	}
 

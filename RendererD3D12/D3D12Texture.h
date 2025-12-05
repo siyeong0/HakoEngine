@@ -19,6 +19,7 @@ public:
     uint ENGINECALL GetSampleCount() const override { return m_Params.sampleCount; }
 
     TEXFORMAT ENGINECALL GetFormat() const override { return m_Params.format; }
+	bool ENGINECALL IsDynamic() const override { return m_Params.bDynamic; }
     bool ENGINECALL IsDataSRGB() const override { return m_Params.bDataSRGB; }
     bool ENGINECALL IsReadable() const override { return m_Params.bReadable; }
 
@@ -83,12 +84,13 @@ public:
     }
 
     // D3D12 전용 helper
+    bool InitializeFromExistingResource(const TEXTURE_DESC& desc, ID3D12Resource* pExistingResource);
     ID3D12Resource* GetD3DResource() const { return m_pTexResource; }
     ID3D12Resource* GetUploadBuffer() const { return m_pUploadBuffer; }
     D3D12_CPU_DESCRIPTOR_HANDLE GetSRV() const { return m_SRV; }
     D3D12_SRV_DIMENSION GetSRVDimension() const { return m_SrvDimension; }
-
     const TEXTURE_DESC& GetDesc() const { return m_Params; }
+	bool IsDirtyGPU() const { return m_bDirtyGPU; }
 
 private:
     D3D12_SRV_DIMENSION calcSrvDimension(ITexture::Dimension dim, uint arraySize, uint sampleCount) const;

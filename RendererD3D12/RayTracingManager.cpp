@@ -194,16 +194,16 @@ void RayTracingManager::DoRaytracing(ID3D12GraphicsCommandList6* pCommandList)
 		CD3DX12_CPU_DESCRIPTOR_HANDLE srvHandle(dispatchHeapHandleCPU, 2, m_DescriptorSize);
 
 		// (3) SRV - Sky Textures
-		const TextureHandle* skyTransmittanceTexture = m_pRenderer->GetSkyTransmittanceTexture();
-		const TextureHandle* skyIrradianceTexture = m_pRenderer->GetSkyIrradianceTexture();
-		const TextureHandle* skyScatteringTexture = m_pRenderer->GetSkyScatteringTexture();
+		const D3D12Texture* skyTransmittanceTexture = m_pRenderer->GetSkyTransmittanceTexture();
+		const D3D12Texture* skyIrradianceTexture = m_pRenderer->GetSkyIrradianceTexture();
+		const D3D12Texture* skyScatteringTexture = m_pRenderer->GetSkyScatteringTexture();
 
 		CD3DX12_CPU_DESCRIPTOR_HANDLE srvSkyHandle(dispatchHeapHandleCPU, 2 + 10, m_DescriptorSize);
-		m_pD3DDevice->CopyDescriptorsSimple(1, srvSkyHandle, skyTransmittanceTexture->SRV, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+		m_pD3DDevice->CopyDescriptorsSimple(1, srvSkyHandle, skyTransmittanceTexture->GetSRV(), D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 		srvSkyHandle.Offset(1, m_DescriptorSize);
-		m_pD3DDevice->CopyDescriptorsSimple(1, srvSkyHandle, skyScatteringTexture->SRV, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+		m_pD3DDevice->CopyDescriptorsSimple(1, srvSkyHandle, skyScatteringTexture->GetSRV(), D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 		srvSkyHandle.Offset(1, m_DescriptorSize);
-		m_pD3DDevice->CopyDescriptorsSimple(1, srvSkyHandle, skyIrradianceTexture->SRV, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+		m_pD3DDevice->CopyDescriptorsSimple(1, srvSkyHandle, skyIrradianceTexture->GetSRV(), D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 		srvSkyHandle.Offset(1, m_DescriptorSize);
 	}
 
@@ -347,16 +347,16 @@ BLASHandle* RayTracingManager::AllocBLASTriangles(
 			cpuS1.Offset(1, m_DescriptorSize);
 
 			// t2: Diffuse
-			if (triGroups[i].DiffuseTexHandle && triGroups[i].DiffuseTexHandle->SRV.ptr)
+			if (triGroups[i].DiffuseTexHandle && triGroups[i].DiffuseTexHandle->GetSRV().ptr)
 			{
-				pD3DDevice->CopyDescriptorsSimple(1, cpuS1, triGroups[i].DiffuseTexHandle->SRV, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+				pD3DDevice->CopyDescriptorsSimple(1, cpuS1, triGroups[i].DiffuseTexHandle->GetSRV(), D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 			}
 			cpuS1.Offset(1, m_DescriptorSize);
 
 			// t3: Normal
-			if (triGroups[i].NormalTexHandle && triGroups[i].NormalTexHandle->SRV.ptr)\
+			if (triGroups[i].NormalTexHandle && triGroups[i].NormalTexHandle->GetSRV().ptr)
 			{
-				pD3DDevice->CopyDescriptorsSimple(1, cpuS1, triGroups[i].NormalTexHandle->SRV, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+				pD3DDevice->CopyDescriptorsSimple(1, cpuS1, triGroups[i].NormalTexHandle->GetSRV(), D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 			}
 			cpuS1.Offset(1, m_DescriptorSize);
 
@@ -466,7 +466,7 @@ BLASHandle* RayTracingManager::AllocBLASCasper(
 	ID3D12Resource* pAABBBuffer,
 	uint numAABBs,
 	uint aabbStrideBytes,
-	const std::vector<std::pair<TextureHandle*, TextureHandle*>>& atlases,
+	const std::vector<std::pair<D3D12Texture*, D3D12Texture*>>& atlases,
 	const CBMaterial& material,
 	bool bOpaque,
 	bool bAllowUpdate)
@@ -516,10 +516,10 @@ BLASHandle* RayTracingManager::AllocBLASCasper(
 
 			auto [pDiffuse, pDepth] = atlases[i];
 			// t0: Diffuse
-			pD3DDevice->CopyDescriptorsSimple(1, cpuS1, pDiffuse->SRV, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+			pD3DDevice->CopyDescriptorsSimple(1, cpuS1, pDiffuse->GetSRV(), D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 			cpuS1.Offset(1, m_DescriptorSize);
 			// t1: Depth
-			pD3DDevice->CopyDescriptorsSimple(1, cpuS1, pDepth->SRV, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+			pD3DDevice->CopyDescriptorsSimple(1, cpuS1, pDepth->GetSRV(), D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 			cpuS1.Offset(1, m_DescriptorSize);
 
 			// t2: AABB buffer (structured)

@@ -240,6 +240,9 @@ lb_exit:
 	// Create synchronization objects.
 	createFence();
 
+	m_pSingleDescriptorAllocator = new SingleDescriptorAllocator;
+	m_pSingleDescriptorAllocator->Initialize(m_pD3DDevice, MAX_DESCRIPTOR_COUNT, D3D12_DESCRIPTOR_HEAP_FLAG_NONE);
+
 	// Create other managers.
 	bool bInited = false;
 
@@ -313,8 +316,6 @@ lb_exit:
 			m_ppConstBufferManager[i][j]->Initialize(m_pD3DDevice, MAX_DRAW_COUNT_PER_FRAME);
 		}
 	}
-	m_pSingleDescriptorAllocator = new SingleDescriptorAllocator;
-	m_pSingleDescriptorAllocator->Initialize(m_pD3DDevice, MAX_DESCRIPTOR_COUNT, D3D12_DESCRIPTOR_HEAP_FLAG_NONE);
 
 	for (int i = 0; i < m_NumRenderThreads; i++)
 	{
@@ -850,7 +851,7 @@ void* ENGINECALL D3D12Renderer::CreateTiledTexture(uint texWidth, uint texHeight
 			*pDest = (((x ^ y) & 1) == 0) ? WHITE : BLACK;
 		}
 	}
-	TextureHandle* pTexHandle = m_pTextureManager->CreateImmutableTexture(texWidth, texHeight, texFormat, image);
+	D3D12Texture* pTexHandle = m_pTextureManager->CreateImmutableTexture(texWidth, texHeight, texFormat, image);
 
 	SAFE_FREE(image);
 
@@ -859,13 +860,13 @@ void* ENGINECALL D3D12Renderer::CreateTiledTexture(uint texWidth, uint texHeight
 
 void* ENGINECALL D3D12Renderer::CreateDynamicTexture(uint texWidth, uint texHeight)
 {
-	TextureHandle* pTexHandle = m_pTextureManager->CreateDynamicTexture(texWidth, texHeight);
+	D3D12Texture* pTexHandle = m_pTextureManager->CreateDynamicTexture(texWidth, texHeight);
 	return pTexHandle;
 }
 
 void* ENGINECALL D3D12Renderer::CreateImmutableTexture(const Image& image)
 {
-	TextureHandle* pTexHandle = m_pTextureManager->CreateImmutableTexture(
+	D3D12Texture* pTexHandle = m_pTextureManager->CreateImmutableTexture(
 		image.GetWidth(), image.GetHeight(),
 		DXGI_FORMAT_R8G8B8A8_UNORM,
 		reinterpret_cast<const uint8_t*>(image.GetDataPtr()));
@@ -874,16 +875,16 @@ void* ENGINECALL D3D12Renderer::CreateImmutableTexture(const Image& image)
 
 void* ENGINECALL D3D12Renderer::CreateTextureFromFile(const wchar_t* wchFileName)
 {
-	TextureHandle* pTexHandle = m_pTextureManager->CreateTextureFromFile(wchFileName);
+	D3D12Texture* pTexHandle = m_pTextureManager->CreateTextureFromFile(wchFileName);
 	ASSERT(pTexHandle, "Failed to create texture from file.");
 	return pTexHandle;
 }
 
 void ENGINECALL D3D12Renderer::UpdateTextureWithImage(void* pTexHandle, const uint8_t* pSrcBits, uint srcWidth, uint srcHeight)
 {
-	TextureHandle* pTextureHandle = (TextureHandle*)pTexHandle;
-	ID3D12Resource* pDestTexResource = pTextureHandle->pTexResource;
-	ID3D12Resource* pUploadBuffer = pTextureHandle->pUploadBuffer;
+	D3D12Texture* pTextureHandle = reinterpret_cast<D3D12Texture*>(pTexHandle);
+	ID3D12Resource* pDestTexResource = pTextureHandle->GetD3DResource();
+	ID3D12Resource* pUploadBuffer = pTextureHandle->GetUploadBuffer();
 
 	D3D12_RESOURCE_DESC Desc = pDestTexResource->GetDesc();
 	ASSERT(srcWidth <= Desc.Width, "Source width is too large for the destination texture.");
@@ -913,7 +914,7 @@ void ENGINECALL D3D12Renderer::UpdateTextureWithImage(void* pTexHandle, const ui
 	// Unmap
 	pUploadBuffer->Unmap(0, nullptr);
 
-	pTextureHandle->bUpdated = true;
+	pTextureHandle->Apply();
 }
 
 void ENGINECALL D3D12Renderer::DeleteTexture(void* pTexHandle)
@@ -923,7 +924,7 @@ void ENGINECALL D3D12Renderer::DeleteTexture(void* pTexHandle)
 	{
 		waitForFenceValue(m_pui64LastFenceValue[i]);
 	}
-	m_pTextureManager->DeleteTexture((TextureHandle*)pTexHandle);
+	m_pTextureManager->DeleteTexture(reinterpret_cast<D3D12Texture*>(pTexHandle));
 }
 
 void* ENGINECALL D3D12Renderer::CreateFontObject(const wchar_t* wchFontFamilyName, float fontSize)
@@ -1120,9 +1121,9 @@ void D3D12Renderer::EnsureCompleted()
 	}
 }
 
-TextureHandle* D3D12Renderer::CreateCasperDepthAtlasTextureFromFile(const wchar_t* wchFileName)
+D3D12Texture* D3D12Renderer::CreateCasperDepthAtlasTextureFromFile(const wchar_t* wchFileName)
 {
-	TextureHandle* pTexHandle = m_pTextureManager->CreateCasperDepthAtlasTextureFromFile(wchFileName);
+	D3D12Texture* pTexHandle = m_pTextureManager->CreateCasperDepthAtlasTextureFromFile(wchFileName);
 	ASSERT(pTexHandle, "Failed to create Casper depth atlas texture from file.");
 	return pTexHandle;
 }
@@ -1139,17 +1140,17 @@ const CONSTANT_BUFFER_ATMOS D3D12Renderer::GetAtmosCBData() const
 	return m_pSkyObject->GetCBData();
 }
 
-const TextureHandle* D3D12Renderer::GetSkyTransmittanceTexture() const
+const D3D12Texture* D3D12Renderer::GetSkyTransmittanceTexture() const
 {
 	return m_pSkyObject->GetTransmittanceTexture();
 }
 
-const TextureHandle* D3D12Renderer::GetSkyScatteringTexture() const
+const D3D12Texture* D3D12Renderer::GetSkyScatteringTexture() const
 {
 	return m_pSkyObject->GetScatteringTexture();
 }
 
-const TextureHandle* D3D12Renderer::GetSkyIrradianceTexture() const
+const D3D12Texture* D3D12Renderer::GetSkyIrradianceTexture() const
 {
 	return m_pSkyObject->GetIrradianceTexture();
 }

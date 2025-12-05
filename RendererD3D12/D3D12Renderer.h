@@ -90,7 +90,7 @@ public:
 	void EnsureCompleted();
 
 	// CASPER
-	TextureHandle* CreateCasperDepthAtlasTextureFromFile(const wchar_t* wchFileName);
+	D3D12Texture* CreateCasperDepthAtlasTextureFromFile(const wchar_t* wchFileName);
 
 	ID3D12Device5* GetD3DDevice() const { return m_pD3DDevice; }
 	RayTracingManager* GetRayTracingManager() { return m_pRayTracingManager; }
@@ -112,9 +112,9 @@ public:
 
 	const CONSTANT_BUFFER_PER_FRAME& GetFrameCBData() { return m_PerFrameCB; };
 	const CONSTANT_BUFFER_ATMOS GetAtmosCBData() const;
-	const TextureHandle* GetSkyTransmittanceTexture() const;
-	const TextureHandle* GetSkyScatteringTexture() const;
-	const TextureHandle* GetSkyIrradianceTexture() const;
+	const D3D12Texture* GetSkyTransmittanceTexture() const;
+	const D3D12Texture* GetSkyScatteringTexture() const;
+	const D3D12Texture* GetSkyIrradianceTexture() const;
 	void GetViewProjMatrix(Matrix4x4* outMatView, Matrix4x4* outMatProj) const;
 
 	void SetCurrentPathForShader() const;
