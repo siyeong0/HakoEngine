@@ -263,7 +263,7 @@ TextureHandle* TextureManager::CreateCasperDepthAtlasTextureFromFile(const wchar
 	Image depthAtlasImage;
 	bool ok = depthAtlasImage.Load(wchFileName);
 	ASSERT(ok && depthAtlasImage.IsValid(), "Failed to load depth atlas image.");
-	ASSERT(depthAtlasImage.GetFormat() == Image::FORMAT_R16_UNORM, "Casper depth atlas must be R16_UNORM.");
+	ASSERT(depthAtlasImage.GetFormat() == TEXFORMAT_R16_UNORM, "Casper depth atlas must be R16_UNORM.");
 	const uint W0 = depthAtlasImage.GetWidth();
 	const uint H0 = depthAtlasImage.GetHeight();
 	uint arraySize = std::max(1u, depthAtlasImage.GetArraySize());

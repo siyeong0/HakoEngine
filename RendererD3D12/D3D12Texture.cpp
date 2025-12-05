@@ -1,28 +1,8 @@
-#include "pch.h"
+ï»¿#include "pch.h"
 #include "Common/Common.h"
 #include "D3D12Renderer.h"
 #include "SingleDescriptorAllocator.h"
 #include "D3D12Texture.h"
-
-// -----------------------------
-// ³»ºÎ ÇïÆÛ
-// -----------------------------
-
-DXGI_FORMAT D3D12Texture::cvtToDXGIFormat(ITexture::Format fmt) const
-{
-    switch (fmt)
-    {
-    case Format::RGBA8_UNorm:        return DXGI_FORMAT_R8G8B8A8_UNORM;
-    case Format::RGBA8_UNorm_SRGB:   return DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
-    case Format::BGRA8_UNorm:        return DXGI_FORMAT_B8G8R8A8_UNORM;
-    case Format::BGRA8_UNorm_SRGB:   return DXGI_FORMAT_B8G8R8A8_UNORM_SRGB;
-    case Format::RGBA16_Float:       return DXGI_FORMAT_R16G16B16A16_FLOAT;
-    case Format::RGBA32_Float:       return DXGI_FORMAT_R32G32B32A32_FLOAT;
-    case Format::D24_UNorm_S8_UInt:  return DXGI_FORMAT_D24_UNORM_S8_UINT;
-    case Format::D32_Float:          return DXGI_FORMAT_D32_FLOAT;
-    default:                         return DXGI_FORMAT_UNKNOWN;
-    }
-}
 
 D3D12_SRV_DIMENSION D3D12Texture::calcSrvDimension(
     ITexture::Dimension dim,
@@ -60,10 +40,10 @@ uint3 D3D12Texture::calcMipSize(uint mipLevel) const
 void D3D12Texture::createTextureResource()
 {
     ASSERT(m_pDevice != nullptr, "D3D12Texture: m_pDevice is null.");
-    DXGI_FORMAT dxgiFmt = cvtToDXGIFormat(m_Params.format);
+    DXGI_FORMAT dxgiFmt = static_cast<DXGI_FORMAT>(m_Params.format);
     ASSERT(dxgiFmt != DXGI_FORMAT_UNKNOWN, "D3D12Texture: Unknown DXGI_FORMAT.");
 
-    // ¿©±â¼± °¡Àå ¸¹ÀÌ ¾²´Â ÄÉÀÌ½º(2D, array, cube)¸¦ ¿ì¼± Áö¿ø
+    // ì—¬ê¸°ì„  ê°€ì¥ ë§ì´ ì“°ëŠ” ì¼€ì´ìŠ¤(2D, array, cube)ë¥¼ ìš°ì„  ì§€ì›
     const bool b3D = (m_Params.dimension == Dimension::Tex3D);
     const bool bDepth = (dxgiFmt == DXGI_FORMAT_D24_UNORM_S8_UINT || dxgiFmt == DXGI_FORMAT_D32_FLOAT);
 
@@ -92,7 +72,7 @@ void D3D12Texture::createTextureResource()
     D3D12_RESOURCE_STATES initialState = D3D12_RESOURCE_STATE_COMMON;
     D3D12_HEAP_TYPE heapType = D3D12_HEAP_TYPE_DEFAULT;
 
-    // µ¿Àû ÅØ½ºÃ³¶ó ÇØµµ ÅØ½ºÃ³ ÀÚÃ¼´Â DEFAULT¿¡ µÎ°í, ¾÷·Îµå ¹öÆÛ¸¦ µû·Î µĞ´Ù.
+    // ë™ì  í…ìŠ¤ì²˜ë¼ í•´ë„ í…ìŠ¤ì²˜ ìì²´ëŠ” DEFAULTì— ë‘ê³ , ì—…ë¡œë“œ ë²„í¼ë¥¼ ë”°ë¡œ ë‘”ë‹¤.
     HRESULT hr = m_pDevice->CreateCommittedResource(
         &CD3DX12_HEAP_PROPERTIES(heapType),
         D3D12_HEAP_FLAG_NONE,
@@ -111,8 +91,8 @@ void D3D12Texture::createUploadBufferForDynamic()
 
     ASSERT(m_pTexResource != nullptr, "Upload buffer creation requires texture resource.");
 
-    // ResourceManagerÀÇ CreateTexturePair¸¦ ½áµµ µÇÁö¸¸,
-    // ¿©±â¼­´Â "¾÷·Îµå Àü¿ë ¹öÆÛ"¸¸ ¸¸µé°í, CopyRegion¿¡¼­ Á÷Á¢ Map/Unmap ÇÏ´Â ÆĞÅÏÀ¸·Î.
+    // ResourceManagerì˜ CreateTexturePairë¥¼ ì¨ë„ ë˜ì§€ë§Œ,
+    // ì—¬ê¸°ì„œëŠ” "ì—…ë¡œë“œ ì „ìš© ë²„í¼"ë§Œ ë§Œë“¤ê³ , CopyRegionì—ì„œ ì§ì ‘ Map/Unmap í•˜ëŠ” íŒ¨í„´ìœ¼ë¡œ.
     const auto desc = m_pTexResource->GetDesc();
 
     UINT64 uploadSize = 0;
@@ -142,7 +122,7 @@ void D3D12Texture::createSRV()
     ASSERT(m_pTexResource != nullptr, "Cannot create SRV without texture resource.");
     ASSERT(m_pSrvAllocator != nullptr, "D3D12Texture: m_pSrvAllocator is null.");
 
-    DXGI_FORMAT dxgiFmt = cvtToDXGIFormat(m_Params.format);
+    DXGI_FORMAT dxgiFmt = static_cast<DXGI_FORMAT>(m_Params.format);
 
     D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
     srvDesc.Format = dxgiFmt;
@@ -209,10 +189,10 @@ bool D3D12Texture::Initialize(const TEXTURE_DESC& desc)
     createUploadBufferForDynamic();
     createSRV();
 
-    // CPU-side ÀĞ±â¿ë ¹öÆÛ
+    // CPU-side ì½ê¸°ìš© ë²„í¼
     if (m_Params.bReadable)
     {
-        // ¸ğµç mip * arraySlice * (width*height*depth) ÄÃ·¯ ÀúÀå
+        // ëª¨ë“  mip * arraySlice * (width*height*depth) ì»¬ëŸ¬ ì €ì¥
         size_t totalPixels = 0;
         for (uint mip = 0; mip < m_Params.mipCount; ++mip)
         {
@@ -250,7 +230,7 @@ void D3D12Texture::Apply(bool /*bUpdateMipMaps*/)
     if (!m_Params.bDynamic || !m_bDirtyGPU || m_pUploadBuffer == nullptr || m_pTexResource == nullptr)
         return;
 
-    // ¾÷·Îµå ¹öÆÛ ¡æ GPU ÅØ½ºÃ³ º¹»ç
+    // ì—…ë¡œë“œ ë²„í¼ â†’ GPU í…ìŠ¤ì²˜ ë³µì‚¬
     m_pResourceManager->UpdateTextureForWrite(m_pTexResource, m_pUploadBuffer);
     m_bDirtyGPU = false;
 }
@@ -264,7 +244,7 @@ void D3D12Texture::SetFilterMode(FilterMode mode)
     if (m_Params.filterMode == mode)
         return;
     m_Params.filterMode = mode;
-    m_bSamplerDirty = true; // ½ÇÁ¦ sampler´Â PSO / sampler heap °ü¸® ÂÊ¿¡¼­ ¹İ¿µ
+    m_bSamplerDirty = true; // ì‹¤ì œ samplerëŠ” PSO / sampler heap ê´€ë¦¬ ìª½ì—ì„œ ë°˜ì˜
 }
 
 void D3D12Texture::SetWrapModeU(WrapMode mode)
@@ -308,7 +288,7 @@ void D3D12Texture::SetMipMapBias(float bias)
 }
 
 // -----------------------------
-// CPU-side ¸Ş¸ğ¸® ÀÎµ¦½Ì
+// CPU-side ë©”ëª¨ë¦¬ ì¸ë±ì‹±
 // -----------------------------
 
 Color& D3D12Texture::cpuPixelRef(const uint3& pos, uint mipLevel, uint arraySlice)
@@ -342,7 +322,7 @@ const Color& D3D12Texture::cpuPixelRef(const uint3& pos, uint mipLevel, uint arr
 }
 
 // -----------------------------
-// CopyRegion ±¸Çö
+// CopyRegion êµ¬í˜„
 // -----------------------------
 
 uint3 D3D12Texture::GetSize(uint mipLevel) const
@@ -364,15 +344,15 @@ void D3D12Texture::CopyRegion(
     ASSERT(m_pUploadBuffer != nullptr, "CopyRegion requires upload buffer (dynamic texture).");
     ASSERT(src != nullptr, "src must not be null.");
 
-    // ÇöÀç ±¸ÇöÀº "ÀüÃ¼ ¿µ¿ª ¾÷µ¥ÀÌÆ®"¸¸ Áö¿øÇÏ´Â ¼ÀÀ¸·Î ´Ü¼øÈ­
-    // ÇÊ¿äÇÏ¸é footprint °è»êÇØ¼­ ºÎºĞ ¾÷µ¥ÀÌÆ® °¡´É.
+    // í˜„ì¬ êµ¬í˜„ì€ "ì „ì²´ ì˜ì—­ ì—…ë°ì´íŠ¸"ë§Œ ì§€ì›í•˜ëŠ” ì…ˆìœ¼ë¡œ ë‹¨ìˆœí™”
+    // í•„ìš”í•˜ë©´ footprint ê³„ì‚°í•´ì„œ ë¶€ë¶„ ì—…ë°ì´íŠ¸ ê°€ëŠ¥.
     ASSERT(srcPos.x == 0 && srcPos.y == 0 && srcPos.z == 0, "Only full-region updates supported (srcPos must be 0).");
     ASSERT(dstPos.x == 0 && dstPos.y == 0 && dstPos.z == 0, "Only full-region updates supported (dstPos must be 0).");
 
     uint3 mipSize = calcMipSize(dstMipLevel);
     ASSERT(extent.x == mipSize.x && extent.y == mipSize.y && extent.z == 1, "For now, only full 2D mip updates supported.");
 
-    // ¾÷·Îµå ¹öÆÛ¿¡ ¾²±â
+    // ì—…ë¡œë“œ ë²„í¼ì— ì“°ê¸°
     D3D12_RESOURCE_DESC desc = m_pTexResource->GetDesc();
 
     UINT numSubresources = desc.MipLevels * desc.DepthOrArraySize;
@@ -415,7 +395,7 @@ void D3D12Texture::CopyRegion(
 
     m_pUploadBuffer->Unmap(0, nullptr);
 
-    // CPU-side ¹öÆÛµµ ÀÖÀ¸¸é °°ÀÌ °»½Å
+    // CPU-side ë²„í¼ë„ ìˆìœ¼ë©´ ê°™ì´ ê°±ì‹ 
     if (m_Params.bReadable)
     {
         for (uint y = 0; y < extent.y; ++y)
@@ -434,14 +414,14 @@ void D3D12Texture::CopyRegion(
 
 void D3D12Texture::CopyRegion(const ITexture& src)
 {
-    // ÇöÀç´Â °°Àº Å¸ÀÔ(D3D12Texture)³¢¸®, ÀüÃ¼ º¹»ç¸¸ Áö¿ø
+    // í˜„ì¬ëŠ” ê°™ì€ íƒ€ì…(D3D12Texture)ë¼ë¦¬, ì „ì²´ ë³µì‚¬ë§Œ ì§€ì›
     const D3D12Texture* pSrcTex = dynamic_cast<const D3D12Texture*>(&src);
     ASSERT(pSrcTex != nullptr, "CopyRegion: only D3D12Texture -> D3D12Texture supported.");
 
     ASSERT(m_pTexResource != nullptr && pSrcTex->m_pTexResource != nullptr, "Texture resources must be valid.");
     ASSERT(m_pResourceManager != nullptr, "m_pResourceManager must be valid.");
 
-    // ResourceManagerÀÇ UpdateTextureForWrite¸¦ ÀÌ¿ëÇØ¼­ full copy
+    // ResourceManagerì˜ UpdateTextureForWriteë¥¼ ì´ìš©í•´ì„œ full copy
     m_pResourceManager->UpdateTextureForWrite(m_pTexResource, pSrcTex->m_pTexResource);
 }
 
@@ -455,16 +435,16 @@ void D3D12Texture::CopyRegion(
     uint srcArraySlice,
     uint dstArraySlice)
 {
-    // ´Ü¼ø ±¸Çö: ÇöÀç´Â src/dst ÀüÃ¼ subresource º¹»ç¸¸ Áö¿ø
+    // ë‹¨ìˆœ êµ¬í˜„: í˜„ì¬ëŠ” src/dst ì „ì²´ subresource ë³µì‚¬ë§Œ ì§€ì›
     const D3D12Texture* pSrcTex = dynamic_cast<const D3D12Texture*>(&src);
     ASSERT(pSrcTex != nullptr, "CopyRegion: only D3D12Texture -> D3D12Texture supported.");
 
     ASSERT(m_pTexResource != nullptr && pSrcTex->m_pTexResource != nullptr, "Texture resources must be valid.");
     ASSERT(m_pResourceManager != nullptr, "m_pResourceManager must be valid.");
 
-    // ÀÌ °æ¿ì¿¡´Â ResourceManager¿¡ "subresource copy" ±â´ÉÀÌ ¾øÀ¸´Ï,
-    // TODO: ÇÊ¿äÇÏ¸é º°µµ Ä¿¸Çµå ¸®½ºÆ® ¸¸µé¾î¼­ CopyTextureRegion ±¸Çö.
-    // ÀÏ´ÜÀº full UpdateTextureForWrite·Î Ã³¸®.
+    // ì´ ê²½ìš°ì—ëŠ” ResourceManagerì— "subresource copy" ê¸°ëŠ¥ì´ ì—†ìœ¼ë‹ˆ,
+    // TODO: í•„ìš”í•˜ë©´ ë³„ë„ ì»¤ë§¨ë“œ ë¦¬ìŠ¤íŠ¸ ë§Œë“¤ì–´ì„œ CopyTextureRegion êµ¬í˜„.
+    // ì¼ë‹¨ì€ full UpdateTextureForWriteë¡œ ì²˜ë¦¬.
     UNREFERENCED_PARAMETER(srcMipLevel);
     UNREFERENCED_PARAMETER(dstMipLevel);
     UNREFERENCED_PARAMETER(srcArraySlice);
@@ -481,7 +461,7 @@ Color D3D12Texture::GetPixel(const uint3& pos, uint mipLevel, uint arraySlice) c
 {
     if (!m_Params.bReadable)
     {
-        // ÀĞ±â Çã¿ë ¾È µÈ ÅØ½ºÃ³
+        // ì½ê¸° í—ˆìš© ì•ˆ ëœ í…ìŠ¤ì²˜
         return Color(0, 0, 0, 0);
     }
     return cpuPixelRef(pos, mipLevel, arraySlice);
@@ -526,6 +506,6 @@ void D3D12Texture::SetPixel(const uint3& pos, const Color& color, uint mipLevel,
 
     cpuPixelRef(pos, mipLevel, arraySlice) = color;
 
-    // CPU-side ¹öÆÛ¿¡¼­ ¾÷·Îµå ¹öÆÛ·Î º¹»çÇÏ·Á¸é Ãß°¡ ÄÚµå ÇÊ¿ä.
-    // Áö±İÀº "raw CopyRegion()" °æ·Î·Î¸¸ ¾÷·ÎµåÇÑ´Ù°í °¡Á¤.
+    // CPU-side ë²„í¼ì—ì„œ ì—…ë¡œë“œ ë²„í¼ë¡œ ë³µì‚¬í•˜ë ¤ë©´ ì¶”ê°€ ì½”ë“œ í•„ìš”.
+    // ì§€ê¸ˆì€ "raw CopyRegion()" ê²½ë¡œë¡œë§Œ ì—…ë¡œë“œí•œë‹¤ê³  ê°€ì •.
 }

@@ -687,8 +687,8 @@ void ProjectVolumeFace(
 	// 비어있음 → 1x1 반환
 	if (bmin.x > bmax.x || bmin.y > bmax.y || bmin.z > bmax.z)
 	{
-		*outDiffuseImage = Image::CreateBlank(1, 1, Image::FORMAT_RGBA8_UNORM, 1, 1, false);
-		*outDepthImage = Image::CreateBlank(1, 1, Image::FORMAT_R16_UNORM, 1, 1, false);
+		*outDiffuseImage = Image::CreateBlank(1, 1, TEXFORMAT_RGBA8_UNORM, 1, 1, false);
+		*outDepthImage = Image::CreateBlank(1, 1, TEXFORMAT_R16_UNORM, 1, 1, false);
 		if (auto* c = const_cast<uint8_t*>(static_cast<const uint8_t*>(outDiffuseImage->GetDataPtr(0, 0, 0))))
 			c[0] = c[1] = c[2] = 0, c[3] = 0;
 		if (auto* d = const_cast<uint8_t*>(static_cast<const uint8_t*>(outDepthImage->GetDataPtr(0, 0, 0))))
@@ -729,8 +729,8 @@ void ProjectVolumeFace(
 	// const uint32_t W = std::max(1u, std::min<uint32_t>(maxSize, base));
 	const uint32_t H = W;
 
-	*outDiffuseImage = Image::CreateBlank(W, H, Image::FORMAT_RGBA8_UNORM, 1, 1, false);
-	*outDepthImage = Image::CreateBlank(W, H, Image::FORMAT_R16_UNORM, 1, 1, false);
+	*outDiffuseImage = Image::CreateBlank(W, H, TEXFORMAT_RGBA8_UNORM, 1, 1, false);
+	*outDepthImage = Image::CreateBlank(W, H, TEXFORMAT_R16_UNORM, 1, 1, false);
 
 	uint8_t* colorBase = const_cast<uint8_t*>(static_cast<const uint8_t*>(outDiffuseImage->GetDataPtr(0, 0, 0)));
 	uint8_t* depthBase = const_cast<uint8_t*>(static_cast<const uint8_t*>(outDepthImage->GetDataPtr(0, 0, 0)));

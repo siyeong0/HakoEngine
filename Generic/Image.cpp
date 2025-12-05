@@ -18,8 +18,8 @@
 #endif
 
 #ifdef _WIN32
-static_assert(Image::FORMAT_R8G8B8A8_UNORM == 28, "DXGI numeric mismatch");
-static_assert(Image::FORMAT_BC7_UNORM == 98, "DXGI numeric mismatch");
+static_assert(TEXFORMAT_R8G8B8A8_UNORM == 28, "DXGI numeric mismatch");
+static_assert(TEXFORMAT_BC7_UNORM == 98, "DXGI numeric mismatch");
 #endif
 
 // -------------------------------------
@@ -64,18 +64,18 @@ namespace
 		}
 	}
 
-	inline Image::FORMAT ToSRGB(Image::FORMAT f)
+	inline TEXFORMAT ToSRGB(TEXFORMAT f)
 	{
 		// Map a small set commonly used; other values left as-is (numeric DXGI-compatible)
 		switch (static_cast<DXGI_FORMAT>(f))
 		{
-		case DXGI_FORMAT_R8G8B8A8_UNORM: return static_cast<Image::FORMAT>(DXGI_FORMAT_R8G8B8A8_UNORM_SRGB);
-		case DXGI_FORMAT_B8G8R8A8_UNORM: return static_cast<Image::FORMAT>(DXGI_FORMAT_B8G8R8A8_UNORM_SRGB);
-		case DXGI_FORMAT_B8G8R8X8_UNORM: return static_cast<Image::FORMAT>(DXGI_FORMAT_B8G8R8X8_UNORM_SRGB);
-		case DXGI_FORMAT_BC1_UNORM:      return static_cast<Image::FORMAT>(DXGI_FORMAT_BC1_UNORM_SRGB);
-		case DXGI_FORMAT_BC2_UNORM:      return static_cast<Image::FORMAT>(DXGI_FORMAT_BC2_UNORM_SRGB);
-		case DXGI_FORMAT_BC3_UNORM:      return static_cast<Image::FORMAT>(DXGI_FORMAT_BC3_UNORM_SRGB);
-		case DXGI_FORMAT_BC7_UNORM:      return static_cast<Image::FORMAT>(DXGI_FORMAT_BC7_UNORM_SRGB);
+		case DXGI_FORMAT_R8G8B8A8_UNORM: return static_cast<TEXFORMAT>(DXGI_FORMAT_R8G8B8A8_UNORM_SRGB);
+		case DXGI_FORMAT_B8G8R8A8_UNORM: return static_cast<TEXFORMAT>(DXGI_FORMAT_B8G8R8A8_UNORM_SRGB);
+		case DXGI_FORMAT_B8G8R8X8_UNORM: return static_cast<TEXFORMAT>(DXGI_FORMAT_B8G8R8X8_UNORM_SRGB);
+		case DXGI_FORMAT_BC1_UNORM:      return static_cast<TEXFORMAT>(DXGI_FORMAT_BC1_UNORM_SRGB);
+		case DXGI_FORMAT_BC2_UNORM:      return static_cast<TEXFORMAT>(DXGI_FORMAT_BC2_UNORM_SRGB);
+		case DXGI_FORMAT_BC3_UNORM:      return static_cast<TEXFORMAT>(DXGI_FORMAT_BC3_UNORM_SRGB);
+		case DXGI_FORMAT_BC7_UNORM:      return static_cast<TEXFORMAT>(DXGI_FORMAT_BC7_UNORM_SRGB);
 		default: return f;
 		}
 	}
@@ -88,7 +88,7 @@ namespace
 		d.MipLevels = static_cast<uint>(md.mipLevels ? md.mipLevels : 1);
 		d.ArraySize = static_cast<uint>(md.arraySize ? md.arraySize : 1);
 		d.bCubeMap = (md.miscFlags & DirectX::TEX_MISC_TEXTURECUBE) != 0;
-		d.Format = static_cast<Image::FORMAT>(md.format);
+		d.Format = static_cast<TEXFORMAT>(md.format);
 		return d;
 	}
 
@@ -99,7 +99,7 @@ namespace
 		g.Height = static_cast<uint>(md.height);
 		uint bpp = static_cast<uint>(DirectX::BitsPerPixel(md.format));
 		g.Channels = (bpp % 8 == 0) ? std::max<uint>(1, bpp / 8) : 4;
-		g.Format = static_cast<Image::FORMAT>(md.format);
+		g.Format = static_cast<TEXFORMAT>(md.format);
 		return g;
 	}
 
@@ -336,7 +336,7 @@ bool Image::LoadFromMemory(const void* data, size_t sizeBytes, Image* out, std::
 // -------------------------------------
 // Creation
 // -------------------------------------
-Image Image::CreateBlank(uint w, uint h, FORMAT fmt, uint mips, uint arraySize, bool bCubeMap)
+Image Image::CreateBlank(uint w, uint h, TEXFORMAT fmt, uint mips, uint arraySize, bool bCubeMap)
 {
 	Image out;
 #ifdef DXTEX
@@ -377,7 +377,7 @@ Image Image::CreateBlank(uint w, uint h, FORMAT fmt, uint mips, uint arraySize, 
 	return out;
 }
 
-Image Image::CreateSolidColor(uint w, uint h, const uint8_t rgba[4], FORMAT fmt, uint mips, uint arraySize, bool bCubeMap)
+Image Image::CreateSolidColor(uint w, uint h, const uint8_t rgba[4], TEXFORMAT fmt, uint mips, uint arraySize, bool bCubeMap)
 {
 	Image out;
 #ifdef DXTEX
@@ -445,13 +445,13 @@ Image Image::CreateSolidColor(uint w, uint h, const uint8_t rgba[4], FORMAT fmt,
 	return out;
 }
 
-Image Image::CreateSolidColor(uint w, uint h, const RGBA& rgba, FORMAT fmt, uint mips, uint arraySize, bool bCubeMap)
+Image Image::CreateSolidColor(uint w, uint h, const RGBA& rgba, TEXFORMAT fmt, uint mips, uint arraySize, bool bCubeMap)
 {
 	const uint8_t c[4] = { rgba.r, rgba.g, rgba.b, rgba.a };
 	return CreateSolidColor(w, h, c, fmt, mips, arraySize, bCubeMap);
 }
 
-Image Image::CreateSolidColor(uint w, uint h, const Color& color, FORMAT fmt, uint mips, uint arraySize, bool bCubeMap)
+Image Image::CreateSolidColor(uint w, uint h, const Color& color, TEXFORMAT fmt, uint mips, uint arraySize, bool bCubeMap)
 {
 	const uint8_t c[4] = { f2u8(color.r), f2u8(color.g), f2u8(color.b), f2u8(color.a) };
 	return CreateSolidColor(w, h, c, fmt, mips, arraySize, bCubeMap);
@@ -500,11 +500,11 @@ Image::Header Image::GetHeader() const
 #endif
 }
 
-Image::FORMAT Image::GetFormat() const
+TEXFORMAT Image::GetFormat() const
 {
 #ifdef DXTEX
 	const ImageState* st = reinterpret_cast<const ImageState*>(m_pData);
-	return st ? static_cast<Image::FORMAT>(st->scratch.GetMetadata().format) : FORMAT_UNKNOWN;
+	return st ? static_cast<TEXFORMAT>(st->scratch.GetMetadata().format) : TEXFORMAT_UNKNOWN;
 #else
 	return FORMAT_UNKNOWN;
 #endif
@@ -670,7 +670,7 @@ std::vector<uint8_t> Image::CopyTopMipAsRGBA8() const
 // -------------------------------------
 // Editing / processing
 // -------------------------------------
-bool Image::Convert(FORMAT newFmt, bool bUseSRGB)
+bool Image::Convert(TEXFORMAT newFmt, bool bUseSRGB)
 {
 #ifdef DXTEX
 	ImageState* st = reinterpret_cast<ImageState*>(m_pData);
@@ -679,7 +679,7 @@ bool Image::Convert(FORMAT newFmt, bool bUseSRGB)
 		return false;
 	}
 
-	FORMAT fmt = bUseSRGB ? ToSRGB(newFmt) : newFmt;
+	TEXFORMAT fmt = bUseSRGB ? ToSRGB(newFmt) : newFmt;
 
 	DirectX::ScratchImage dst;
 	const DirectX::TexMetadata& md = st->scratch.GetMetadata();
@@ -826,7 +826,7 @@ bool Image::Decompress()
 #endif
 }
 
-bool Image::Compress(FORMAT target, unsigned long flags, bool bUseSRGB)
+bool Image::Compress(TEXFORMAT target, unsigned long flags, bool bUseSRGB)
 {
 #ifdef DXTEX
 	ImageState* st = reinterpret_cast<ImageState*>(m_pData);

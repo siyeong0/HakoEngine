@@ -1,44 +1,43 @@
-#pragma once
+ï»¿#pragma once
 #include "Interface/ITexture.h"
-#include "D3D12ResourceManager.h"
-#include "D3D12Renderer.h" // ¶Ç´Â Àü¹æ¼±¾ð + ÇÊ¿ä ½Ã .cpp¿¡¼­ include
+#include "D3D12ResourceManager.h" 
 
+class D3D12Renderer;
 class SingleDescriptorAllocator;
 
 class D3D12Texture : public ITexture
 {
 public:
-    // ITexture ÀÎÅÍÆäÀÌ½º ±¸Çö
     bool ENGINECALL Initialize(const TEXTURE_DESC& desc) override;
     void ENGINECALL Cleanup() override;
     void ENGINECALL Apply(bool bUpdateMipMaps = true) override;
 
     Dimension ENGINECALL GetDimension() const override { return m_Params.dimension; }
-    uint3     ENGINECALL GetSize(uint mipLevel = 0) const override;
-    uint      ENGINECALL GetMipCount()   const override { return m_Params.mipCount; }
-    uint      ENGINECALL GetArraySize()  const override { return m_Params.arraySize; }
-    uint      ENGINECALL GetSampleCount() const override { return m_Params.sampleCount; }
+    uint3 ENGINECALL GetSize(uint mipLevel = 0) const override;
+    uint ENGINECALL GetMipCount()   const override { return m_Params.mipCount; }
+    uint ENGINECALL GetArraySize()  const override { return m_Params.arraySize; }
+    uint ENGINECALL GetSampleCount() const override { return m_Params.sampleCount; }
 
-    Format    ENGINECALL GetFormat() const override { return m_Params.format; }
-    bool      ENGINECALL IsDataSRGB() const override { return m_Params.bDataSRGB; }
-    bool      ENGINECALL IsReadable() const override { return m_Params.bReadable; }
+    TEXFORMAT ENGINECALL GetFormat() const override { return m_Params.format; }
+    bool ENGINECALL IsDataSRGB() const override { return m_Params.bDataSRGB; }
+    bool ENGINECALL IsReadable() const override { return m_Params.bReadable; }
 
     FilterMode ENGINECALL GetFilterMode() const override { return m_Params.filterMode; }
-    void       ENGINECALL SetFilterMode(FilterMode mode) override;
+    void ENGINECALL SetFilterMode(FilterMode mode) override;
 
-    WrapMode   ENGINECALL GetWrapModeU() const override { return m_Params.wrapU; }
-    WrapMode   ENGINECALL GetWrapModeV() const override { return m_Params.wrapV; }
-    WrapMode   ENGINECALL GetWrapModeW() const override { return m_Params.wrapW; }
+    WrapMode ENGINECALL GetWrapModeU() const override { return m_Params.wrapU; }
+    WrapMode ENGINECALL GetWrapModeV() const override { return m_Params.wrapV; }
+    WrapMode ENGINECALL GetWrapModeW() const override { return m_Params.wrapW; }
 
-    void       ENGINECALL SetWrapModeU(WrapMode mode) override;
-    void       ENGINECALL SetWrapModeV(WrapMode mode) override;
-    void       ENGINECALL SetWrapModeW(WrapMode mode) override;
+    void ENGINECALL SetWrapModeU(WrapMode mode) override;
+    void ENGINECALL SetWrapModeV(WrapMode mode) override;
+    void ENGINECALL SetWrapModeW(WrapMode mode) override;
 
-    uint       ENGINECALL GetAnisoLevel() const override { return m_Params.anisoLevel; }
-    void       ENGINECALL SetAnisoLevel(uint level) override;
+    uint ENGINECALL GetAnisoLevel() const override { return m_Params.anisoLevel; }
+    void ENGINECALL SetAnisoLevel(uint level) override;
 
-    float      ENGINECALL GetMipMapBias() const override { return m_Params.mipMapBias; }
-    void       ENGINECALL SetMipMapBias(float bias) override;
+    float ENGINECALL GetMipMapBias() const override { return m_Params.mipMapBias; }
+    void ENGINECALL SetMipMapBias(float bias) override;
 
     void ENGINECALL CopyRegion(
         const void* src,
@@ -67,7 +66,7 @@ public:
     Color ENGINECALL GetPixelBilinear(const FVector2& uv, uint mipLevel = 0, uint arraySlice = 0) const override;
     void  ENGINECALL SetPixel(const uint3& pos, const Color& color, uint mipLevel = 0, uint arraySlice = 0) override;
 
-    // renderer / resource manager / descriptor allocator ÁÖÀÔ
+    // renderer / resource manager / descriptor allocator ì£¼ìž…
     D3D12Texture(
         ID3D12Device5* pDevice,
         D3D12ResourceManager* pResourceManager,
@@ -83,24 +82,22 @@ public:
         Cleanup();
     }
 
-    // D3D12 Àü¿ë helper
+    // D3D12 ì „ìš© helper
     ID3D12Resource* GetD3DResource() const { return m_pTexResource; }
     ID3D12Resource* GetUploadBuffer() const { return m_pUploadBuffer; }
     D3D12_CPU_DESCRIPTOR_HANDLE GetSRV() const { return m_SRV; }
-    D3D12_SRV_DIMENSION        GetSRVDimension() const { return m_SrvDimension; }
+    D3D12_SRV_DIMENSION GetSRVDimension() const { return m_SrvDimension; }
 
     const TEXTURE_DESC& GetDesc() const { return m_Params; }
 
 private:
-    DXGI_FORMAT         cvtToDXGIFormat(ITexture::Format fmt) const;
     D3D12_SRV_DIMENSION calcSrvDimension(ITexture::Dimension dim, uint arraySize, uint sampleCount) const;
-    uint3               calcMipSize(uint mipLevel) const;
+    uint3 calcMipSize(uint mipLevel) const;
 
-    void                createTextureResource();
-    void                createUploadBufferForDynamic();
-    void                createSRV();
+    void createTextureResource();
+    void createUploadBufferForDynamic();
+    void createSRV();
 
-    // CPU-side ÀÐ±â/¾²±â¸¦ À§ÇÑ ÀÓ½Ã ½ºÅä¸®Áö (bReadable == true °æ¿ì¿¡¸¸ »ç¿ë)
     Color& cpuPixelRef(const uint3& pos, uint mipLevel, uint arraySlice);
     const Color& cpuPixelRef(const uint3& pos, uint mipLevel, uint arraySlice) const;
 
@@ -109,16 +106,15 @@ private:
     D3D12ResourceManager* m_pResourceManager = nullptr;
     SingleDescriptorAllocator* m_pSrvAllocator = nullptr;
 
-    ID3D12Resource* m_pTexResource = nullptr; // GPU ÅØ½ºÃ³
-    ID3D12Resource* m_pUploadBuffer = nullptr; // µ¿Àû ¾÷µ¥ÀÌÆ®¿ë ¾÷·Îµå ¹öÆÛ (µ¿Àû ÅØ½ºÃ³ÀÏ ¶§)
+    ID3D12Resource* m_pTexResource = nullptr; 
+    ID3D12Resource* m_pUploadBuffer = nullptr;
     D3D12_CPU_DESCRIPTOR_HANDLE m_SRV = {};
-    D3D12_SRV_DIMENSION        m_SrvDimension = D3D12_SRV_DIMENSION_UNKNOWN;
+    D3D12_SRV_DIMENSION m_SrvDimension = D3D12_SRV_DIMENSION_UNKNOWN;
 
-    TEXTURE_DESC               m_Params{};
-    bool                       m_bInitialized = false;
-    bool                       m_bDirtyGPU = false;   // ¾÷·Îµå ¹öÆÛ ¡æ GPU·Î º¹»ç°¡ ÇÊ¿äÇÑÁö
-    bool                       m_bSamplerDirty = false;   // ÇÊÅÍ/·¡ÇÎ »óÅÂ º¯°æµÊ
+    TEXTURE_DESC m_Params{};
+    bool m_bInitialized = false;
+    bool m_bDirtyGPU = false;
+    bool m_bSamplerDirty = false; 
 
-    // °£´ÜÇÑ CPU-side ÅØ½ºÃ³ ¹öÆÛ (IsReadable == trueÀÏ ¶§¸¸ »ç¿ë)
-    std::vector<Color>         m_SystemMemory;     // ¸ðµç mip * arraySlice¿¡ ´ëÇØ Color ÀúÀå
+    std::vector<Color> m_SystemMemory;
 };
